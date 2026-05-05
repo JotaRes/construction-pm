@@ -1,0 +1,260 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Project {
+  id   String @id @default(cuid())
+  name String
+  spv  String
+  holding          String
+  address          String
+  county           String
+  hoa              String?
+  parcelId         String?
+  // Physical
+  lotAcres         Float?
+  sfHeated         Int     @default(2400)
+  sfGarage         Int     @default(0)
+  sfPorches        Int     @default(0)
+  bedrooms         Int     @default(3)
+  bathrooms        String  @default("2.5")
+  architecturalPlan String?
+  foundationType   String?
+  // Permits
+  permitNumber     String?
+  permitIssued     DateTime?
+  permitExpires    DateTime?
+  inspectorPhone   String?
+  hoaPhone         String?
+  // GC
+  gcName           String?
+  gcPhone          String?
+  gcLicense        String?
+  gcEmail          String?
+  // Financing
+  lender           String?
+  loanNumber       String?
+  loanAmount       Float   @default(0)
+  day1Disbursement Float   @default(0)
+  interestReserve  Float   @default(0)
+  holdback         Float   @default(0)
+  interestRate     Float   @default(0.085)
+  loanTermMonths   Int     @default(18)
+  settlementDate   DateTime?
+  cashAtSettlement Float   @default(0)
+  closingCosts     Float   @default(0)
+  settlementAgent  String?
+  // Valuation
+  arv              Float   @default(0)
+  constructionBudget Float @default(0)
+  // Inspector
+  trinityName      String?
+  trinityPhone     String?
+  trinityEmail     String?
+  // Target
+  targetCompletionDate DateTime?
+  startDate        DateTime?
+  // Realtor
+  realtorName      String?
+  realtorBrokerage String?
+  realtorPhone     String?
+  realtorEmail     String?
+  listingCommission Float  @default(0.03)
+  buyerCommission  Float   @default(0.03)
+  targetListingPrice Float @default(0)
+  // Benchmarks
+  contingencyPct   Float   @default(0.08)
+  targetMarginPct  Float   @default(0.20)
+  benchmarkSfTarget Float  @default(220)
+
+  phases      Phase[]
+  draws       Draw[]
+  partners    Partner[]
+  providers   Provider[]
+  notes       Note[]
+  files       ProjectFile[]
+  inspections   Inspection[]
+  tasks         Task[]
+  budgetLines   BudgetLine[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Phase {
+  id        String  @id @default(cuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  code      String
+  name      String
+  groupName String
+  order     Int
+  items     Item[]
+}
+
+model Item {
+  id                 String         @id @default(cuid())
+  phaseId            String
+  phase              Phase          @relation(fields: [phaseId], references: [id], onDelete: Cascade)
+  itemCode           String
+  activity           String
+  description        String?
+  responsable        String?
+  unit               String?
+  esNA               Boolean        @default(false)
+  completado         Boolean        @default(false)
+  valorPresupuestado Float          @default(0)
+  valorEjecutado     Float          @default(0)
+  providerId         String?
+  provider           Provider?      @relation(fields: [providerId], references: [id])
+  estado             String         @default("PENDIENTE")
+  fechaInicioReal    DateTime?
+  fechaFinReal       DateTime?
+  observaciones      String?
+  order              Int
+  documents          ItemDocument[]
+}
+
+model Draw {
+  id               String    @id @default(cuid())
+  projectId        String
+  project          Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  drawNumber       Int
+  fechaSolicitud   DateTime?
+  fechaInspeccion  DateTime?
+  fechaWire        DateTime?
+  montoSolicitado  Float     @default(0)
+  elegibleTrinity  Float     @default(0)
+  porcentajeFunded Float     @default(0)
+  netWire          Float     @default(0)
+  upbPre           Float     @default(0)
+  upbPost          Float     @default(0)
+  saldoHoldback    Float     @default(0)
+  notas            String?
+  pdfUrl           String?
+  estado           String    @default("EMPTY")
+}
+
+model Partner {
+  id            String  @id @default(cuid())
+  projectId     String
+  project       Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name          String
+  ownershipPct  Float
+  capitalAporte Float   @default(0)
+  phone         String?
+  email         String?
+  order         Int
+}
+
+model Provider {
+  id        String  @id @default(cuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name      String
+  type      String?
+  phone     String?
+  email     String?
+  license   String?
+  notes     String?
+  items     Item[]
+}
+
+model Note {
+  id        String  @id @default(cuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title     String?
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProjectFile {
+  id        String  @id @default(cuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name      String
+  category  String?
+  url       String
+  createdAt DateTime @default(now())
+}
+
+model Inspection {
+  id              String    @id @default(cuid())
+  projectId       String
+  project         Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  wbs             String
+  tipo            String
+  prerrequisitos  String?
+  fase            String?
+  fechaSolicitada DateTime?
+  fechaRealizada  DateTime?
+  resultado       String?
+  estado          String    @default("PENDIENTE")
+  observaciones   String?
+  order           Int
+}
+
+model BudgetLine {
+  id              String  @id @default(cuid())
+  projectId       String
+  project         Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  divCode         String
+  divName         String
+  itemCode        String
+  description     String
+  unit            String  @default("LS")
+  vendor          String?
+  valorInicial    Float   @default(0)
+  valorPresentado Float   @default(0)
+  valorAprobado   Float   @default(0)
+  pagadoSubs      Float   @default(0)
+  order           Int     @default(0)
+}
+
+model Task {
+  id        String    @id @default(cuid())
+  projectId String
+  project   Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title     String
+  done      Boolean   @default(false)
+  priority  String    @default("NORMAL")
+  dueDate   DateTime?
+  notes     String?
+  order     Int       @default(0)
+  createdAt DateTime  @default(now())
+}
+
+model ItemDocument {
+  id        String   @id @default(cuid())
+  itemId    String
+  item      Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  type      String   @default("OTRO")
+  name      String
+  vendor    String?
+  amount    Float?
+  fileUrl   String?
+  notes     String?
+  createdAt DateTime @default(now())
+}
+
+model PriceRef {
+  id          String   @id @default(cuid())
+  category    String
+  code        String?
+  description String
+  unit        String   @default("LS")
+  priceLow    Float    @default(0)
+  priceHigh   Float    @default(0)
+  source      String?
+  region      String?  @default("SC Upstate")
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

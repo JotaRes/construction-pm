@@ -1,0 +1,21 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  CONTRASEÑA DE ACCESO — Construction PM
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Contraseña actual:   Restrepo2026
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  CÓMO CAMBIARLA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  1. Abre este archivo:
+     ~/Desktop/CLAUDE/construction-pm/backend/.env
+
+  2. Cambia la línea:
+     APP_PASSWORD="NuevaClave"
+
+  3. Guarda — el servidor se reinicia solo.
+
+  4. Actualiza este archivo con la nueva clave.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

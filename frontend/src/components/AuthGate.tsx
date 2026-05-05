@@ -1,0 +1,177 @@
+import { useState, useEffect } from 'react'
+import axios from 'axios'
+import { Building2, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react'
+
+const TOKEN_KEY = 'pm_auth_token'
+const API = '/api/auth'
+
+async function verifyToken(token: string): Promise<boolean> {
+  try {
+    const r = await axios.get(`${API}/verify`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    return r.data.valid === true
+  } catch {
+    return false
+  }
+}
+
+export function useAuth() {
+  const [authed, setAuthed] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    const token = localStorage.getItem(TOKEN_KEY)
+    if (!token) { setAuthed(false); return }
+    verifyToken(token).then(valid => {
+      if (!valid) localStorage.removeItem(TOKEN_KEY)
+      setAuthed(valid)
+    })
+  }, [])
+
+  return authed
+}
+
+export function logout() {
+  localStorage.removeItem(TOKEN_KEY)
+  window.location.reload()
+}
+
+export default function AuthGate({ children }: { children: React.ReactNode }) {
+  const authed = useAuth()
+  const [password, setPassword] = useState('')
+  const [showPwd, setShowPwd] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  if (authed === null) {
+    return (
+      <div className="flex items-center justify-center h-screen" style={{ background: 'var(--brand-cream)' }}>
+        <div className="text-sm font-mono animate-pulse" style={{ color: 'var(--brand-teal)' }}>
+          Verificando acceso...
+        </div>
+      </div>
+    )
+  }
+
+  if (authed) return <>{children}</>
+
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+    try {
+      const r = await axios.post(`${API}/login`, { password })
+      localStorage.setItem(TOKEN_KEY, r.data.token)
+      window.location.reload()
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { error?: string } } })
+        .response?.data?.error ?? 'Error de conexión'
+      setError(msg)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="flex items-center justify-center h-screen" style={{ background: 'var(--brand-cream)' }}>
+      {/* Card */}
+      <div className="w-full max-w-sm mx-4 bg-white rounded-3xl overflow-hidden"
+        style={{ boxShadow: '0 20px 60px rgba(45,75,82,0.15)', border: '1px solid rgba(45,75,82,0.1)' }}>
+
+        {/* Header strip */}
+        <div className="h-1.5" style={{ background: 'linear-gradient(90deg, #2D4B52 0%, #C8922A 100%)' }} />
+
+        <div className="px-8 py-10">
+          {/* Logo */}
+          <div className="flex flex-col items-center mb-8">
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
+              style={{ background: 'linear-gradient(135deg, #2D4B52 0%, #3A5F68 100%)',
+                       boxShadow: '0 8px 24px rgba(45,75,82,0.25)' }}>
+              <Building2 className="w-8 h-8 text-white" />
+            </div>
+            <h1 className="text-xl font-bold tracking-wide" style={{ color: '#2D4B52' }}>
+              Construction PM
+            </h1>
+            <p className="text-xs mt-1" style={{ color: 'rgba(45,75,82,0.5)' }}>
+              Restrepo Acosta Global Holdings LLC
+            </p>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wider"
+                style={{ color: '#2D4B52' }}>
+                Contraseña de acceso
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
+                  style={{ color: 'rgba(45,75,82,0.4)' }} />
+                <input
+                  type={showPwd ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="••••••••••"
+                  autoFocus
+                  className="w-full pl-10 pr-10 py-3 rounded-xl text-sm font-mono transition-all"
+                  style={{
+                    border: error ? '1px solid #ef4444' : '1px solid rgba(45,75,82,0.2)',
+                    background: 'var(--brand-cream)',
+                    color: '#1A2E32',
+                    outline: 'none',
+                  }}
+                  onFocus={e => {
+                    e.currentTarget.style.border = '1px solid #C8922A'
+                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(200,146,42,0.15)'
+                  }}
+                  onBlur={e => {
+                    e.currentTarget.style.border = error
+                      ? '1px solid #ef4444'
+                      : '1px solid rgba(45,75,82,0.2)'
+                    e.currentTarget.style.boxShadow = 'none'
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPwd(s => !s)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 transition-opacity hover:opacity-70"
+                  style={{ color: 'rgba(45,75,82,0.4)' }}
+                >
+                  {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {error && (
+              <div className="flex items-center gap-2 text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2">
+                <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading || !password}
+              className="w-full py-3 text-sm font-semibold text-white rounded-xl transition-all disabled:opacity-50"
+              style={{
+                background: 'linear-gradient(135deg, #C8922A 0%, #E0AD4F 100%)',
+                boxShadow: '0 4px 14px rgba(200,146,42,0.3)',
+              }}
+              onMouseEnter={e => !loading && (e.currentTarget.style.transform = 'translateY(-1px)')}
+              onMouseLeave={e => (e.currentTarget.style.transform = 'none')}
+            >
+              {loading ? 'Verificando...' : 'Ingresar al sistema'}
+            </button>
+          </form>
+        </div>
+
+        {/* Footer */}
+        <div className="px-8 pb-6 text-center">
+          <p className="text-[10px]" style={{ color: 'rgba(45,75,82,0.35)' }}>
+            Sistema privado · Acceso restringido
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
