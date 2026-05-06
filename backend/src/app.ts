@@ -1,8 +1,8 @@
 import 'dotenv/config'
-// pdf-parse v1.1.1
 import express from 'express'
 import cors from 'cors'
 import path from 'path'
+import fs from 'fs'
 import authRoutes from './routes/auth'
 import projectRoutes from './routes/projects'
 import phaseRoutes from './routes/phases'
@@ -25,6 +25,7 @@ app.use(cors())
 app.use(express.json())
 app.use('/api/uploads', express.static(path.join(__dirname, '../uploads')))
 
+// API routes
 app.use('/api/auth', authRoutes)
 app.use('/api/projects', projectRoutes)
 app.use('/api/projects', phaseRoutes)
@@ -48,6 +49,16 @@ app.use('/api/files', fileRoutes)
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
+
+// Serve React frontend from dist/public (production build)
+const frontendPath = path.join(__dirname, 'public')
+if (fs.existsSync(frontendPath)) {
+  app.use(express.static(frontendPath))
+  // All non-API routes → React app (client-side routing)
+  app.get('*', (_req, res) => {
+    res.sendFile(path.join(frontendPath, 'index.html'))
+  })
+}
 
 app.listen(PORT, () => {
   console.log(`Construction PM API running on http://localhost:${PORT}`)

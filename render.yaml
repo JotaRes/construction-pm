@@ -3,6 +3,16 @@ services:
     name: construction-pm
     runtime: node
     rootDir: backend
-    buildCommand: "npm install"
-    startCommand: "npm start"
-# Deployment trigger
+    buildCommand: "npm install && npm run build && cd ../frontend && npm install && npm run build && mkdir -p ../backend/dist/public && cp -r dist/* ../backend/dist/public/"
+    startCommand: "npx prisma migrate deploy && node dist/app.js"
+    envVars:
+      - key: DATABASE_URL
+        value: file:./prisma/dev.db
+      - key: PORT
+        value: 3000
+      - key: JWT_SECRET
+        value: construction-pm-secret-2026
+      - key: APP_PASSWORD
+        value: 18418598
+      - key: NODE_ENV
+        value: production
