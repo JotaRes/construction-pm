@@ -3,7 +3,7 @@ services:
     name: construction-pm
     runtime: node
     rootDir: backend
-    buildCommand: "npm install && npm run build && cd ../frontend && npm install && npm run build && mkdir -p ../backend/dist/public && cp -r dist/* ../backend/dist/public/"
+    buildCommand: "npm install && npm run build && cd ../frontend && npm install && npx vite build --outDir ../backend/dist/public --emptyOutDir"
     startCommand: "npx prisma migrate deploy && node dist/app.js"
     envVars:
       - key: DATABASE_URL
