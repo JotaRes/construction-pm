@@ -3,8 +3,8 @@ services:
     name: construction-pm
     runtime: node
     rootDir: backend
-    buildCommand: "npm install && npm run build"
-    startCommand: "npx prisma migrate deploy && node dist/app.js"
+    buildCommand: "npm install && npx prisma generate && npm run build && npx prisma migrate deploy && npx tsx prisma/seed.ts"
+    startCommand: "node dist/app.js"
     envVars:
       - key: DATABASE_URL
         value: file:./prisma/dev.db

@@ -329,9 +329,13 @@ const inspections = [
 ]
 
 async function main() {
-  console.log('Seeding Lote 87 — 218 N Foxglove Rd...')
+  const existing = await prisma.project.count()
+  if (existing > 0) {
+    console.log('✅ Database already seeded — skipping (data preserved)')
+    return
+  }
 
-  await prisma.project.deleteMany()
+  console.log('Seeding Lote 87 — 218 N Foxglove Rd...')
 
   const project = await prisma.project.create({
     data: {
