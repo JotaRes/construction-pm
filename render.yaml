@@ -16,3 +16,4 @@ services:
         value: 18418598
       - key: NODE_ENV
         value: production
+
