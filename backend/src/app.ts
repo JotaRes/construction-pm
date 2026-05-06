@@ -51,7 +51,7 @@ app.get('/api/health', (_req, res) => {
 })
 
 // Serve React frontend from dist/public (production build)
-const frontendPath = path.join(__dirname, 'public')
+const frontendPath = path.join(__dirname, '../public')
 if (fs.existsSync(frontendPath)) {
   app.use(express.static(frontendPath))
   // All non-API routes → React app (client-side routing)
