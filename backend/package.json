@@ -18,7 +18,8 @@
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.1.1",
-    "pdf-parse": "^1.1.1"
+    "pdf-parse": "^1.1.1",
+    "tsx": "^4.15.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
@@ -27,7 +28,6 @@
     "@types/multer": "^2.1.0",
     "@types/node": "^20.14.0",
     "@types/pdf-parse": "^1.1.5",
-    "tsx": "^4.15.0",
     "typescript": "^5.4.5"
   }
 }
