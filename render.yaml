@@ -3,8 +3,8 @@ services:
     name: restrepoacosta
     runtime: node
     rootDir: backend
-    buildCommand: "npm install && npx prisma generate"
-    startCommand: "npx prisma migrate deploy && npx tsx prisma/seed.ts && node dist/app.js"
+    buildCommand: "npm install && npm run build"
+    startCommand: "npx prisma generate && npx prisma migrate deploy && npx tsx prisma/seed.ts && node dist/app.js"
     envVars:
       - key: DATABASE_URL
         value: file:./prisma/dev.db
