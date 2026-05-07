@@ -3,7 +3,7 @@ services:
     name: restrepoacosta
     runtime: node
     rootDir: backend
-    buildCommand: "npm --prefix ../frontend install && npm --prefix ../frontend run build && cp -r ../frontend/dist/. public/ && npm install && npx prisma generate && npm run build"
+    buildCommand: "npm --prefix ../frontend install --include=dev && npm --prefix ../frontend run build && cp -r ../frontend/dist/. public/ && npm install --include=dev && npx prisma generate && npm run build"
     startCommand: "npx prisma migrate deploy && npx tsx prisma/seed.ts && node dist/app.js"
     envVars:
       - key: DATABASE_URL
