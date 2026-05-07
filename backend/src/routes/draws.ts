@@ -56,25 +56,25 @@ function parseDrawText(text: string): Record<string, unknown> {
   const result: Record<string, unknown> = {}
   const t = text.replace(/\n/g, ' ')
 
-  // ── Draw number ───────────────────────────────────────────
-  // Matches "Draw #1", "Draw#1", "Draw 1"
-  const drawNum = t.match(/Draw\s*#\s*(\d+)/i)
+  // ── Draw number: "Draw #1", "Draw No. 1", "Draw 1", "Draw#1" ──
+  const drawNum = t.match(/Draw\s*(?:#|No\.?)?\s*(\d+)/i)
   if (drawNum) result.drawNumber = parseInt(drawNum[1])
 
-  // ── Dates (Trinity format: "Date Ordered3/12/2026" or "Date Ordered 3/12/2026") ──
+  // ── Trinity dates — label immediately followed by date (no space or with space/colon) ──
   const dp = '(\\d{1,2}/\\d{1,2}/\\d{4})'
+  const sep = '[:\\s]*'  // optional colon or spaces between label and date
 
-  const ordered = t.match(new RegExp(`Date\\s*Ordered\\s*${dp}`, 'i'))
+  const ordered = t.match(new RegExp(`Date\\s*Ordered${sep}${dp}`, 'i'))
   if (ordered) result.fechaSolicitud = normalizeDate(ordered[1])
 
-  const inspected = t.match(new RegExp(`Date\\s*Inspected\\s*${dp}`, 'i'))
+  const inspected = t.match(new RegExp(`Date\\s*Inspected${sep}${dp}`, 'i'))
   if (inspected) result.fechaInspeccion = normalizeDate(inspected[1])
 
-  // "Date Completed3/16/2026" = when Trinity report finished (closest to wire date)
-  const completed = t.match(new RegExp(`Date\\s*Completed\\s*${dp}`, 'i'))
+  // "Date Completed" = Trinity report finish date (closest to wire date)
+  const completed = t.match(new RegExp(`Date\\s*Completed${sep}${dp}`, 'i'))
   if (completed) result.fechaWire = normalizeDate(completed[1])
 
-  // Fallback date patterns (for non-Trinity PDFs with dashes)
+  // ── Fallback dates for non-Trinity PDFs ──
   const dp2 = '(\\d{1,2}[\\/-]\\d{1,2}[\\/-]\\d{2,4})'
   if (!result.fechaSolicitud) {
     const r = t.match(new RegExp(`(?:request(?:ed)?|submit(?:ted)?|date\\s*of\\s*request)\\s*(?:date)?\\s*:?\\s*${dp2}`, 'i'))
@@ -90,22 +90,28 @@ function parseDrawText(text: string): Record<string, unknown> {
   }
 
   // ── Trinity TOTAL row ─────────────────────────────────────
-  // "TOTAL DIRECT COSTS & PERCENTAGES100.00%$465,750.00$0.000.00%$0.0020.27%$94,400.00"
-  // Values are concatenated without spaces — e.g. "$0.0020.27%" means "$0.00" + "20.27%"
-  // Strategy: extract just the total row, then find all "XX.XX%$XX,XXX.XX" pairs.
-  // The LAST pair is always "ThisInspection%$CurrentAvailable".
-  const totalRowStr = t.match(/TOTAL DIRECT COSTS[^©]*/i)?.[0] ?? ''
+  // The last XX.XX%  $XX,XXX.XX pair in the total row = "This Inspection %" + "Current Available"
+  // Values may be space-separated or concatenated. We try several row labels.
+  const totalRowCandidates = [
+    t.match(/TOTAL\s+DIRECT\s+COSTS[^©\n]*/i)?.[0],
+    t.match(/TOTAL\s+ALL\s+COSTS[^©\n]*/i)?.[0],
+    t.match(/GRAND\s+TOTAL[^©\n]*/i)?.[0],
+    t.match(/TOTALS?[^©\n]{0,30}COSTS?[^©\n]*/i)?.[0],
+  ]
+  const totalRowStr = totalRowCandidates.find(s => s && s.length > 10) ?? ''
+
   if (totalRowStr) {
-    const pairs = [...totalRowStr.matchAll(/(\d+\.\d{2})%\$([\d,]+\.\d{2})/g)]
+    // Allow optional spaces between % and $ (some PDFs have a space, some don't)
+    const pairs = [...totalRowStr.matchAll(/(\d+\.\d{2})\s*%\s*\$\s*([\d,]+\.\d{2})/g)]
     if (pairs.length > 0) {
       const last = pairs[pairs.length - 1]
-      result.elegibleTrinity  = parseMoney(last[2])        // Current Amount Available
-      result.montoSolicitado  = parseMoney(last[2])        // what's being requested = certified eligible
-      result.porcentajeFunded = parseFloat(last[1]) / 100  // 20.27 → 0.2027
+      result.elegibleTrinity  = parseMoney(last[2])
+      result.montoSolicitado  = parseMoney(last[2])
+      result.porcentajeFunded = parseFloat(last[1]) / 100
     }
   }
 
-  // ── Fallback: generic patterns for other PDF formats ─────
+  // ── Fallback: generic patterns for non-Trinity PDFs ──
   const mp = '\\$?([\\d,]+\\.?\\d*)'
   if (!result.montoSolicitado) {
     const r = t.match(new RegExp(`(?:amount\\s*requested|total\\s*requested|requested\\s*amount)\\s*:?\\s*${mp}`, 'i'))
@@ -130,20 +136,43 @@ function parseDrawText(text: string): Record<string, unknown> {
 function parseHUDText(text: string): Record<string, unknown> {
   const result: Record<string, unknown> = {}
   const t = text.replace(/\n/g, ' ')
-  const moneyPat = '\\$?([\\d,]+\\.?\\d*)'
-  const datePat = '(\\d{1,2}[\\/-]\\d{1,2}[\\/-]\\d{2,4})'
+  const mp = '\\$?([\\d,]+\\.?\\d*)'
+  const dp = '(\\d{1,2}[\\/-]\\d{1,2}[\\/-]\\d{2,4})'
 
-  const settleDate = t.match(new RegExp(`settlement\\s*date\\s*:?\\s*${datePat}`, 'i'))
+  // Settlement / Closing Date — HUD-1 and Closing Disclosure (CD) both
+  const settleDate =
+    t.match(new RegExp(`(?:settlement|closing)\\s*date\\s*:?\\s*${dp}`, 'i')) ??
+    t.match(new RegExp(`date\\s*of\\s*(?:settlement|closing)\\s*:?\\s*${dp}`, 'i')) ??
+    t.match(new RegExp(`date\\s*issued\\s*:?\\s*${dp}`, 'i'))
   if (settleDate) result.settlementDate = normalizeDate(settleDate[1])
 
-  const loanAmt = t.match(new RegExp(`loan\\s*amount\\s*:?\\s*${moneyPat}`, 'i'))
+  // Loan Amount
+  const loanAmt = t.match(new RegExp(`loan\\s*amount\\s*:?\\s*${mp}`, 'i'))
   if (loanAmt) result.loanAmount = parseMoney(loanAmt[1])
 
-  const cash = t.match(new RegExp(`cash\\s*(?:at|to|from)?\\s*(?:settlement|borrower)\\s*:?\\s*${moneyPat}`, 'i'))
+  // Cash at Settlement (HUD-1) / Cash to Close (CD) / Cash from/to Borrower
+  const cash =
+    t.match(new RegExp(`cash\\s*(?:at|to|from)?\\s*(?:close|settlement|borrower)\\s*:?\\s*${mp}`, 'i')) ??
+    t.match(new RegExp(`(?:total\\s*)?(?:cash|amount)\\s*(?:due\\s*)?(?:from|to)\\s*borrower\\s*:?\\s*${mp}`, 'i'))
   if (cash) result.cashAtSettlement = parseMoney(cash[1])
 
-  const closing = t.match(new RegExp(`(?:total\\s*)?closing\\s*costs?\\s*:?\\s*${moneyPat}`, 'i'))
+  // Total Closing Costs / Total Settlement Charges
+  const closing =
+    t.match(new RegExp(`(?:total\\s*)?closing\\s*costs?\\s*(?:\\([A-Z]\\)\\s*)?:?\\s*${mp}`, 'i')) ??
+    t.match(new RegExp(`(?:total\\s*)?settlement\\s*charges?\\s*:?\\s*${mp}`, 'i'))
   if (closing) result.closingCosts = parseMoney(closing[1])
+
+  // Interest Rate (if present in Closing Disclosure)
+  const rate = t.match(/interest\s*rate\s*:?\s*(\d+\.?\d*)\s*%/i)
+  if (rate) result.interestRate = parseFloat(rate[1]) / 100
+
+  // Loan Term
+  const term = t.match(/loan\s*term\s*:?\s*(\d+)\s*(?:months?|mo\.?|years?|yr\.?)/i)
+  if (term) {
+    const termText = term[0].toLowerCase()
+    const n = parseInt(term[1])
+    result.loanTermMonths = termText.includes('year') ? n * 12 : n
+  }
 
   return result
 }

@@ -92,3 +92,11 @@ export const drawParseApi = {
     return api.post(`/projects/${projectId}/draws/parse-pdf`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data.data)
   },
 }
+
+export const docParseApi = {
+  parsePdf: (projectId: string, file: File, type = 'HUD') => {
+    const fd = new FormData()
+    fd.append('pdf', file)
+    return api.post(`/projects/${projectId}/docs/parse-pdf?type=${type}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data.data)
+  },
+}

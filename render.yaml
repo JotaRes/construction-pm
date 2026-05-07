@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: construction-pm
+    name: restrepoacosta
     runtime: node
     rootDir: backend
     buildCommand: "npm install && npx prisma generate && npm run build"
