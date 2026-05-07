@@ -17,6 +17,7 @@ import taskRoutes from './routes/tasks'
 import budgetLineRoutes from './routes/budgetLines'
 import priceRefRoutes from './routes/priceRefs'
 import itemDocumentRoutes from './routes/itemDocuments'
+import { seedDatabase } from './seed'
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -60,8 +61,19 @@ if (fs.existsSync(frontendPath)) {
   })
 }
 
-app.listen(PORT, () => {
-  console.log(`Construction PM API running on http://localhost:${PORT}`)
-})
+;(async () => {
+  const { PrismaClient } = await import('@prisma/client')
+  const prisma = new PrismaClient()
+  try {
+    await seedDatabase(prisma)
+  } catch (e) {
+    console.error('❌ Seed failed:', e)
+  } finally {
+    await prisma.$disconnect()
+  }
+  app.listen(PORT, () => {
+    console.log(`Construction PM API running on http://localhost:${PORT}`)
+  })
+})()
 
 export default app
