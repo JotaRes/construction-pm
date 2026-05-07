@@ -156,14 +156,20 @@ export default function Layout({ projectId, children }: Props) {
         {/* Logo */}
         <div className="px-4 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-              style={{ background: 'rgba(200,146,42,0.2)' }}>
-              <Building2 className="w-4 h-4" style={{ color: '#C8922A' }} />
+            {/* RA monogram */}
+            <div className="w-9 h-9 rounded-xl flex-shrink-0 flex items-center justify-center relative overflow-hidden"
+              style={{ background: 'linear-gradient(135deg, #C8922A 0%, #E0AD4F 100%)', boxShadow: '0 2px 8px rgba(200,146,42,0.4)' }}>
+              <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                {/* R */}
+                <path d="M3 4h5.5c2 0 3.5 1.3 3.5 3 0 1.4-.9 2.5-2.2 2.9L13 14H10.5L8 10H5.5v4H3V4z M5.5 8h2.7c.8 0 1.3-.5 1.3-1.1C9.5 6.2 9 5.8 8.2 5.8H5.5V8z" fill="white"/>
+                {/* A */}
+                <path d="M13 14L16.5 4h2.5L23 14h-2.5l-.6-1.8h-3.8L15.5 14H13zm3-3.5h2.7L17.3 6.8 16 10.5z" fill="white"/>
+              </svg>
             </div>
             <div>
-              <div className="text-sm font-bold text-white leading-tight tracking-wide">Construction PM</div>
+              <div className="text-sm font-bold text-white leading-tight tracking-wide">Restrepo Acosta</div>
               <div className="text-[10px] leading-tight" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                Restrepo Acosta
+                Construction PM
               </div>
             </div>
           </div>

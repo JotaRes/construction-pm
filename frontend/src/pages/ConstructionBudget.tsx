@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { constructionBudgetApi } from '../lib/api'
+import { constructionBudgetApi, budgetInitApi } from '../lib/api'
 import { formatUSD } from '../lib/calculations'
 import type { BudgetLine } from '../lib/types'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight, Upload, RefreshCw, CheckCircle, AlertCircle, FileText } from 'lucide-react'
 
 /* ── Inline editable number ─────────────────────── */
 function Num({ value, onSave, dim = false }: { value: number; onSave: (v: number) => void; dim?: boolean }) {
@@ -174,9 +174,132 @@ function DivSection({ group, onUpdate }: { group: DivGroup; onUpdate: (id: strin
   )
 }
 
+/* ── PDF Parse Panel ─────────────────────────────── */
+interface ParsedMatch { itemCode: string; description: string; amount: number; confidence: number }
+
+function BudgetPdfPanel({ projectId, onApply }: {
+  projectId: string
+  onApply: (matches: ParsedMatch[]) => void
+}) {
+  const [parsed, setParsed] = useState<{ rawLines: number; extracted: number; matched: ParsedMatch[] } | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  const handleFile = async (file: File) => {
+    setLoading(true)
+    setError(null)
+    setParsed(null)
+    try {
+      const result = await budgetInitApi.parsePdf(projectId, file)
+      setParsed(result)
+      setSelected(new Set(result.matched.map((m: ParsedMatch) => m.itemCode)))
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Error al procesar PDF')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="text-sm font-semibold text-slate-800">Importar desde PDF</div>
+          <div className="text-xs text-slate-400 mt-0.5">Sube un Construction Budget en PDF para extraer montos automáticamente</div>
+        </div>
+        <button
+          onClick={() => fileRef.current?.click()}
+          disabled={loading}
+          className="flex items-center gap-2 px-4 py-2 bg-[#2D4B52] hover:bg-[#3a6068] text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
+        >
+          {loading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+          {loading ? 'Procesando...' : 'Subir PDF'}
+        </button>
+        <input ref={fileRef} type="file" accept=".pdf" className="hidden"
+          onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])} />
+      </div>
+
+      {error && (
+        <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+          <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+          <span className="text-xs text-red-600">{error}</span>
+        </div>
+      )}
+
+      {parsed && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-4 text-xs text-slate-500">
+            <span className="flex items-center gap-1"><FileText className="w-3.5 h-3.5" />{parsed.rawLines} líneas leídas</span>
+            <span className="flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5 text-emerald-500" />{parsed.matched.length} ítems detectados</span>
+          </div>
+
+          {parsed.matched.length === 0 ? (
+            <div className="text-xs text-slate-400 text-center py-4">No se detectaron montos que coincidan con el template. Verifica el formato del PDF.</div>
+          ) : (
+            <div className="border border-slate-200 rounded-lg overflow-hidden max-h-60 overflow-y-auto">
+              <table className="w-full text-xs">
+                <thead className="bg-slate-50 sticky top-0">
+                  <tr>
+                    <th className="px-3 py-2 text-left text-[10px] text-slate-400 font-medium w-8">
+                      <input type="checkbox" checked={selected.size === parsed.matched.length}
+                        onChange={e => setSelected(e.target.checked ? new Set(parsed.matched.map(m => m.itemCode)) : new Set())} />
+                    </th>
+                    <th className="px-3 py-2 text-left text-[10px] text-slate-400 font-medium w-16">Cód.</th>
+                    <th className="px-3 py-2 text-left text-[10px] text-slate-400 font-medium">Descripción</th>
+                    <th className="px-3 py-2 text-right text-[10px] text-slate-400 font-medium w-28">Monto</th>
+                    <th className="px-3 py-2 text-right text-[10px] text-slate-400 font-medium w-16">Conf.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {parsed.matched.map(m => (
+                    <tr key={m.itemCode} className="border-t border-slate-100">
+                      <td className="px-3 py-1.5">
+                        <input type="checkbox" checked={selected.has(m.itemCode)}
+                          onChange={e => {
+                            const s = new Set(selected)
+                            e.target.checked ? s.add(m.itemCode) : s.delete(m.itemCode)
+                            setSelected(s)
+                          }} />
+                      </td>
+                      <td className="px-3 py-1.5 font-mono text-[10px] text-[#C8922A]">{m.itemCode}</td>
+                      <td className="px-3 py-1.5 text-slate-700">{m.description}</td>
+                      <td className="px-3 py-1.5 text-right font-mono text-slate-800 font-semibold">{formatUSD(m.amount)}</td>
+                      <td className="px-3 py-1.5 text-right">
+                        <span className={`text-[10px] font-mono ${m.confidence > 0.6 ? 'text-emerald-500' : 'text-amber-500'}`}>
+                          {(m.confidence * 100).toFixed(0)}%
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {parsed.matched.length > 0 && (
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-slate-400">{selected.size} de {parsed.matched.length} seleccionados</span>
+              <button
+                onClick={() => onApply(parsed.matched.filter(m => selected.has(m.itemCode)))}
+                disabled={selected.size === 0}
+                className="px-4 py-2 bg-[#C8922A] hover:bg-[#E0AD4F] text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-40"
+              >
+                Aplicar al budget ({selected.size})
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 /* ── Main ────────────────────────────────────────── */
 export default function ConstructionBudget({ projectId }: { projectId: string }) {
   const queryClient = useQueryClient()
+  const [showPdfPanel, setShowPdfPanel] = useState(false)
 
   const { data: lines = [], isLoading } = useQuery<BudgetLine[]>({
     queryKey: ['construction-budget', projectId],
@@ -188,6 +311,22 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
       constructionBudgetApi.patch(projectId, id, data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['construction-budget', projectId] }),
   })
+
+  const initMut = useMutation({
+    mutationFn: () => budgetInitApi.init(projectId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['construction-budget', projectId] }),
+  })
+
+  // Handle PDF match apply: update lines with matched amounts
+  const handlePdfApply = async (matches: Array<{ itemCode: string; description: string; amount: number; confidence: number }>) => {
+    for (const match of matches) {
+      const line = lines.find(l => l.itemCode === match.itemCode)
+      if (line) {
+        await mutation.mutateAsync({ id: line.id, data: { valorInicial: match.amount } })
+      }
+    }
+    setShowPdfPanel(false)
+  }
 
   // Group by division
   const divMap = new Map<string, DivGroup>()
@@ -208,15 +347,69 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
 
   if (isLoading) return <div className="text-slate-500 text-sm animate-pulse">Cargando Construction Budget...</div>
 
+  // Empty state — show init button
+  if (lines.length === 0) {
+    return (
+      <div className="space-y-5">
+        <div>
+          <h1 className="text-xl font-bold text-slate-900">Construction Budget</h1>
+          <p className="text-sm text-slate-500 mt-0.5">Lender Report · Hera Holdings LLC</p>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center space-y-4">
+          <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto">
+            <FileText className="w-7 h-7 text-slate-400" />
+          </div>
+          <div>
+            <div className="text-base font-semibold text-slate-700">Sin líneas de budget</div>
+            <div className="text-sm text-slate-400 mt-1">Inicializa el template con las 10 divisiones y ~120 líneas estándar</div>
+          </div>
+          <button
+            onClick={() => initMut.mutate()}
+            disabled={initMut.isPending}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-[#2D4B52] hover:bg-[#3a6068] text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-50"
+          >
+            {initMut.isPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+            {initMut.isPending ? 'Inicializando...' : 'Inicializar Budget desde Template'}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold text-slate-900">Construction Budget</h1>
-        <p className="text-sm text-slate-500 mt-0.5">
-          Lender Report · Hera Holdings LLC · {lines.length} líneas · 10 divisiones
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-slate-900">Construction Budget</h1>
+          <p className="text-sm text-slate-500 mt-0.5">
+            Lender Report · Hera Holdings LLC · {lines.length} líneas · {groups.length} divisiones
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowPdfPanel(p => !p)}
+            className={`flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg border transition-colors
+              ${showPdfPanel ? 'bg-[#2D4B52] text-white border-[#2D4B52]' : 'bg-white text-slate-600 border-slate-200 hover:border-[#2D4B52] hover:text-[#2D4B52]'}`}
+          >
+            <Upload className="w-3.5 h-3.5" />
+            Importar PDF
+          </button>
+          <button
+            onClick={() => { if (confirm('¿Reinicializar budget desde template? Se perderán los valores actuales.')) initMut.mutate() }}
+            disabled={initMut.isPending}
+            className="flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg border border-slate-200 bg-white text-slate-500 hover:border-slate-400 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${initMut.isPending ? 'animate-spin' : ''}`} />
+            Re-init
+          </button>
+        </div>
       </div>
+
+      {/* PDF parse panel */}
+      {showPdfPanel && (
+        <BudgetPdfPanel projectId={projectId} onApply={handlePdfApply} />
+      )}
 
       {/* KPI row */}
       <div className="grid grid-cols-5 gap-3">

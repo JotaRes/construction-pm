@@ -13,6 +13,17 @@ export interface Partner {
   order: number
 }
 
+export interface ProviderQuote {
+  id: string
+  providerId: string
+  description: string
+  amount: number
+  date: string | null
+  fileUrl: string | null
+  notes: string | null
+  createdAt: string
+}
+
 export interface Provider {
   id: string
   projectId: string
@@ -22,6 +33,7 @@ export interface Provider {
   email: string | null
   license: string | null
   notes: string | null
+  quotes: ProviderQuote[]
 }
 
 export interface ItemDocument {
@@ -265,6 +277,7 @@ export interface Task {
   id: string
   projectId: string
   title: string
+  responsable: string | null
   done: boolean
   priority: TaskPriority
   dueDate: string | null

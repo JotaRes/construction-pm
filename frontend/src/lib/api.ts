@@ -32,6 +32,22 @@ export const providersApi = {
   delete: (projectId: string, id: string) => api.delete(`/projects/${projectId}/providers/${id}`).then(r => r.data.data),
 }
 
+export const providerQuotesApi = {
+  create: (projectId: string, providerId: string, formData: FormData) =>
+    api.post(`/projects/${projectId}/providers/${providerId}/quotes`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data.data),
+  delete: (projectId: string, providerId: string, quoteId: string) =>
+    api.delete(`/projects/${projectId}/providers/${providerId}/quotes/${quoteId}`).then(r => r.data.data),
+}
+
+export const budgetInitApi = {
+  init: (projectId: string) => api.post(`/projects/${projectId}/construction-budget/init`).then(r => r.data.data),
+  parsePdf: (projectId: string, file: File) => {
+    const fd = new FormData()
+    fd.append('pdf', file)
+    return api.post(`/projects/${projectId}/construction-budget/parse-pdf`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data.data)
+  },
+}
+
 export const inspectionsApi = {
   list: (projectId: string) => api.get(`/projects/${projectId}/inspections`).then(r => r.data.data),
   patch: (projectId: string, id: string, data: Record<string, unknown>) => api.patch(`/projects/${projectId}/inspections/${id}`, data).then(r => r.data.data),

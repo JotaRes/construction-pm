@@ -2,65 +2,52 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { projectsApi } from '../lib/api'
 import { formatUSD, formatPct, formatDate } from '../lib/calculations'
-import type { DashboardData, PhaseStats } from '../lib/types'
-import { Activity } from 'lucide-react'
+import type { DashboardData } from '../lib/types'
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, RadialBarChart, RadialBar, Legend
+} from 'recharts'
 
-function KpiCard({ label, value, sub, level = 'neutral', href }: {
-  label: string; value: string; sub?: string; level?: 'ok' | 'warning' | 'critical' | 'neutral'; href?: string
-}) {
-  const navigate = useNavigate()
-  const colors = {
-    ok: 'text-emerald-600',
-    warning: 'text-[#C8922A]',
-    critical: 'text-red-400',
-    neutral: 'text-[#2D4B52]',
-  }
+// ── Mini donut progress ─────────────────────────────────────────
+function DonutGauge({ pct, color, size = 80 }: { pct: number; color: string; size?: number }) {
+  const r = (size - 14) / 2
+  const circ = 2 * Math.PI * r
+  const dash = (pct / 100) * circ
   return (
-    <div
-      className={`kpi-card ${href ? 'cursor-pointer hover:scale-[1.02]' : ''} transition-transform`}
-      onClick={href ? () => navigate(href) : undefined}
-    >
-      <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">{label}</div>
-      <div className={`text-2xl font-bold font-mono ${colors[level]}`}>{value}</div>
-      {sub && <div className="text-xs text-slate-400 mt-1">{sub}</div>}
-      {href && <div className="text-[9px] text-slate-500 mt-2 uppercase tracking-wider">→ ver detalle</div>}
-    </div>
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#e2e8f0" strokeWidth={10} />
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={10}
+        strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
+        transform={`rotate(-90 ${size/2} ${size/2})`}
+        style={{ transition: 'stroke-dasharray 0.6s ease' }} />
+      <text x={size/2} y={size/2 + 5} textAnchor="middle" fontSize={13} fontWeight="700" fill={color}>
+        {pct.toFixed(0)}%
+      </text>
+    </svg>
   )
 }
 
-function ProgressBar({ pct, color = 'blue' }: { pct: number; color?: string }) {
-  const colors: Record<string, string> = {
-    blue: 'bg-[#2D4B52]',
-    green: 'bg-emerald-500',
-    amber: 'bg-[#2D4B52]',
-    red: 'bg-red-500',
-    slate: 'bg-slate-500',
-  }
+// ── Custom tooltip for recharts ─────────────────────────────────
+function MoneyTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{name: string; value: number; color: string}>; label?: string }) {
+  if (!active || !payload?.length) return null
   return (
-    <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
-      <div
-        className={`h-full rounded-full transition-all ${colors[color] || 'bg-[#2D4B52]'}`}
-        style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
-      />
+    <div className="bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-lg text-xs">
+      <div className="font-semibold text-slate-700 mb-1">{label}</div>
+      {payload.map((p, i) => (
+        <div key={i} className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full" style={{ background: p.color }} />
+          <span className="text-slate-500">{p.name}:</span>
+          <span className="font-mono font-semibold text-slate-800">{formatUSD(p.value)}</span>
+        </div>
+      ))}
     </div>
   )
-}
-
-function phaseColor(estado: string) {
-  if (estado === 'DONE') return 'green'
-  if (estado === 'EN_CURSO') return 'amber'
-  return 'slate'
-}
-
-function estadoBadge(estado: string) {
-  if (estado === 'DONE') return <span className="badge-done">DONE</span>
-  if (estado === 'EN_CURSO') return <span className="badge-in-progress">EN CURSO</span>
-  return <span className="badge-pending">PENDIENTE</span>
 }
 
 interface Props { projectId: string }
 
 export default function Dashboard({ projectId }: Props) {
+  const navigate = useNavigate()
   const { data, isLoading, error } = useQuery<DashboardData>({
     queryKey: ['dashboard', projectId],
     queryFn: () => projectsApi.dashboard(projectId),
@@ -74,16 +61,37 @@ export default function Dashboard({ projectId }: Props) {
 
   const permitDias = kpis.diasAlPermit
   const permitLevel = permitDias === null ? 'neutral' : permitDias < 30 ? 'critical' : permitDias < 60 ? 'warning' : 'ok'
-  const desfaseLevel = kpis.desfaseFisicoVsTiempo < -10 ? 'critical' : kpis.desfaseFisicoVsTiempo < -5 ? 'warning' : 'ok'
   const holdbackLevel = kpis.saldoHoldback < 50000 ? 'critical' : kpis.saldoHoldback < 100000 ? 'warning' : 'ok'
-  const sfLevel = kpis.costoSFProyectado > (project.benchmarkSfTarget ?? 220) ? 'critical' : kpis.costoSFProyectado > 185 ? 'warning' : 'ok'
 
-  const preObraPhases = phases.filter(p => p.groupName === 'PRE-OBRA')
-  const obraPhases = phases.filter(p => p.groupName === 'OBRA')
-  const cierrePhases = phases.filter(p => p.groupName === 'CIERRE')
+  // ── Chart data ─────────────────────────────────────────────────
+  const phaseChartData = phases
+    .filter(p => p.budget > 0 || p.ejecutado > 0)
+    .map(p => ({
+      name: p.code,
+      fullName: p.name,
+      Budget: p.budget,
+      Ejecutado: p.ejecutado,
+    }))
+
+  const drawChartData = data.draws.filter(d => d.estado !== 'EMPTY').map(d => ({
+    name: `D#${d.drawNumber}`,
+    amount: d.netWire,
+    elegible: d.elegibleTrinity,
+  }))
+
+  const holdbackPieData = [
+    { name: 'Desembolsado', value: kpis.totalDrawn, color: '#2D4B52' },
+    { name: 'Saldo Holdback', value: kpis.saldoHoldback, color: '#C8922A' },
+  ]
+
+  const progressByGroup = [
+    { name: 'Pre-Obra', value: phases.filter(p => p.groupName === 'PRE-OBRA').reduce((s, p) => s + p.avancePct, 0) / Math.max(phases.filter(p => p.groupName === 'PRE-OBRA').length, 1), fill: '#64748b' },
+    { name: 'Obra', value: phases.filter(p => p.groupName === 'OBRA').reduce((s, p) => s + p.avancePct, 0) / Math.max(phases.filter(p => p.groupName === 'OBRA').length, 1), fill: '#2D4B52' },
+    { name: 'Cierre', value: phases.filter(p => p.groupName === 'CIERRE').reduce((s, p) => s + p.avancePct, 0) / Math.max(phases.filter(p => p.groupName === 'CIERRE').length, 1), fill: '#C8922A' },
+  ]
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 page-content">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
@@ -91,189 +99,194 @@ export default function Dashboard({ projectId }: Props) {
           <p className="text-sm text-slate-500 mt-0.5">{project.address} · {project.county}</p>
         </div>
         <div className="text-right">
-          <div className="text-xs text-slate-400">Permit: {project.permitNumber}</div>
-          <div className={`text-xs font-mono mt-0.5 ${permitLevel === 'critical' ? 'text-red-400' : permitLevel === 'warning' ? 'text-[#C8922A]' : 'text-emerald-400'}`}>
-            Vence: {formatDate(project.permitExpires ?? null)} ({permitDias}d)
+          <div className={`text-xs font-mono px-2.5 py-1 rounded-full ${
+            permitLevel === 'critical' ? 'bg-red-50 text-red-500 border border-red-200' :
+            permitLevel === 'warning' ? 'bg-amber-50 text-amber-600 border border-amber-200' :
+            'bg-emerald-50 text-emerald-600 border border-emerald-200'}`}>
+            Permit vence: {formatDate(project.permitExpires ?? null)} · {permitDias}d
           </div>
         </div>
       </div>
 
-      {/* KPI Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard
-          label="Avance General"
-          value={formatPct(kpis.avanceGeneral)}
-          sub={`${formatPct(kpis.tiempoTranscurrido)} tiempo transcurrido`}
-          level={desfaseLevel}
-          href="/execution"
-        />
-        <KpiCard
-          label="Budget Maestro"
-          value={formatUSD(kpis.totalBudget)}
-          sub={`Ejecutado: ${formatUSD(kpis.totalEjecutado)}`}
-          href="/budget"
-        />
-        <KpiCard
-          label="Draw Desembolsado"
-          value={formatUSD(kpis.totalDrawn)}
-          sub={`Saldo holdback: ${formatUSD(kpis.saldoHoldback)}`}
-          level={holdbackLevel}
-          href="/draws"
-        />
-        <KpiCard
-          label="Días al Permit"
-          value={permitDias !== null ? String(permitDias) + 'd' : '—'}
-          sub={`Vence ${formatDate(project.permitExpires ?? null)}`}
-          level={permitLevel}
-          href="/inspections"
-        />
-      </div>
-
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard
-          label="Presup $/SF"
-          value={`$${kpis.costoSFPresupuestado.toFixed(0)}/SF`}
-          sub={`Budget total / ${project.sfHeated} SF`}
-          href="/construction-budget"
-        />
-        <KpiCard
-          label="Ejecutado $/SF"
-          value={`$${kpis.costoSFEjecutado.toFixed(0)}/SF`}
-          sub="Costo vivo actual"
-          href="/budget"
-        />
-        <KpiCard
-          label="Proyectado $/SF"
-          value={`$${kpis.costoSFProyectado.toFixed(0)}/SF`}
-          sub={`Benchmark: $${project.benchmarkSfTarget}/SF`}
-          level={sfLevel}
-          href="/financial"
-        />
-        <KpiCard
-          label="ARV $/SF"
-          value={`$${kpis.arvSF.toFixed(0)}/SF`}
-          sub={`ARV: ${formatUSD(project.arv ?? 0)}`}
-          level="ok"
-        />
-      </div>
-
-      {/* Phase Table */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-200 flex items-center gap-2">
-          <Activity className="w-4 h-4 text-[#C8922A]" />
-          <h2 className="text-sm font-semibold text-slate-800">Avance por Fase — Budget vs Ejecutado</h2>
+      {/* ── Row 1: Progress gauges ─────────────────────────── */}
+      <div className="grid grid-cols-4 gap-4">
+        {/* Main donut */}
+        <div className="kpi-card col-span-1 flex flex-col items-center justify-center gap-2 cursor-pointer hover:scale-[1.02] transition-transform"
+          onClick={() => navigate('/execution')}>
+          <DonutGauge pct={kpis.avanceGeneral} color="#2D4B52" size={90} />
+          <div className="text-center">
+            <div className="text-xs text-slate-400 uppercase tracking-wide">Avance General</div>
+            <div className="text-[10px] text-slate-400 mt-0.5">{formatPct(kpis.tiempoTranscurrido)} tiempo</div>
+          </div>
         </div>
 
-        {/* PRE-OBRA */}
-        <PhaseGroup label="PRE-OBRA (F00–F04)" phases={preObraPhases} />
-        {/* OBRA */}
-        <PhaseGroup label="OBRA (F05–F17)" phases={obraPhases} />
-        {/* CIERRE */}
-        <PhaseGroup label="CIERRE (F18–F19)" phases={cierrePhases} />
+        <div className="kpi-card cursor-pointer hover:scale-[1.02] transition-transform" onClick={() => navigate('/draws')}>
+          <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">Total Desembolsado</div>
+          <div className="text-2xl font-bold font-mono text-[#2D4B52]">{formatUSD(kpis.totalDrawn)}</div>
+          <div className="text-xs text-slate-400 mt-1">Saldo: {formatUSD(kpis.saldoHoldback)}</div>
+          <div className="mt-2 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+            <div className="h-full bg-[#2D4B52] rounded-full" style={{ width: `${Math.min(100, (kpis.totalDrawn / (kpis.totalDrawn + kpis.saldoHoldback)) * 100)}%` }} />
+          </div>
+        </div>
 
-        {/* Totals */}
-        <div className="px-5 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs font-mono">
-          <span className="text-slate-500">TOTAL</span>
-          <div className="flex gap-8">
-            <span className="text-slate-700">{formatUSD(kpis.totalBudget)} budget</span>
-            <span className="text-slate-700">{formatUSD(kpis.totalEjecutado)} ejecutado</span>
-            <span className={kpis.totalEjecutado > kpis.totalBudget ? 'text-red-400' : 'text-emerald-400'}>
-              {formatUSD(Math.abs(kpis.totalEjecutado - kpis.totalBudget))} {kpis.totalEjecutado > kpis.totalBudget ? '▲' : '▼'}
-            </span>
+        <div className={`kpi-card cursor-pointer hover:scale-[1.02] transition-transform ${holdbackLevel === 'critical' ? 'border-red-300 bg-red-50/60' : ''}`}
+          onClick={() => navigate('/financial')}>
+          <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">Saldo Holdback</div>
+          <div className={`text-2xl font-bold font-mono ${holdbackLevel === 'critical' ? 'text-red-500' : holdbackLevel === 'warning' ? 'text-[#C8922A]' : 'text-slate-900'}`}>
+            {formatUSD(kpis.saldoHoldback)}
+          </div>
+          <div className="text-xs text-slate-400 mt-1">{data.draws.filter(d => d.estado === 'WIRED').length} / 8 draws wired</div>
+        </div>
+
+        <div className="kpi-card cursor-pointer hover:scale-[1.02] transition-transform" onClick={() => navigate('/construction-budget')}>
+          <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">Budget vs Ejecutado</div>
+          <div className="text-2xl font-bold font-mono text-slate-900">{formatUSD(kpis.totalBudget)}</div>
+          <div className="text-xs text-slate-400 mt-1">Ejec: {formatUSD(kpis.totalEjecutado)}</div>
+          <div className="mt-2 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+            <div className="h-full bg-[#C8922A] rounded-full" style={{ width: `${Math.min(100, kpis.totalBudget > 0 ? (kpis.totalEjecutado / kpis.totalBudget) * 100 : 0)}%` }} />
           </div>
         </div>
       </div>
 
-      {/* Inspections + Draws row */}
+      {/* ── Row 2: Progress by group + $/SF ───────────────── */}
+      <div className="grid grid-cols-3 gap-4">
+        {/* Radial bar for groups */}
+        <div className="bg-white rounded-xl border border-slate-200 p-4">
+          <div className="text-xs font-semibold text-slate-700 mb-3">Avance por Grupo</div>
+          <ResponsiveContainer width="100%" height={160}>
+            <RadialBarChart cx="50%" cy="50%" innerRadius={20} outerRadius={70} data={progressByGroup} startAngle={90} endAngle={-270}>
+              <RadialBar dataKey="value" cornerRadius={4} />
+              <Legend iconSize={8} iconType="circle" formatter={(val) => <span className="text-[10px] text-slate-600">{val}</span>} />
+              <Tooltip formatter={(val: number) => [`${val.toFixed(1)}%`, '']} />
+            </RadialBarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* $/SF KPIs */}
+        <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
+          <div className="text-xs font-semibold text-slate-700">Benchmarks $/SF</div>
+          {[
+            { label: 'Presup. $/SF', val: kpis.costoSFPresupuestado, target: project.benchmarkSfTarget ?? 220 },
+            { label: 'Ejecutado $/SF', val: kpis.costoSFEjecutado, target: project.benchmarkSfTarget ?? 220 },
+            { label: 'Proyectado $/SF', val: kpis.costoSFProyectado, target: project.benchmarkSfTarget ?? 220 },
+            { label: 'ARV $/SF', val: kpis.arvSF, target: 0 },
+          ].map(({ label, val, target }) => {
+            const over = target > 0 && val > target
+            return (
+              <div key={label}>
+                <div className="flex justify-between text-[10px] text-slate-500 mb-0.5">
+                  <span>{label}</span>
+                  <span className={`font-mono font-semibold ${over ? 'text-red-500' : 'text-slate-800'}`}>${val.toFixed(0)}/SF</span>
+                </div>
+                {target > 0 && (
+                  <div className="h-1 bg-slate-100 rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full ${over ? 'bg-red-400' : 'bg-[#2D4B52]'}`} style={{ width: `${Math.min(100, (val / (target * 1.3)) * 100)}%` }} />
+                  </div>
+                )}
+              </div>
+            )
+          })}
+          <div className="pt-1 text-[10px] text-slate-400">Benchmark target: ${project.benchmarkSfTarget}/SF</div>
+        </div>
+
+        {/* Holdback Pie */}
+        <div className="bg-white rounded-xl border border-slate-200 p-4">
+          <div className="text-xs font-semibold text-slate-700 mb-1">Distribución Holdback</div>
+          <ResponsiveContainer width="100%" height={160}>
+            <PieChart>
+              <Pie data={holdbackPieData} cx="50%" cy="50%" innerRadius={35} outerRadius={60} paddingAngle={3} dataKey="value">
+                {holdbackPieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+              </Pie>
+              <Tooltip formatter={(val: number) => [formatUSD(val), '']} />
+              <Legend iconSize={8} iconType="circle" formatter={(val) => <span className="text-[10px] text-slate-600">{val}</span>} />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* ── Row 3: Phase bar chart ─────────────────────────── */}
+      {phaseChartData.length > 0 && (
+        <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <div className="text-xs font-semibold text-slate-700 mb-4">Budget vs Ejecutado por Fase</div>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={phaseChartData} barGap={2} barCategoryGap="25%">
+              <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false}
+                tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
+              <Tooltip content={<MoneyTooltip />} />
+              <Bar dataKey="Budget" fill="#e2e8f0" radius={[3,3,0,0]} />
+              <Bar dataKey="Ejecutado" fill="#2D4B52" radius={[3,3,0,0]} />
+            </BarChart>
+          </ResponsiveContainer>
+          <div className="flex gap-4 mt-2 text-[10px] text-slate-400">
+            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded bg-slate-200 inline-block"/>Budget</span>
+            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded bg-[#2D4B52] inline-block"/>Ejecutado</span>
+          </div>
+        </div>
+      )}
+
+      {/* ── Row 4: Draws bar + Inspections ────────────────── */}
       <div className="grid grid-cols-2 gap-4">
-        {/* Pending Inspections */}
-        <div className="bg-white rounded-xl border border-slate-200">
-          <div className="px-4 py-3 border-b border-slate-200">
-            <h3 className="text-sm font-semibold text-slate-800">Próximas Inspecciones</h3>
+        {/* Draws chart */}
+        <div className="bg-white rounded-xl border border-slate-200 p-4">
+          <div className="text-xs font-semibold text-slate-700 mb-3">Historial de Draws</div>
+          {drawChartData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={140}>
+              <BarChart data={drawChartData} barGap={2} barCategoryGap="30%">
+                <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
+                <Tooltip formatter={(val: number) => [formatUSD(val), '']} />
+                <Bar dataKey="elegible" name="Elegible" fill="#C8922A" radius={[3,3,0,0]} />
+                <Bar dataKey="amount" name="Net Wire" fill="#2D4B52" radius={[3,3,0,0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-32 flex items-center justify-center text-slate-400 text-xs">Sin draws ejecutados</div>
+          )}
+          <div className="mt-2 divide-y divide-slate-100">
+            {data.draws.filter(d => d.estado !== 'EMPTY').slice(0, 3).map(draw => (
+              <div key={draw.id} className="py-1.5 flex items-center justify-between text-xs">
+                <span className="text-slate-600">Draw #{draw.drawNumber}</span>
+                <div className="flex items-center gap-3">
+                  <span className="font-mono text-emerald-600">{formatUSD(draw.netWire)}</span>
+                  <span className="text-slate-400">{formatDate(draw.fechaWire)}</span>
+                </div>
+              </div>
+            ))}
           </div>
-          <div className="divide-y divide-slate-100">
-            {data.inspections.slice(0, 5).map(ins => (
-              <div key={ins.id} className="px-4 py-2.5 flex items-center justify-between">
+        </div>
+
+        {/* Inspections */}
+        <div className="bg-white rounded-xl border border-slate-200 p-4">
+          <div className="text-xs font-semibold text-slate-700 mb-3">Inspecciones</div>
+          <div className="grid grid-cols-3 gap-2 mb-3">
+            {[
+              { label: 'Aprobadas', count: data.inspections.filter(i => i.estado === 'APROBADA').length, color: 'text-emerald-500 bg-emerald-50' },
+              { label: 'Pendientes', count: data.inspections.filter(i => i.estado === 'PENDIENTE').length, color: 'text-slate-500 bg-slate-50' },
+              { label: 'Programadas', count: data.inspections.filter(i => i.estado === 'PROGRAMADA').length, color: 'text-[#C8922A] bg-amber-50' },
+            ].map(s => (
+              <div key={s.label} className={`rounded-lg p-2 text-center ${s.color}`}>
+                <div className="text-lg font-bold font-mono">{s.count}</div>
+                <div className="text-[10px]">{s.label}</div>
+              </div>
+            ))}
+          </div>
+          <div className="space-y-1.5">
+            {data.inspections.filter(i => i.estado !== 'APROBADA').slice(0, 4).map(ins => (
+              <div key={ins.id} className="flex items-center justify-between py-1 border-b border-slate-100 last:border-0">
                 <div>
-                  <div className="text-xs font-medium text-slate-800">{ins.tipo}</div>
-                  <div className="text-[10px] text-slate-400">{ins.fase}</div>
+                  <div className="text-xs text-slate-800">{ins.tipo}</div>
+                  <div className="text-[10px] text-slate-400">{ins.fase ?? ins.wbs}</div>
                 </div>
                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium
-                  ${ins.estado === 'APROBADA' ? 'bg-emerald-500/20 text-emerald-400'
-                  : ins.estado === 'RECHAZADA' ? 'bg-red-500/20 text-red-400'
-                  : ins.estado === 'PROGRAMADA' ? 'bg-[#C8922A]/15 text-[#C8922A]'
-                  : 'bg-slate-200 text-slate-500'}`}>
+                  ${ins.estado === 'PROGRAMADA' ? 'bg-[#C8922A]/15 text-[#C8922A]' : 'bg-slate-100 text-slate-500'}`}>
                   {ins.estado}
                 </span>
               </div>
             ))}
           </div>
         </div>
-
-        {/* Draws */}
-        <div className="bg-white rounded-xl border border-slate-200">
-          <div className="px-4 py-3 border-b border-slate-200">
-            <h3 className="text-sm font-semibold text-slate-800">Draw Tracker</h3>
-          </div>
-          <div className="divide-y divide-slate-100">
-            {data.draws.filter(d => d.estado !== 'EMPTY').slice(0, 5).map(draw => (
-              <div key={draw.id} className="px-4 py-2.5 flex items-center justify-between">
-                <div>
-                  <div className="text-xs font-medium text-slate-800">Draw #{draw.drawNumber}</div>
-                  <div className="text-[10px] text-slate-400">{draw.notas}</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-xs font-mono text-emerald-400">{formatUSD(draw.netWire)}</div>
-                  <div className="text-[10px] text-slate-400">{formatDate(draw.fechaWire)}</div>
-                </div>
-              </div>
-            ))}
-            {data.draws.filter(d => d.estado !== 'EMPTY').length === 0 && (
-              <div className="px-4 py-3 text-xs text-slate-400">Sin draws ejecutados</div>
-            )}
-          </div>
-        </div>
       </div>
     </div>
-  )
-}
-
-function PhaseGroup({ label, phases }: { label: string; phases: PhaseStats[] }) {
-  if (phases.length === 0) return null
-  return (
-    <>
-      <div className="px-5 py-2 bg-slate-50/60 border-b border-slate-200">
-        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">{label}</span>
-      </div>
-      {phases.map(phase => (
-        <div key={phase.id} className="table-row-base px-5 py-3">
-          <div className="flex items-center gap-4">
-            <div className="w-8 text-xs font-mono text-slate-400">{phase.code}</div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-sm text-slate-800 truncate">{phase.name}</span>
-                <div className="flex items-center gap-3 ml-4">
-                  <span className="text-xs font-mono text-slate-500">
-                    {phase.doneItems}/{phase.totalItems}
-                  </span>
-                  {estadoBadge(phase.estado)}
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="flex-1">
-                  <ProgressBar pct={phase.avancePct} color={phaseColor(phase.estado)} />
-                </div>
-                <span className="text-xs font-mono text-slate-400 w-10 text-right">
-                  {phase.avancePct.toFixed(0)}%
-                </span>
-                <span className="text-xs font-mono text-slate-400 w-24 text-right">
-                  {formatUSD(phase.budget)}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      ))}
-    </>
   )
 }
