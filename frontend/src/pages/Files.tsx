@@ -11,13 +11,22 @@ const api = axios.create({ baseURL: '/api' })
 const CATEGORIES = ['Contrato', 'Permiso', 'Plano', 'Seguro', 'Draw', 'HOA', 'Legal', 'Inspección', 'Otro']
 
 const DOC_TYPES = [
-  { value: 'DRAW', label: 'Draw / Inspección Trinity' },
-  { value: 'HUD', label: 'HUD-1 / Closing Disclosure' },
-  { value: 'BUDGET', label: 'Construction Budget (PDF)' },
-  { value: 'GENERAL', label: 'Otro (solo guardar)' },
+  { value: 'DRAW',      label: 'Draw / Inspección Trinity',      cat: 'Draw' },
+  { value: 'HUD',       label: 'HUD-1 / Closing Disclosure',     cat: 'Legal' },
+  { value: 'LOAN',      label: 'Loan / Commitment Letter',       cat: 'Legal' },
+  { value: 'SURVEY',    label: 'Survey / Levantamiento',         cat: 'Legal' },
+  { value: 'PLANS',     label: 'Planos Arquitectónicos',         cat: 'Plano' },
+  { value: 'PERMIT',    label: 'Building Permit',                cat: 'Permiso' },
+  { value: 'APPRAISAL', label: 'Appraisal / Avalúo',            cat: 'Otro' },
+  { value: 'BUDGET',    label: 'Construction Budget (PDF)',      cat: 'Otro' },
+  { value: 'INSURANCE', label: 'Seguro / Insurance',            cat: 'Seguro' },
+  { value: 'HOA',       label: 'HOA Documents',                 cat: 'HOA' },
+  { value: 'CONTRACT',  label: 'Contrato GC / Subcontratista',  cat: 'Contrato' },
+  { value: 'GENERAL',   label: 'Otro documento (solo guardar)', cat: 'Otro' },
 ]
 
 const FIELD_LABELS: Record<string, string> = {
+  // Draw
   drawNumber: 'Nº de Draw',
   fechaSolicitud: 'Fecha solicitud',
   fechaInspeccion: 'Fecha inspección',
@@ -26,12 +35,38 @@ const FIELD_LABELS: Record<string, string> = {
   elegibleTrinity: 'Elegible Trinity',
   netWire: 'Net wire',
   porcentajeFunded: '% fundado',
-  loanAmount: 'Monto del préstamo',
+  // HUD / Closing
+  settlementDate: 'Fecha de cierre',
   cashAtSettlement: 'Cash al cierre',
   closingCosts: 'Costos de cierre',
+  // Loan
+  lender: 'Prestamista',
+  loanNumber: 'Nº de préstamo',
+  loanAmount: 'Monto del préstamo',
   interestRate: 'Tasa de interés',
   loanTermMonths: 'Plazo (meses)',
-  settlementDate: 'Fecha de cierre',
+  holdback: 'Holdback',
+  day1Disbursement: 'Desembolso Día 1',
+  interestReserve: 'Reserva de intereses',
+  // Survey
+  parcelId: 'Parcel ID',
+  lotAcres: 'Acres del lote',
+  address: 'Dirección',
+  county: 'Condado',
+  // Plans
+  sfHeated: 'SF calefaccionados',
+  sfGarage: 'SF garaje',
+  sfPorches: 'SF porches',
+  bedrooms: 'Habitaciones',
+  bathrooms: 'Baños',
+  foundationType: 'Tipo de fundación',
+  // Permit
+  permitNumber: 'Nº de permiso',
+  permitIssued: 'Fecha emisión',
+  permitExpires: 'Fecha vencimiento',
+  // Appraisal
+  arv: 'ARV (valor mercado)',
+  targetListingPrice: 'Precio de lista estimado',
 }
 
 function formatExtracted(key: string, val: unknown): string {
@@ -101,11 +136,11 @@ export default function Files({ projectId }: { projectId: string }) {
     try {
       const fd = new FormData()
       fd.append('pdf', uploadFile)
+      const docTypeDef = DOC_TYPES.find(d => d.value === docType)!
+
       let result: ExtractResult
       if (docType === 'DRAW') {
         result = await drawParseApi.parsePdf(projectId, uploadFile)
-      } else if (docType === 'HUD') {
-        result = await docParseApi.parsePdf(projectId, uploadFile, 'HUD')
       } else if (docType === 'BUDGET') {
         const r = await api.post(
           `/projects/${projectId}/construction-budget/parse-pdf`,
@@ -113,22 +148,25 @@ export default function Files({ projectId }: { projectId: string }) {
           { headers: { 'Content-Type': 'multipart/form-data' } }
         )
         result = r.data.data
-      } else {
-        // GENERAL — just save reference, no parsing
-        const fileUrl = URL.createObjectURL(uploadFile)
-        await filesApi.create(projectId, { name: uploadFile.name, url: fileUrl, category: 'Otro' })
+      } else if (docType === 'GENERAL' || docType === 'INSURANCE' || docType === 'HOA' || docType === 'CONTRACT') {
+        // No parsing — just save reference
+        await filesApi.create(projectId, { name: uploadFile.name, url: uploadFile.name, category: docTypeDef.cat })
         queryClient.invalidateQueries({ queryKey: ['files', projectId] })
         setUploadFile(null)
         setExtracting(false)
+        setApplyStatus('✓ Archivo guardado en el repositorio')
         return
+      } else {
+        // HUD, LOAN, SURVEY, PLANS, PERMIT, APPRAISAL — all go through docs/parse-pdf
+        result = await docParseApi.parsePdf(projectId, uploadFile, docType)
       }
+
       setExtractResult(result)
       // Auto-save file reference
-      const fileLabel = `${docType} — ${uploadFile.name}`
       await filesApi.create(projectId, {
-        name: fileLabel,
+        name: `${docTypeDef.label} — ${uploadFile.name}`,
         url: (result.parsed?.pdfUrl as string) ?? result.imageUrl ?? uploadFile.name,
-        category: docType === 'DRAW' ? 'Draw' : docType === 'HUD' ? 'Legal' : 'Otro',
+        category: docTypeDef.cat,
       })
       queryClient.invalidateQueries({ queryKey: ['files', projectId] })
     } catch (e: unknown) {
@@ -150,28 +188,37 @@ export default function Files({ projectId }: { projectId: string }) {
         const drawNum = p.drawNumber as number | undefined
         if (!drawNum) { setApplyStatus('⚠ No se detectó número de draw'); setApplying(false); return }
         const draw = draws.find(d => d.drawNumber === drawNum)
-        if (!draw) { setApplyStatus(`⚠ Draw #${drawNum} no encontrado`); setApplying(false); return }
+        if (!draw) { setApplyStatus(`⚠ Draw #${drawNum} no encontrado en el proyecto`); setApplying(false); return }
+        const drawFields = ['fechaSolicitud', 'fechaInspeccion', 'fechaWire', 'montoSolicitado', 'elegibleTrinity', 'netWire', 'porcentajeFunded', 'pdfUrl']
         const update: Record<string, unknown> = {}
-        if (p.fechaSolicitud !== undefined) update.fechaSolicitud = p.fechaSolicitud
-        if (p.fechaInspeccion !== undefined) update.fechaInspeccion = p.fechaInspeccion
-        if (p.fechaWire !== undefined) update.fechaWire = p.fechaWire
-        if (p.montoSolicitado !== undefined) update.montoSolicitado = p.montoSolicitado
-        if (p.elegibleTrinity !== undefined) update.elegibleTrinity = p.elegibleTrinity
-        if (p.netWire !== undefined) update.netWire = p.netWire
-        if (p.porcentajeFunded !== undefined) update.porcentajeFunded = p.porcentajeFunded
-        if (p.pdfUrl !== undefined) update.pdfUrl = p.pdfUrl
+        drawFields.forEach(k => { if (p[k] !== undefined) update[k] = p[k] })
         await drawsApi.patch(draw.id, update)
         queryClient.invalidateQueries({ queryKey: ['draws', projectId] })
         setApplyStatus(`✓ Draw #${drawNum} actualizado`)
-      } else if (docType === 'HUD') {
+      } else if (docType === 'BUDGET') {
+        setApplyStatus('✓ Budget extraído — ver sección "Const. Budget" para aplicar línea por línea')
+      } else {
+        // HUD, LOAN, SURVEY, PLANS, PERMIT, APPRAISAL — all update project fields
+        const projectFieldsByType: Record<string, string[]> = {
+          HUD:       ['loanAmount', 'cashAtSettlement', 'closingCosts', 'interestRate', 'loanTermMonths', 'settlementDate'],
+          LOAN:      ['lender', 'loanNumber', 'loanAmount', 'interestRate', 'loanTermMonths', 'holdback', 'day1Disbursement', 'interestReserve', 'settlementDate'],
+          SURVEY:    ['parcelId', 'lotAcres', 'address', 'county'],
+          PLANS:     ['sfHeated', 'sfGarage', 'sfPorches', 'bedrooms', 'bathrooms', 'foundationType'],
+          PERMIT:    ['permitNumber', 'permitIssued', 'permitExpires', 'county'],
+          APPRAISAL: ['arv', 'sfHeated', 'targetListingPrice'],
+        }
+        const fields = projectFieldsByType[docType] ?? Object.keys(p).filter(k => k !== 'pdfUrl')
         const update: Record<string, unknown> = {}
-        const hudFields = ['loanAmount', 'cashAtSettlement', 'closingCosts', 'interestRate', 'loanTermMonths', 'settlementDate']
-        hudFields.forEach(k => { if (p[k] !== undefined) update[k] = p[k] })
+        fields.forEach(k => { if (p[k] !== undefined) update[k] = p[k] })
+        if (Object.keys(update).length === 0) {
+          setApplyStatus('⚠ No se extrajeron campos reconocibles de este documento')
+          setApplying(false)
+          return
+        }
         await projectsApi.patch(projectId, update)
         queryClient.invalidateQueries({ queryKey: ['projects'] })
-        setApplyStatus('✓ Datos del proyecto actualizados')
-      } else if (docType === 'BUDGET') {
-        setApplyStatus('✓ Budget extraído — ver "Const. Budget" para aplicar línea por línea')
+        const label = DOC_TYPES.find(d => d.value === docType)?.label ?? docType
+        setApplyStatus(`✓ ${Object.keys(update).length} campos de "${label}" aplicados al proyecto`)
       }
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { error?: string } }; message?: string })?.response?.data?.error

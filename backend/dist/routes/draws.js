@@ -245,6 +245,113 @@ router.post('/:projectId/draws/parse-pdf', handleUpload, async (req, res) => {
         res.status(500).json({ data: null, error: String(e) });
     }
 });
+function parseLoanText(text) {
+    const result = {};
+    const t = text.replace(/\n/g, ' ');
+    const mp = '\\$?([\\d,]+\\.?\\d*)';
+    const dp = '(\\d{1,2}[\\/-]\\d{1,2}[\\/-]\\d{2,4})';
+    const lenderMatch = t.match(/(?:lender|mortgagee|bank)\s*(?:name)?\s*:?\s*([A-Za-z][A-Za-z0-9\s,\.&]+?)(?=\s{2,}|\s*\n|,|\.|LLC|Inc|Corp|Holdings)/i);
+    if (lenderMatch)
+        result.lender = lenderMatch[1].trim();
+    const loanNum = t.match(/(?:loan\s*(?:number|#|no\.?|num)|commitment\s*(?:number|#|no\.?))\s*:?\s*([A-Z0-9\-]+)/i);
+    if (loanNum)
+        result.loanNumber = loanNum[1].trim();
+    const loanAmt = t.match(new RegExp(`(?:loan|principal|commitment|face|construction)\\s*(?:loan\\s*)?amount\\s*:?\\s*${mp}`, 'i'));
+    if (loanAmt)
+        result.loanAmount = parseMoney(loanAmt[1]);
+    const rate = t.match(/interest\s*rate\s*:?\s*(\d+\.?\d*)\s*%/i);
+    if (rate)
+        result.interestRate = parseFloat(rate[1]) / 100;
+    const term = t.match(/(?:loan\s*)?term\s*:?\s*(\d+)\s*(?:months?|mo\.?)/i);
+    if (term)
+        result.loanTermMonths = parseInt(term[1]);
+    const holdback = t.match(new RegExp(`(?:holdback|retainage|held\\s*back|construction\\s*holdback)\\s*:?\\s*${mp}`, 'i'));
+    if (holdback)
+        result.holdback = parseMoney(holdback[1]);
+    const day1 = t.match(new RegExp(`(?:initial\\s*disbursement|day\\s*1|at\\s*closing|initial\\s*advance|first\\s*draw)\\s*:?\\s*${mp}`, 'i'));
+    if (day1)
+        result.day1Disbursement = parseMoney(day1[1]);
+    const reserve = t.match(new RegExp(`interest\\s*reserve\\s*:?\\s*${mp}`, 'i'));
+    if (reserve)
+        result.interestReserve = parseMoney(reserve[1]);
+    const closingDate = t.match(new RegExp(`(?:commitment|closing|settlement)\\s*date\\s*:?\\s*${dp}`, 'i'));
+    if (closingDate)
+        result.settlementDate = normalizeDate(closingDate[1]);
+    return result;
+}
+function parseSurveyText(text) {
+    const result = {};
+    const t = text.replace(/\n/g, ' ');
+    const parcel = t.match(/(?:parcel\s*(?:id|number|#|no\.?)|tax\s*(?:id|map|parcel|pin))\s*:?\s*([A-Z0-9\-\.]+)/i);
+    if (parcel)
+        result.parcelId = parcel[1].trim();
+    const acres = t.match(/(\d+\.?\d*)\s*(?:acres?|ac\.?)\b/i);
+    if (acres)
+        result.lotAcres = parseFloat(acres[1]);
+    const addr = t.match(/(?:property\s*(?:address|location|described\s*as)|located\s*at|premises)\s*:?\s*(\d+[^,\n]{5,60})/i);
+    if (addr)
+        result.address = addr[1].trim();
+    const countyMatch = t.match(/([A-Za-z]+)\s+county/i);
+    if (countyMatch)
+        result.county = countyMatch[1];
+    return result;
+}
+function parsePlansText(text) {
+    const result = {};
+    const t = text.replace(/\n/g, ' ');
+    const heated = t.match(/(?:heated|conditioned|living|habitable)\s*(?:area|square\s*feet|sf|sqft|sq\.?\s*ft\.?)\s*:?\s*([\d,]+)/i);
+    if (heated)
+        result.sfHeated = parseInt(heated[1].replace(/,/g, ''));
+    const garage = t.match(/(?:garage|attached\s*garage)\s*(?:area|sf|sqft|sq\.?\s*ft\.?)?\s*:?\s*([\d,]+)/i);
+    if (garage)
+        result.sfGarage = parseInt(garage[1].replace(/,/g, ''));
+    const porch = t.match(/(?:porch|deck|covered\s*porch|screened)\s*(?:area|sf|sqft|sq\.?\s*ft\.?)?\s*:?\s*([\d,]+)/i);
+    if (porch)
+        result.sfPorches = parseInt(porch[1].replace(/,/g, ''));
+    const beds = t.match(/(\d+)\s*(?:bedroom|bed\s*room|br)s?\b/i);
+    if (beds)
+        result.bedrooms = parseInt(beds[1]);
+    const baths = t.match(/(\d+(?:\.\d)?)\s*(?:bathroom|bath\s*room|ba)s?\b/i);
+    if (baths)
+        result.bathrooms = baths[1];
+    const found = t.match(/foundation\s*(?:type|system)?\s*:?\s*(slab|crawl\s*space|basement|pier)/i);
+    if (found)
+        result.foundationType = found[1].trim();
+    return result;
+}
+function parsePermitText(text) {
+    const result = {};
+    const t = text.replace(/\n/g, ' ');
+    const dp = '(\\d{1,2}[\\/-]\\d{1,2}[\\/-]\\d{2,4})';
+    const permitNum = t.match(/permit\s*(?:number|#|no\.?|num)\s*:?\s*([A-Z0-9\-]+)/i);
+    if (permitNum)
+        result.permitNumber = permitNum[1].trim();
+    const issued = t.match(new RegExp(`(?:issue[d]?\\s*date|date\\s*issued|permit\\s*date|approved)\\s*:?\\s*${dp}`, 'i'));
+    if (issued)
+        result.permitIssued = normalizeDate(issued[1]);
+    const expires = t.match(new RegExp(`(?:expir(?:es?|ation)\\s*date|valid\\s*(?:through|until|to)|expiration)\\s*:?\\s*${dp}`, 'i'));
+    if (expires)
+        result.permitExpires = normalizeDate(expires[1]);
+    const countyMatch = t.match(/([A-Za-z]+)\s+county/i);
+    if (countyMatch)
+        result.county = countyMatch[1];
+    return result;
+}
+function parseAppraisalText(text) {
+    const result = {};
+    const t = text.replace(/\n/g, ' ');
+    const mp = '\\$?([\\d,]+\\.?\\d*)';
+    const arv = t.match(new RegExp(`(?:market\\s*value|appraised\\s*(?:value|amount)|as\\s*completed\\s*value|after\\s*repair\\s*value|arv|indicated\\s*value)\\s*:?\\s*${mp}`, 'i'));
+    if (arv)
+        result.arv = parseMoney(arv[1]);
+    const gla = t.match(/(?:gla|gross\s*living\s*area|gross\s*livable|net\s*livable)\s*:?\s*([\d,]+)/i);
+    if (gla)
+        result.sfHeated = parseInt(gla[1].replace(/,/g, ''));
+    const target = t.match(new RegExp(`(?:estimated\\s*value|list(?:ing)?\\s*(?:price|value)|as\\s*is\\s*value)\\s*:?\\s*${mp}`, 'i'));
+    if (target)
+        result.targetListingPrice = parseMoney(target[1]);
+    return result;
+}
 router.post('/:projectId/docs/parse-pdf', handleUpload, async (req, res) => {
     try {
         if (!req.file)
@@ -260,7 +367,16 @@ router.post('/:projectId/docs/parse-pdf', handleUpload, async (req, res) => {
         const buffer = fs_1.default.readFileSync(req.file.path);
         const pdfData = await pdfParse(buffer);
         const docType = req.query.type || 'HUD';
-        const parsed = docType === 'HUD' ? parseHUDText(pdfData.text) : {};
+        const parserMap = {
+            HUD: parseHUDText,
+            LOAN: parseLoanText,
+            SURVEY: parseSurveyText,
+            PLANS: parsePlansText,
+            PERMIT: parsePermitText,
+            APPRAISAL: parseAppraisalText,
+        };
+        const parser = parserMap[docType.toUpperCase()];
+        const parsed = parser ? parser(pdfData.text) : {};
         parsed.pdfUrl = fileUrl;
         res.json({
             data: { parsed, preview: pdfData.text.slice(0, 1500), isImage: false, imageUrl: null },
