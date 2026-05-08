@@ -111,7 +111,7 @@ model Item {
   valorPresupuestado Float          @default(0)
   valorEjecutado     Float          @default(0)
   providerId         String?
-  provider           Provider?      @relation(fields: [providerId], references: [id])
+  provider           Provider?      @relation(fields: [providerId], references: [id], onDelete: SetNull)
   estado             String         @default("PENDIENTE")
   fechaInicioReal    DateTime?
   fechaFinReal       DateTime?
@@ -243,6 +243,7 @@ model Task {
   notes        String?
   order        Int       @default(0)
   createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 }
 
 model ItemDocument {

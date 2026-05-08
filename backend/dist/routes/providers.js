@@ -42,8 +42,19 @@ router.get('/:projectId/providers', async (req, res) => {
 });
 router.post('/:projectId/providers', async (req, res) => {
     try {
+        const { name, type, phone, email, license, notes } = req.body;
+        if (!name?.trim())
+            return res.status(400).json({ data: null, error: 'Nombre requerido' });
         const provider = await prisma.provider.create({
-            data: { ...req.body, projectId: req.params.projectId },
+            data: {
+                projectId: req.params.projectId,
+                name: name.trim(),
+                type: type?.trim() || null,
+                phone: phone?.trim() || null,
+                email: email?.trim() || null,
+                license: license?.trim() || null,
+                notes: notes?.trim() || null,
+            },
             include: { quotes: true },
         });
         res.json({ data: provider, error: null });
@@ -54,9 +65,17 @@ router.post('/:projectId/providers', async (req, res) => {
 });
 router.patch('/:projectId/providers/:id', async (req, res) => {
     try {
+        const { name, type, phone, email, license, notes } = req.body;
         const provider = await prisma.provider.update({
             where: { id: req.params.id },
-            data: req.body,
+            data: {
+                ...(name !== undefined && { name: name.trim() }),
+                ...(type !== undefined && { type: type?.trim() || null }),
+                ...(phone !== undefined && { phone: phone?.trim() || null }),
+                ...(email !== undefined && { email: email?.trim() || null }),
+                ...(license !== undefined && { license: license?.trim() || null }),
+                ...(notes !== undefined && { notes: notes?.trim() || null }),
+            },
             include: { quotes: true },
         });
         res.json({ data: provider, error: null });
@@ -111,7 +130,10 @@ router.delete('/:projectId/providers/:providerId/quotes/:quoteId', async (req, r
     try {
         const quote = await prisma.providerQuote.findUnique({ where: { id: req.params.quoteId } });
         if (quote?.fileUrl) {
-            const fp = path_1.default.join(__dirname, '../../uploads', quote.fileUrl.replace('/api/uploads/', ''));
+            const relative = quote.fileUrl.startsWith('/api/uploads/')
+                ? quote.fileUrl.slice('/api/uploads/'.length)
+                : quote.fileUrl;
+            const fp = path_1.default.join(__dirname, '../../uploads', relative);
             if (fs_1.default.existsSync(fp))
                 fs_1.default.unlinkSync(fp);
         }

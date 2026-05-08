@@ -38,9 +38,29 @@ router.post('/', async (req: Request, res: Response) => {
 
 router.patch('/:id', async (req: Request, res: Response) => {
   try {
+    const {
+      activity, description, responsable, unit, esNA, completado,
+      valorPresupuestado, valorEjecutado, providerId, estado,
+      fechaInicioReal, fechaFinReal, observaciones, order,
+    } = req.body
+    const data: Record<string, unknown> = {}
+    if (activity !== undefined) data.activity = activity
+    if (description !== undefined) data.description = description || null
+    if (responsable !== undefined) data.responsable = responsable || null
+    if (unit !== undefined) data.unit = unit || null
+    if (esNA !== undefined) data.esNA = esNA
+    if (completado !== undefined) data.completado = completado
+    if (valorPresupuestado !== undefined) data.valorPresupuestado = Number(valorPresupuestado)
+    if (valorEjecutado !== undefined) data.valorEjecutado = Number(valorEjecutado)
+    if (providerId !== undefined) data.providerId = providerId || null
+    if (estado !== undefined) data.estado = estado
+    if (fechaInicioReal !== undefined) data.fechaInicioReal = fechaInicioReal ? new Date(fechaInicioReal) : null
+    if (fechaFinReal !== undefined) data.fechaFinReal = fechaFinReal ? new Date(fechaFinReal) : null
+    if (observaciones !== undefined) data.observaciones = observaciones || null
+    if (order !== undefined) data.order = Number(order)
     const item = await prisma.item.update({
       where: { id: req.params.id },
-      data: req.body,
+      data,
       include: { provider: true },
     })
     res.json({ data: item, error: null })

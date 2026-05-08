@@ -65,7 +65,6 @@ app.use('/api/uploads', express_1.default.static(path_1.default.join(__dirname, 
 app.use('/api/auth', auth_1.default);
 app.use('/api/projects', projects_1.default);
 app.use('/api/projects', phases_1.default);
-app.use('/api/projects', items_1.default);
 app.use('/api/projects', draws_1.default);
 app.use('/api/projects', providers_1.default);
 app.use('/api/projects', inspections_1.default);
@@ -78,9 +77,6 @@ app.use('/api/price-refs', priceRefs_1.default);
 app.use('/api/items', itemDocuments_1.default);
 app.use('/api/items', items_1.default);
 app.use('/api/draws', draws_1.default);
-app.use('/api/inspections', inspections_1.default);
-app.use('/api/notes', notes_1.default);
-app.use('/api/files', files_1.default);
 app.get('/api/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });

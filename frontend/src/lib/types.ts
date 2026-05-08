@@ -95,6 +95,7 @@ export interface Draw {
   upbPost: number
   saldoHoldback: number
   notas: string | null
+  pdfUrl: string | null
   estado: DrawEstado
 }
 
