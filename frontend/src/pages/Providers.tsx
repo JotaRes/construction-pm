@@ -222,14 +222,20 @@ export default function Providers({ projectId }: { projectId: string }) {
   const updateMut = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => providersApi.patch(projectId, id, data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['providers', projectId] }),
+    onError: (e) => console.error('Provider update failed:', e),
   })
   const deleteMut = useMutation({
     mutationFn: (id: string) => providersApi.delete(projectId, id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['providers', projectId] }),
+    onError: (e) => console.error('Provider delete failed:', e),
   })
   const createMut = useMutation({
     mutationFn: (data: Record<string, unknown>) => providersApi.create(projectId, data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['providers', projectId] }); setShowAdd(false); setNewForm({ name: '', type: '', phone: '', email: '', license: '', notes: '' }) },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['providers', projectId] })
+      setShowAdd(false)
+      setNewForm({ name: '', type: '', phone: '', email: '', license: '', notes: '' })
+    },
   })
 
   if (isLoading) return <div className="text-slate-500 text-sm animate-pulse">Cargando proveedores...</div>
@@ -274,10 +280,17 @@ export default function Providers({ projectId }: { projectId: string }) {
             <textarea placeholder="Notas" value={newForm.notes} onChange={e => setNewForm(f => ({ ...f, notes: e.target.value }))} rows={2}
               className="col-span-3 bg-slate-50 border border-slate-200 text-sm text-slate-700 px-3 py-2 rounded-lg focus:outline-none focus:border-[#C8922A] resize-none" />
           </div>
+          {createMut.isError && (
+            <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              Error al guardar: {(createMut.error as Error)?.message ?? 'Error desconocido'}
+            </div>
+          )}
           <div className="flex gap-2">
-            <button onClick={() => createMut.mutate(newForm)} disabled={!newForm.name}
-              className="px-4 py-1.5 bg-[#2D4B52] text-white text-xs rounded-lg hover:bg-[#3A5F68] disabled:opacity-40">Guardar</button>
-            <button onClick={() => setShowAdd(false)} className="text-slate-400 text-xs px-3 py-1.5 hover:text-slate-700">Cancelar</button>
+            <button onClick={() => createMut.mutate(newForm)} disabled={!newForm.name || createMut.isPending}
+              className="px-4 py-1.5 bg-[#2D4B52] text-white text-xs rounded-lg hover:bg-[#3A5F68] disabled:opacity-40">
+              {createMut.isPending ? 'Guardando...' : 'Guardar'}
+            </button>
+            <button onClick={() => { setShowAdd(false); createMut.reset() }} className="text-slate-400 text-xs px-3 py-1.5 hover:text-slate-700">Cancelar</button>
           </div>
         </div>
       )}
