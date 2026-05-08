@@ -23,8 +23,9 @@ router.post('/:id/tasks', async (req: Request, res: Response) => {
       data: {
         projectId: req.params.id,
         title: req.body.title ?? 'Nueva tarea',
+        responsable: req.body.responsable ?? null,
         priority: req.body.priority ?? 'NORMAL',
-        dueDate: req.body.dueDate ?? null,
+        dueDate: req.body.dueDate ? new Date(req.body.dueDate) : null,
         notes: req.body.notes ?? null,
         order: count,
       },

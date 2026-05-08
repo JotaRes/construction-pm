@@ -28,16 +28,17 @@ function DonutGauge({ pct, color, size = 80 }: { pct: number; color: string; siz
 }
 
 // ── Custom tooltip for recharts ─────────────────────────────────
-function MoneyTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{name: string; value: number; color: string}>; label?: string }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function MoneyTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null
   return (
     <div className="bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-lg text-xs">
       <div className="font-semibold text-slate-700 mb-1">{label}</div>
-      {payload.map((p, i) => (
+      {payload.map((p: any, i: number) => (
         <div key={i} className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full" style={{ background: p.color }} />
+          <div className="w-2 h-2 rounded-full" style={{ background: p.color ?? p.fill }} />
           <span className="text-slate-500">{p.name}:</span>
-          <span className="font-mono font-semibold text-slate-800">{formatUSD(p.value)}</span>
+          <span className="font-mono font-semibold text-slate-800">{formatUSD(Number(p.value))}</span>
         </div>
       ))}
     </div>
@@ -213,7 +214,7 @@ export default function Dashboard({ projectId }: Props) {
               <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false}
                 tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
-              <Tooltip content={<MoneyTooltip />} />
+              <Tooltip content={(p) => <MoneyTooltip {...p} />} />
               <Bar dataKey="Budget" fill="#e2e8f0" radius={[3,3,0,0]} />
               <Bar dataKey="Ejecutado" fill="#2D4B52" radius={[3,3,0,0]} />
             </BarChart>

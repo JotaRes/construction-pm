@@ -37,7 +37,8 @@ function QuoteModal({ provider, projectId, onClose }: { provider: Provider; proj
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['providers', projectId] }),
   })
 
-  const totalQuotes = provider.quotes.reduce((s, q) => s + q.amount, 0)
+  const quotes = provider.quotes ?? []
+  const totalQuotes = quotes.reduce((s, q) => s + q.amount, 0)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -45,7 +46,7 @@ function QuoteModal({ provider, projectId, onClose }: { provider: Provider; proj
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <div>
             <div className="text-sm font-bold text-slate-900">{provider.name}</div>
-            <div className="text-xs text-slate-400 mt-0.5">{provider.quotes.length} cotizacion(es) · Total: {formatUSD(totalQuotes)}</div>
+            <div className="text-xs text-slate-400 mt-0.5">{quotes.length} cotizacion(es) · Total: {formatUSD(totalQuotes)}</div>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
         </div>
@@ -79,10 +80,10 @@ function QuoteModal({ provider, projectId, onClose }: { provider: Provider; proj
 
         {/* Quote list */}
         <div className="divide-y divide-slate-100">
-          {provider.quotes.length === 0 && (
+          {quotes.length === 0 && (
             <div className="text-center py-8 text-slate-400 text-sm">Sin cotizaciones registradas</div>
           )}
-          {provider.quotes.map(q => (
+          {quotes.map(q => (
             <div key={q.id} className="px-6 py-3 flex items-start justify-between gap-4 hover:bg-slate-50/60">
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-slate-800">{q.description}</div>
@@ -128,7 +129,8 @@ function ProviderCard({ provider, projectId, onUpdate, onDelete }: {
     notes: provider.notes ?? '',
   })
 
-  const totalQuotes = provider.quotes.reduce((s, q) => s + q.amount, 0)
+  const providerQuotes = provider.quotes ?? []
+  const totalQuotes = providerQuotes.reduce((s, q) => s + q.amount, 0)
 
   if (editing) {
     return (
@@ -184,7 +186,7 @@ function ProviderCard({ provider, projectId, onUpdate, onDelete }: {
               className="flex items-center gap-1.5 text-[10px] text-[#2D4B52] border border-[#2D4B52]/30 px-2.5 py-1.5 rounded-lg hover:bg-[#2D4B52]/5 transition-colors">
               <FileText className="w-3 h-3" />
               Cotizaciones
-              {provider.quotes.length > 0 && <span className="bg-[#2D4B52] text-white text-[9px] px-1.5 py-0.5 rounded-full">{provider.quotes.length}</span>}
+              {providerQuotes.length > 0 && <span className="bg-[#2D4B52] text-white text-[9px] px-1.5 py-0.5 rounded-full">{providerQuotes.length}</span>}
             </button>
             <button onClick={() => setEditing(true)} className="text-slate-400 hover:text-[#C8922A] p-1 transition-colors">
               <ChevronDown className="w-3.5 h-3.5 rotate-[-90deg]" />
@@ -194,9 +196,9 @@ function ProviderCard({ provider, projectId, onUpdate, onDelete }: {
             </button>
           </div>
         </div>
-        {provider.quotes.length > 0 && (
+        {providerQuotes.length > 0 && (
           <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[10px]">
-            <span className="text-slate-400">{provider.quotes.length} cotización(es)</span>
+            <span className="text-slate-400">{providerQuotes.length} cotización(es)</span>
             <span className="font-mono font-semibold text-emerald-600">{formatUSD(totalQuotes)} total</span>
           </div>
         )}
