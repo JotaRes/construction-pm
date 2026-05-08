@@ -154,18 +154,21 @@ export default function Layout({ projectId, children }: Props) {
         style={{ background: 'var(--brand-teal)', borderRight: '1px solid rgba(255,255,255,0.07)' }}>
 
         {/* Logo */}
-        <div className="px-4 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-          <div className="flex items-center gap-2.5">
-            {/* RA monogram */}
-            <div className="w-9 h-9 rounded-xl flex-shrink-0 flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, #C8922A 0%, #E0AD4F 100%)', boxShadow: '0 2px 8px rgba(200,146,42,0.4)' }}>
-              <span style={{ color: 'white', fontWeight: 900, fontSize: 13, letterSpacing: '-0.5px', fontFamily: 'Georgia, serif', lineHeight: 1 }}>RA</span>
+        <div className="px-4 py-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+          {/* RA badge */}
+          <div className="flex items-center justify-center mb-3">
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
+              style={{ background: 'linear-gradient(135deg, #C8922A 0%, #E0AD4F 100%)', boxShadow: '0 4px 16px rgba(200,146,42,0.5)' }}>
+              <span style={{ color: 'white', fontWeight: 900, fontSize: 22, letterSpacing: '-1px', fontFamily: 'Georgia, serif', lineHeight: 1 }}>RA</span>
             </div>
-            <div>
-              <div className="text-sm font-bold text-white leading-tight tracking-wide">Restrepo Acosta</div>
-              <div className="text-[10px] leading-tight" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                Construction PM
-              </div>
+          </div>
+          <div className="text-center">
+            <div className="text-sm font-bold text-white leading-tight tracking-wide">Restrepo Acosta</div>
+            <div className="text-[11px] font-semibold leading-tight mt-0.5" style={{ color: '#C8922A' }}>
+              Global Holding LLC
+            </div>
+            <div className="text-[9px] mt-1 uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.3)' }}>
+              Construction PM
             </div>
           </div>
         </div>
