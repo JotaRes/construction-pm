@@ -119,30 +119,45 @@ function parseHUDText(text) {
     const t = text.replace(/\n/g, ' ');
     const mp = '\\$?([\\d,]+\\.?\\d*)';
     const dp = '(\\d{1,2}[\\/-]\\d{1,2}[\\/-]\\d{2,4})';
+    // Settlement / closing date — HUD-1, Closing Disclosure, both variants
     const settleDate = t.match(new RegExp(`(?:settlement|closing)\\s*date\\s*:?\\s*${dp}`, 'i')) ??
         t.match(new RegExp(`date\\s*of\\s*(?:settlement|closing)\\s*:?\\s*${dp}`, 'i')) ??
-        t.match(new RegExp(`date\\s*issued\\s*:?\\s*${dp}`, 'i'));
+        t.match(new RegExp(`date\\s*issued\\s*:?\\s*${dp}`, 'i')) ??
+        t.match(new RegExp(`(?:closed?|settled?)\\s+on\\s*:?\\s*${dp}`, 'i'));
     if (settleDate)
         result.settlementDate = normalizeDate(settleDate[1]);
+    // Contract sales price — HUD-1 line 101 (lot / property purchase) or explicit label
+    const salesPrice = t.match(/\b101\.\s*contract\s*sales?\s*price\s+\$?([\d,]+\.?\d*)/i) ??
+        t.match(new RegExp(`contract\\s*sales?\\s*price\\s*:?\\s*${mp}`, 'i')) ??
+        t.match(new RegExp(`(?:purchase|sale)\\s*price\\s*:?\\s*${mp}`, 'i'));
+    if (salesPrice)
+        result.contractSalesPrice = parseMoney(salesPrice[1]);
+    // Loan amount (construction loan HUD / Closing Disclosure)
     const loanAmt = t.match(new RegExp(`loan\\s*amount\\s*:?\\s*${mp}`, 'i'));
     if (loanAmt)
         result.loanAmount = parseMoney(loanAmt[1]);
-    const cash = t.match(new RegExp(`cash\\s*(?:at|to|from)?\\s*(?:close|settlement|borrower)\\s*:?\\s*${mp}`, 'i')) ??
-        t.match(new RegExp(`(?:total\\s*)?(?:cash|amount)\\s*(?:due\\s*)?(?:from|to)\\s*borrower\\s*:?\\s*${mp}`, 'i'));
+    // Cash at settlement — HUD-1 line 303 or Closing Disclosure "cash to close"
+    const cash = t.match(/\b303\.\s*cash\s*(?:from|to)\s*borrower\s+\$?([\d,]+\.?\d*)/i) ??
+        t.match(new RegExp(`cash\\s*(?:at|to|from)?\\s*(?:close|settlement|borrower)\\s*:?\\s*${mp}`, 'i')) ??
+        t.match(new RegExp(`(?:total\\s*)?(?:cash|amount)\\s*(?:due\\s*)?(?:from|to)\\s*borrower\\s*:?\\s*${mp}`, 'i')) ??
+        t.match(new RegExp(`cash\\s*to\\s*close\\s*:?\\s*${mp}`, 'i'));
     if (cash)
         result.cashAtSettlement = parseMoney(cash[1]);
-    const closing = t.match(new RegExp(`(?:total\\s*)?closing\\s*costs?\\s*(?:\\([A-Z]\\)\\s*)?:?\\s*${mp}`, 'i')) ??
+    // Closing / settlement charges — HUD-1 line 103 (comes from line 1400) or CD label
+    const closing = t.match(/\b103\.\s*settlement\s*charges?\s*to\s*borrower\s+\$?([\d,]+\.?\d*)/i) ??
+        t.match(/\b1400\.\s*total\s*settlement\s*charges?\s+\$?([\d,]+\.?\d*)/i) ??
+        t.match(new RegExp(`(?:total\\s*)?closing\\s*costs?\\s*(?:\\([A-Z]\\)\\s*)?:?\\s*${mp}`, 'i')) ??
         t.match(new RegExp(`(?:total\\s*)?settlement\\s*charges?\\s*:?\\s*${mp}`, 'i'));
     if (closing)
         result.closingCosts = parseMoney(closing[1]);
+    // Interest rate and loan term (construction loan only)
     const rate = t.match(/interest\s*rate\s*:?\s*(\d+\.?\d*)\s*%/i);
     if (rate)
         result.interestRate = parseFloat(rate[1]) / 100;
     const term = t.match(/loan\s*term\s*:?\s*(\d+)\s*(?:months?|mo\.?|years?|yr\.?)/i);
     if (term) {
-        const termText = term[0].toLowerCase();
         const n = parseInt(term[1]);
-        result.loanTermMonths = termText.includes('year') ? n * 12 : n;
+        result.loanTermMonths = term[0].toLowerCase().includes('year') ? n * 12 : n;
     }
     return result;
 }

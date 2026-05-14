@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { filesApi, drawsApi, projectsApi, drawParseApi, docParseApi } from '../lib/api'
+import { filesApi, drawsApi, projectsApi, phasesApi, itemsApi, drawParseApi, docParseApi } from '../lib/api'
 import { formatDate, formatUSD } from '../lib/calculations'
-import type { ProjectFile, Draw } from '../lib/types'
+import type { ProjectFile, Draw, Phase } from '../lib/types'
 import { Plus, ExternalLink, Trash2, Upload, FileText, CheckCircle, AlertCircle, ChevronDown, ChevronUp, X } from 'lucide-react'
 import axios from 'axios'
 
@@ -67,6 +67,8 @@ const FIELD_LABELS: Record<string, string> = {
   // Appraisal
   arv: 'ARV (valor mercado)',
   targetListingPrice: 'Precio de lista estimado',
+  // HUD land purchase
+  contractSalesPrice: 'Precio de compra (lote)',
 }
 
 function formatExtracted(key: string, val: unknown): string {
@@ -197,10 +199,50 @@ export default function Files({ projectId }: { projectId: string }) {
         setApplyStatus(`✓ Draw #${drawNum} actualizado`)
       } else if (docType === 'BUDGET') {
         setApplyStatus('✓ Budget extraído — ver sección "Const. Budget" para aplicar línea por línea')
+      } else if (docType === 'HUD') {
+        // Project-level fields from HUD
+        const hudProjectFields = ['loanAmount', 'cashAtSettlement', 'closingCosts', 'interestRate', 'loanTermMonths', 'settlementDate']
+        const update: Record<string, unknown> = {}
+        hudProjectFields.forEach(k => { if (p[k] !== undefined) update[k] = p[k] })
+        if (Object.keys(update).length > 0) {
+          await projectsApi.patch(projectId, update)
+          queryClient.invalidateQueries({ queryKey: ['projects'] })
+        }
+
+        // Execution items: lot purchase → 00.01 Compra del lote, closing costs → 00.02 Closing del lote
+        const appliedItems: string[] = []
+        if (p.contractSalesPrice !== undefined || p.closingCosts !== undefined) {
+          const phases: Phase[] = await phasesApi.list(projectId)
+          const allItems = phases.flatMap(ph => ph.items ?? [])
+          if (p.contractSalesPrice !== undefined) {
+            const item = allItems.find(i => i.itemCode === '00.01')
+            if (item) {
+              await itemsApi.patch(item.id, { valorEjecutado: p.contractSalesPrice })
+              appliedItems.push('Compra del lote (00.01)')
+            }
+          }
+          if (p.closingCosts !== undefined) {
+            const item = allItems.find(i => i.itemCode === '00.02')
+            if (item) {
+              await itemsApi.patch(item.id, { valorEjecutado: p.closingCosts })
+              appliedItems.push('Closing del lote (00.02)')
+            }
+          }
+          if (appliedItems.length > 0) queryClient.invalidateQueries({ queryKey: ['phases', projectId] })
+        }
+
+        const total = Object.keys(update).length + appliedItems.length
+        if (total === 0) {
+          setApplyStatus('⚠ No se extrajeron campos del HUD')
+          setApplying(false)
+          return
+        }
+        const itemStr = appliedItems.length > 0 ? ` · Ejecución: ${appliedItems.join(', ')}` : ''
+        setApplyStatus(`✓ ${Object.keys(update).length} campos del proyecto${itemStr}`)
+
       } else {
-        // HUD, LOAN, SURVEY, PLANS, PERMIT, APPRAISAL — all update project fields
+        // LOAN, SURVEY, PLANS, PERMIT, APPRAISAL — update project fields
         const projectFieldsByType: Record<string, string[]> = {
-          HUD:       ['loanAmount', 'cashAtSettlement', 'closingCosts', 'interestRate', 'loanTermMonths', 'settlementDate'],
           LOAN:      ['lender', 'loanNumber', 'loanAmount', 'interestRate', 'loanTermMonths', 'holdback', 'day1Disbursement', 'interestReserve', 'settlementDate'],
           SURVEY:    ['parcelId', 'lotAcres', 'address', 'county'],
           PLANS:     ['sfHeated', 'sfGarage', 'sfPorches', 'bedrooms', 'bathrooms', 'foundationType'],
