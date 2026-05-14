@@ -243,8 +243,25 @@ export default function Layout({ projectId, children }: Props) {
         </button>
       </aside>
 
-      <main className="flex-1 overflow-y-auto" style={{ background: 'var(--brand-cream)' }}>
-        <div className="p-6 page-content">
+      <main className="flex-1 overflow-y-auto flex flex-col" style={{ background: 'var(--brand-cream)' }}>
+        {/* Top bar with backup button */}
+        <div className="flex items-center justify-end px-6 py-2 border-b bg-white/60"
+          style={{ borderColor: 'rgba(0,0,0,0.07)', backdropFilter: 'blur(4px)', minHeight: 44 }}>
+          <a
+            href="/api/backup"
+            download
+            className="flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-colors"
+            style={{ background: 'rgba(45,75,82,0.08)', color: '#2D4B52' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(45,75,82,0.15)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(45,75,82,0.08)')}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Backup del sistema
+          </a>
+        </div>
+        <div className="p-6 page-content flex-1">
           {children}
         </div>
       </main>
