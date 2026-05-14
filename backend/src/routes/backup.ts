@@ -38,7 +38,11 @@ router.get('/', async (_req: Request, res: Response) => {
     res.setHeader('Content-Disposition', `attachment; filename="construction-pm-backup-${date}.zip"`)
 
     const archive = archiver('zip', { zlib: { level: 6 } })
-    archive.on('error', (err) => { throw err })
+    archive.on('error', (err) => {
+      console.error('Backup archive error:', err)
+      if (!res.headersSent) res.status(500).json({ error: String(err) })
+      else res.destroy()
+    })
     archive.pipe(res)
 
     // Database data

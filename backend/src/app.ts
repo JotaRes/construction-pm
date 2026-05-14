@@ -19,6 +19,7 @@ import priceRefRoutes from './routes/priceRefs'
 import itemDocumentRoutes from './routes/itemDocuments'
 import { seedDatabase } from './seed'
 import backupRoutes from './routes/backup'
+import downloadRoutes from './routes/download'
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -44,6 +45,7 @@ app.use('/api/items', itemRoutes)
 app.use('/api/draws', drawRoutes)
 
 app.use('/api/backup', backupRoutes)
+app.use('/api/download', downloadRoutes)
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })

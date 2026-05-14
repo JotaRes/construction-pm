@@ -57,6 +57,7 @@ const priceRefs_1 = __importDefault(require("./routes/priceRefs"));
 const itemDocuments_1 = __importDefault(require("./routes/itemDocuments"));
 const seed_1 = require("./seed");
 const backup_1 = __importDefault(require("./routes/backup"));
+const download_1 = __importDefault(require("./routes/download"));
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 3001;
 app.use((0, cors_1.default)());
@@ -78,6 +79,7 @@ app.use('/api/items', itemDocuments_1.default);
 app.use('/api/items', items_1.default);
 app.use('/api/draws', draws_1.default);
 app.use('/api/backup', backup_1.default);
+app.use('/api/download', download_1.default);
 app.get('/api/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });

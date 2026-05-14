@@ -435,12 +435,14 @@ export default function Files({ projectId }: { projectId: string }) {
                   <div className="flex gap-2 justify-end items-center">
                     {file.url.startsWith('http') ? (
                       <>
-                        <a href={file.url} target="_blank" rel="noopener noreferrer"
+                        <a href={`/api/download?url=${encodeURIComponent(file.url)}&inline=1`}
+                          target="_blank" rel="noopener noreferrer"
                           title="Ver documento"
                           className="text-slate-300 hover:text-[#C8922A] transition-colors">
                           <ExternalLink className="w-4 h-4" />
                         </a>
-                        <a href={file.url} download
+                        <a href={`/api/download?url=${encodeURIComponent(file.url)}`}
+                          download
                           title="Descargar"
                           className="text-slate-300 hover:text-[#2D4B52] transition-colors">
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
