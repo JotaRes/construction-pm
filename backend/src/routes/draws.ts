@@ -105,44 +105,50 @@ function parseDrawText(text: string): Record<string, unknown> {
 
 function parseHUDText(text: string): Record<string, unknown> {
   const result: Record<string, unknown> = {}
-  const t = text.replace(/\n/g, ' ')
+  // U+0000 null bytes are a PDF font-ligature artifact ("tt" → null byte in this font family).
+  // Must replace with space BEFORE other normalization so \s patterns work.
+  const t = text
+    .replace(/\x00/g, ' ')
+    .replace(/\n/g, ' ')
+    .replace(/se\s+lement/gi, 'settlement')
+    .replace(/transac\s+on/gi, 'transaction')
+    .replace(/informa\s+on/gi, 'information')
+
   const mp = '\\$?([\\d,]+\\.?\\d*)'
   const dp = '(\\d{1,2}[\\/-]\\d{1,2}[\\/-]\\d{2,4})'
 
-  // Settlement / closing date — HUD-1, Closing Disclosure, both variants
+  // Settlement date — "I. Settlement Date: 01/26/2026" (HUD-1) or "Closing Date:" (CD)
   const settleDate =
     t.match(new RegExp(`(?:settlement|closing)\\s*date\\s*:?\\s*${dp}`, 'i')) ??
     t.match(new RegExp(`date\\s*of\\s*(?:settlement|closing)\\s*:?\\s*${dp}`, 'i')) ??
-    t.match(new RegExp(`date\\s*issued\\s*:?\\s*${dp}`, 'i')) ??
-    t.match(new RegExp(`(?:closed?|settled?)\\s+on\\s*:?\\s*${dp}`, 'i'))
+    t.match(new RegExp(`date\\s*issued\\s*:?\\s*${dp}`, 'i'))
   if (settleDate) result.settlementDate = normalizeDate(settleDate[1])
 
-  // Contract sales price — HUD-1 line 101 (lot / property purchase) or explicit label
+  // Contract sales price — HUD-1 line 101: "Contract sales price$33,000.00" (no space before $)
   const salesPrice =
-    t.match(/\b101\.\s*contract\s*sales?\s*price\s+\$?([\d,]+\.?\d*)/i) ??
+    t.match(/\b101\.\s*contract\s*sales?\s*price\s*\$?([\d,]+\.?\d*)/i) ??
     t.match(new RegExp(`contract\\s*sales?\\s*price\\s*:?\\s*${mp}`, 'i')) ??
     t.match(new RegExp(`(?:purchase|sale)\\s*price\\s*:?\\s*${mp}`, 'i'))
   if (salesPrice) result.contractSalesPrice = parseMoney(salesPrice[1])
 
-  // Loan amount (construction loan HUD / Closing Disclosure)
-  const loanAmt = t.match(new RegExp(`loan\\s*amount\\s*:?\\s*${mp}`, 'i'))
-  if (loanAmt) result.loanAmount = parseMoney(loanAmt[1])
-
-  // Cash at settlement — HUD-1 line 303 or Closing Disclosure "cash to close"
+  // Cash at settlement — HUD-1 line 303: "303. Cash   $34,932.25"
   const cash =
-    t.match(/\b303\.\s*cash\s*(?:from|to)\s*borrower\s+\$?([\d,]+\.?\d*)/i) ??
+    t.match(/\b303\.\s*cash\s*\$?([\d,]+\.?\d*)/i) ??
     t.match(new RegExp(`cash\\s*(?:at|to|from)?\\s*(?:close|settlement|borrower)\\s*:?\\s*${mp}`, 'i')) ??
-    t.match(new RegExp(`(?:total\\s*)?(?:cash|amount)\\s*(?:due\\s*)?(?:from|to)\\s*borrower\\s*:?\\s*${mp}`, 'i')) ??
     t.match(new RegExp(`cash\\s*to\\s*close\\s*:?\\s*${mp}`, 'i'))
   if (cash) result.cashAtSettlement = parseMoney(cash[1])
 
-  // Closing / settlement charges — HUD-1 line 103 (comes from line 1400) or CD label
+  // Settlement charges — HUD-1 line 103: "Settlement charges to borrower (line 1400)$2,158.80"
+  // Use [^$]* to skip "(line 1400)" which contains digits before the real dollar amount
   const closing =
-    t.match(/\b103\.\s*settlement\s*charges?\s*to\s*borrower\s+\$?([\d,]+\.?\d*)/i) ??
-    t.match(/\b1400\.\s*total\s*settlement\s*charges?\s+\$?([\d,]+\.?\d*)/i) ??
-    t.match(new RegExp(`(?:total\\s*)?closing\\s*costs?\\s*(?:\\([A-Z]\\)\\s*)?:?\\s*${mp}`, 'i')) ??
-    t.match(new RegExp(`(?:total\\s*)?settlement\\s*charges?\\s*:?\\s*${mp}`, 'i'))
+    t.match(/\b103\.\s*settlement\s+charges?\s+to\s+borrower[^$]*\$([\d,]+\.?\d*)/i) ??
+    t.match(/\b1400\.\s*total\s+settlement\s+charges?[^$]*\$([\d,]+\.?\d*)/i) ??
+    t.match(new RegExp(`(?:total\\s*)?closing\\s*costs?\\s*(?:\\([A-Z]\\)\\s*)?:?\\s*${mp}`, 'i'))
   if (closing) result.closingCosts = parseMoney(closing[1])
+
+  // Loan amount (construction loan HUD only)
+  const loanAmt = t.match(new RegExp(`loan\\s*amount\\s*:?\\s*${mp}`, 'i'))
+  if (loanAmt) result.loanAmount = parseMoney(loanAmt[1])
 
   // Interest rate and loan term (construction loan only)
   const rate = t.match(/interest\s*rate\s*:?\s*(\d+\.?\d*)\s*%/i)

@@ -129,6 +129,83 @@ export default function Files({ projectId }: { projectId: string }) {
 
   const filtered = filterCat === 'ALL' ? files : files.filter(f => f.category === filterCat)
 
+  // Core apply logic — accepts parsed data directly so it can be called
+  // both automatically (from handleExtract) and manually (re-apply button).
+  async function doApply(p: Record<string, unknown>, dtype: string) {
+    setApplying(true)
+    setApplyStatus(null)
+    try {
+      if (dtype === 'DRAW') {
+        const drawNum = p.drawNumber as number | undefined
+        if (!drawNum) { setApplyStatus('⚠ No se detectó número de draw'); return }
+        const draw = draws.find(d => d.drawNumber === drawNum)
+        if (!draw) { setApplyStatus(`⚠ Draw #${drawNum} no encontrado en el proyecto`); return }
+        const drawFields = ['fechaSolicitud', 'fechaInspeccion', 'fechaWire', 'montoSolicitado', 'elegibleTrinity', 'netWire', 'porcentajeFunded', 'pdfUrl']
+        const update: Record<string, unknown> = {}
+        drawFields.forEach(k => { if (p[k] !== undefined) update[k] = p[k] })
+        await drawsApi.patch(draw.id, update)
+        queryClient.invalidateQueries({ queryKey: ['draws', projectId] })
+        setApplyStatus(`✓ Draw #${drawNum} actualizado`)
+
+      } else if (dtype === 'BUDGET') {
+        setApplyStatus('✓ Budget extraído — ver sección "Const. Budget" para aplicar línea por línea')
+
+      } else if (dtype === 'HUD') {
+        // 1. Project-level financial fields
+        const hudProjectFields = ['loanAmount', 'cashAtSettlement', 'closingCosts', 'interestRate', 'loanTermMonths', 'settlementDate']
+        const update: Record<string, unknown> = {}
+        hudProjectFields.forEach(k => { if (p[k] !== undefined) update[k] = p[k] })
+        if (Object.keys(update).length > 0) {
+          await projectsApi.patch(projectId, update)
+          queryClient.invalidateQueries({ queryKey: ['projects'] })
+        }
+        // 2. Execution items: lot price → 00.01, closing charges → 00.02
+        const appliedItems: string[] = []
+        if (p.contractSalesPrice !== undefined || p.closingCosts !== undefined) {
+          const phases: Phase[] = await phasesApi.list(projectId)
+          const allItems = phases.flatMap(ph => ph.items ?? [])
+          if (p.contractSalesPrice !== undefined) {
+            const item = allItems.find(i => i.itemCode === '00.01')
+            if (item) { await itemsApi.patch(item.id, { valorEjecutado: p.contractSalesPrice }); appliedItems.push('Compra del lote (00.01)') }
+          }
+          if (p.closingCosts !== undefined) {
+            const item = allItems.find(i => i.itemCode === '00.02')
+            if (item) { await itemsApi.patch(item.id, { valorEjecutado: p.closingCosts }); appliedItems.push('Closing del lote (00.02)') }
+          }
+          if (appliedItems.length > 0) queryClient.invalidateQueries({ queryKey: ['phases', projectId] })
+        }
+        const total = Object.keys(update).length + appliedItems.length
+        if (total === 0) { setApplyStatus('⚠ No se extrajeron campos del HUD'); return }
+        const itemStr = appliedItems.length > 0 ? ` · Ejecución: ${appliedItems.join(', ')}` : ''
+        setApplyStatus(`✓ ${Object.keys(update).length} campos del proyecto${itemStr}`)
+
+      } else {
+        // LOAN, SURVEY, PLANS, PERMIT, APPRAISAL — update project fields
+        const projectFieldsByType: Record<string, string[]> = {
+          LOAN:      ['lender', 'loanNumber', 'loanAmount', 'interestRate', 'loanTermMonths', 'holdback', 'day1Disbursement', 'interestReserve', 'settlementDate'],
+          SURVEY:    ['parcelId', 'lotAcres', 'address', 'county'],
+          PLANS:     ['sfHeated', 'sfGarage', 'sfPorches', 'bedrooms', 'bathrooms', 'foundationType'],
+          PERMIT:    ['permitNumber', 'permitIssued', 'permitExpires', 'county'],
+          APPRAISAL: ['arv', 'sfHeated', 'targetListingPrice'],
+        }
+        const fields = projectFieldsByType[dtype] ?? Object.keys(p).filter(k => k !== 'pdfUrl')
+        const update: Record<string, unknown> = {}
+        fields.forEach(k => { if (p[k] !== undefined) update[k] = p[k] })
+        if (Object.keys(update).length === 0) { setApplyStatus('⚠ No se extrajeron campos reconocibles de este documento'); return }
+        await projectsApi.patch(projectId, update)
+        queryClient.invalidateQueries({ queryKey: ['projects'] })
+        const label = DOC_TYPES.find(d => d.value === dtype)?.label ?? dtype
+        setApplyStatus(`✓ ${Object.keys(update).length} campos de "${label}" aplicados al proyecto`)
+      }
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { error?: string } }; message?: string })?.response?.data?.error
+        ?? (e as Error)?.message ?? 'Error'
+      setApplyStatus(`✗ Error: ${msg}`)
+    } finally {
+      setApplying(false)
+    }
+  }
+
   async function handleExtract() {
     if (!uploadFile) return
     setExtracting(true)
@@ -151,15 +228,12 @@ export default function Files({ projectId }: { projectId: string }) {
         )
         result = r.data.data
       } else if (docType === 'GENERAL' || docType === 'INSURANCE' || docType === 'HOA' || docType === 'CONTRACT') {
-        // No parsing — just save reference
         await filesApi.create(projectId, { name: uploadFile.name, url: uploadFile.name, category: docTypeDef.cat })
         queryClient.invalidateQueries({ queryKey: ['files', projectId] })
         setUploadFile(null)
-        setExtracting(false)
         setApplyStatus('✓ Archivo guardado en el repositorio')
         return
       } else {
-        // HUD, LOAN, SURVEY, PLANS, PERMIT, APPRAISAL — all go through docs/parse-pdf
         result = await docParseApi.parsePdf(projectId, uploadFile, docType)
       }
 
@@ -171,6 +245,12 @@ export default function Files({ projectId }: { projectId: string }) {
         category: docTypeDef.cat,
       })
       queryClient.invalidateQueries({ queryKey: ['files', projectId] })
+
+      // Auto-apply immediately — no need for a separate button click
+      const fieldCount = Object.keys(result.parsed).filter(k => k !== 'pdfUrl').length
+      if (fieldCount > 0 && !result.isImage) {
+        await doApply(result.parsed, docType)
+      }
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { error?: string } }; message?: string })?.response?.data?.error
         ?? (e as Error)?.message ?? 'Error desconocido'
@@ -180,95 +260,9 @@ export default function Files({ projectId }: { projectId: string }) {
     }
   }
 
-  async function handleApply() {
+  function handleApply() {
     if (!extractResult) return
-    const p = extractResult.parsed
-    setApplying(true)
-    setApplyStatus(null)
-    try {
-      if (docType === 'DRAW') {
-        const drawNum = p.drawNumber as number | undefined
-        if (!drawNum) { setApplyStatus('⚠ No se detectó número de draw'); setApplying(false); return }
-        const draw = draws.find(d => d.drawNumber === drawNum)
-        if (!draw) { setApplyStatus(`⚠ Draw #${drawNum} no encontrado en el proyecto`); setApplying(false); return }
-        const drawFields = ['fechaSolicitud', 'fechaInspeccion', 'fechaWire', 'montoSolicitado', 'elegibleTrinity', 'netWire', 'porcentajeFunded', 'pdfUrl']
-        const update: Record<string, unknown> = {}
-        drawFields.forEach(k => { if (p[k] !== undefined) update[k] = p[k] })
-        await drawsApi.patch(draw.id, update)
-        queryClient.invalidateQueries({ queryKey: ['draws', projectId] })
-        setApplyStatus(`✓ Draw #${drawNum} actualizado`)
-      } else if (docType === 'BUDGET') {
-        setApplyStatus('✓ Budget extraído — ver sección "Const. Budget" para aplicar línea por línea')
-      } else if (docType === 'HUD') {
-        // Project-level fields from HUD
-        const hudProjectFields = ['loanAmount', 'cashAtSettlement', 'closingCosts', 'interestRate', 'loanTermMonths', 'settlementDate']
-        const update: Record<string, unknown> = {}
-        hudProjectFields.forEach(k => { if (p[k] !== undefined) update[k] = p[k] })
-        if (Object.keys(update).length > 0) {
-          await projectsApi.patch(projectId, update)
-          queryClient.invalidateQueries({ queryKey: ['projects'] })
-        }
-
-        // Execution items: lot purchase → 00.01 Compra del lote, closing costs → 00.02 Closing del lote
-        const appliedItems: string[] = []
-        if (p.contractSalesPrice !== undefined || p.closingCosts !== undefined) {
-          const phases: Phase[] = await phasesApi.list(projectId)
-          const allItems = phases.flatMap(ph => ph.items ?? [])
-          if (p.contractSalesPrice !== undefined) {
-            const item = allItems.find(i => i.itemCode === '00.01')
-            if (item) {
-              await itemsApi.patch(item.id, { valorEjecutado: p.contractSalesPrice })
-              appliedItems.push('Compra del lote (00.01)')
-            }
-          }
-          if (p.closingCosts !== undefined) {
-            const item = allItems.find(i => i.itemCode === '00.02')
-            if (item) {
-              await itemsApi.patch(item.id, { valorEjecutado: p.closingCosts })
-              appliedItems.push('Closing del lote (00.02)')
-            }
-          }
-          if (appliedItems.length > 0) queryClient.invalidateQueries({ queryKey: ['phases', projectId] })
-        }
-
-        const total = Object.keys(update).length + appliedItems.length
-        if (total === 0) {
-          setApplyStatus('⚠ No se extrajeron campos del HUD')
-          setApplying(false)
-          return
-        }
-        const itemStr = appliedItems.length > 0 ? ` · Ejecución: ${appliedItems.join(', ')}` : ''
-        setApplyStatus(`✓ ${Object.keys(update).length} campos del proyecto${itemStr}`)
-
-      } else {
-        // LOAN, SURVEY, PLANS, PERMIT, APPRAISAL — update project fields
-        const projectFieldsByType: Record<string, string[]> = {
-          LOAN:      ['lender', 'loanNumber', 'loanAmount', 'interestRate', 'loanTermMonths', 'holdback', 'day1Disbursement', 'interestReserve', 'settlementDate'],
-          SURVEY:    ['parcelId', 'lotAcres', 'address', 'county'],
-          PLANS:     ['sfHeated', 'sfGarage', 'sfPorches', 'bedrooms', 'bathrooms', 'foundationType'],
-          PERMIT:    ['permitNumber', 'permitIssued', 'permitExpires', 'county'],
-          APPRAISAL: ['arv', 'sfHeated', 'targetListingPrice'],
-        }
-        const fields = projectFieldsByType[docType] ?? Object.keys(p).filter(k => k !== 'pdfUrl')
-        const update: Record<string, unknown> = {}
-        fields.forEach(k => { if (p[k] !== undefined) update[k] = p[k] })
-        if (Object.keys(update).length === 0) {
-          setApplyStatus('⚠ No se extrajeron campos reconocibles de este documento')
-          setApplying(false)
-          return
-        }
-        await projectsApi.patch(projectId, update)
-        queryClient.invalidateQueries({ queryKey: ['projects'] })
-        const label = DOC_TYPES.find(d => d.value === docType)?.label ?? docType
-        setApplyStatus(`✓ ${Object.keys(update).length} campos de "${label}" aplicados al proyecto`)
-      }
-    } catch (e: unknown) {
-      const msg = (e as { response?: { data?: { error?: string } }; message?: string })?.response?.data?.error
-        ?? (e as Error)?.message ?? 'Error'
-      setApplyStatus(`✗ Error: ${msg}`)
-    } finally {
-      setApplying(false)
-    }
+    void doApply(extractResult.parsed, docType)
   }
 
   const extractedEntries = extractResult
@@ -366,15 +360,15 @@ export default function Files({ projectId }: { projectId: string }) {
 
               {extractedEntries.length > 0 && docType !== 'GENERAL' && (
                 <div className="px-4 pb-4 flex items-center gap-3">
-                  <button onClick={handleApply} disabled={applying || !!applyStatus?.startsWith('✓')}
-                    className="flex items-center gap-2 bg-[#2D4B52] hover:bg-[#3A5F68] disabled:opacity-40 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors">
-                    {applying ? 'Aplicando...' : '✓ Aplicar datos al proyecto'}
-                  </button>
                   {applyStatus && (
                     <span className={`text-xs font-medium ${applyStatus.startsWith('✓') ? 'text-emerald-600' : 'text-amber-600'}`}>
                       {applyStatus}
                     </span>
                   )}
+                  <button onClick={handleApply} disabled={applying}
+                    className="flex items-center gap-2 bg-[#2D4B52] hover:bg-[#3A5F68] disabled:opacity-40 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors">
+                    {applying ? 'Aplicando...' : '↺ Re-aplicar'}
+                  </button>
                 </div>
               )}
             </div>
