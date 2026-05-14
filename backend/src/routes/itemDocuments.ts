@@ -1,28 +1,17 @@
 import { Router, Request, Response } from 'express'
 import { PrismaClient } from '@prisma/client'
 import multer from 'multer'
-import path from 'path'
-import fs from 'fs'
+import { uploadToCloudinary, deleteFromCloudinary, extractPublicId } from '../lib/cloudinary'
 
 const router = Router()
 const prisma = new PrismaClient()
 
-const uploadDir = path.join(__dirname, '../../uploads/item-docs')
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true })
-
-const storage = multer.diskStorage({
-  destination: uploadDir,
-  filename: (_req, file, cb) => {
-    const unique = `${Date.now()}-${Math.random().toString(36).slice(2)}`
-    cb(null, `${unique}${path.extname(file.originalname)}`)
-  },
-})
 const ALLOWED_MIME = [
   'application/pdf',
   'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic', 'image/heif',
 ]
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 50 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     if (ALLOWED_MIME.includes(file.mimetype)) return cb(null, true)
@@ -45,7 +34,11 @@ router.get('/:itemId/documents', async (req: Request, res: Response) => {
 router.post('/:itemId/documents', upload.single('file'), async (req: Request, res: Response) => {
   try {
     const { type = 'OTRO', name, vendor, amount, notes } = req.body
-    const fileUrl = req.file ? `/api/uploads/item-docs/${req.file.filename}` : null
+    let fileUrl: string | null = null
+    if (req.file) {
+      const { url } = await uploadToCloudinary(req.file.buffer, 'construction-pm/item-docs')
+      fileUrl = url
+    }
     const doc = await prisma.itemDocument.create({
       data: {
         itemId: req.params.itemId,
@@ -67,12 +60,8 @@ router.delete('/:itemId/documents/:docId', async (req: Request, res: Response) =
   try {
     const doc = await prisma.itemDocument.findUnique({ where: { id: req.params.docId } })
     if (doc?.fileUrl) {
-      const filePath = path.join(
-        __dirname,
-        '../../uploads',
-        doc.fileUrl.replace('/api/uploads/', ''),
-      )
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath)
+      const publicId = extractPublicId(doc.fileUrl)
+      if (publicId) await deleteFromCloudinary(publicId).catch(() => {})
     }
     await prisma.itemDocument.delete({ where: { id: req.params.docId } })
     res.json({ data: { ok: true }, error: null })

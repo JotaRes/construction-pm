@@ -1,21 +1,14 @@
 import { Router, Request, Response } from 'express'
 import { PrismaClient } from '@prisma/client'
 import multer from 'multer'
-import path from 'path'
-import fs from 'fs'
+import { uploadToCloudinary, deleteFromCloudinary, extractPublicId } from '../lib/cloudinary'
 
 const router = Router()
 const prisma = new PrismaClient()
 
-const quoteDir = path.join(__dirname, '../../uploads/provider-quotes')
-if (!fs.existsSync(quoteDir)) fs.mkdirSync(quoteDir, { recursive: true })
-
 const ALLOWED_MIME = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
 const upload = multer({
-  storage: multer.diskStorage({
-    destination: quoteDir,
-    filename: (_req, file, cb) => cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${path.extname(file.originalname)}`),
-  }),
+  storage: multer.memoryStorage(),
   limits: { fileSize: 50 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     if (ALLOWED_MIME.includes(file.mimetype)) return cb(null, true)
@@ -105,7 +98,11 @@ router.get('/:projectId/providers/:providerId/quotes', async (req: Request, res:
 router.post('/:projectId/providers/:providerId/quotes', upload.single('file'), async (req: Request, res: Response) => {
   try {
     const { description, amount, date, notes } = req.body
-    const fileUrl = req.file ? `/api/uploads/provider-quotes/${req.file.filename}` : null
+    let fileUrl: string | null = null
+    if (req.file) {
+      const { url } = await uploadToCloudinary(req.file.buffer, 'construction-pm/provider-quotes')
+      fileUrl = url
+    }
     const quote = await prisma.providerQuote.create({
       data: {
         providerId: req.params.providerId,
@@ -126,11 +123,8 @@ router.delete('/:projectId/providers/:providerId/quotes/:quoteId', async (req: R
   try {
     const quote = await prisma.providerQuote.findUnique({ where: { id: req.params.quoteId } })
     if (quote?.fileUrl) {
-      const relative = quote.fileUrl.startsWith('/api/uploads/')
-        ? quote.fileUrl.slice('/api/uploads/'.length)
-        : quote.fileUrl
-      const fp = path.join(__dirname, '../../uploads', relative)
-      if (fs.existsSync(fp)) fs.unlinkSync(fp)
+      const publicId = extractPublicId(quote.fileUrl)
+      if (publicId) await deleteFromCloudinary(publicId).catch(() => {})
     }
     await prisma.providerQuote.delete({ where: { id: req.params.quoteId } })
     res.json({ data: { ok: true }, error: null })

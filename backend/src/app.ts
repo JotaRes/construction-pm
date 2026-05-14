@@ -24,7 +24,6 @@ const PORT = process.env.PORT || 3001
 
 app.use(cors())
 app.use(express.json())
-app.use('/api/uploads', express.static(path.join(__dirname, '../uploads')))
 
 // API routes
 app.use('/api/auth', authRoutes)
