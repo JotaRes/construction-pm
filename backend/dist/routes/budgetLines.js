@@ -6,16 +6,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const client_1 = require("@prisma/client");
 const multer_1 = __importDefault(require("multer"));
-const path_1 = __importDefault(require("path"));
-const fs_1 = __importDefault(require("fs"));
 const budgetLinesTemplate_1 = require("../data/budgetLinesTemplate");
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pdfParse = require('pdf-parse');
 const router = (0, express_1.Router)();
 const prisma = new client_1.PrismaClient();
-const budgetPdfDir = path_1.default.join(__dirname, '../../uploads/budget-pdfs');
-if (!fs_1.default.existsSync(budgetPdfDir))
-    fs_1.default.mkdirSync(budgetPdfDir, { recursive: true });
 const upload = (0, multer_1.default)({
     storage: multer_1.default.memoryStorage(),
     limits: { fileSize: 50 * 1024 * 1024 },

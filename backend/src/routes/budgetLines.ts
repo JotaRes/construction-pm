@@ -1,8 +1,6 @@
 import { Router, Request, Response } from 'express'
 import { PrismaClient } from '@prisma/client'
 import multer from 'multer'
-import path from 'path'
-import fs from 'fs'
 import { BUDGET_LINES_TEMPLATE } from '../data/budgetLinesTemplate'
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pdfParse = require('pdf-parse') as (buffer: Buffer) => Promise<{ text: string }>
@@ -10,8 +8,6 @@ const pdfParse = require('pdf-parse') as (buffer: Buffer) => Promise<{ text: str
 const router = Router()
 const prisma = new PrismaClient()
 
-const budgetPdfDir = path.join(__dirname, '../../uploads/budget-pdfs')
-if (!fs.existsSync(budgetPdfDir)) fs.mkdirSync(budgetPdfDir, { recursive: true })
 
 const upload = multer({
   storage: multer.memoryStorage(),
