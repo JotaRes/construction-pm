@@ -286,24 +286,33 @@ function handleUpload(req, res, next) {
         next();
     });
 }
+// Try Cloudinary upload silently — PDF parsing works even if Cloudinary isn't configured
+async function tryCloudinaryUpload(buffer, folder) {
+    try {
+        const { url } = await (0, cloudinary_1.uploadToCloudinary)(buffer, folder);
+        return url;
+    }
+    catch {
+        return null;
+    }
+}
 // ── POST parse-pdf (draw) ────────────────────────────────────────────────────
 router.post('/:projectId/draws/parse-pdf', handleUpload, async (req, res) => {
     try {
         if (!req.file)
             return res.status(400).json({ data: null, error: 'No se subió ningún archivo' });
         const isImage = req.file.mimetype.startsWith('image/');
-        // Upload to Cloudinary
-        const { url: fileUrl } = await (0, cloudinary_1.uploadToCloudinary)(req.file.buffer, 'construction-pm/draw-pdfs');
+        const fileUrl = await tryCloudinaryUpload(req.file.buffer, 'construction-pm/draw-pdfs');
         if (isImage) {
             return res.json({
-                data: { parsed: { pdfUrl: fileUrl }, preview: null, isImage: true, imageUrl: fileUrl },
+                data: { parsed: fileUrl ? { pdfUrl: fileUrl } : {}, preview: null, isImage: true, imageUrl: fileUrl },
                 error: null,
             });
         }
-        // Parse PDF from buffer (no disk read needed)
         const pdfData = await pdfParse(req.file.buffer);
         const parsed = parseDrawText(pdfData.text);
-        parsed.pdfUrl = fileUrl;
+        if (fileUrl)
+            parsed.pdfUrl = fileUrl;
         res.json({
             data: { parsed, preview: pdfData.text.slice(0, 1500), isImage: false, imageUrl: null },
             error: null,
@@ -319,10 +328,10 @@ router.post('/:projectId/docs/parse-pdf', handleUpload, async (req, res) => {
         if (!req.file)
             return res.status(400).json({ data: null, error: 'No se subió ningún archivo' });
         const isImage = req.file.mimetype.startsWith('image/');
-        const { url: fileUrl } = await (0, cloudinary_1.uploadToCloudinary)(req.file.buffer, 'construction-pm/draw-pdfs');
+        const fileUrl = await tryCloudinaryUpload(req.file.buffer, 'construction-pm/project-docs');
         if (isImage) {
             return res.json({
-                data: { parsed: { pdfUrl: fileUrl }, preview: null, isImage: true, imageUrl: fileUrl },
+                data: { parsed: fileUrl ? { pdfUrl: fileUrl } : {}, preview: null, isImage: true, imageUrl: fileUrl },
                 error: null,
             });
         }
@@ -334,7 +343,8 @@ router.post('/:projectId/docs/parse-pdf', handleUpload, async (req, res) => {
         };
         const parser = parserMap[docType.toUpperCase()];
         const parsed = parser ? parser(pdfData.text) : {};
-        parsed.pdfUrl = fileUrl;
+        if (fileUrl)
+            parsed.pdfUrl = fileUrl;
         res.json({
             data: { parsed, preview: pdfData.text.slice(0, 1500), isImage: false, imageUrl: null },
             error: null,
