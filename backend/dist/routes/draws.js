@@ -307,9 +307,9 @@ function handleUpload(req, res, next) {
     });
 }
 // Try Cloudinary upload silently — PDF parsing works even if Cloudinary isn't configured
-async function tryCloudinaryUpload(buffer, folder) {
+async function tryCloudinaryUpload(buffer, folder, mimetype) {
     try {
-        const { url } = await (0, cloudinary_1.uploadToCloudinary)(buffer, folder);
+        const { url } = await (0, cloudinary_1.uploadToCloudinary)(buffer, folder, (0, cloudinary_1.resourceTypeFor)(mimetype));
         return url;
     }
     catch {
@@ -322,7 +322,7 @@ router.post('/:projectId/draws/parse-pdf', handleUpload, async (req, res) => {
         if (!req.file)
             return res.status(400).json({ data: null, error: 'No se subió ningún archivo' });
         const isImage = req.file.mimetype.startsWith('image/');
-        const fileUrl = await tryCloudinaryUpload(req.file.buffer, 'construction-pm/draw-pdfs');
+        const fileUrl = await tryCloudinaryUpload(req.file.buffer, 'construction-pm/draw-pdfs', req.file.mimetype);
         if (isImage) {
             return res.json({
                 data: { parsed: fileUrl ? { pdfUrl: fileUrl } : {}, preview: null, isImage: true, imageUrl: fileUrl },
@@ -348,7 +348,7 @@ router.post('/:projectId/docs/parse-pdf', handleUpload, async (req, res) => {
         if (!req.file)
             return res.status(400).json({ data: null, error: 'No se subió ningún archivo' });
         const isImage = req.file.mimetype.startsWith('image/');
-        const fileUrl = await tryCloudinaryUpload(req.file.buffer, 'construction-pm/project-docs');
+        const fileUrl = await tryCloudinaryUpload(req.file.buffer, 'construction-pm/project-docs', req.file.mimetype);
         if (isImage) {
             return res.json({
                 data: { parsed: fileUrl ? { pdfUrl: fileUrl } : {}, preview: null, isImage: true, imageUrl: fileUrl },

@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express'
 import { PrismaClient } from '@prisma/client'
 import multer from 'multer'
-import { uploadToCloudinary } from '../lib/cloudinary'
+import { uploadToCloudinary, resourceTypeFor } from '../lib/cloudinary'
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pdfParse = require('pdf-parse') as (buffer: Buffer) => Promise<{ text: string; numpages: number }>
@@ -283,9 +283,9 @@ function handleUpload(req: Request, res: Response, next: () => void) {
 }
 
 // Try Cloudinary upload silently — PDF parsing works even if Cloudinary isn't configured
-async function tryCloudinaryUpload(buffer: Buffer, folder: string): Promise<string | null> {
+async function tryCloudinaryUpload(buffer: Buffer, folder: string, mimetype?: string): Promise<string | null> {
   try {
-    const { url } = await uploadToCloudinary(buffer, folder)
+    const { url } = await uploadToCloudinary(buffer, folder, resourceTypeFor(mimetype))
     return url
   } catch {
     return null
@@ -298,7 +298,7 @@ router.post('/:projectId/draws/parse-pdf', handleUpload, async (req: Request, re
     if (!req.file) return res.status(400).json({ data: null, error: 'No se subió ningún archivo' })
 
     const isImage = req.file.mimetype.startsWith('image/')
-    const fileUrl = await tryCloudinaryUpload(req.file.buffer, 'construction-pm/draw-pdfs')
+    const fileUrl = await tryCloudinaryUpload(req.file.buffer, 'construction-pm/draw-pdfs', req.file.mimetype)
 
     if (isImage) {
       return res.json({
@@ -326,7 +326,7 @@ router.post('/:projectId/docs/parse-pdf', handleUpload, async (req: Request, res
     if (!req.file) return res.status(400).json({ data: null, error: 'No se subió ningún archivo' })
 
     const isImage = req.file.mimetype.startsWith('image/')
-    const fileUrl = await tryCloudinaryUpload(req.file.buffer, 'construction-pm/project-docs')
+    const fileUrl = await tryCloudinaryUpload(req.file.buffer, 'construction-pm/project-docs', req.file.mimetype)
 
     if (isImage) {
       return res.json({

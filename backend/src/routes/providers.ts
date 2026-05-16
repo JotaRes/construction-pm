@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express'
 import { PrismaClient } from '@prisma/client'
 import multer from 'multer'
-import { uploadToCloudinary, deleteFromCloudinary, extractPublicId } from '../lib/cloudinary'
+import { uploadToCloudinary, deleteFromCloudinary, extractPublicId, resourceTypeFor } from '../lib/cloudinary'
 
 const router = Router()
 const prisma = new PrismaClient()
@@ -100,7 +100,7 @@ router.post('/:projectId/providers/:providerId/quotes', upload.single('file'), a
     const { description, amount, date, notes } = req.body
     let fileUrl: string | null = null
     if (req.file) {
-      const { url } = await uploadToCloudinary(req.file.buffer, 'construction-pm/provider-quotes')
+      const { url } = await uploadToCloudinary(req.file.buffer, 'construction-pm/provider-quotes', resourceTypeFor(req.file.mimetype))
       fileUrl = url
     }
     const quote = await prisma.providerQuote.create({

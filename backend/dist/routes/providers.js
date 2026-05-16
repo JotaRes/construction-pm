@@ -104,7 +104,7 @@ router.post('/:projectId/providers/:providerId/quotes', upload.single('file'), a
         const { description, amount, date, notes } = req.body;
         let fileUrl = null;
         if (req.file) {
-            const { url } = await (0, cloudinary_1.uploadToCloudinary)(req.file.buffer, 'construction-pm/provider-quotes');
+            const { url } = await (0, cloudinary_1.uploadToCloudinary)(req.file.buffer, 'construction-pm/provider-quotes', (0, cloudinary_1.resourceTypeFor)(req.file.mimetype));
             fileUrl = url;
         }
         const quote = await prisma.providerQuote.create({

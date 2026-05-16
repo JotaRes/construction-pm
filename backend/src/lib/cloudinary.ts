@@ -9,6 +9,19 @@ cloudinary.config({
 export { cloudinary }
 
 /**
+ * Pick the right Cloudinary resource_type from a MIME.
+ * Cloudinary blocks PDF/ZIP delivery by default when stored as `image`
+ * (Settings → Security → Restricted media types), so non-image files
+ * must be uploaded as `raw` to be deliverable without dashboard tweaks.
+ */
+export function resourceTypeFor(mimetype?: string): 'image' | 'video' | 'raw' {
+  if (!mimetype) return 'raw'
+  if (mimetype.startsWith('image/')) return 'image'
+  if (mimetype.startsWith('video/')) return 'video'
+  return 'raw'
+}
+
+/**
  * Upload a file buffer to Cloudinary.
  * Returns the secure HTTPS URL.
  */

@@ -7,48 +7,74 @@ import fs from 'fs'
 const router = Router()
 const prisma = new PrismaClient()
 
-router.get('/', async (_req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
+  res.setTimeout(0)
+
+  const date = new Date().toISOString().split('T')[0]
+  res.setHeader('Content-Type', 'application/zip')
+  res.setHeader('Content-Disposition', `attachment; filename="construction-pm-backup-${date}.zip"`)
+
+  const archive = archiver('zip', { zlib: { level: 6 } })
+  let aborted = false
+
+  const abort = (reason: string) => {
+    if (aborted) return
+    aborted = true
+    console.warn(`Backup aborted: ${reason}`)
+    try { archive.abort() } catch {}
+    if (!res.headersSent) res.status(500).json({ error: reason })
+    else res.destroy()
+  }
+
+  archive.on('error', (err) => {
+    console.error('Backup archive error:', err)
+    abort(`archive error: ${err.message}`)
+  })
+  archive.on('warning', (err) => {
+    console.warn('Backup archive warning:', err)
+  })
+
+  req.on('close', () => {
+    if (!res.writableEnded) abort('client closed connection')
+  })
+
+  archive.pipe(res)
+
   try {
-    // Export full database snapshot
-    const [projects, priceRefs] = await Promise.all([
-      prisma.project.findMany({
-        include: {
-          phases: { include: { items: { include: { documents: true } } } },
-          draws: true,
-          partners: true,
-          providers: { include: { quotes: true } },
-          notes: true,
-          files: true,
-          inspections: true,
-          tasks: true,
-          budgetLines: true,
-        },
-      }),
+    // Lighter query: no nested item.documents (multiplies rows)
+    const projects = await prisma.project.findMany({
+      include: {
+        phases: { include: { items: true } },
+        draws: true,
+        partners: true,
+        providers: { include: { quotes: true } },
+        notes: true,
+        files: true,
+        inspections: true,
+        tasks: true,
+        budgetLines: true,
+      },
+    })
+    const [priceRefs, itemDocuments] = await Promise.all([
       prisma.priceRef.findMany(),
+      prisma.itemDocument.findMany(),
     ])
 
     const dbSnapshot = JSON.stringify(
-      { projects, priceRefs, exportedAt: new Date().toISOString(), version: '1.0' },
+      {
+        projects,
+        priceRefs,
+        itemDocuments,
+        exportedAt: new Date().toISOString(),
+        version: '1.1',
+      },
       null,
       2
     )
 
-    const date = new Date().toISOString().split('T')[0]
-    res.setHeader('Content-Type', 'application/zip')
-    res.setHeader('Content-Disposition', `attachment; filename="construction-pm-backup-${date}.zip"`)
-
-    const archive = archiver('zip', { zlib: { level: 6 } })
-    archive.on('error', (err) => {
-      console.error('Backup archive error:', err)
-      if (!res.headersSent) res.status(500).json({ error: String(err) })
-      else res.destroy()
-    })
-    archive.pipe(res)
-
-    // Database data
     archive.append(dbSnapshot, { name: 'data/database.json' })
 
-    // Source code — backend
+    // Source code (best-effort: only included when files are present in the deploy)
     const backendDir = path.join(__dirname, '../..')
     const repoRoot = path.join(backendDir, '..')
 
@@ -65,7 +91,6 @@ router.get('/', async (_req: Request, res: Response) => {
     addFileIfExists(path.join(backendDir, 'tsconfig.json'), 'code/backend/tsconfig.json')
     addFileIfExists(path.join(repoRoot, 'render.yaml'), 'code/render.yaml')
 
-    // Source code — frontend
     addDirIfExists(path.join(repoRoot, 'frontend/src'), 'code/frontend/src')
     addFileIfExists(path.join(repoRoot, 'frontend/package.json'), 'code/frontend/package.json')
     addFileIfExists(path.join(repoRoot, 'frontend/tsconfig.json'), 'code/frontend/tsconfig.json')
@@ -73,9 +98,13 @@ router.get('/', async (_req: Request, res: Response) => {
     addFileIfExists(path.join(repoRoot, 'frontend/tailwind.config.js'), 'code/frontend/tailwind.config.js')
     addFileIfExists(path.join(repoRoot, 'frontend/index.html'), 'code/frontend/index.html')
 
-    await archive.finalize()
-  } catch (e) {
-    if (!res.headersSent) res.status(500).json({ error: String(e) })
+    try {
+      await archive.finalize()
+    } catch (err: any) {
+      abort(`finalize failed: ${err?.message ?? String(err)}`)
+    }
+  } catch (e: any) {
+    abort(`prepare failed: ${e?.message ?? String(e)}`)
   }
 })
 

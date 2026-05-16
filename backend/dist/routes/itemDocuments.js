@@ -39,7 +39,7 @@ router.post('/:itemId/documents', upload.single('file'), async (req, res) => {
         const { type = 'OTRO', name, vendor, amount, notes } = req.body;
         let fileUrl = null;
         if (req.file) {
-            const { url } = await (0, cloudinary_1.uploadToCloudinary)(req.file.buffer, 'construction-pm/item-docs');
+            const { url } = await (0, cloudinary_1.uploadToCloudinary)(req.file.buffer, 'construction-pm/item-docs', (0, cloudinary_1.resourceTypeFor)(req.file.mimetype));
             fileUrl = url;
         }
         const doc = await prisma.itemDocument.create({

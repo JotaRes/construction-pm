@@ -3,7 +3,7 @@ services:
     name: restrepoacosta
     runtime: node
     rootDir: backend
-    buildCommand: "npm install --omit=dev && npm run build || echo 'build step complete'"
+    buildCommand: "npm install && npm run build"
     startCommand: "npx prisma generate && npx prisma db push --accept-data-loss && node dist/app.js"
     envVars:
       - key: DATABASE_URL
