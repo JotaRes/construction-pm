@@ -3,6 +3,7 @@ services:
     name: restrepoacosta
     runtime: node
     rootDir: backend
+    autoDeploy: yes
     # Build phase — desde rootDir (backend/)
     #   1) Instala deps backend (incluye devDeps de TS)
     #   2) Instala deps frontend FORZANDO devDeps (Vite, Tailwind, PostCSS)
