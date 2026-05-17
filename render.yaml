@@ -10,30 +10,29 @@ services:
     #   4) Switches provider Prisma a postgresql para producción
     buildCommand: |
       set -e
-      echo "=== Backend deps ==="
+      echo "=== [1/6] Switching Prisma provider to postgresql BEFORE npm ci ==="
+      sed -i 's/provider = "sqlite"/provider = "postgresql"/' prisma/schema.prisma
+      echo "--- schema head after sed ---"
+      head -10 prisma/schema.prisma
+      echo "=== [2/6] Backend deps ==="
       npm ci --include=dev
-      echo "=== Frontend build ==="
+      echo "=== [3/6] Frontend build ==="
       cd ../frontend
       npm ci --include=dev
       npm run build
-      echo "=== Copying frontend bundle to backend/public ==="
+      echo "=== [4/6] Copying frontend bundle to backend/public ==="
       cd ../backend
       rm -rf public
       mkdir -p public
       cp -R ../frontend/dist/. public/
       ls -la public/
-      echo "=== Switching Prisma provider to postgresql ==="
-      sed -i 's/provider = "sqlite"/provider = "postgresql"/' prisma/schema.prisma
-      echo "=== Build complete ==="
-    # Start phase
-    #   1) Genera el cliente Prisma (tech + finance en un solo schema)
-    #   2) Aplica el schema a la DB Postgres (un solo push, sin colisiones)
-    #   3) Arranca con tsx runtime
-    startCommand: |
-      set -e
+      echo "=== [5/6] Prisma generate (postgresql) ==="
       npx prisma generate
+      echo "=== [6/6] Prisma DB push ==="
       npx prisma db push --accept-data-loss
-      npx tsx src/app.ts
+      echo "=== Build complete ==="
+    # Start phase — solo arranca la app; prisma ya está listo desde build
+    startCommand: npx tsx src/app.ts
     envVars:
       - key: DATABASE_URL
         sync: false
