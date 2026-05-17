@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "tsx watch src/app.ts",
-    "build": "echo \"Build skipped: using pre-built dist/\"",
-    "start": "node dist/app.js",
+    "build": "echo \"No backend compile step — runtime usa tsx\"",
+    "start": "tsx src/app.ts",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
     "db:reset": "prisma migrate reset --force && tsx prisma/seed.ts",
@@ -21,7 +21,8 @@
     "multer": "^2.1.1",
     "pdf-parse": "^1.1.1",
     "prisma": "^5.14.0",
-    "tsx": "^4.15.0"
+    "tsx": "^4.15.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/archiver": "^7.0.0",

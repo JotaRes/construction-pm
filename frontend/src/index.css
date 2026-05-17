@@ -212,3 +212,83 @@
 input[type=number]::-webkit-inner-spin-button,
 input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 input[type=number] { -moz-appearance: textfield; }
+
+/* ============================================================
+   FINANCE MODULE — Scoped under .fin-app wrapper
+   Aísla la estética dark del módulo financiero del módulo técnico
+   ============================================================ */
+
+.fin-app {
+  background: #0a0d12;
+  color: #cbd5e1;
+  min-height: 100vh;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.fin-app ::-webkit-scrollbar-track { background: #11151c; }
+.fin-app ::-webkit-scrollbar-thumb { background: #2a3343; }
+.fin-app ::-webkit-scrollbar-thumb:hover { background: #3a4555; }
+
+@layer components {
+  .fin-app .card {
+    @apply bg-bg-card border border-line rounded-xl;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 8px 24px rgba(0,0,0,0.25);
+  }
+  .fin-app .card-soft {
+    @apply bg-bg-soft border border-line rounded-xl;
+  }
+  .fin-app .btn {
+    @apply inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors;
+  }
+  .fin-app .btn-primary {
+    @apply bg-accent-deep text-white;
+  }
+  .fin-app .btn-primary:hover { background-color: #2dd4bf; }
+  .fin-app .btn-secondary {
+    @apply bg-bg-hover text-slate-200 border border-line;
+  }
+  .fin-app .btn-secondary:hover { background-color: #222a37; }
+  .fin-app .btn-ghost {
+    @apply text-slate-300;
+  }
+  .fin-app .btn-ghost:hover { background-color: #1c2230; }
+  .fin-app .btn-danger {
+    @apply text-white;
+    background-color: rgba(220, 38, 38, 0.9);
+  }
+  .fin-app .btn-danger:hover { background-color: #dc2626; }
+  .fin-app .input {
+    @apply bg-bg-soft border border-line rounded-lg px-3 py-2 text-sm text-slate-200 outline-none transition-colors;
+  }
+  .fin-app .input:focus {
+    border-color: #5eead4;
+    box-shadow: 0 0 0 1px #5eead4;
+  }
+  .fin-app .select {
+    @apply bg-bg-soft border border-line rounded-lg px-3 py-2 pr-8 text-sm text-slate-200 outline-none transition-colors appearance-none;
+  }
+  .fin-app .select:focus {
+    border-color: #5eead4;
+    box-shadow: 0 0 0 1px #5eead4;
+  }
+  .fin-app .label {
+    @apply text-xs font-medium uppercase tracking-wide text-slate-400 mb-1 block;
+  }
+  .fin-app .badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium;
+  }
+  .fin-app .table-row { @apply transition-colors; }
+  .fin-app .table-row:hover { background-color: #1c2230; }
+  .fin-app .fin-kpi {
+    @apply bg-bg-card border border-line rounded-xl p-4 flex flex-col gap-1;
+  }
+  .fin-app .kpi-label {
+    @apply text-xs uppercase tracking-wide text-slate-400 font-medium;
+  }
+  .fin-app .kpi-value {
+    @apply text-2xl font-semibold text-slate-100;
+  }
+  .fin-app .section-title {
+    @apply text-xs uppercase tracking-wider text-slate-500 font-semibold mb-2;
+  }
+}

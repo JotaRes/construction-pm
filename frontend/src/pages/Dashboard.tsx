@@ -113,7 +113,7 @@ export default function Dashboard({ projectId }: Props) {
       <div className="grid grid-cols-4 gap-4">
         {/* Main donut */}
         <div className="kpi-card col-span-1 flex flex-col items-center justify-center gap-2 cursor-pointer hover:scale-[1.02] transition-transform"
-          onClick={() => navigate('/execution')}>
+          onClick={() => navigate('/tech/execution')}>
           <DonutGauge pct={kpis.avanceGeneral} color="#2D4B52" size={90} />
           <div className="text-center">
             <div className="text-xs text-slate-400 uppercase tracking-wide">Avance General</div>
@@ -121,7 +121,7 @@ export default function Dashboard({ projectId }: Props) {
           </div>
         </div>
 
-        <div className="kpi-card cursor-pointer hover:scale-[1.02] transition-transform" onClick={() => navigate('/draws')}>
+        <div className="kpi-card cursor-pointer hover:scale-[1.02] transition-transform" onClick={() => navigate('/tech/draws')}>
           <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">Total Desembolsado</div>
           <div className="text-2xl font-bold font-mono text-[#2D4B52]">{formatUSD(kpis.totalDrawn)}</div>
           <div className="text-xs text-slate-400 mt-1">Saldo: {formatUSD(kpis.saldoHoldback)}</div>
@@ -131,7 +131,7 @@ export default function Dashboard({ projectId }: Props) {
         </div>
 
         <div className={`kpi-card cursor-pointer hover:scale-[1.02] transition-transform ${holdbackLevel === 'critical' ? 'border-red-300 bg-red-50/60' : ''}`}
-          onClick={() => navigate('/financial')}>
+          onClick={() => navigate('/tech/financial')}>
           <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">Saldo Holdback</div>
           <div className={`text-2xl font-bold font-mono ${holdbackLevel === 'critical' ? 'text-red-500' : holdbackLevel === 'warning' ? 'text-[#C8922A]' : 'text-slate-900'}`}>
             {formatUSD(kpis.saldoHoldback)}
@@ -139,7 +139,7 @@ export default function Dashboard({ projectId }: Props) {
           <div className="text-xs text-slate-400 mt-1">{data.draws.filter(d => d.estado === 'WIRED').length} / 8 draws wired</div>
         </div>
 
-        <div className="kpi-card cursor-pointer hover:scale-[1.02] transition-transform" onClick={() => navigate('/construction-budget')}>
+        <div className="kpi-card cursor-pointer hover:scale-[1.02] transition-transform" onClick={() => navigate('/tech/construction-budget')}>
           <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">Budget vs Ejecutado</div>
           <div className="text-2xl font-bold font-mono text-slate-900">{formatUSD(kpis.totalBudget)}</div>
           <div className="text-xs text-slate-400 mt-1">Ejec: {formatUSD(kpis.totalEjecutado)}</div>

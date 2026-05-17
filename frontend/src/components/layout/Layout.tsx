@@ -13,20 +13,20 @@ import { tasksApi } from '../../lib/api'
 import { useState, useRef, useEffect } from 'react'
 
 const navItems = [
-  { to: '/projects',   icon: FolderKanban,    label: 'Proyectos' },
-  { to: '/dashboard',  icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/execution',  icon: CheckSquare,     label: 'Ejecución' },
-  { to: '/budget',     icon: DollarSign,      label: 'Presupuesto' },
-  { to: '/construction-budget', icon: FileSpreadsheet, label: 'Const. Budget' },
-  { to: '/draws',      icon: TrendingUp,      label: 'Draws' },
-  { to: '/inspections',icon: Search,          label: 'Inspecciones' },
-  { to: '/financial',  icon: BarChart3,       label: 'Financiero' },
-  { to: '/alerts',     icon: AlertTriangle,   label: 'Alertas' },
-  { to: '/tasks',      icon: ListChecks,      label: 'Tareas' },
-  { to: '/providers',  icon: Users,           label: 'Proveedores' },
-  { to: '/notes',      icon: FileText,        label: 'Notas' },
-  { to: '/files',      icon: Folder,          label: 'Archivos' },
-  { to: '/price-refs', icon: Tag,             label: 'Precios Ref.' },
+  { to: '/tech/projects',   icon: FolderKanban,    label: 'Proyectos' },
+  { to: '/tech/dashboard',  icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/tech/execution',  icon: CheckSquare,     label: 'Ejecución' },
+  { to: '/tech/budget',     icon: DollarSign,      label: 'Presupuesto' },
+  { to: '/tech/construction-budget', icon: FileSpreadsheet, label: 'Const. Budget' },
+  { to: '/tech/draws',      icon: TrendingUp,      label: 'Draws' },
+  { to: '/tech/inspections',icon: Search,          label: 'Inspecciones' },
+  { to: '/tech/financial',  icon: BarChart3,       label: 'Financiero' },
+  { to: '/tech/alerts',     icon: AlertTriangle,   label: 'Alertas' },
+  { to: '/tech/tasks',      icon: ListChecks,      label: 'Tareas' },
+  { to: '/tech/providers',  icon: Users,           label: 'Proveedores' },
+  { to: '/tech/notes',      icon: FileText,        label: 'Notas' },
+  { to: '/tech/files',      icon: Folder,          label: 'Archivos' },
+  { to: '/tech/price-refs', icon: Tag,             label: 'Precios Ref.' },
 ]
 
 interface Props {
@@ -59,7 +59,7 @@ function ProjectSwitcher({ projectId }: { projectId: string }) {
   const handleSelect = (id: string) => {
     setActiveProjectId(id)
     setOpen(false)
-    navigate('/dashboard')
+    navigate('/tech/dashboard')
   }
 
   return (
@@ -112,7 +112,7 @@ function ProjectSwitcher({ projectId }: { projectId: string }) {
           ))}
           <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
             <button
-              onClick={() => { setOpen(false); navigate('/projects') }}
+              onClick={() => { setOpen(false); navigate('/tech/projects') }}
               className="w-full px-3 py-2 text-left text-[11px] transition-colors"
               style={{ color: '#C8922A' }}
               onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.07)')}

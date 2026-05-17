@@ -3,8 +3,30 @@ services:
     name: restrepoacosta
     runtime: node
     rootDir: backend
-    buildCommand: "npm install && npm run build"
-    startCommand: "npx prisma generate && npx prisma db push --accept-data-loss && node dist/app.js"
+    # Build:
+    #   1) Instala deps del backend
+    #   2) Compila el frontend (React) y copia el bundle a backend/public para que Express lo sirva
+    #   3) Cambia el provider de ambos schemas Prisma a postgresql para producción
+    buildCommand: |
+      npm install
+      cd ../frontend && npm install && npm run build
+      rm -rf ../backend/public
+      mkdir -p ../backend/public
+      cp -r dist/. ../backend/public/
+      cd ../backend
+      sed -i 's/provider = "sqlite"/provider = "postgresql"/' prisma/schema.prisma
+      sed -i 's/provider = "sqlite"/provider = "postgresql"/' prisma/finance.prisma
+      sed -i 's|env("DATABASE_URL_FIN")|env("DATABASE_URL")|' prisma/finance.prisma
+    # Start:
+    #   1) Genera AMBOS clientes Prisma (tech + finance) — único cliente por schema, output isolado
+    #   2) Aplica AMBOS schemas a la misma DB Postgres (las tablas finance están prefijadas con fin_)
+    #   3) Arranca el servidor con tsx (TypeScript runtime, sin compilar a dist/)
+    startCommand: |
+      npx prisma generate
+      npx prisma generate --schema=prisma/finance.prisma
+      npx prisma db push --accept-data-loss
+      npx prisma db push --schema=prisma/finance.prisma --accept-data-loss
+      npx tsx src/app.ts
     envVars:
       - key: DATABASE_URL
         sync: false

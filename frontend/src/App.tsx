@@ -19,8 +19,10 @@ import Projects from './pages/Projects'
 import Tasks from './pages/Tasks'
 import ConstructionBudget from './pages/ConstructionBudget'
 import PriceReference from './pages/PriceReference'
+import Landing from './Landing'
+import FinanceApp from './finance/FinanceApp'
 
-function AppInner() {
+function TechModule() {
   const { activeProjectId, setActiveProjectId } = useProjectStore()
 
   const { data: projects = [], isLoading } = useQuery<Array<{ id: string }>>({
@@ -59,21 +61,21 @@ function AppInner() {
   return (
     <Layout projectId={activeProjectId}>
       <Routes>
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/projects" element={<Projects />} />
-        <Route path="/dashboard" element={<Dashboard projectId={activeProjectId} />} />
-        <Route path="/execution" element={<Execution projectId={activeProjectId} />} />
-        <Route path="/budget" element={<Budget projectId={activeProjectId} />} />
-        <Route path="/draws" element={<Draws projectId={activeProjectId} />} />
-        <Route path="/inspections" element={<Inspections projectId={activeProjectId} />} />
-        <Route path="/alerts" element={<Alerts projectId={activeProjectId} />} />
-        <Route path="/providers" element={<Providers projectId={activeProjectId} />} />
-        <Route path="/financial" element={<Financial projectId={activeProjectId} />} />
-        <Route path="/notes" element={<Notes projectId={activeProjectId} />} />
-        <Route path="/files" element={<Files projectId={activeProjectId} />} />
-        <Route path="/tasks" element={<Tasks projectId={activeProjectId} />} />
-        <Route path="/construction-budget" element={<ConstructionBudget projectId={activeProjectId} />} />
-        <Route path="/price-refs" element={<PriceReference />} />
+        <Route path="/" element={<Navigate to="dashboard" replace />} />
+        <Route path="projects" element={<Projects />} />
+        <Route path="dashboard" element={<Dashboard projectId={activeProjectId} />} />
+        <Route path="execution" element={<Execution projectId={activeProjectId} />} />
+        <Route path="budget" element={<Budget projectId={activeProjectId} />} />
+        <Route path="draws" element={<Draws projectId={activeProjectId} />} />
+        <Route path="inspections" element={<Inspections projectId={activeProjectId} />} />
+        <Route path="alerts" element={<Alerts projectId={activeProjectId} />} />
+        <Route path="providers" element={<Providers projectId={activeProjectId} />} />
+        <Route path="financial" element={<Financial projectId={activeProjectId} />} />
+        <Route path="notes" element={<Notes projectId={activeProjectId} />} />
+        <Route path="files" element={<Files projectId={activeProjectId} />} />
+        <Route path="tasks" element={<Tasks projectId={activeProjectId} />} />
+        <Route path="construction-budget" element={<ConstructionBudget projectId={activeProjectId} />} />
+        <Route path="price-refs" element={<PriceReference />} />
       </Routes>
     </Layout>
   )
@@ -83,7 +85,11 @@ export default function App() {
   return (
     <AuthGate>
       <BrowserRouter>
-        <AppInner />
+        <Routes>
+          <Route path="/" element={<Landing />} />
+          <Route path="/tech/*" element={<TechModule />} />
+          <Route path="/finance/*" element={<FinanceApp />} />
+        </Routes>
       </BrowserRouter>
     </AuthGate>
   )

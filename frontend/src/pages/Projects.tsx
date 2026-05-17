@@ -293,13 +293,13 @@ export default function Projects() {
 
   const handleSelect = (id: string) => {
     setActiveProjectId(id)
-    navigate('/dashboard')
+    navigate('/tech/dashboard')
   }
 
   const handleCreated = (id: string) => {
     setShowModal(false)
     setActiveProjectId(id)
-    navigate('/dashboard')
+    navigate('/tech/dashboard')
   }
 
   if (isLoading) return <div className="text-slate-500 text-sm animate-pulse">Cargando proyectos...</div>

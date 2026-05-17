@@ -21,6 +21,20 @@ import { seedDatabase } from './seed'
 import backupRoutes from './routes/backup'
 import downloadRoutes from './routes/download'
 
+// === FINANCE MODULE ROUTES ===
+import finCatalogs from './finance/routes/catalogs'
+import finProjects from './finance/routes/projects'
+import finMovements from './finance/routes/movements'
+import finAccounts from './finance/routes/accounts'
+import finCapital from './finance/routes/capital'
+import finLoans from './finance/routes/loans'
+import finDashboard from './finance/routes/dashboard'
+import finDocuments from './finance/routes/documents'
+import finStatements from './finance/routes/statements'
+import finImports from './finance/routes/imports'
+import finBackup from './finance/routes/backup'
+import finReports from './finance/routes/reports'
+
 const app = express()
 const PORT = process.env.PORT || 3001
 
@@ -46,6 +60,21 @@ app.use('/api/draws', drawRoutes)
 
 app.use('/api/backup', backupRoutes)
 app.use('/api/download', downloadRoutes)
+
+// === FINANCE MODULE — prefijo /api/finance/* ===
+// Auth se comparte con el módulo técnico vía /api/auth (mismo password)
+app.use('/api/finance/catalogs', finCatalogs)
+app.use('/api/finance/projects', finProjects)
+app.use('/api/finance/movements', finMovements)
+app.use('/api/finance/accounts', finAccounts)
+app.use('/api/finance/capital', finCapital)
+app.use('/api/finance/loans', finLoans)
+app.use('/api/finance/dashboard', finDashboard)
+app.use('/api/finance/documents', finDocuments)
+app.use('/api/finance/statements', finStatements)
+app.use('/api/finance/imports', finImports)
+app.use('/api/finance/backup', finBackup)
+app.use('/api/finance/reports', finReports)
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })

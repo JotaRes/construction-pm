@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
-import { Building2, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react'
+import { Shield, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react'
 
 const TOKEN_KEY = 'pm_auth_token'
 const API = '/api/auth'
@@ -87,13 +87,13 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
               style={{ background: 'linear-gradient(135deg, #2D4B52 0%, #3A5F68 100%)',
                        boxShadow: '0 8px 24px rgba(45,75,82,0.25)' }}>
-              <Building2 className="w-8 h-8 text-white" />
+              <Shield className="w-8 h-8" style={{ color: '#E0AD4F' }} />
             </div>
-            <h1 className="text-xl font-bold tracking-wide" style={{ color: '#2D4B52' }}>
-              Construction PM
+            <h1 className="text-xl font-bold tracking-wide text-center" style={{ color: '#2D4B52' }}>
+              Ecosistema operativo
             </h1>
             <p className="text-xs mt-1" style={{ color: 'rgba(45,75,82,0.5)' }}>
-              Restrepo Acosta Global Holdings LLC
+              Restrepo Acosta Global Holding LLC
             </p>
           </div>
 
