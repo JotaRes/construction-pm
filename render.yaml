@@ -3,25 +3,36 @@ services:
     name: restrepoacosta
     runtime: node
     rootDir: backend
-    # Build:
-    #   1) Instala deps del backend
-    #   2) Compila el frontend (React) y copia el bundle a backend/public para que Express lo sirva
-    #   3) Cambia el provider de ambos schemas Prisma a postgresql para producción
+    # Build phase — todo desde el rootDir (backend/)
+    #   1) Instala deps backend (incluye devDeps de TS)
+    #   2) Instala deps frontend FORZANDO devDeps (Vite, Tailwind, PostCSS están ahí)
+    #   3) Compila el frontend y copia el bundle a backend/public/
+    #   4) Switches provider Prisma a postgresql para producción
     buildCommand: |
-      npm install
-      cd ../frontend && npm install && npm run build
-      rm -rf ../backend/public
-      mkdir -p ../backend/public
-      cp -r dist/. ../backend/public/
+      set -e
+      echo "=== Backend deps ==="
+      npm ci --include=dev
+      echo "=== Frontend build ==="
+      cd ../frontend
+      npm ci --include=dev
+      npm run build
+      echo "=== Copying frontend bundle to backend/public ==="
       cd ../backend
+      rm -rf public
+      mkdir -p public
+      cp -R ../frontend/dist/. public/
+      ls -la public/
+      echo "=== Switching Prisma providers to postgresql ==="
       sed -i 's/provider = "sqlite"/provider = "postgresql"/' prisma/schema.prisma
       sed -i 's/provider = "sqlite"/provider = "postgresql"/' prisma/finance.prisma
       sed -i 's|env("DATABASE_URL_FIN")|env("DATABASE_URL")|' prisma/finance.prisma
-    # Start:
-    #   1) Genera AMBOS clientes Prisma (tech + finance) — único cliente por schema, output isolado
-    #   2) Aplica AMBOS schemas a la misma DB Postgres (las tablas finance están prefijadas con fin_)
-    #   3) Arranca el servidor con tsx (TypeScript runtime, sin compilar a dist/)
+      echo "=== Build complete ==="
+    # Start phase
+    #   1) Genera ambos clientes Prisma (tech default + finance custom output)
+    #   2) Aplica ambos schemas a la DB Postgres
+    #   3) Arranca el servidor con tsx (TypeScript runtime, no requiere compilar a dist/)
     startCommand: |
+      set -e
       npx prisma generate
       npx prisma generate --schema=prisma/finance.prisma
       npx prisma db push --accept-data-loss
@@ -38,6 +49,8 @@ services:
         value: 18418598
       - key: NODE_ENV
         value: production
+      - key: NPM_CONFIG_PRODUCTION
+        value: "false"
       - key: CLOUDINARY_CLOUD_NAME
         sync: false
       - key: CLOUDINARY_API_KEY
