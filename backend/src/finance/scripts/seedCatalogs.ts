@@ -13,7 +13,7 @@ import {
 async function main() {
   console.log("→ Seeding SPVs...");
   for (const s of SPVS) {
-    await prisma.sPV.upsert({
+    await prisma.finSPV.upsert({
       where: { code: s.code },
       update: { name: s.name },
       create: { code: s.code, name: s.name },
@@ -22,8 +22,8 @@ async function main() {
 
   console.log("→ Seeding Accounts...");
   for (const a of ACCOUNTS) {
-    const spv = a.spvCode ? await prisma.sPV.findUnique({ where: { code: a.spvCode } }) : null;
-    await prisma.account.upsert({
+    const spv = a.spvCode ? await prisma.finSPV.findUnique({ where: { code: a.spvCode } }) : null;
+    await prisma.finAccount.upsert({
       where: { code: a.code },
       update: {
         name: a.name,
@@ -45,7 +45,7 @@ async function main() {
 
   console.log("→ Seeding Partners...");
   for (const p of PARTNERS) {
-    await prisma.partner.upsert({
+    await prisma.finPartner.upsert({
       where: { code: p.code },
       update: { fullName: p.fullName },
       create: { code: p.code, fullName: p.fullName },
@@ -54,7 +54,7 @@ async function main() {
 
   console.log("→ Seeding Lenders...");
   for (const l of LENDERS) {
-    await prisma.lender.upsert({
+    await prisma.finLender.upsert({
       where: { name: l.name },
       update: { type: l.type },
       create: { name: l.name, type: l.type },
@@ -63,7 +63,7 @@ async function main() {
 
   console.log("→ Seeding Expense Categories...");
   for (const c of EXPENSE_CATEGORIES) {
-    await prisma.expenseCategory.upsert({
+    await prisma.finExpenseCategory.upsert({
       where: { code: c.code },
       update: { name: c.name, group: c.group, isCorporate: c.isCorporate },
       create: { code: c.code, name: c.name, group: c.group, isCorporate: c.isCorporate },
@@ -72,7 +72,7 @@ async function main() {
 
   console.log("→ Seeding Income Origins...");
   for (const o of INCOME_ORIGINS) {
-    await prisma.incomeOrigin.upsert({
+    await prisma.finIncomeOrigin.upsert({
       where: { code: o.code },
       update: { name: o.name },
       create: { code: o.code, name: o.name },
@@ -81,8 +81,8 @@ async function main() {
 
   console.log("→ Seeding Projects...");
   for (const p of PROJECTS_SEED) {
-    const spv = p.spvCode ? await prisma.sPV.findUnique({ where: { code: p.spvCode } }) : null;
-    await prisma.project.upsert({
+    const spv = p.spvCode ? await prisma.finSPV.findUnique({ where: { code: p.spvCode } }) : null;
+    await prisma.finProject.upsert({
       where: { code: p.code },
       update: { name: p.name, line: p.line, model: p.model, status: p.status, spvId: spv?.id ?? null },
       create: {

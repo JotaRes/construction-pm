@@ -273,3 +273,357 @@ model PriceRef {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
+
+
+// ============================================================
+// MODULO FINANCIERO - Modelos prefijados con "Fin" para convivir
+// con los modelos del modulo tecnico (Project, Partner, Provider)
+// en la misma base de datos. Tablas SQL prefijadas con fin_ via @@map.
+// ============================================================
+// Schema del MÓDULO FINANCIERO — cliente Prisma separado
+// Comparte la misma DB de PostgreSQL en producción pero usa tablas prefijadas con `fin_`
+// para evitar colisión con los modelos del módulo técnico (FinProject, FinPartner, FinProvider).
+
+// ============================================================
+// CATÁLOGOS MAESTROS
+// ============================================================
+
+model FinSPV {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique
+  name      String
+  notes     String?
+  createdAt DateTime @default(now())
+  accounts  FinAccount[]
+  projects  FinProject[]
+
+  @@map("fin_spv")
+}
+
+model FinAccount {
+  id            Int      @id @default(autoincrement())
+  code          String   @unique
+  name          String
+  bank          String
+  yearsActive   String?
+  initialBalance Float   @default(0)
+  reportedBalance Float  @default(0)
+  type          String   @default("operativa")
+  active        Boolean  @default(true)
+  notes         String?
+  spvId         Int?
+  spv           FinSPV?     @relation(fields: [spvId], references: [id])
+  createdAt     DateTime @default(now())
+  movementsFrom FinMovement[] @relation("AccountFrom")
+  movementsTo   FinMovement[] @relation("AccountTo")
+  statements    FinBankStatement[]
+
+  @@map("fin_account")
+}
+
+model FinPartner {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique
+  fullName  String
+  email     String?
+  notes     String?
+  createdAt DateTime @default(now())
+  movements FinMovement[]
+  capitalContribs FinCapitalContribution[]
+  nonBankContribs FinNonBankContribution[]
+
+  @@map("fin_partner")
+}
+
+model FinLender {
+  id            Int      @id @default(autoincrement())
+  name          String   @unique
+  type          String   @default("FinLender")
+  contactName   String?
+  email         String?
+  phone         String?
+  notes         String?
+  createdAt     DateTime @default(now())
+  loans         FinLoan[]
+  movements     FinMovement[]
+
+  @@map("fin_lender")
+}
+
+model FinProvider {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  type      String?
+  contactName String?
+  phone     String?
+  email     String?
+  notes     String?
+  createdAt DateTime @default(now())
+  movements FinMovement[]
+
+  @@map("fin_provider")
+}
+
+model FinExpenseCategory {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique
+  name      String
+  group     String?
+  isCorporate Boolean @default(false)
+  notes     String?
+  createdAt DateTime @default(now())
+  movements FinMovement[]
+
+  @@map("fin_expense_category")
+}
+
+model FinIncomeOrigin {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique
+  name      String
+  notes     String?
+  createdAt DateTime @default(now())
+  movements FinMovement[]
+
+  @@map("fin_income_origin")
+}
+
+// ============================================================
+// PROYECTOS DEL PORTAFOLIO FINANCIERO
+// ============================================================
+
+model FinProject {
+  id            Int      @id @default(autoincrement())
+  code          String   @unique
+  name          String
+  line          String?
+  model         String?
+  status        String   @default("Enlistado")
+  spvId         Int?
+  spv           FinSPV?     @relation(fields: [spvId], references: [id])
+  address       String?
+  purchasePrice Float    @default(0)
+  arv           Float    @default(0)
+  expectedCost  Float    @default(0)
+  cashIn        Float    @default(0)
+  notes         String?
+  archivedAt    DateTime?
+  createdAt     DateTime @default(now())
+  movements     FinMovement[]
+  capitalContribs FinCapitalContribution[]
+  loans         FinLoan[]
+  nonBankContribs FinNonBankContribution[]
+  documents     FinProjectDocument[]
+
+  @@map("fin_project")
+}
+
+// ============================================================
+// NÚCLEO: MOVIMIENTOS BANCARIOS
+// ============================================================
+
+model FinMovement {
+  id              Int      @id @default(autoincrement())
+  date            DateTime
+  type            String
+  amount          Float
+  concept         String
+  notes           String?
+
+  accountId       Int
+  account         FinAccount  @relation("AccountFrom", fields: [accountId], references: [id])
+  destAccountId   Int?
+  destAccount     FinAccount? @relation("AccountTo", fields: [destAccountId], references: [id])
+
+  categoryId      Int?
+  category        FinExpenseCategory? @relation(fields: [categoryId], references: [id])
+  originId        Int?
+  origin          FinIncomeOrigin? @relation(fields: [originId], references: [id])
+  providerId      Int?
+  provider        FinProvider? @relation(fields: [providerId], references: [id])
+
+  isEquity        Boolean  @default(false)
+  partnerId       Int?
+  partner         FinPartner? @relation(fields: [partnerId], references: [id])
+
+  isLoan          Boolean  @default(false)
+  lenderId        Int?
+  lender          FinLender?  @relation(fields: [lenderId], references: [id])
+  isLoanRepayment Boolean  @default(false)
+  loanId          Int?
+  loan            FinLoan?    @relation(fields: [loanId], references: [id])
+
+  projectId       Int?
+  project         FinProject? @relation(fields: [projectId], references: [id])
+
+  isIntercompany  Boolean  @default(false)
+  linkedMovementId Int?    @unique
+  linkedMovement   FinMovement? @relation("IntercompanyLink", fields: [linkedMovementId], references: [id])
+  linkedFrom       FinMovement? @relation("IntercompanyLink")
+
+  hasSupport      Boolean  @default(false)
+  isReconciled    Boolean  @default(false)
+  needsReview     Boolean  @default(false)
+  reviewReason    String?
+
+  importSource    String?
+  importRef       String?
+
+  documents       FinMovementDocument[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([date])
+  @@index([accountId])
+  @@index([projectId])
+  @@index([partnerId])
+  @@index([categoryId])
+  @@index([type])
+  @@map("fin_movement")
+}
+
+// ============================================================
+// CAPITALIZACIÓN
+// ============================================================
+
+model FinCapitalContribution {
+  id          Int      @id @default(autoincrement())
+  date        DateTime
+  amount      Float
+  concept     String
+  origin      String
+  partnerId   Int
+  partner     FinPartner  @relation(fields: [partnerId], references: [id])
+  projectId   Int?
+  project     FinProject? @relation(fields: [projectId], references: [id])
+  destAccountCode String?
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  @@map("fin_capital_contribution")
+}
+
+model FinLoan {
+  id            Int      @id @default(autoincrement())
+  date          DateTime
+  amount        Float
+  concept       String
+  lenderId      Int
+  lender        FinLender   @relation(fields: [lenderId], references: [id])
+  projectId     Int?
+  project       FinProject? @relation(fields: [projectId], references: [id])
+  destAccountCode String?
+  interestRate  Float?
+  termMonths    Int?
+  startDate     DateTime?
+  endDate       DateTime?
+  status        String   @default("activo")
+  classification String?
+  totalRepaid   Float    @default(0)
+  notes         String?
+  createdAt     DateTime @default(now())
+  movements     FinMovement[]
+
+  @@map("fin_loan")
+}
+
+model FinNonBankContribution {
+  id          Int      @id @default(autoincrement())
+  date        DateTime
+  amount      Float
+  concept     String
+  partnerId   Int
+  partner     FinPartner  @relation(fields: [partnerId], references: [id])
+  projectId   Int?
+  project     FinProject? @relation(fields: [projectId], references: [id])
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  @@map("fin_nonbank_contribution")
+}
+
+// ============================================================
+// DOCUMENTOS / SOPORTES
+// ============================================================
+
+model FinMovementDocument {
+  id          Int      @id @default(autoincrement())
+  movementId  Int
+  movement    FinMovement @relation(fields: [movementId], references: [id], onDelete: Cascade)
+  filename    String
+  url         String
+  publicId    String?
+  mimetype    String?
+  size        Int?
+  kind        String?
+  uploadedAt  DateTime @default(now())
+
+  @@map("fin_movement_document")
+}
+
+model FinProjectDocument {
+  id          Int      @id @default(autoincrement())
+  projectId   Int
+  project     FinProject  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  filename    String
+  url         String
+  publicId    String?
+  mimetype    String?
+  size        Int?
+  kind        String?
+  uploadedAt  DateTime @default(now())
+
+  @@map("fin_project_document")
+}
+
+// ============================================================
+// EXTRACTOS BANCARIOS (RECONCILIACIÓN)
+// ============================================================
+
+model FinBankStatement {
+  id          Int      @id @default(autoincrement())
+  accountId   Int
+  account     FinAccount  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  periodStart DateTime
+  periodEnd   DateTime
+  openingBalance Float?
+  closingBalance Float?
+  filename    String?
+  url         String?
+  uploadedAt  DateTime @default(now())
+  lines       FinBankStatementLine[]
+
+  @@map("fin_bank_statement")
+}
+
+model FinBankStatementLine {
+  id              Int      @id @default(autoincrement())
+  statementId     Int
+  statement       FinBankStatement @relation(fields: [statementId], references: [id], onDelete: Cascade)
+  date            DateTime
+  description     String
+  amount          Float
+  type            String
+  matchStatus     String   @default("unmatched")
+  matchedMovementId Int?
+  diffNote        String?
+
+  @@map("fin_bank_statement_line")
+}
+
+// ============================================================
+// AUDITORÍA / ALERTAS
+// ============================================================
+
+model FinActivityLog {
+  id        Int      @id @default(autoincrement())
+  action    String
+  entity    String
+  entityId  Int?
+  detail    String?
+  user      String?
+  createdAt DateTime @default(now())
+
+  @@map("fin_activity_log")
+}
+

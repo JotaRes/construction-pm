@@ -6,13 +6,13 @@ const router = Router();
 
 router.get("/", async (_req, res) => {
   try {
-    const accounts = await prisma.account.findMany({
+    const accounts = await prisma.finAccount.findMany({
       include: { spv: true, _count: { select: { movementsFrom: true } } },
       orderBy: { code: "asc" },
     });
 
     // Calcular saldos
-    const allMovs = await prisma.movement.findMany({ select: { accountId: true, destAccountId: true, type: true, amount: true } });
+    const allMovs = await prisma.finMovement.findMany({ select: { accountId: true, destAccountId: true, type: true, amount: true } });
     const balances = new Map<number, number>();
     for (const a of accounts) balances.set(a.id, a.initialBalance);
 
@@ -38,7 +38,7 @@ router.get("/", async (_req, res) => {
 
 router.get("/:id", async (req, res) => {
   try {
-    const a = await prisma.account.findUnique({
+    const a = await prisma.finAccount.findUnique({
       where: { id: +req.params.id },
       include: {
         spv: true,
@@ -57,7 +57,7 @@ router.patch("/:id", async (req, res) => {
     const data: any = {};
     if (initialBalance !== undefined) data.initialBalance = Number(initialBalance);
     if (reportedBalance !== undefined) data.reportedBalance = Number(reportedBalance);
-    const updated = await prisma.account.update({
+    const updated = await prisma.finAccount.update({
       where: { id: +req.params.id },
       data,
     });

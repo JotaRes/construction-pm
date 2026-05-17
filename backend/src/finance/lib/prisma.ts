@@ -1,16 +1,17 @@
-// Cliente Prisma del módulo FINANCIERO (separado del cliente del módulo técnico).
-// Generado desde prisma/finance.prisma → output: node_modules/.prisma/finance-client
-import { PrismaClient } from "../../../node_modules/.prisma/finance-client";
+// Cliente Prisma UNIFICADO — el módulo financiero usa el mismo cliente
+// que el módulo técnico, pero accede a los modelos prefijados con `fin`
+// (prisma.finAccount, prisma.finMovement, etc.).
+import { PrismaClient } from "@prisma/client";
 
 declare global {
   // eslint-disable-next-line no-var
-  var __finPrisma: PrismaClient | undefined;
+  var __prismaShared: PrismaClient | undefined;
 }
 
 export const prisma =
-  global.__finPrisma ||
+  global.__prismaShared ||
   new PrismaClient({
     log: process.env.NODE_ENV === "production" ? ["error"] : ["error", "warn"],
   });
 
-if (process.env.NODE_ENV !== "production") global.__finPrisma = prisma;
+if (process.env.NODE_ENV !== "production") global.__prismaShared = prisma;

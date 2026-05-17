@@ -3,9 +3,9 @@ services:
     name: restrepoacosta
     runtime: node
     rootDir: backend
-    # Build phase — todo desde el rootDir (backend/)
+    # Build phase — desde rootDir (backend/)
     #   1) Instala deps backend (incluye devDeps de TS)
-    #   2) Instala deps frontend FORZANDO devDeps (Vite, Tailwind, PostCSS están ahí)
+    #   2) Instala deps frontend FORZANDO devDeps (Vite, Tailwind, PostCSS)
     #   3) Compila el frontend y copia el bundle a backend/public/
     #   4) Switches provider Prisma a postgresql para producción
     buildCommand: |
@@ -22,21 +22,17 @@ services:
       mkdir -p public
       cp -R ../frontend/dist/. public/
       ls -la public/
-      echo "=== Switching Prisma providers to postgresql ==="
+      echo "=== Switching Prisma provider to postgresql ==="
       sed -i 's/provider = "sqlite"/provider = "postgresql"/' prisma/schema.prisma
-      sed -i 's/provider = "sqlite"/provider = "postgresql"/' prisma/finance.prisma
-      sed -i 's|env("DATABASE_URL_FIN")|env("DATABASE_URL")|' prisma/finance.prisma
       echo "=== Build complete ==="
     # Start phase
-    #   1) Genera ambos clientes Prisma (tech default + finance custom output)
-    #   2) Aplica ambos schemas a la DB Postgres
-    #   3) Arranca el servidor con tsx (TypeScript runtime, no requiere compilar a dist/)
+    #   1) Genera el cliente Prisma (tech + finance en un solo schema)
+    #   2) Aplica el schema a la DB Postgres (un solo push, sin colisiones)
+    #   3) Arranca con tsx runtime
     startCommand: |
       set -e
       npx prisma generate
-      npx prisma generate --schema=prisma/finance.prisma
       npx prisma db push --accept-data-loss
-      npx prisma db push --schema=prisma/finance.prisma --accept-data-loss
       npx tsx src/app.ts
     envVars:
       - key: DATABASE_URL

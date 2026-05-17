@@ -10,7 +10,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 
 
 router.get("/", async (_req, res) => {
   try {
-    const list = await prisma.bankStatement.findMany({
+    const list = await prisma.finBankStatement.findMany({
       include: { account: true, _count: { select: { lines: true } } },
       orderBy: { periodStart: "desc" },
     });
@@ -20,7 +20,7 @@ router.get("/", async (_req, res) => {
 
 router.get("/:id", async (req, res) => {
   try {
-    const stmt = await prisma.bankStatement.findUnique({
+    const stmt = await prisma.finBankStatement.findUnique({
       where: { id: +req.params.id },
       include: { account: true, lines: { orderBy: { date: "asc" } } },
     });
@@ -39,7 +39,7 @@ router.post("/upload", upload.single("file"), async (req, res) => {
     const parsed = await parseStatementFile(req.file.buffer, req.file.originalname, req.file.mimetype);
     if (!parsed.lines.length) return fail(res, "no se pudieron extraer líneas del archivo", 400);
 
-    const stmt = await prisma.bankStatement.create({
+    const stmt = await prisma.finBankStatement.create({
       data: {
         accountId,
         periodStart: parsed.periodStart || parsed.lines[0].date,
@@ -74,18 +74,18 @@ router.post("/:id/reconcile", async (req, res) => {
 
 router.delete("/:id", async (req, res) => {
   try {
-    await prisma.bankStatement.delete({ where: { id: +req.params.id } });
+    await prisma.finBankStatement.delete({ where: { id: +req.params.id } });
     ok(res, { deleted: true });
   } catch (e) { fail(res, e); }
 });
 
 router.post("/lines/:lineId/match/:movementId", async (req, res) => {
   try {
-    await prisma.bankStatementLine.update({
+    await prisma.finBankStatementLine.update({
       where: { id: +req.params.lineId },
       data: { matchedMovementId: +req.params.movementId, matchStatus: "matched_manual" },
     });
-    await prisma.movement.update({
+    await prisma.finMovement.update({
       where: { id: +req.params.movementId },
       data: { isReconciled: true },
     });
@@ -95,12 +95,12 @@ router.post("/lines/:lineId/match/:movementId", async (req, res) => {
 
 router.post("/lines/:lineId/create-movement", async (req, res) => {
   try {
-    const line = await prisma.bankStatementLine.findUnique({
+    const line = await prisma.finBankStatementLine.findUnique({
       where: { id: +req.params.lineId },
       include: { statement: true },
     });
     if (!line) return fail(res, "not found", 404);
-    const created = await prisma.movement.create({
+    const created = await prisma.finMovement.create({
       data: {
         date: line.date,
         accountId: line.statement.accountId,
@@ -112,7 +112,7 @@ router.post("/lines/:lineId/create-movement", async (req, res) => {
         isReconciled: true,
       },
     });
-    await prisma.bankStatementLine.update({
+    await prisma.finBankStatementLine.update({
       where: { id: line.id },
       data: { matchedMovementId: created.id, matchStatus: "created" },
     });

@@ -6,7 +6,7 @@ import { prisma } from "../lib/prisma";
 //     donde uno es Egreso y otro Ingreso, y no estén ya vinculados.
 
 export async function detectIntercompany(): Promise<{ linked: number; alreadyLinked: number; candidates: number }> {
-  const movements = await prisma.movement.findMany({
+  const movements = await prisma.finMovement.findMany({
     where: { isIntercompany: false },
     orderBy: { date: "asc" },
   });
@@ -40,8 +40,8 @@ export async function detectIntercompany(): Promise<{ linked: number; alreadyLin
         if (days > 3) continue;
         // Match!
         await prisma.$transaction([
-          prisma.movement.update({ where: { id: a.id }, data: { isIntercompany: true, linkedMovementId: b.id } }),
-          prisma.movement.update({ where: { id: b.id }, data: { isIntercompany: true } }),
+          prisma.finMovement.update({ where: { id: a.id }, data: { isIntercompany: true, linkedMovementId: b.id } }),
+          prisma.finMovement.update({ where: { id: b.id }, data: { isIntercompany: true } }),
         ]);
         used.add(a.id);
         used.add(b.id);
@@ -51,6 +51,6 @@ export async function detectIntercompany(): Promise<{ linked: number; alreadyLin
     }
   }
 
-  const alreadyLinked = await prisma.movement.count({ where: { isIntercompany: true } });
+  const alreadyLinked = await prisma.finMovement.count({ where: { isIntercompany: true } });
   return { linked, alreadyLinked, candidates: movements.length };
 }

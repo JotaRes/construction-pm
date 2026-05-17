@@ -8,14 +8,14 @@ const router = Router();
 router.get("/", async (_req, res) => {
   try {
     const [accounts, allMovs, contribs, loans, nonBank, projects, partners, categories] = await Promise.all([
-      prisma.account.findMany(),
-      prisma.movement.findMany({ include: { category: true, project: true } }),
-      prisma.capitalContribution.findMany({ include: { partner: true } }),
-      prisma.loan.findMany({ include: { lender: true } }),
-      prisma.nonBankContribution.findMany({ include: { partner: true } }),
-      prisma.project.findMany({ include: { spv: true } }),
-      prisma.partner.findMany(),
-      prisma.expenseCategory.findMany(),
+      prisma.finAccount.findMany(),
+      prisma.finMovement.findMany({ include: { category: true, project: true } }),
+      prisma.finCapitalContribution.findMany({ include: { partner: true } }),
+      prisma.finLoan.findMany({ include: { lender: true } }),
+      prisma.finNonBankContribution.findMany({ include: { partner: true } }),
+      prisma.finProject.findMany({ include: { spv: true } }),
+      prisma.finPartner.findMany(),
+      prisma.finExpenseCategory.findMany(),
     ]);
 
     // Saldos por cuenta

@@ -15,7 +15,7 @@ function classifyLoan(rate: number | null | undefined): string {
 
 router.get("/", async (_req, res) => {
   try {
-    const loans = await prisma.loan.findMany({
+    const loans = await prisma.finLoan.findMany({
       include: { lender: true, project: true, movements: true },
       orderBy: { date: "desc" },
     });
@@ -35,7 +35,7 @@ router.post("/", async (req, res) => {
     if (data.startDate) data.startDate = new Date(data.startDate);
     if (data.endDate) data.endDate = new Date(data.endDate);
     if (!data.classification) data.classification = classifyLoan(data.interestRate);
-    ok(res, await prisma.loan.create({ data }));
+    ok(res, await prisma.finLoan.create({ data }));
   } catch (e) { fail(res, e); }
 });
 
@@ -46,12 +46,12 @@ router.patch("/:id", async (req, res) => {
     if (data.startDate) data.startDate = new Date(data.startDate);
     if (data.endDate) data.endDate = new Date(data.endDate);
     if (data.interestRate != null && !data.classification) data.classification = classifyLoan(data.interestRate);
-    ok(res, await prisma.loan.update({ where: { id: +req.params.id }, data }));
+    ok(res, await prisma.finLoan.update({ where: { id: +req.params.id }, data }));
   } catch (e) { fail(res, e); }
 });
 
 router.delete("/:id", async (req, res) => {
-  try { await prisma.loan.delete({ where: { id: +req.params.id } }); ok(res, { deleted: true }); }
+  try { await prisma.finLoan.delete({ where: { id: +req.params.id } }); ok(res, { deleted: true }); }
   catch (e) { fail(res, e); }
 });
 

@@ -33,14 +33,14 @@ router.post("/excel-from-disk", async (req, res) => {
 // DELETE /api/imports/clear-all — borra todos los movimientos, aportes, préstamos, extractos, documentos
 router.delete("/clear-all", async (req, res) => {
   try {
-    await prisma.movementDocument.deleteMany({});
-    await prisma.projectDocument.deleteMany({});
-    await prisma.bankStatementLine.deleteMany({});
-    await prisma.bankStatement.deleteMany({});
-    await prisma.nonBankContribution.deleteMany({});
-    await prisma.loan.deleteMany({});
-    await prisma.capitalContribution.deleteMany({});
-    await prisma.movement.deleteMany({});
+    await prisma.finMovementDocument.deleteMany({});
+    await prisma.finProjectDocument.deleteMany({});
+    await prisma.finBankStatementLine.deleteMany({});
+    await prisma.finBankStatement.deleteMany({});
+    await prisma.finNonBankContribution.deleteMany({});
+    await prisma.finLoan.deleteMany({});
+    await prisma.finCapitalContribution.deleteMany({});
+    await prisma.finMovement.deleteMany({});
     ok(res, { cleared: true, message: "Todos los datos transaccionales han sido eliminados" });
   } catch (e) { fail(res, e); }
 });

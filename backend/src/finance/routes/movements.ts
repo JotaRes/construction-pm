@@ -43,8 +43,8 @@ router.get("/", async (req, res) => {
     const take = limit ? Math.min(+limit, 5000) : 500;
     const skip = offset ? +offset : 0;
     const [movements, total] = await Promise.all([
-      prisma.movement.findMany({ where, include: includeAll, orderBy: { date: "desc" }, take, skip }),
-      prisma.movement.count({ where }),
+      prisma.finMovement.findMany({ where, include: includeAll, orderBy: { date: "desc" }, take, skip }),
+      prisma.finMovement.count({ where }),
     ]);
     ok(res, { movements, total });
   } catch (e) { fail(res, e); }
@@ -52,7 +52,7 @@ router.get("/", async (req, res) => {
 
 router.get("/:id", async (req, res) => {
   try {
-    const m = await prisma.movement.findUnique({ where: { id: +req.params.id }, include: includeAll });
+    const m = await prisma.finMovement.findUnique({ where: { id: +req.params.id }, include: includeAll });
     if (!m) return fail(res, "not found", 404);
     ok(res, m);
   } catch (e) { fail(res, e); }
@@ -62,7 +62,7 @@ router.post("/", async (req, res) => {
   try {
     const data = { ...req.body };
     if (data.date) data.date = new Date(data.date);
-    const created = await prisma.movement.create({ data, include: includeAll });
+    const created = await prisma.finMovement.create({ data, include: includeAll });
     ok(res, created);
   } catch (e) { fail(res, e); }
 });
@@ -84,14 +84,14 @@ router.patch("/:id", async (req, res) => {
     delete data.linkedMovement;
     delete data.linkedFrom;
     delete data.loan;
-    const updated = await prisma.movement.update({ where: { id: +req.params.id }, data, include: includeAll });
+    const updated = await prisma.finMovement.update({ where: { id: +req.params.id }, data, include: includeAll });
     ok(res, updated);
   } catch (e) { fail(res, e); }
 });
 
 router.delete("/:id", async (req, res) => {
   try {
-    await prisma.movement.delete({ where: { id: +req.params.id } });
+    await prisma.finMovement.delete({ where: { id: +req.params.id } });
     ok(res, { deleted: true });
   } catch (e) { fail(res, e); }
 });
@@ -111,8 +111,8 @@ router.post("/:id/link/:otherId", async (req, res) => {
     const a = +req.params.id;
     const b = +req.params.otherId;
     await prisma.$transaction([
-      prisma.movement.update({ where: { id: a }, data: { isIntercompany: true, linkedMovementId: b } }),
-      prisma.movement.update({ where: { id: b }, data: { isIntercompany: true } }),
+      prisma.finMovement.update({ where: { id: a }, data: { isIntercompany: true, linkedMovementId: b } }),
+      prisma.finMovement.update({ where: { id: b }, data: { isIntercompany: true } }),
     ]);
     ok(res, { linked: [a, b] });
   } catch (e) { fail(res, e); }
@@ -121,11 +121,11 @@ router.post("/:id/link/:otherId", async (req, res) => {
 router.post("/:id/unlink", async (req, res) => {
   try {
     const id = +req.params.id;
-    const m = await prisma.movement.findUnique({ where: { id } });
+    const m = await prisma.finMovement.findUnique({ where: { id } });
     if (!m) return fail(res, "not found", 404);
     const other = m.linkedMovementId;
-    await prisma.movement.update({ where: { id }, data: { isIntercompany: false, linkedMovementId: null } });
-    if (other) await prisma.movement.update({ where: { id: other }, data: { isIntercompany: false, linkedMovementId: null } }).catch(() => {});
+    await prisma.finMovement.update({ where: { id }, data: { isIntercompany: false, linkedMovementId: null } });
+    if (other) await prisma.finMovement.update({ where: { id: other }, data: { isIntercompany: false, linkedMovementId: null } }).catch(() => {});
     ok(res, { unlinked: true });
   } catch (e) { fail(res, e); }
 });

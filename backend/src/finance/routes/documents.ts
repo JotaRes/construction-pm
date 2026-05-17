@@ -19,7 +19,7 @@ router.post("/movements/:id/documents", upload.single("file"), async (req, res) 
     });
 
     const url = cloud?.url || `local:${req.file.originalname}`;
-    const created = await prisma.movementDocument.create({
+    const created = await prisma.finMovementDocument.create({
       data: {
         movementId: +req.params.id,
         filename: req.file.originalname,
@@ -30,19 +30,19 @@ router.post("/movements/:id/documents", upload.single("file"), async (req, res) 
         kind: req.body.kind || "soporte",
       },
     });
-    await prisma.movement.update({ where: { id: +req.params.id }, data: { hasSupport: true } });
+    await prisma.finMovement.update({ where: { id: +req.params.id }, data: { hasSupport: true } });
     ok(res, created);
   } catch (e) { fail(res, e); }
 });
 
 router.delete("/movements/:movementId/documents/:docId", async (req, res) => {
   try {
-    const doc = await prisma.movementDocument.findUnique({ where: { id: +req.params.docId } });
+    const doc = await prisma.finMovementDocument.findUnique({ where: { id: +req.params.docId } });
     if (doc?.publicId) await deleteFromCloudinary(doc.publicId);
-    await prisma.movementDocument.delete({ where: { id: +req.params.docId } });
-    const remaining = await prisma.movementDocument.count({ where: { movementId: +req.params.movementId } });
+    await prisma.finMovementDocument.delete({ where: { id: +req.params.docId } });
+    const remaining = await prisma.finMovementDocument.count({ where: { movementId: +req.params.movementId } });
     if (remaining === 0) {
-      await prisma.movement.update({ where: { id: +req.params.movementId }, data: { hasSupport: false } });
+      await prisma.finMovement.update({ where: { id: +req.params.movementId }, data: { hasSupport: false } });
     }
     ok(res, { deleted: true });
   } catch (e) { fail(res, e); }
@@ -58,7 +58,7 @@ router.post("/projects/:id/documents", upload.single("file"), async (req, res) =
       resourceType: resourceTypeFor(mimetype),
       filename: req.file.originalname,
     });
-    const created = await prisma.projectDocument.create({
+    const created = await prisma.finProjectDocument.create({
       data: {
         projectId: +req.params.id,
         filename: req.file.originalname,
@@ -75,9 +75,9 @@ router.post("/projects/:id/documents", upload.single("file"), async (req, res) =
 
 router.delete("/projects/:projectId/documents/:docId", async (req, res) => {
   try {
-    const doc = await prisma.projectDocument.findUnique({ where: { id: +req.params.docId } });
+    const doc = await prisma.finProjectDocument.findUnique({ where: { id: +req.params.docId } });
     if (doc?.publicId) await deleteFromCloudinary(doc.publicId);
-    await prisma.projectDocument.delete({ where: { id: +req.params.docId } });
+    await prisma.finProjectDocument.delete({ where: { id: +req.params.docId } });
     ok(res, { deleted: true });
   } catch (e) { fail(res, e); }
 });

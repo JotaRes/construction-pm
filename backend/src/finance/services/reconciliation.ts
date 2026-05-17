@@ -13,7 +13,7 @@ export interface ReconResult {
 //  1. Match exacto: misma fecha (±2 días), mismo monto, misma cuenta
 //  2. Match aproximado: monto exacto, ±5 días, mismo signo
 export async function reconcileStatement(statementId: number): Promise<ReconResult> {
-  const stmt = await prisma.bankStatement.findUnique({
+  const stmt = await prisma.finBankStatement.findUnique({
     where: { id: statementId },
     include: { lines: true, account: true },
   });
@@ -23,7 +23,7 @@ export async function reconcileStatement(statementId: number): Promise<ReconResu
   const dateLow = new Date(stmt.periodStart.getTime() - 10 * 86400000);
   const dateHigh = new Date(stmt.periodEnd.getTime() + 10 * 86400000);
 
-  const candidateMovs = await prisma.movement.findMany({
+  const candidateMovs = await prisma.finMovement.findMany({
     where: {
       OR: [{ accountId: stmt.accountId }, { destAccountId: stmt.accountId }],
       date: { gte: dateLow, lte: dateHigh },
@@ -52,11 +52,11 @@ export async function reconcileStatement(statementId: number): Promise<ReconResu
         movType = "credit";
       }
       if (Math.abs(movAmt - line.amount) < 0.01 && movType === line.type) {
-        await prisma.bankStatementLine.update({
+        await prisma.finBankStatementLine.update({
           where: { id: line.id },
           data: { matchedMovementId: m.id, matchStatus: "matched_exact" },
         });
-        await prisma.movement.update({ where: { id: m.id }, data: { isReconciled: true } });
+        await prisma.finMovement.update({ where: { id: m.id }, data: { isReconciled: true } });
         usedMovIds.add(m.id);
         usedLineIds.add(line.id);
         break;
@@ -74,11 +74,11 @@ export async function reconcileStatement(statementId: number): Promise<ReconResu
       const movAmt = m.amount;
       const movType: "credit" | "debit" = m.type === "Ingreso" ? "credit" : "debit";
       if (Math.abs(movAmt - line.amount) < 0.01 && movType === line.type) {
-        await prisma.bankStatementLine.update({
+        await prisma.finBankStatementLine.update({
           where: { id: line.id },
           data: { matchedMovementId: m.id, matchStatus: "matched_approx" },
         });
-        await prisma.movement.update({ where: { id: m.id }, data: { isReconciled: true } });
+        await prisma.finMovement.update({ where: { id: m.id }, data: { isReconciled: true } });
         usedMovIds.add(m.id);
         usedLineIds.add(line.id);
         break;
@@ -86,7 +86,7 @@ export async function reconcileStatement(statementId: number): Promise<ReconResu
     }
   }
 
-  const lines = await prisma.bankStatementLine.findMany({ where: { statementId } });
+  const lines = await prisma.finBankStatementLine.findMany({ where: { statementId } });
   const matched = lines.filter((l) => l.matchStatus !== "unmatched").length;
   const unmatched = lines.length - matched;
   const missingInBook = lines

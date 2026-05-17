@@ -7,7 +7,7 @@ const router = Router();
 // Fuentes y usos del capital
 router.get("/sources-uses", async (_req, res) => {
   try {
-    const movs = await prisma.movement.findMany({
+    const movs = await prisma.finMovement.findMany({
       where: { isIntercompany: false },
       include: { origin: true, category: true, partner: true, lender: true, project: true },
     });
@@ -36,7 +36,7 @@ router.get("/sources-uses", async (_req, res) => {
 router.get("/cashflow", async (req, res) => {
   try {
     const year = req.query.year ? +req.query.year : new Date().getFullYear();
-    const movs = await prisma.movement.findMany({
+    const movs = await prisma.finMovement.findMany({
       where: {
         isIntercompany: false,
         date: { gte: new Date(year, 0, 1), lt: new Date(year + 1, 0, 1) },
@@ -58,7 +58,7 @@ router.get("/cashflow", async (req, res) => {
 router.get("/traceability/:movementId", async (req, res) => {
   try {
     const id = +req.params.movementId;
-    const m = await prisma.movement.findUnique({
+    const m = await prisma.finMovement.findUnique({
       where: { id },
       include: {
         account: true, destAccount: true, category: true, origin: true,
@@ -70,7 +70,7 @@ router.get("/traceability/:movementId", async (req, res) => {
 
     const related: any[] = [];
     if (m.linkedMovementId) {
-      const linked = await prisma.movement.findUnique({
+      const linked = await prisma.finMovement.findUnique({
         where: { id: m.linkedMovementId },
         include: { account: true },
       });
@@ -78,7 +78,7 @@ router.get("/traceability/:movementId", async (req, res) => {
     }
 
     if (m.projectId) {
-      const sameProject = await prisma.movement.count({ where: { projectId: m.projectId, NOT: { id: m.id } } });
+      const sameProject = await prisma.finMovement.count({ where: { projectId: m.projectId, NOT: { id: m.id } } });
       related.push({ relation: "same_project_count", count: sameProject });
     }
 

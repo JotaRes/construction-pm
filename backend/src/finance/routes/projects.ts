@@ -6,7 +6,7 @@ const router = Router();
 
 router.get("/", async (_req, res) => {
   try {
-    const projects = await prisma.project.findMany({
+    const projects = await prisma.finProject.findMany({
       include: { spv: true, _count: { select: { movements: true, loans: true, documents: true } } },
       orderBy: { code: "asc" },
     });
@@ -16,7 +16,7 @@ router.get("/", async (_req, res) => {
 
 router.get("/:id", async (req, res) => {
   try {
-    const project = await prisma.project.findUnique({
+    const project = await prisma.finProject.findUnique({
       where: { id: +req.params.id },
       include: {
         spv: true,
@@ -34,21 +34,21 @@ router.get("/:id", async (req, res) => {
 
 router.post("/", async (req, res) => {
   try {
-    const created = await prisma.project.create({ data: req.body });
+    const created = await prisma.finProject.create({ data: req.body });
     ok(res, created);
   } catch (e) { fail(res, e); }
 });
 
 router.patch("/:id", async (req, res) => {
   try {
-    const updated = await prisma.project.update({ where: { id: +req.params.id }, data: req.body });
+    const updated = await prisma.finProject.update({ where: { id: +req.params.id }, data: req.body });
     ok(res, updated);
   } catch (e) { fail(res, e); }
 });
 
 router.delete("/:id", async (req, res) => {
   try {
-    await prisma.project.delete({ where: { id: +req.params.id } });
+    await prisma.finProject.delete({ where: { id: +req.params.id } });
     ok(res, { deleted: true });
   } catch (e) { fail(res, e); }
 });
@@ -57,10 +57,10 @@ router.delete("/:id", async (req, res) => {
 router.get("/:id/summary", async (req, res) => {
   try {
     const id = +req.params.id;
-    const project = await prisma.project.findUnique({ where: { id } });
+    const project = await prisma.finProject.findUnique({ where: { id } });
     if (!project) return fail(res, "not found", 404);
 
-    const movements = await prisma.movement.findMany({
+    const movements = await prisma.finMovement.findMany({
       where: { projectId: id, isIntercompany: false },
     });
 
@@ -68,8 +68,8 @@ router.get("/:id/summary", async (req, res) => {
     const egresos = movements.filter((m) => m.type === "Egreso").reduce((s, m) => s + m.amount, 0);
     const neto = ingresos - egresos;
 
-    const capitalContribs = await prisma.capitalContribution.findMany({ where: { projectId: id }, include: { partner: true } });
-    const loans = await prisma.loan.findMany({ where: { projectId: id }, include: { lender: true } });
+    const capitalContribs = await prisma.finCapitalContribution.findMany({ where: { projectId: id }, include: { partner: true } });
+    const loans = await prisma.finLoan.findMany({ where: { projectId: id }, include: { lender: true } });
 
     const equityTotal = capitalContribs.reduce((s, c) => s + c.amount, 0);
     const debtTotal = loans.reduce((s, l) => s + l.amount, 0);

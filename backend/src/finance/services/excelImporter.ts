@@ -45,22 +45,22 @@ function normalize(s: string | null | undefined): string {
 async function ensureCatalogs() {
   // Asegura que catálogos base existan (idempotente)
   const { SPVS, ACCOUNTS, PARTNERS, LENDERS, EXPENSE_CATEGORIES, INCOME_ORIGINS, PROJECTS_SEED } = await import("../data/catalogs");
-  for (const s of SPVS) await prisma.sPV.upsert({ where: { code: s.code }, update: {}, create: s });
+  for (const s of SPVS) await prisma.finSPV.upsert({ where: { code: s.code }, update: {}, create: s });
   for (const a of ACCOUNTS) {
-    const spv = a.spvCode ? await prisma.sPV.findUnique({ where: { code: a.spvCode } }) : null;
-    await prisma.account.upsert({
+    const spv = a.spvCode ? await prisma.finSPV.findUnique({ where: { code: a.spvCode } }) : null;
+    await prisma.finAccount.upsert({
       where: { code: a.code },
       update: { name: a.name, bank: a.bank, initialBalance: a.initialBalance, yearsActive: a.yearsActive, spvId: spv?.id ?? null },
       create: { code: a.code, name: a.name, bank: a.bank, initialBalance: a.initialBalance, yearsActive: a.yearsActive, spvId: spv?.id ?? null },
     });
   }
-  for (const p of PARTNERS) await prisma.partner.upsert({ where: { code: p.code }, update: {}, create: p });
-  for (const l of LENDERS) await prisma.lender.upsert({ where: { name: l.name }, update: {}, create: l });
-  for (const c of EXPENSE_CATEGORIES) await prisma.expenseCategory.upsert({ where: { code: c.code }, update: {}, create: c });
-  for (const o of INCOME_ORIGINS) await prisma.incomeOrigin.upsert({ where: { code: o.code }, update: {}, create: o });
+  for (const p of PARTNERS) await prisma.finPartner.upsert({ where: { code: p.code }, update: {}, create: p });
+  for (const l of LENDERS) await prisma.finLender.upsert({ where: { name: l.name }, update: {}, create: l });
+  for (const c of EXPENSE_CATEGORIES) await prisma.finExpenseCategory.upsert({ where: { code: c.code }, update: {}, create: c });
+  for (const o of INCOME_ORIGINS) await prisma.finIncomeOrigin.upsert({ where: { code: o.code }, update: {}, create: o });
   for (const p of PROJECTS_SEED) {
-    const spv = p.spvCode ? await prisma.sPV.findUnique({ where: { code: p.spvCode } }) : null;
-    await prisma.project.upsert({
+    const spv = p.spvCode ? await prisma.finSPV.findUnique({ where: { code: p.spvCode } }) : null;
+    await prisma.finProject.upsert({
       where: { code: p.code },
       update: { name: p.name, line: p.line, model: p.model, status: p.status, spvId: spv?.id ?? null },
       create: { code: p.code, name: p.name, line: p.line, model: p.model, status: p.status, spvId: spv?.id ?? null },
@@ -84,26 +84,26 @@ export async function importExcelFromBuffer(
   };
 
   if (opts.wipe) {
-    await prisma.movementDocument.deleteMany({});
-    await prisma.bankStatementLine.deleteMany({});
-    await prisma.bankStatement.deleteMany({});
-    await prisma.movement.deleteMany({});
-    await prisma.capitalContribution.deleteMany({});
-    await prisma.loan.deleteMany({});
-    await prisma.nonBankContribution.deleteMany({});
+    await prisma.finMovementDocument.deleteMany({});
+    await prisma.finBankStatementLine.deleteMany({});
+    await prisma.finBankStatement.deleteMany({});
+    await prisma.finMovement.deleteMany({});
+    await prisma.finCapitalContribution.deleteMany({});
+    await prisma.finLoan.deleteMany({});
+    await prisma.finNonBankContribution.deleteMany({});
   }
 
   await ensureCatalogs();
 
   // Indexar catálogos por nombre/code para lookups rápidos
   const [accounts, partners, lenders, providers, categories, origins, projects] = await Promise.all([
-    prisma.account.findMany(),
-    prisma.partner.findMany(),
-    prisma.lender.findMany(),
-    prisma.provider.findMany(),
-    prisma.expenseCategory.findMany(),
-    prisma.incomeOrigin.findMany(),
-    prisma.project.findMany(),
+    prisma.finAccount.findMany(),
+    prisma.finPartner.findMany(),
+    prisma.finLender.findMany(),
+    prisma.finProvider.findMany(),
+    prisma.finExpenseCategory.findMany(),
+    prisma.finIncomeOrigin.findMany(),
+    prisma.finProject.findMany(),
   ]);
 
   const accountByName = new Map<string, number>();
@@ -148,7 +148,7 @@ export async function importExcelFromBuffer(
     if (!name) return null;
     const key = normalize(name);
     if (providerByName.has(key)) return providerByName.get(key)!;
-    const created = await prisma.provider.create({ data: { name } });
+    const created = await prisma.finProvider.create({ data: { name } });
     providerByName.set(key, created.id);
     return created.id;
   }
@@ -157,7 +157,7 @@ export async function importExcelFromBuffer(
     if (!name) return null;
     const key = normalize(name);
     if (lenderByName.has(key)) return lenderByName.get(key)!;
-    const created = await prisma.lender.create({ data: { name } });
+    const created = await prisma.finLender.create({ data: { name } });
     lenderByName.set(key, created.id);
     return created.id;
   }
@@ -252,7 +252,7 @@ export async function importExcelFromBuffer(
       const projectId = proyectoName ? await getOrCreateProject(String(proyectoName)) : null;
       const notas = cell(row[idx.notas]);
 
-      await prisma.movement.create({
+      await prisma.finMovement.create({
         data: {
           date: fecha,
           type: tipo,
@@ -315,7 +315,7 @@ export async function importExcelFromBuffer(
           continue;
         }
         const projectId = proyectoName ? await getOrCreateProject(String(proyectoName)) : null;
-        await prisma.capitalContribution.create({
+        await prisma.finCapitalContribution.create({
           data: {
             date: fecha,
             amount: valor,
@@ -339,7 +339,7 @@ export async function importExcelFromBuffer(
           continue;
         }
         const projectId = proyectoName ? await getOrCreateProject(String(proyectoName)) : null;
-        await prisma.loan.create({
+        await prisma.finLoan.create({
           data: {
             date: fecha,
             amount: valor,
@@ -359,7 +359,7 @@ export async function importExcelFromBuffer(
         const partnerId = socioCode ? partnerByCode.get(normalize(socioCode)) : null;
         if (!partnerId) continue;
         const projectId = proyectoName ? await getOrCreateProject(String(proyectoName)) : null;
-        await prisma.nonBankContribution.create({
+        await prisma.finNonBankContribution.create({
           data: {
             date: fecha,
             amount: valor,
@@ -407,7 +407,7 @@ export async function importExcelFromBuffer(
         const expectedCost = parseAmount(row[idxCostoReal]);
         const status = cell(row[idxStatus]);
         const model = cell(row[idxModel]);
-        await prisma.project.upsert({
+        await prisma.finProject.upsert({
           where: { code: String(code) },
           update: {
             name: String(name),
