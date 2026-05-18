@@ -1,6 +1,57 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
-import { Shield, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react'
+import { Lock, Eye, EyeOff, AlertCircle } from 'lucide-react'
+
+function RALogoMark({ width = 80, height = 60 }: { width?: number; height?: number }) {
+  return (
+    <svg width={width} height={height} viewBox="0 0 120 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="4" y="58" width="14" height="22" fill="#2D4B52" opacity="0.55"/>
+      <rect x="7" y="63" width="3" height="3" fill="rgba(255,255,255,0.35)"/>
+      <rect x="12" y="63" width="3" height="3" fill="rgba(255,255,255,0.35)"/>
+      <rect x="7" y="70" width="3" height="3" fill="rgba(255,255,255,0.35)"/>
+      <rect x="12" y="70" width="3" height="3" fill="rgba(255,255,255,0.35)"/>
+      <rect x="20" y="42" width="20" height="38" fill="#2D4B52" opacity="0.78"/>
+      <rect x="23" y="47" width="5" height="5" fill="rgba(255,255,255,0.35)"/>
+      <rect x="31" y="47" width="5" height="5" fill="rgba(255,255,255,0.35)"/>
+      <rect x="23" y="56" width="5" height="5" fill="rgba(255,255,255,0.35)"/>
+      <rect x="31" y="56" width="5" height="5" fill="rgba(255,255,255,0.35)"/>
+      <rect x="23" y="65" width="5" height="5" fill="rgba(255,255,255,0.35)"/>
+      <rect x="31" y="65" width="5" height="5" fill="rgba(255,255,255,0.35)"/>
+      <rect x="43" y="6" width="34" height="74" fill="#2D4B52"/>
+      <rect x="59" y="0" width="2.5" height="8" fill="#2D4B52"/>
+      <rect x="56" y="6" width="8" height="3" fill="#2D4B52"/>
+      <rect x="47" y="13" width="6" height="6" fill="rgba(255,255,255,0.38)"/>
+      <rect x="67" y="13" width="6" height="6" fill="rgba(255,255,255,0.38)"/>
+      <rect x="47" y="24" width="6" height="6" fill="rgba(255,255,255,0.38)"/>
+      <rect x="67" y="24" width="6" height="6" fill="rgba(255,255,255,0.38)"/>
+      <rect x="47" y="35" width="6" height="6" fill="rgba(255,255,255,0.38)"/>
+      <rect x="67" y="35" width="6" height="6" fill="rgba(255,255,255,0.38)"/>
+      <rect x="47" y="46" width="6" height="6" fill="rgba(255,255,255,0.38)"/>
+      <rect x="67" y="46" width="6" height="6" fill="rgba(255,255,255,0.38)"/>
+      <rect x="47" y="57" width="6" height="6" fill="rgba(255,255,255,0.38)"/>
+      <rect x="67" y="57" width="6" height="6" fill="rgba(255,255,255,0.38)"/>
+      <rect x="58" y="13" width="4" height="6" fill="rgba(255,255,255,0.2)"/>
+      <rect x="58" y="24" width="4" height="6" fill="rgba(255,255,255,0.2)"/>
+      <rect x="58" y="35" width="4" height="6" fill="rgba(255,255,255,0.2)"/>
+      <rect x="80" y="38" width="20" height="42" fill="#2D4B52" opacity="0.78"/>
+      <rect x="83" y="43" width="5" height="5" fill="rgba(255,255,255,0.35)"/>
+      <rect x="91" y="43" width="5" height="5" fill="rgba(255,255,255,0.35)"/>
+      <rect x="83" y="52" width="5" height="5" fill="rgba(255,255,255,0.35)"/>
+      <rect x="91" y="52" width="5" height="5" fill="rgba(255,255,255,0.35)"/>
+      <rect x="83" y="61" width="5" height="5" fill="rgba(255,255,255,0.35)"/>
+      <rect x="91" y="61" width="5" height="5" fill="rgba(255,255,255,0.35)"/>
+      <rect x="83" y="70" width="5" height="5" fill="rgba(255,255,255,0.35)"/>
+      <rect x="91" y="70" width="5" height="5" fill="rgba(255,255,255,0.35)"/>
+      <rect x="103" y="54" width="14" height="26" fill="#2D4B52" opacity="0.55"/>
+      <rect x="106" y="59" width="3" height="3" fill="rgba(255,255,255,0.35)"/>
+      <rect x="111" y="59" width="3" height="3" fill="rgba(255,255,255,0.35)"/>
+      <rect x="106" y="66" width="3" height="3" fill="rgba(255,255,255,0.35)"/>
+      <rect x="111" y="66" width="3" height="3" fill="rgba(255,255,255,0.35)"/>
+      <rect x="0" y="80" width="120" height="1.5" fill="#2D4B52" opacity="0.3"/>
+      <path d="M 8 85 Q 60 72 112 85" stroke="#C8922A" strokeWidth="3" fill="none" strokeLinecap="round"/>
+    </svg>
+  )
+}
 
 const TOKEN_KEY = 'pm_auth_token'
 const API = '/api/auth'
@@ -84,16 +135,15 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
         <div className="px-8 py-10">
           {/* Logo */}
           <div className="flex flex-col items-center mb-8">
-            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
-              style={{ background: 'linear-gradient(135deg, #2D4B52 0%, #3A5F68 100%)',
-                       boxShadow: '0 8px 24px rgba(45,75,82,0.25)' }}>
-              <Shield className="w-8 h-8" style={{ color: '#E0AD4F' }} />
-            </div>
-            <h1 className="text-xl font-bold tracking-wide text-center" style={{ color: '#2D4B52' }}>
-              Ecosistema operativo
+            <RALogoMark width={100} height={75} />
+            <h1
+              className="text-xl font-bold tracking-wide text-center mt-3"
+              style={{ color: '#2D4B52', fontFamily: 'Georgia, serif', letterSpacing: '0.04em' }}
+            >
+              Restrepo Acosta
             </h1>
-            <p className="text-xs mt-1" style={{ color: 'rgba(45,75,82,0.5)' }}>
-              Restrepo Acosta Global Holding LLC
+            <p className="text-[10px] uppercase tracking-[0.2em] font-semibold mt-0.5" style={{ color: '#C8922A' }}>
+              Global Holdings LLC
             </p>
           </div>
 

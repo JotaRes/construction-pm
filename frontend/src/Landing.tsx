@@ -1,9 +1,70 @@
 import { Link } from 'react-router-dom'
-import { Building2, Wallet, ArrowRight, Shield, Download, Loader2 } from 'lucide-react'
+import { Building2, Wallet, ArrowRight, Download, Loader2 } from 'lucide-react'
 import { useState } from 'react'
 import { logout } from './components/AuthGate'
 
 const TOKEN_KEY = 'pm_auth_token'
+
+function RALogoMark({ width = 96, height = 72 }: { width?: number; height?: number }) {
+  return (
+    <svg width={width} height={height} viewBox="0 0 120 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* Far-left small building */}
+      <rect x="4" y="58" width="14" height="22" fill="#2D4B52" opacity="0.55"/>
+      <rect x="7" y="63" width="3" height="3" fill="rgba(255,255,255,0.35)"/>
+      <rect x="12" y="63" width="3" height="3" fill="rgba(255,255,255,0.35)"/>
+      <rect x="7" y="70" width="3" height="3" fill="rgba(255,255,255,0.35)"/>
+      <rect x="12" y="70" width="3" height="3" fill="rgba(255,255,255,0.35)"/>
+      {/* Left medium building */}
+      <rect x="20" y="42" width="20" height="38" fill="#2D4B52" opacity="0.78"/>
+      <rect x="23" y="47" width="5" height="5" fill="rgba(255,255,255,0.35)"/>
+      <rect x="31" y="47" width="5" height="5" fill="rgba(255,255,255,0.35)"/>
+      <rect x="23" y="56" width="5" height="5" fill="rgba(255,255,255,0.35)"/>
+      <rect x="31" y="56" width="5" height="5" fill="rgba(255,255,255,0.35)"/>
+      <rect x="23" y="65" width="5" height="5" fill="rgba(255,255,255,0.35)"/>
+      <rect x="31" y="65" width="5" height="5" fill="rgba(255,255,255,0.35)"/>
+      {/* Center main tower */}
+      <rect x="43" y="6" width="34" height="74" fill="#2D4B52"/>
+      {/* Spire */}
+      <rect x="59" y="0" width="2.5" height="8" fill="#2D4B52"/>
+      <rect x="56" y="6" width="8" height="3" fill="#2D4B52"/>
+      {/* Center tower windows */}
+      <rect x="47" y="13" width="6" height="6" fill="rgba(255,255,255,0.38)"/>
+      <rect x="67" y="13" width="6" height="6" fill="rgba(255,255,255,0.38)"/>
+      <rect x="47" y="24" width="6" height="6" fill="rgba(255,255,255,0.38)"/>
+      <rect x="67" y="24" width="6" height="6" fill="rgba(255,255,255,0.38)"/>
+      <rect x="47" y="35" width="6" height="6" fill="rgba(255,255,255,0.38)"/>
+      <rect x="67" y="35" width="6" height="6" fill="rgba(255,255,255,0.38)"/>
+      <rect x="47" y="46" width="6" height="6" fill="rgba(255,255,255,0.38)"/>
+      <rect x="67" y="46" width="6" height="6" fill="rgba(255,255,255,0.38)"/>
+      <rect x="47" y="57" width="6" height="6" fill="rgba(255,255,255,0.38)"/>
+      <rect x="67" y="57" width="6" height="6" fill="rgba(255,255,255,0.38)"/>
+      {/* Center column of windows */}
+      <rect x="58" y="13" width="4" height="6" fill="rgba(255,255,255,0.2)"/>
+      <rect x="58" y="24" width="4" height="6" fill="rgba(255,255,255,0.2)"/>
+      <rect x="58" y="35" width="4" height="6" fill="rgba(255,255,255,0.2)"/>
+      {/* Right medium building */}
+      <rect x="80" y="38" width="20" height="42" fill="#2D4B52" opacity="0.78"/>
+      <rect x="83" y="43" width="5" height="5" fill="rgba(255,255,255,0.35)"/>
+      <rect x="91" y="43" width="5" height="5" fill="rgba(255,255,255,0.35)"/>
+      <rect x="83" y="52" width="5" height="5" fill="rgba(255,255,255,0.35)"/>
+      <rect x="91" y="52" width="5" height="5" fill="rgba(255,255,255,0.35)"/>
+      <rect x="83" y="61" width="5" height="5" fill="rgba(255,255,255,0.35)"/>
+      <rect x="91" y="61" width="5" height="5" fill="rgba(255,255,255,0.35)"/>
+      <rect x="83" y="70" width="5" height="5" fill="rgba(255,255,255,0.35)"/>
+      <rect x="91" y="70" width="5" height="5" fill="rgba(255,255,255,0.35)"/>
+      {/* Far-right small building */}
+      <rect x="103" y="54" width="14" height="26" fill="#2D4B52" opacity="0.55"/>
+      <rect x="106" y="59" width="3" height="3" fill="rgba(255,255,255,0.35)"/>
+      <rect x="111" y="59" width="3" height="3" fill="rgba(255,255,255,0.35)"/>
+      <rect x="106" y="66" width="3" height="3" fill="rgba(255,255,255,0.35)"/>
+      <rect x="111" y="66" width="3" height="3" fill="rgba(255,255,255,0.35)"/>
+      {/* Ground baseline */}
+      <rect x="0" y="80" width="120" height="1.5" fill="#2D4B52" opacity="0.3"/>
+      {/* Gold swoosh */}
+      <path d="M 8 85 Q 60 72 112 85" stroke="#C8922A" strokeWidth="3" fill="none" strokeLinecap="round"/>
+    </svg>
+  )
+}
 
 export default function Landing() {
   const [downloading, setDownloading] = useState(false)
@@ -47,18 +108,13 @@ export default function Landing() {
       {/* Header */}
       <header className="px-8 py-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div
-            className="w-10 h-10 rounded-lg flex items-center justify-center"
-            style={{ background: 'var(--brand-teal)' }}
-          >
-            <Shield size={20} color="var(--brand-gold)" />
-          </div>
+          <RALogoMark width={44} height={33} />
           <div>
-            <div className="text-xs font-mono uppercase tracking-widest" style={{ color: 'var(--brand-teal)' }}>
+            <div className="text-sm font-bold tracking-wide" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>
               Restrepo Acosta
             </div>
-            <div className="text-sm font-semibold" style={{ color: 'var(--brand-teal)' }}>
-              Global Holding LLC
+            <div className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--brand-gold)' }}>
+              Global Holdings LLC
             </div>
           </div>
         </div>
@@ -74,14 +130,30 @@ export default function Landing() {
       {/* Hero */}
       <main className="flex-1 flex flex-col items-center justify-center px-6 py-8">
         <div className="max-w-5xl w-full">
+          {/* Logo hero */}
           <div className="text-center mb-10">
+            <div className="flex justify-center mb-5">
+              <RALogoMark width={160} height={120} />
+            </div>
             <h1
-              className="text-4xl md:text-5xl font-semibold mb-4 leading-tight"
-              style={{ color: 'var(--brand-teal)', fontFamily: 'Inter' }}
+              className="text-3xl md:text-4xl font-bold mb-1 leading-tight"
+              style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif', letterSpacing: '0.04em' }}
+            >
+              Restrepo Acosta
+            </h1>
+            <div
+              className="text-xs md:text-sm uppercase tracking-[0.25em] mb-5 font-semibold"
+              style={{ color: 'var(--brand-gold)' }}
+            >
+              Global Holdings LLC
+            </div>
+            <div
+              className="inline-block text-[11px] uppercase tracking-[0.18em] px-4 py-1 rounded-full mb-2"
+              style={{ background: 'rgba(45,75,82,0.07)', color: 'var(--brand-teal2)' }}
             >
               Ecosistema operativo
-            </h1>
-            <p className="text-base md:text-lg max-w-2xl mx-auto" style={{ color: 'var(--brand-teal2)' }}>
+            </div>
+            <p className="text-sm max-w-lg mx-auto mt-3" style={{ color: 'var(--brand-teal2)' }}>
               Selecciona el módulo con el que deseas trabajar. Ambos comparten el mismo acceso seguro.
             </p>
           </div>
