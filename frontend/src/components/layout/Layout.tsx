@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { alertsApi, projectsApi } from '../../lib/api'
 import { logout } from '../AuthGate'
+import ModuleSwitcher from '../ModuleSwitcher'
 import { useProjectStore } from '../../store/projectStore'
 import type { Alert, Task } from '../../lib/types'
 import { tasksApi } from '../../lib/api'
@@ -244,9 +245,10 @@ export default function Layout({ projectId, children }: Props) {
       </aside>
 
       <main className="flex-1 overflow-y-auto flex flex-col" style={{ background: 'var(--brand-cream)' }}>
-        {/* Top bar with backup button */}
-        <div className="flex items-center justify-end px-6 py-2 border-b bg-white/60"
+        {/* Top bar: module switcher + backup */}
+        <div className="flex items-center justify-end gap-2 px-6 py-2 border-b bg-white/60"
           style={{ borderColor: 'rgba(0,0,0,0.07)', backdropFilter: 'blur(4px)', minHeight: 44 }}>
+          <ModuleSwitcher currentModule="tech" />
           <a
             href="/api/backup"
             download

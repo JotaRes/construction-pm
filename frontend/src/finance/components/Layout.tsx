@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { cls } from "../lib/format";
 import { logout as unifiedLogout } from "../../components/AuthGate";
+import ModuleSwitcher from "../../components/ModuleSwitcher";
 
 const NAV = [
   { to: "/finance/dashboard", label: "Dashboard", icon: LayoutDashboard, group: "Vista ejecutiva" },
@@ -82,8 +83,25 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto bg-bg">
-        <div className="max-w-[1600px] mx-auto p-6">{children}</div>
+      <main className="flex-1 overflow-y-auto bg-bg flex flex-col">
+        {/* Top bar: switcher de módulos + backup */}
+        <div className="flex items-center justify-end gap-2 px-6 py-2 border-b border-line bg-bg-soft/60 backdrop-blur-sm" style={{ minHeight: 44 }}>
+          <ModuleSwitcher currentModule="finance" />
+          <a
+            href="/api/backup"
+            download
+            className="flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-colors text-slate-300 hover:text-white"
+            style={{ background: 'rgba(94,234,212,0.08)', border: '1px solid rgba(94,234,212,0.18)' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(94,234,212,0.15)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(94,234,212,0.08)')}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Backup del sistema
+          </a>
+        </div>
+        <div className="max-w-[1600px] mx-auto p-6 flex-1 w-full">{children}</div>
       </main>
     </div>
   );
