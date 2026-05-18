@@ -308,6 +308,10 @@ model FinAccount {
   yearsActive   String?
   initialBalance Float   @default(0)
   reportedBalance Float  @default(0)
+  currentBalance Float   @default(0)
+  accountNumber  String?
+  routingNumber  String?
+  address        String?
   type          String   @default("operativa")
   active        Boolean  @default(true)
   notes         String?
@@ -466,6 +470,14 @@ model FinMovement {
   needsReview     Boolean  @default(false)
   reviewReason    String?
 
+  // Comparación con extractos bancarios:
+  //   "matched"   = movimiento manual coincide con línea de extracto (verde)
+  //   "manual_only" = registrado manual pero no aparece en extracto (amarillo)
+  //   "extract_only" = en extracto, falta registrar manualmente (rojo, se crea como needsReview)
+  //   "pending"   = sin extracto cargado todavía (neutral)
+  matchStatus     String   @default("pending")
+  matchedLineId   Int?
+
   importSource    String?
   importRef       String?
 
@@ -498,6 +510,11 @@ model FinCapitalContribution {
   project     FinProject? @relation(fields: [projectId], references: [id])
   destAccountCode String?
   notes       String?
+  // Si la contribución se sincronizó automáticamente desde un movimiento
+  // (Ingreso + isEquity), apunta al movimiento de origen. Permite mantener
+  // 1-1 entre Movimiento equity y Capital: si el movimiento se borra/actualiza,
+  // la contribución refleja el cambio.
+  sourceMovementId Int? @unique
   createdAt   DateTime @default(now())
 
   @@map("fin_capital_contribution")

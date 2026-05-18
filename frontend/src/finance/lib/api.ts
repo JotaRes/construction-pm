@@ -112,6 +112,9 @@ export const API = {
   createMovementFromLine: (lineId: number) =>
     unwrap<any>(api.post(`/statements/lines/${lineId}/create-movement`)),
   deleteStatement: (id: number) => unwrap<any>(api.delete(`/statements/${id}`)),
+  // Líneas de extracto sin reconciliar — alimentan alertas "rojas" en MOVIMIENTOS
+  getUnreconciledLines: (accountId?: number) =>
+    unwrap<any[]>(api.get("/statements/unreconciled-lines/all", { params: accountId ? { accountId } : {} })),
 
   // Documents
   uploadMovementDoc: (movementId: number, file: File, kind?: string) => {

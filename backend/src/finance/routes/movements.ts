@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma";
 import { ok, fail } from "../lib/respond";
+import { upsertCapitalFromMovement, removeCapitalForMovement } from "../services/capitalSync";
 
 const router = Router();
 
@@ -63,6 +64,7 @@ router.post("/", async (req, res) => {
     const data = { ...req.body };
     if (data.date) data.date = new Date(data.date);
     const created = await prisma.finMovement.create({ data, include: includeAll });
+    await upsertCapitalFromMovement(created.id);
     ok(res, created);
   } catch (e) { fail(res, e); }
 });
@@ -85,13 +87,16 @@ router.patch("/:id", async (req, res) => {
     delete data.linkedFrom;
     delete data.loan;
     const updated = await prisma.finMovement.update({ where: { id: +req.params.id }, data, include: includeAll });
+    await upsertCapitalFromMovement(updated.id);
     ok(res, updated);
   } catch (e) { fail(res, e); }
 });
 
 router.delete("/:id", async (req, res) => {
   try {
-    await prisma.finMovement.delete({ where: { id: +req.params.id } });
+    const id = +req.params.id;
+    await removeCapitalForMovement(id);
+    await prisma.finMovement.delete({ where: { id } });
     ok(res, { deleted: true });
   } catch (e) { fail(res, e); }
 });

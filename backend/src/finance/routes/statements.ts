@@ -3,7 +3,7 @@ import multer from "multer";
 import { prisma } from "../lib/prisma";
 import { ok, fail } from "../lib/respond";
 import { parseStatementFile } from "../services/statementParser";
-import { reconcileStatement } from "../services/reconciliation";
+import { reconcileStatement, getUnreconciledLines } from "../services/reconciliation";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
@@ -15,6 +15,15 @@ router.get("/", async (_req, res) => {
       orderBy: { periodStart: "desc" },
     });
     ok(res, list);
+  } catch (e) { fail(res, e); }
+});
+
+// IMPORTANTE: rutas estáticas ANTES de /:id para que Express las matche primero.
+router.get("/unreconciled-lines/all", async (req, res) => {
+  try {
+    const accountId = req.query.accountId ? +(req.query.accountId as string) : undefined;
+    const lines = await getUnreconciledLines(accountId);
+    ok(res, lines);
   } catch (e) { fail(res, e); }
 });
 
@@ -81,13 +90,15 @@ router.delete("/:id", async (req, res) => {
 
 router.post("/lines/:lineId/match/:movementId", async (req, res) => {
   try {
+    const lineId = +req.params.lineId;
+    const movementId = +req.params.movementId;
     await prisma.finBankStatementLine.update({
-      where: { id: +req.params.lineId },
-      data: { matchedMovementId: +req.params.movementId, matchStatus: "matched_manual" },
+      where: { id: lineId },
+      data: { matchedMovementId: movementId, matchStatus: "matched_manual" },
     });
     await prisma.finMovement.update({
-      where: { id: +req.params.movementId },
-      data: { isReconciled: true },
+      where: { id: movementId },
+      data: { isReconciled: true, matchStatus: "matched", matchedLineId: lineId },
     });
     ok(res, { matched: true });
   } catch (e) { fail(res, e); }
@@ -110,6 +121,8 @@ router.post("/lines/:lineId/create-movement", async (req, res) => {
         importSource: "bank_statement",
         importRef: `stmt:${line.statementId}:line:${line.id}`,
         isReconciled: true,
+        matchStatus: "matched",
+        matchedLineId: line.id,
       },
     });
     await prisma.finBankStatementLine.update({

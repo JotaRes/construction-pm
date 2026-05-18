@@ -56,7 +56,10 @@ export async function reconcileStatement(statementId: number): Promise<ReconResu
           where: { id: line.id },
           data: { matchedMovementId: m.id, matchStatus: "matched_exact" },
         });
-        await prisma.finMovement.update({ where: { id: m.id }, data: { isReconciled: true } });
+        await prisma.finMovement.update({
+          where: { id: m.id },
+          data: { isReconciled: true, matchStatus: "matched", matchedLineId: line.id },
+        });
         usedMovIds.add(m.id);
         usedLineIds.add(line.id);
         break;
@@ -78,12 +81,26 @@ export async function reconcileStatement(statementId: number): Promise<ReconResu
           where: { id: line.id },
           data: { matchedMovementId: m.id, matchStatus: "matched_approx" },
         });
-        await prisma.finMovement.update({ where: { id: m.id }, data: { isReconciled: true } });
+        await prisma.finMovement.update({
+          where: { id: m.id },
+          data: { isReconciled: true, matchStatus: "matched", matchedLineId: line.id },
+        });
         usedMovIds.add(m.id);
         usedLineIds.add(line.id);
         break;
       }
     }
+  }
+
+  // 3) Movimientos en el período del extracto SIN match → "manual_only" (amarillo)
+  //    Quedan así hasta que aparezca línea de extracto que los respalde.
+  for (const m of candidateMovs) {
+    if (usedMovIds.has(m.id)) continue;
+    if (m.date < stmt.periodStart || m.date > stmt.periodEnd) continue;
+    await prisma.finMovement.update({
+      where: { id: m.id },
+      data: { matchStatus: "manual_only" },
+    });
   }
 
   const lines = await prisma.finBankStatementLine.findMany({ where: { statementId } });
@@ -103,4 +120,20 @@ export async function reconcileStatement(statementId: number): Promise<ReconResu
     missingInBank,
     missingInBook,
   };
+}
+
+/**
+ * Devuelve líneas de extracto sin match — los "rojos" que el usuario debe
+ * registrar manualmente. Útil para mostrar alertas en MOVIMIENTOS.
+ */
+export async function getUnreconciledLines(accountId?: number) {
+  return prisma.finBankStatementLine.findMany({
+    where: {
+      matchStatus: "unmatched",
+      ...(accountId ? { statement: { accountId } } : {}),
+    },
+    include: { statement: { include: { account: true } } },
+    orderBy: { date: "desc" },
+    take: 500,
+  });
 }

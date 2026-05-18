@@ -11,7 +11,6 @@ import Accounts from "./pages/Accounts";
 import Catalogs from "./pages/Catalogs";
 import Statements from "./pages/Statements";
 import StatementDetail from "./pages/StatementDetail";
-import Reconciliation from "./pages/Reconciliation";
 import Import from "./pages/Import";
 import Reports from "./pages/Reports";
 
@@ -32,7 +31,6 @@ export default function FinanceApp() {
         <Route path="catalogs" element={<Catalogs />} />
         <Route path="statements" element={<Statements />} />
         <Route path="statements/:id" element={<StatementDetail />} />
-        <Route path="reconciliation" element={<Reconciliation />} />
         <Route path="import" element={<Import />} />
         <Route path="reports" element={<Reports />} />
         <Route path="*" element={<Navigate to="dashboard" replace />} />

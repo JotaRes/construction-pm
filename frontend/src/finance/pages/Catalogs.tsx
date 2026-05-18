@@ -10,7 +10,7 @@ const TABS = [
   { key: "accounts", label: "Cuentas", icon: Building, columns: ["code", "name", "bank"] },
   { key: "partners", label: "Socios", icon: Users, columns: ["code", "fullName"] },
   { key: "lenders", label: "Lenders", icon: Banknote, columns: ["name", "type"] },
-  { key: "providers", label: "Proveedores", icon: Briefcase, columns: ["name", "type"] },
+  { key: "providers", label: "Proveedores / Terceros", icon: Briefcase, columns: ["name", "type"] },
   { key: "categories", label: "Categorías", icon: TrendingDown, columns: ["code", "name", "group"] },
   { key: "origins", label: "Orígenes", icon: TrendingUp, columns: ["code", "name"] },
 ];

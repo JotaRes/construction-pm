@@ -26,11 +26,17 @@ router.get("/", async (_req, res) => {
       }
     }
 
-    const enriched = accounts.map((a) => ({
-      ...a,
-      currentBalance: balances.get(a.id) || a.initialBalance,
-      balanceDiff: (balances.get(a.id) || a.initialBalance) - a.reportedBalance,
-    }));
+    const enriched = accounts.map((a) => {
+      // currentBalance del DB = saldo manual reportado por el usuario.
+      // computedBalance = saldo derivado de movimientos (para detectar descuadre).
+      const computed = balances.get(a.id) ?? a.initialBalance;
+      const manual = a.currentBalance || a.reportedBalance || 0;
+      return {
+        ...a,
+        computedBalance: computed,
+        balanceDiff: computed - manual,
+      };
+    });
 
     ok(res, enriched);
   } catch (e) { fail(res, e); }
@@ -53,15 +59,68 @@ router.get("/:id", async (req, res) => {
 
 router.patch("/:id", async (req, res) => {
   try {
-    const { initialBalance, reportedBalance } = req.body;
+    const {
+      initialBalance, reportedBalance, currentBalance,
+      accountNumber, routingNumber, address,
+      name, bank, type, active, notes,
+    } = req.body;
     const data: any = {};
     if (initialBalance !== undefined) data.initialBalance = Number(initialBalance);
     if (reportedBalance !== undefined) data.reportedBalance = Number(reportedBalance);
+    if (currentBalance !== undefined) data.currentBalance = Number(currentBalance);
+    if (accountNumber !== undefined) data.accountNumber = accountNumber;
+    if (routingNumber !== undefined) data.routingNumber = routingNumber;
+    if (address !== undefined) data.address = address;
+    if (name !== undefined) data.name = name;
+    if (bank !== undefined) data.bank = bank;
+    if (type !== undefined) data.type = type;
+    if (active !== undefined) data.active = !!active;
+    if (notes !== undefined) data.notes = notes;
     const updated = await prisma.finAccount.update({
       where: { id: +req.params.id },
       data,
     });
     ok(res, updated);
+  } catch (e) { fail(res, e); }
+});
+
+// POST /api/finance/accounts — crear una cuenta nueva
+router.post("/", async (req, res) => {
+  try {
+    const { code, name, bank, type, accountNumber, routingNumber, address,
+      currentBalance, initialBalance, reportedBalance, active, notes, spvId } = req.body;
+    if (!code || !name || !bank) return fail(res, "code, name y bank son obligatorios", 400);
+    const created = await prisma.finAccount.create({
+      data: {
+        code, name, bank,
+        type: type || "operativa",
+        accountNumber: accountNumber || null,
+        routingNumber: routingNumber || null,
+        address: address || null,
+        currentBalance: Number(currentBalance || 0),
+        initialBalance: Number(initialBalance || 0),
+        reportedBalance: Number(reportedBalance || 0),
+        active: active !== false,
+        notes: notes || null,
+        spvId: spvId ? +spvId : null,
+      },
+    });
+    ok(res, created);
+  } catch (e) { fail(res, e); }
+});
+
+// DELETE /api/finance/accounts/:id — eliminar (solo si no tiene movimientos)
+router.delete("/:id", async (req, res) => {
+  try {
+    const id = +req.params.id;
+    const count = await prisma.finMovement.count({
+      where: { OR: [{ accountId: id }, { destAccountId: id }] },
+    });
+    if (count > 0) {
+      return fail(res, `No se puede eliminar: la cuenta tiene ${count} movimiento(s) asociado(s).`, 400);
+    }
+    await prisma.finAccount.delete({ where: { id } });
+    ok(res, { deleted: true });
   } catch (e) { fail(res, e); }
 });
 

@@ -237,26 +237,61 @@ input[type=number] { -moz-appearance: textfield; }
   .fin-app .card-soft {
     @apply bg-bg-soft border border-line rounded-xl;
   }
-  .fin-app .btn {
-    @apply inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors;
+  .fin-app .btn,
+  .fin-app .btn-primary,
+  .fin-app .btn-secondary,
+  .fin-app .btn-ghost,
+  .fin-app .btn-danger {
+    @apply inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-all duration-150;
+    letter-spacing: 0.01em;
   }
   .fin-app .btn-primary {
-    @apply bg-accent-deep text-white;
+    background: linear-gradient(135deg, #0d9488 0%, #14b8a6 100%);
+    color: #ffffff;
+    box-shadow: 0 1px 0 rgba(94, 234, 212, 0.18) inset,
+                0 1px 3px rgba(15, 32, 39, 0.35),
+                0 0 0 1px rgba(45, 212, 191, 0.25);
   }
-  .fin-app .btn-primary:hover { background-color: #2dd4bf; }
+  .fin-app .btn-primary:hover:not(:disabled) {
+    background: linear-gradient(135deg, #14b8a6 0%, #2dd4bf 100%);
+    box-shadow: 0 1px 0 rgba(94, 234, 212, 0.25) inset,
+                0 4px 12px rgba(45, 212, 191, 0.25),
+                0 0 0 1px rgba(94, 234, 212, 0.4);
+    transform: translateY(-0.5px);
+  }
+  .fin-app .btn-primary:active:not(:disabled) { transform: translateY(0); }
+  .fin-app .btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+
   .fin-app .btn-secondary {
-    @apply bg-bg-hover text-slate-200 border border-line;
+    background: rgba(255, 255, 255, 0.03);
+    color: #cbd5e1;
+    border: 1px solid #2a3441;
   }
-  .fin-app .btn-secondary:hover { background-color: #222a37; }
+  .fin-app .btn-secondary:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: #3b485a;
+    color: #ffffff;
+  }
+  .fin-app .btn-secondary:disabled { opacity: 0.55; cursor: not-allowed; }
+
   .fin-app .btn-ghost {
-    @apply text-slate-300;
+    color: #cbd5e1;
+    padding: 0.4rem 0.6rem;
   }
-  .fin-app .btn-ghost:hover { background-color: #1c2230; }
+  .fin-app .btn-ghost:hover:not(:disabled) {
+    background-color: rgba(94, 234, 212, 0.08);
+    color: #ffffff;
+  }
   .fin-app .btn-danger {
-    @apply text-white;
-    background-color: rgba(220, 38, 38, 0.9);
+    background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+    color: #ffffff;
+    box-shadow: 0 1px 3px rgba(239, 68, 68, 0.3),
+                0 0 0 1px rgba(239, 68, 68, 0.25);
   }
-  .fin-app .btn-danger:hover { background-color: #dc2626; }
+  .fin-app .btn-danger:hover:not(:disabled) {
+    background: linear-gradient(135deg, #ef4444 0%, #f87171 100%);
+    transform: translateY(-0.5px);
+  }
   .fin-app .input {
     @apply bg-bg-soft border border-line rounded-lg px-3 py-2 text-sm text-slate-200 outline-none transition-colors;
   }

@@ -1,7 +1,7 @@
 import { NavLink, useLocation, Link } from "react-router-dom";
 import {
   LayoutDashboard, ArrowLeftRight, Users, Wallet, Banknote,
-  Briefcase, ListTree, FileSpreadsheet, FileSearch, Upload, BarChart3,
+  Briefcase, ListTree, FileSpreadsheet, Upload, BarChart3,
   LogOut, ShieldCheck, Home,
 } from "lucide-react";
 import { cls } from "../lib/format";
@@ -13,7 +13,6 @@ const NAV = [
   { to: "/finance/movements", label: "Movimientos", icon: ArrowLeftRight, group: "Operación" },
   { to: "/finance/accounts", label: "Cuentas bancarias", icon: Wallet, group: "Operación" },
   { to: "/finance/statements", label: "Extractos bancarios", icon: FileSpreadsheet, group: "Operación" },
-  { to: "/finance/reconciliation", label: "Conciliación", icon: FileSearch, group: "Operación" },
   { to: "/finance/capital", label: "Capital aportado", icon: Users, group: "Estructura" },
   { to: "/finance/debt", label: "Deuda y préstamos", icon: Banknote, group: "Estructura" },
   { to: "/finance/projects", label: "Proyectos", icon: Briefcase, group: "Inversión" },

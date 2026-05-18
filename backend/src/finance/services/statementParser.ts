@@ -57,15 +57,20 @@ function tryParseAmount(v: any): number | null {
   return String(v).includes("(") ? -n : n;
 }
 
-function detectColumns(headers: string[]): { date: number; description: number; amount: number; debit: number; credit: number } {
+function detectColumns(headers: string[]): { date: number; description: number; amount: number; debit: number; credit: number; type: number } {
   const norm = headers.map((h) => String(h).toLowerCase().trim());
   const find = (...keys: string[]) => norm.findIndex((h) => keys.some((k) => h.includes(k)));
+  const findExact = (...keys: string[]) => norm.findIndex((h) => keys.some((k) => h === k));
   return {
     date: find("fecha", "date"),
     description: find("descripcion", "descripción", "concepto", "description", "memo"),
     amount: find("monto", "valor", "amount"),
-    debit: find("debito", "débito", "debit", "salida", "retiro", "withdrawal"),
-    credit: find("credito", "crédito", "credit", "ingreso", "deposito", "depósito", "deposit"),
+    // Las columnas debit/credit deben matchear EXACTAMENTE — sino "debit" puede capturar la palabra "Debit"
+    // en columna "Type" (mismo string). findExact evita falsos positivos.
+    debit: findExact("debito", "débito", "salida", "retiro", "withdrawal"),
+    credit: findExact("credito", "crédito", "deposito", "depósito", "deposit"),
+    // Columna explícita "Type" con valores Debit/Credit
+    type: find("type", "tipo", "d/c"),
   };
 }
 
@@ -105,7 +110,18 @@ export async function parseStatementFile(buffer: Buffer, filename: string, mimet
         else if (d && d !== 0) { amount = Math.abs(d); type = "debit"; }
       } else if (cols.amount >= 0) {
         const a = tryParseAmount(row[cols.amount]);
-        if (a != null) { amount = Math.abs(a); type = a >= 0 ? "credit" : "debit"; }
+        if (a != null) {
+          amount = Math.abs(a);
+          // Si hay columna "Type" explícita, úsala. Sino inferir del signo.
+          if (cols.type >= 0) {
+            const t = String(row[cols.type] || "").toLowerCase().trim();
+            if (t.startsWith("d") || t.includes("debit") || t.includes("débito") || t.includes("debito")) type = "debit";
+            else if (t.startsWith("c") || t.includes("credit") || t.includes("crédito") || t.includes("credito")) type = "credit";
+            else type = a >= 0 ? "credit" : "debit";
+          } else {
+            type = a >= 0 ? "credit" : "debit";
+          }
+        }
       }
 
       if (amount != null && amount > 0 && description) {

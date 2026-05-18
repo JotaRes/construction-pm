@@ -4,7 +4,7 @@ import { API } from "../lib/api";
 import { usd, dateShort } from "../lib/format";
 import { KPI } from "../components/KPI";
 import { Modal } from "../components/Modal";
-import { Users, Plus, Trash2, TrendingUp, Banknote, Wallet } from "lucide-react";
+import { Users, Plus, Trash2, TrendingUp, Banknote, Wallet, Zap, HandCoins } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, BarChart, Bar, CartesianGrid,
 } from "recharts";
@@ -102,10 +102,71 @@ export default function Capital() {
         </div>
       </div>
 
-      {/* Lista de aportes bancarizados */}
+      {/* Lista de aportes bancarizados (auto + manual) */}
       <div className="card overflow-x-auto">
-        <div className="px-4 py-3 border-b border-line">
+        <div className="px-4 py-3 border-b border-line flex items-center justify-between">
           <h2 className="text-sm font-semibold">Aportes bancarizados</h2>
+          <span className="text-[11px] text-slate-500">
+            <Zap size={11} className="inline -mt-0.5" /> auto = sincronizado desde Movimientos (Ingreso · Equity socio)
+          </span>
+        </div>
+        <table className="w-full text-sm">
+          <thead className="bg-bg-soft text-xs text-slate-400 uppercase">
+            <tr>
+              <th className="px-3 py-2 text-left">Origen</th>
+              <th className="px-3 py-2 text-left">Fecha</th>
+              <th className="px-3 py-2 text-left">Socio</th>
+              <th className="px-3 py-2 text-left">Concepto</th>
+              <th className="px-3 py-2 text-left">Proyecto</th>
+              <th className="px-3 py-2 text-right">Monto</th>
+              <th className="px-3 py-2"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.contribs.map((c: any) => {
+              const isAuto = !!c.sourceMovementId;
+              return (
+                <tr key={c.id} className="border-b border-line/50 table-row">
+                  <td className="px-3 py-2">
+                    {isAuto ? (
+                      <span className="badge bg-accent/15 text-accent border border-accent/30 text-[10px]" title="Sincronizado desde un movimiento">
+                        <Zap size={10} className="mr-1" /> auto
+                      </span>
+                    ) : (
+                      <span className="badge bg-slate-700/30 text-slate-300 text-[10px]" title="Aporte manual">manual</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 text-xs font-mono">{dateShort(c.date)}</td>
+                  <td className="px-3 py-2">{c.partner?.code} · {c.partner?.fullName}</td>
+                  <td className="px-3 py-2 text-xs">{c.concept}</td>
+                  <td className="px-3 py-2 text-xs text-slate-400">{c.project?.code || "—"}</td>
+                  <td className="px-3 py-2 text-right font-mono text-positive">{usd(c.amount)}</td>
+                  <td className="px-3 py-2 text-right">
+                    {isAuto ? (
+                      <span className="text-[10px] text-slate-500">edita el movimiento</span>
+                    ) : (
+                      <button onClick={() => { if (confirm("¿Eliminar aporte?")) deleteContrib.mutate(c.id); }} className="btn-ghost text-negative p-1"><Trash2 size={14} /></button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+            {data.contribs.length === 0 && (
+              <tr><td colSpan={7} className="p-4 text-center text-slate-500 text-xs">
+                Sin aportes bancarizados. Crea un movimiento <strong>Ingreso · Equity socio</strong> y se sincronizará aquí automáticamente.
+              </td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Lista de aportes no-bancarizados */}
+      <div className="card overflow-x-auto">
+        <div className="px-4 py-3 border-b border-line flex items-center justify-between">
+          <h2 className="text-sm font-semibold flex items-center gap-2">
+            <HandCoins size={14} /> Aportes no-bancarizados
+          </h2>
+          <span className="text-[11px] text-slate-500">Especie, pagos directos, gastos no canalizados por cuenta</span>
         </div>
         <table className="w-full text-sm">
           <thead className="bg-bg-soft text-xs text-slate-400 uppercase">
@@ -119,16 +180,23 @@ export default function Capital() {
             </tr>
           </thead>
           <tbody>
-            {data.contribs.map((c: any) => (
+            {data.nonBank.map((c: any) => (
               <tr key={c.id} className="border-b border-line/50 table-row">
                 <td className="px-3 py-2 text-xs font-mono">{dateShort(c.date)}</td>
                 <td className="px-3 py-2">{c.partner?.code} · {c.partner?.fullName}</td>
                 <td className="px-3 py-2 text-xs">{c.concept}</td>
                 <td className="px-3 py-2 text-xs text-slate-400">{c.project?.code || "—"}</td>
                 <td className="px-3 py-2 text-right font-mono text-positive">{usd(c.amount)}</td>
-                <td className="px-3 py-2 text-right"><button onClick={() => deleteContrib.mutate(c.id)} className="btn-ghost text-negative p-1"><Trash2 size={14} /></button></td>
+                <td className="px-3 py-2 text-right">
+                  <button onClick={() => { if (confirm("¿Eliminar aporte?")) API.deleteNonBank(c.id).then(() => qc.invalidateQueries({ queryKey: ["capital"] })); }} className="btn-ghost text-negative p-1"><Trash2 size={14} /></button>
+                </td>
               </tr>
             ))}
+            {data.nonBank.length === 0 && (
+              <tr><td colSpan={6} className="p-4 text-center text-slate-500 text-xs">
+                Sin aportes no-bancarizados. Usa el botón <strong>"Aporte no-bancarizado"</strong> arriba para registrar gastos en especie o pagos directos.
+              </td></tr>
+            )}
           </tbody>
         </table>
       </div>
