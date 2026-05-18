@@ -1,7 +1,42 @@
 import { Link } from 'react-router-dom'
-import { Building2, Wallet, ArrowRight, Shield } from 'lucide-react'
+import { Building2, Wallet, ArrowRight, Shield, Download, Loader2 } from 'lucide-react'
+import { useState } from 'react'
+import { logout } from './components/AuthGate'
+
+const TOKEN_KEY = 'pm_auth_token'
 
 export default function Landing() {
+  const [downloading, setDownloading] = useState(false)
+  const [downloadError, setDownloadError] = useState('')
+
+  async function handleBackup() {
+    setDownloading(true)
+    setDownloadError('')
+    try {
+      const token = localStorage.getItem(TOKEN_KEY)
+      const res = await fetch('/api/backup', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      const date = new Date().toISOString().split('T')[0]
+      a.download = `restrepoacosta-backup-${date}.zip`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (err: unknown) {
+      setDownloadError(
+        err instanceof Error ? err.message : 'No se pudo descargar el respaldo'
+      )
+    } finally {
+      setDownloading(false)
+    }
+  }
+
   return (
     <div
       className="min-h-screen flex flex-col"
@@ -27,12 +62,19 @@ export default function Landing() {
             </div>
           </div>
         </div>
+        <button
+          onClick={logout}
+          className="text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+          style={{ color: 'var(--brand-teal)', border: '1px solid rgba(45,75,82,0.2)' }}
+        >
+          Cerrar sesión
+        </button>
       </header>
 
       {/* Hero */}
-      <main className="flex-1 flex flex-col items-center justify-center px-6 -mt-12">
+      <main className="flex-1 flex flex-col items-center justify-center px-6 py-8">
         <div className="max-w-5xl w-full">
-          <div className="text-center mb-12">
+          <div className="text-center mb-10">
             <h1
               className="text-4xl md:text-5xl font-semibold mb-4 leading-tight"
               style={{ color: 'var(--brand-teal)', fontFamily: 'Inter' }}
@@ -44,7 +86,7 @@ export default function Landing() {
             </p>
           </div>
 
-          {/* Cards */}
+          {/* Module cards */}
           <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
             {/* Módulo Técnico */}
             <Link
@@ -117,9 +159,61 @@ export default function Landing() {
             </Link>
           </div>
 
+          {/* Backup panel — global del sistema */}
+          <div className="max-w-4xl mx-auto mt-6">
+            <div
+              className="rounded-2xl p-5 flex items-center gap-4 flex-wrap"
+              style={{
+                background: 'rgba(255,255,255,0.6)',
+                border: '1px solid rgba(45,75,82,0.12)',
+                backdropFilter: 'blur(8px)',
+              }}
+            >
+              <div
+                className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: 'var(--brand-teal)', boxShadow: '0 4px 12px rgba(45,75,82,0.2)' }}
+              >
+                <Download size={20} color="var(--brand-gold2)" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-semibold mb-0.5" style={{ color: 'var(--brand-teal)' }}>
+                  Respaldo completo del sistema
+                </div>
+                <div className="text-xs" style={{ color: 'var(--brand-teal2)' }}>
+                  Datos de ambos módulos · código fuente · configuración · ZIP único
+                </div>
+                {downloadError && (
+                  <div className="text-xs mt-1 text-red-500">Error: {downloadError}</div>
+                )}
+              </div>
+              <button
+                onClick={handleBackup}
+                disabled={downloading}
+                className="text-sm font-medium px-4 py-2 rounded-lg transition-all disabled:opacity-60 flex items-center gap-2"
+                style={{
+                  background: 'linear-gradient(135deg, var(--brand-gold) 0%, var(--brand-gold2) 100%)',
+                  color: 'white',
+                  boxShadow: '0 4px 14px rgba(200,146,42,0.25)',
+                }}
+              >
+                {downloading ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    Generando…
+                  </>
+                ) : (
+                  <>
+                    <Download size={14} />
+                    Descargar backup
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
           {/* Footer info */}
-          <div className="text-center mt-12 text-xs font-mono" style={{ color: 'var(--brand-teal2)' }}>
-            Acceso seguro · sesión única para ambos módulos
+          <div className="text-center mt-8 text-xs font-mono" style={{ color: 'var(--brand-teal2)' }}>
+            Acceso seguro · sesión única para ambos módulos · clave 18418598
           </div>
         </div>
       </main>

@@ -1,156 +1,60 @@
-# Construction PM — CLAUDE.md
-Sistema web full-stack que reemplaza el MASTER_CHECKLIST_V11.xlsx para control de obra residencial.
-Cliente: Restrepo Acosta Global Holding LLC · Usuario: Juan David Restrepo (50% partner)
+# CLAUDE.md — Guía para sesiones futuras
 
-## Ubicación
-```
-/Users/juandavid/Desktop/CLAUDE/construction-pm/
-├── backend/   → Node.js + Express + TypeScript + Prisma + SQLite (:3001)
-└── frontend/  → React 18 + Vite + Tailwind dark + Zustand + TanStack Query (:5173)
-```
+Este archivo está dirigido a Claude (o cualquier asistente AI) que retome trabajo sobre este repo. Para usuarios humanos, ver [README.md](./README.md).
 
-## Comandos esenciales
-```bash
-# Arrancar backend (watch mode)
-cd /Users/juandavid/Desktop/CLAUDE/construction-pm/backend && npm run dev
+## Qué es este repo
 
-# Arrancar frontend (terminal separada)
-cd /Users/juandavid/Desktop/CLAUDE/construction-pm/frontend && npm run dev
+Monorepo con **dos módulos integrados** bajo un solo deploy en Render:
 
-# Reset completo de la base de datos (borra todo y re-seedea Lote 87)
-cd /Users/juandavid/Desktop/CLAUDE/construction-pm/backend && npm run db:reset
+- **Módulo técnico** (`construction-pm` legacy) — control de obra residencial
+- **Módulo financiero** — CFO digital para Restrepo Acosta Global Holding LLC
 
-# Aplicar cambios de schema sin borrar datos
-cd /Users/juandavid/Desktop/CLAUDE/construction-pm/backend && npx prisma db push
+Producción: https://restrepoacosta.onrender.com · clave `18418598`.
 
-# Verificar TypeScript
-cd backend && npx tsc --noEmit
-cd frontend && npx tsc --noEmit
-```
+## Arquitectura crítica que NO debes romper
 
-## Base de datos — Modelos Prisma (SQLite)
-```
-Project       → configuración completa del proyecto (financiero, legal, constructivo)
-Phase         → 20 fases (F00–F19) por proyecto, cascade delete
-Item          → ~204 ítems por proyecto (valorPresupuestado + valorEjecutado), cascade
-Draw          → 8 draws por proyecto (EMPTY/PENDING/WIRED), cascade
-Partner       → socios con % participación, cascade
-Provider      → contratistas y proveedores, cascade
-Note          → notas libres por proyecto, cascade
-ProjectFile   → referencias a archivos (URL), cascade
-Inspection    → 16 inspecciones por proyecto (condado + HOA), cascade
-Task          → tareas manuales por proyecto (prioridad LOW/NORMAL/HIGH/URGENT), cascade
-```
+### Un solo schema Prisma
+`backend/prisma/schema.prisma` contiene los modelos de AMBOS módulos. Los modelos finance están prefijados con `Fin` (ej. `FinAccount`, `FinMovement`, `FinProject`) y mapeados a tablas SQL con prefijo `fin_` vía `@@map`.
 
-## API REST — Endpoints principales
-```
-GET    /api/projects                         → lista todos los proyectos (incluye draws)
-POST   /api/projects                         → crea proyecto NUEVO con 20 fases + 204 ítems + 8 draws + 16 inspecciones desde template
-GET    /api/projects/:id                     → proyecto completo con todas las relaciones
-GET    /api/projects/:id/dashboard           → KPIs calculados (avance, UPB, intereses, $/SF, ganancia)
-PATCH  /api/projects/:id                     → actualiza campos del proyecto
-DELETE /api/projects/:id                     → elimina proyecto y TODOS sus datos (cascade)
+**No vuelvas a separar finance.prisma.** El intento anterior causó que `prisma db push` de uno dropeara las tablas del otro (ambos schemas compartían DATABASE_URL). Casi se pierde el LOTE 87 en producción.
 
-GET    /api/projects/:id/phases              → fases con sus ítems (para Ejecución y Presupuesto)
-PATCH  /api/items/:id                        → actualiza un ítem (valorPresupuestado, valorEjecutado, estado, completado, etc.)
+### Cliente Prisma único
+- Tech accede a `prisma.project`, `prisma.partner`, `prisma.provider`, etc.
+- Finance accede a `prisma.finProject`, `prisma.finPartner`, `prisma.finProvider`, etc. (camelCase del modelo)
 
-GET    /api/projects/:id/draws               → lista draws
-PATCH  /api/draws/:id                        → actualiza draw
+### Routes con prefijos
+- `/api/*` — módulo técnico (legacy paths)
+- `/api/finance/*` — módulo financiero
+- `/api/auth/*` — auth global (servido desde tech, compartido)
+- `/api/backup` — backup global del sistema (datos de AMBOS módulos + código fuente)
 
-GET    /api/projects/:id/inspections         → lista inspecciones
-PATCH  /api/projects/:id/inspections/:id     → actualiza inspección
+### Frontend routing
+- `/` — Landing con selector de módulos + botón de backup
+- `/tech/*` — módulo técnico
+- `/finance/*` — módulo financiero
+- AuthGate global envuelve todo. Token compartido en `localStorage.pm_auth_token`.
 
-GET    /api/projects/:id/tasks               → lista tareas ordenadas por prioridad/done
-POST   /api/projects/:id/tasks               → crea tarea
-PATCH  /api/projects/:id/tasks/:id           → actualiza tarea
-DELETE /api/projects/:id/tasks/:id           → elimina tarea
+### Render.yaml
+- `autoDeploy: yes` — push a main dispara deploy automático
+- El `sed` para `provider sqlite→postgresql` corre en `startCommand`, no en `buildCommand` (Render resetea source files entre fases, solo persisten artifacts).
+- `tsx src/app.ts` en runtime — no compilamos a `dist/`.
 
-GET    /api/projects/:id/alerts              → 5 alertas automáticas calculadas en tiempo real
-GET    /api/projects/:id/providers           → proveedores
-POST   /api/projects/:id/providers           → agrega proveedor
-GET    /api/projects/:id/notes               → notas
-POST   /api/projects/:id/notes               → crea nota
-```
+## DB local vs producción
 
-## Frontend — Páginas (React Router)
-```
-/projects     → lista de proyectos con tarjetas; modal "Nuevo proyecto"; delete con confirmación
-/dashboard    → KPIs, avance por fase, inspecciones pendientes, historial draws
-/execution    → 204 ítems en 20 fases colapsables; dots de estado; side panel por ítem
-/budget       → presupuesto editable por ítem (valorPresupuestado); baseline para Ejecución
-/draws        → 8 tarjetas de draw con fechas, montos, estado
-/inspections  → tabla de 16 inspecciones con resultado y estado
-/financial    → modelo financiero: préstamo, UPB, interés acumulado, ganancia bruta, ROI
-/alerts       → 5 alertas automáticas (permit, budget, físico vs tiempo, holdback, $/SF)
-/tasks        → cuadro de tareas manuales por proyecto (CRUD, prioridades, fechas límite)
-/providers    → directorio de contratistas
-/notes        → notas libres
-/files        → referencias a documentos
-```
+| Entorno | Provider | DATABASE_URL |
+|---|---|---|
+| Local | `sqlite` | `file:./dev.db` (un solo archivo con todas las tablas) |
+| Render | `postgresql` | Postgres URL provista por Render (sed cambia provider en startup) |
 
-## Estado de datos — Lote 87 (proyecto principal)
-```
-Dirección:     218 N Foxglove Rd, Westminster, SC 29693 (Chickasaw Point / Oconee County)
-SPV:           Acosta Trust Homes, LLC
-Permit:        BR26-000029 · Vence jul 27, 2026
-Lender:        Hera Holdings LLC · Inspector: Trinity
-Loan:          $500,000 · Rate 8.5% · Holdback $395,350
-ARV:           $650,000 · 2,400 SF heated
-Draws wired:   Draw #1 ($68,750) + Draw #2 ($67,914) = $136,664
-Fases:         20 fases · 204 ítems · 16 inspecciones
-```
+## Pendientes conocidos / Ideas
 
-## Arquitectura de store y datos
-```typescript
-// Zustand store — proyecto activo global
-useProjectStore → { activeProjectId, setActiveProjectId }
+- Bundle frontend > 500KB → considerar code-split de Recharts via dynamic import
+- Importador de Excel del módulo financiero acepta el archivo "DOC FINANCIERO 2025-2026.xlsx" del usuario
+- Cloudinary env vars deben estar configuradas en Render para upload de PDFs
 
-// TanStack Query — cache de datos por proyecto
-['projects']           → lista general
-['phases', projectId]  → fuente compartida de Budget y Execution (mismo endpoint)
-['tasks', projectId]   → tareas del proyecto activo
-['alerts', projectId]  → alertas (refetch cada 60s)
+## Reglas de oro
 
-// Regla crítica TanStack v5: NO usar onSuccess en useQuery.
-// Usar useEffect para efectos post-query.
-```
-
-## Archivos clave
-```
-backend/prisma/schema.prisma          → schema completo (10 modelos)
-backend/prisma/seed.ts                → seed completo de Lote 87
-backend/src/data/phasesTemplate.ts    → PHASES_TEMPLATE + INSPECTIONS_TEMPLATE (usado por POST /projects)
-backend/src/routes/projects.ts        → incluye POST (crea desde template) y DELETE (cascade)
-backend/src/routes/tasks.ts           → CRUD completo de tareas
-frontend/src/lib/api.ts               → todos los clientes API axios
-frontend/src/lib/types.ts             → interfaces TypeScript completas
-frontend/src/lib/calculations.ts      → TODAS las fórmulas financieras aquí (regla de proyecto)
-frontend/src/components/layout/Layout.tsx → sidebar con project switcher dropdown + badges alertas/tareas
-```
-
-## Reglas de diseño (Tailwind dark)
-```
-bg-app:     #0F172A  (slate-950)
-bg-card:    #1E293B  (slate-800)
-bg-sidebar: slate-900
-accent:     blue-600 / blue-400
-ok:         emerald-400
-warning:    amber-400
-critical:   red-400
-font-body:  Inter
-font-mono:  JetBrains Mono (font-mono)
-```
-
-## Próximos pasos conocidos / Ideas pendientes
-- Deploy a producción (ver sección de deployment en este mismo documento)
-- Autenticación básica (si se abre a internet)
-- Exportar PDF de draws para Hera Holdings
-- Gantt visual de fases
-- Adjuntar archivos reales (S3 o Cloudflare R2)
-
-## Deployment a producción
-Ver respuesta detallada en el chat del 2026-05-04. Opciones:
-1. Railway.app (recomendado) — $5/mes, deploy desde GitHub
-2. DigitalOcean Droplet — $6/mes, control total, requiere más configuración
-3. Fly.io — free tier disponible
-Requiere: separar SQLite → PostgreSQL (o usar Turso/LibSQL para SQLite en la nube)
+1. **Antes de tocar el schema Prisma**, verifica que no estás re-separando los modelos finance.
+2. **Antes de hacer `prisma db push --accept-data-loss` localmente**, asegúrate que las tablas tech existen.
+3. **Antes de pushear a main**, verifica `npx tsc --noEmit` limpio en backend y frontend.
+4. **Cuando agregues un modelo nuevo al módulo financiero**: prefijo `Fin`, `@@map("fin_xxx")`, y actualizar `routes/backup.ts` para incluirlo en el ZIP.

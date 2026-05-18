@@ -12,7 +12,7 @@ router.get('/', async (req: Request, res: Response) => {
 
   const date = new Date().toISOString().split('T')[0]
   res.setHeader('Content-Type', 'application/zip')
-  res.setHeader('Content-Disposition', `attachment; filename="construction-pm-backup-${date}.zip"`)
+  res.setHeader('Content-Disposition', `attachment; filename="restrepoacosta-backup-${date}.zip"`)
 
   const archive = archiver('zip', { zlib: { level: 6 } })
   let aborted = false
@@ -41,7 +41,7 @@ router.get('/', async (req: Request, res: Response) => {
   archive.pipe(res)
 
   try {
-    // Lighter query: no nested item.documents (multiplies rows)
+    // === MÓDULO TÉCNICO ===
     const projects = await prisma.project.findMany({
       include: {
         phases: { include: { items: true } },
@@ -60,7 +60,7 @@ router.get('/', async (req: Request, res: Response) => {
       prisma.itemDocument.findMany(),
     ])
 
-    const dbSnapshot = JSON.stringify(
+    const techSnapshot = JSON.stringify(
       {
         projects,
         priceRefs,
@@ -72,7 +72,60 @@ router.get('/', async (req: Request, res: Response) => {
       2
     )
 
-    archive.append(dbSnapshot, { name: 'data/database.json' })
+    archive.append(techSnapshot, { name: 'data/tech-database.json' })
+
+    // === MÓDULO FINANCIERO ===
+    const [
+      finSpvs, finAccounts, finPartners, finLenders, finProviders,
+      finCategories, finOrigins, finProjects, finMovements,
+      finCapitalContribs, finLoans, finNonBankContribs,
+      finStatements, finStatementLines,
+      finMovementDocs, finProjectDocs,
+    ] = await Promise.all([
+      prisma.finSPV.findMany(),
+      prisma.finAccount.findMany(),
+      prisma.finPartner.findMany(),
+      prisma.finLender.findMany(),
+      prisma.finProvider.findMany(),
+      prisma.finExpenseCategory.findMany(),
+      prisma.finIncomeOrigin.findMany(),
+      prisma.finProject.findMany(),
+      prisma.finMovement.findMany(),
+      prisma.finCapitalContribution.findMany(),
+      prisma.finLoan.findMany(),
+      prisma.finNonBankContribution.findMany(),
+      prisma.finBankStatement.findMany(),
+      prisma.finBankStatementLine.findMany(),
+      prisma.finMovementDocument.findMany(),
+      prisma.finProjectDocument.findMany(),
+    ])
+
+    const finSnapshot = JSON.stringify(
+      {
+        spvs: finSpvs,
+        accounts: finAccounts,
+        partners: finPartners,
+        lenders: finLenders,
+        providers: finProviders,
+        expenseCategories: finCategories,
+        incomeOrigins: finOrigins,
+        projects: finProjects,
+        movements: finMovements,
+        capitalContributions: finCapitalContribs,
+        loans: finLoans,
+        nonBankContributions: finNonBankContribs,
+        bankStatements: finStatements,
+        bankStatementLines: finStatementLines,
+        movementDocuments: finMovementDocs,
+        projectDocuments: finProjectDocs,
+        exportedAt: new Date().toISOString(),
+        version: '1.0',
+      },
+      null,
+      2
+    )
+
+    archive.append(finSnapshot, { name: 'data/finance-database.json' })
 
     // Source code (best-effort: only included when files are present in the deploy)
     const backendDir = path.join(__dirname, '../..')
