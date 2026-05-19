@@ -1,8 +1,19 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma";
 import { ok, fail } from "../lib/respond";
+import { seedFinanceCatalogs } from "../services/seedCatalogs";
 
 const router = Router();
+
+// POST /api/finance/catalogs/seed-defaults — siembra catálogos por defecto
+// (SPVs, cuentas, socios, lenders, categorías, orígenes, proyectos)
+// Idempotente: usa upsert por code/name. Útil para inicializar producción.
+router.post("/seed-defaults", async (_req, res) => {
+  try {
+    const counts = await seedFinanceCatalogs();
+    ok(res, { seeded: true, counts });
+  } catch (e) { fail(res, e); }
+});
 
 // GET /api/catalogs — todos los catálogos en una sola llamada (frontend lo usa al cargar)
 router.get("/", async (_req, res) => {
