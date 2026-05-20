@@ -1,6 +1,8 @@
 import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
+import helmet from 'helmet'
+import rateLimit from 'express-rate-limit'
 import path from 'path'
 import fs from 'fs'
 import authRoutes from './routes/auth'
@@ -38,8 +40,67 @@ import finReports from './finance/routes/reports'
 const app = express()
 const PORT = process.env.PORT || 3001
 
-app.use(cors())
+// ── 1. SECURITY HEADERS (helmet) ─────────────────────────────────────────────
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc:  ["'self'"],
+        scriptSrc:   ["'self'"],
+        styleSrc:    ["'self'", "'unsafe-inline'"],   // Tailwind inline styles
+        imgSrc:      ["'self'", 'data:', 'https://res.cloudinary.com'],
+        connectSrc:  ["'self'"],
+        fontSrc:     ["'self'"],
+        objectSrc:   ["'none'"],
+        frameSrc:    ["'none'"],
+        upgradeInsecureRequests: [],
+      },
+    },
+    hsts: { maxAge: 31_536_000, includeSubDomains: true, preload: true },
+    xFrameOptions:       { action: 'deny' },
+    xContentTypeOptions: true,
+    referrerPolicy:      { policy: 'strict-origin-when-cross-origin' },
+    crossOriginEmbedderPolicy: false, // No romper carga de recursos externos
+  })
+)
+
+// ── 2. CORS RESTRICTIVO ───────────────────────────────────────────────────────
+const ALLOWED_ORIGINS = [
+  'https://restrepoacosta.onrender.com',
+  // Solo en desarrollo local:
+  ...(process.env.NODE_ENV !== 'production'
+    ? ['http://localhost:5173', 'http://localhost:3001']
+    : []),
+]
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Permitir sin origin (same-origin, Postman local)
+      if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+        callback(null, true)
+      } else {
+        callback(new Error(`CORS bloqueado: ${origin}`))
+      }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  })
+)
+
 app.use(express.json())
+
+// ── 3. RATE LIMITING — auth endpoints ────────────────────────────────────────
+const authLimiter = rateLimit({
+  windowMs:              15 * 60 * 1000, // ventana de 15 minutos
+  max:                   5,              // máx 5 intentos fallidos por IP
+  standardHeaders:       'draft-7',
+  legacyHeaders:         false,
+  skipSuccessfulRequests: true,          // solo cuenta intentos fallidos
+  message:               { error: 'Demasiados intentos. Espera 15 minutos e intenta de nuevo.' },
+})
+app.use('/api/auth/login', authLimiter)
 
 // API routes
 app.use('/api/auth', authRoutes)

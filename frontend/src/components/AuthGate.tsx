@@ -115,9 +115,12 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       localStorage.setItem(TOKEN_KEY, r.data.token)
       window.location.reload()
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { error?: string } } })
-        .response?.data?.error ?? 'Error de conexión'
-      setError(msg)
+      const e = err as { response?: { status?: number; data?: { error?: string } } }
+      if (e.response?.status === 429) {
+        setError('Demasiados intentos fallidos. Espera 15 minutos.')
+      } else {
+        setError(e.response?.data?.error ?? 'Error de conexión')
+      }
     } finally {
       setLoading(false)
     }
