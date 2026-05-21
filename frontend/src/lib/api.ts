@@ -116,3 +116,20 @@ export const docParseApi = {
     return api.post(`/projects/${projectId}/docs/parse-pdf?type=${type}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data.data)
   },
 }
+
+// Sincronización tech → finance (carta de aprobación crea/actualiza préstamo financiero)
+export const financeSyncApi = {
+  upsertLoanFromTech: (data: {
+    lender: string
+    loanNumber?: string
+    loanAmount: number
+    interestRate?: number
+    loanTermMonths?: number
+    settlementDate?: string
+    day1Disbursement?: number
+    holdback?: number
+    interestReserve?: number
+    techProjectName?: string
+  }) =>
+    api.post('/finance/loans/upsert-from-tech', data).then(r => r.data.data),
+}
