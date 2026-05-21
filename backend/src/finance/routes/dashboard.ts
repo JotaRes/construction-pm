@@ -18,9 +18,9 @@ router.get("/", async (_req, res) => {
       prisma.finExpenseCategory.findMany(),
     ]);
 
-    // Saldos por cuenta
+    // Saldos por cuenta (calculados a partir de los movimientos + saldo inicial)
     const balances = new Map<number, number>();
-    for (const a of accounts) balances.set(a.id, a.initialBalance);
+    for (const a of accounts) balances.set(a.id, a.initialBalance || 0);
     for (const m of allMovs) {
       if (m.type === "Ingreso") balances.set(m.accountId, (balances.get(m.accountId) || 0) + m.amount);
       else if (m.type === "Egreso") balances.set(m.accountId, (balances.get(m.accountId) || 0) - m.amount);
@@ -30,6 +30,28 @@ router.get("/", async (_req, res) => {
       }
     }
     const totalLiquidez = Array.from(balances.values()).reduce((s, v) => s + v, 0);
+
+    // Detalle por cuenta para mostrar en el dashboard
+    const accountsDetail = accounts.map((a) => {
+      const computed = balances.get(a.id) || 0;
+      const movCount = allMovs.filter((m) => m.accountId === a.id || m.destAccountId === a.id).length;
+      return {
+        id: a.id,
+        code: a.code,
+        name: a.name,
+        bank: a.bank,
+        type: a.type,
+        accountNumber: a.accountNumber,
+        balance: computed,
+        movementCount: movCount,
+      };
+    }).sort((a, b) => b.balance - a.balance);
+
+    // Totales globales de ingresos / egresos (NO intercompany)
+    const validMovsForTotals = allMovs.filter((m) => !m.isIntercompany);
+    const totalIngresos = validMovsForTotals.filter((m) => m.type === "Ingreso").reduce((s, m) => s + m.amount, 0);
+    const totalEgresos = validMovsForTotals.filter((m) => m.type === "Egreso").reduce((s, m) => s + m.amount, 0);
+    const variacion = totalIngresos - totalEgresos;
 
     // Capital
     const equityByPartner = partners.map((p) => {
@@ -131,7 +153,11 @@ router.get("/", async (_req, res) => {
         corpExpenses,
         projectExpenses,
         otherExpenses,
+        totalIngresos,
+        totalEgresos,
+        variacion,
       },
+      accountsDetail,
       equityByPartner,
       byProject,
       byLine: Array.from(byLine.entries()).map(([line, v]) => ({ line, ...v, neto: v.ingresos - v.egresos })),

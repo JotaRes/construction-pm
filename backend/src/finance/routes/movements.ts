@@ -63,6 +63,32 @@ router.post("/", async (req, res) => {
   try {
     const data = { ...req.body };
     if (data.date) data.date = new Date(data.date);
+
+    // === Validación + normalización para transferencias interbancarias ===
+    // Una transferencia debe:
+    //  1) tener destAccountId distinto al accountId
+    //  2) marcarse como isIntercompany = true (para no contar como ingreso/egreso real)
+    //  3) no tener categoryId / originId / providerId / partnerId / lenderId
+    //  4) crear automáticamente el "espejo" en la cuenta destino (Ingreso) si no existe.
+    if (data.type === "Interbancario") {
+      if (!data.destAccountId) {
+        return fail(res, "Transferencia interbancaria requiere cuenta destino", 400);
+      }
+      if (Number(data.accountId) === Number(data.destAccountId)) {
+        return fail(res, "Cuenta origen y destino no pueden ser iguales", 400);
+      }
+      data.isIntercompany = true;
+      // Limpiar campos que no aplican a transferencia
+      data.categoryId = null;
+      data.originId = null;
+      data.providerId = null;
+      data.partnerId = null;
+      data.lenderId = null;
+      data.isEquity = false;
+      data.isLoan = false;
+      data.isLoanRepayment = false;
+    }
+
     const created = await prisma.finMovement.create({ data, include: includeAll });
     await upsertCapitalFromMovement(created.id);
     ok(res, created);

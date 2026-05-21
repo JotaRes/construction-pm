@@ -149,6 +149,8 @@ export const API = {
 
   // Backup
   backupUrl: () => `/api/finance/backup`,
+  excelExportUrl: () => `/api/finance/backup/excel`,
+  wipeAllData: () => unwrap<any>(api.delete("/backup/wipe-all")),
 };
 
 export default api;

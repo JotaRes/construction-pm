@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useState } from "react";
 import { API } from "../lib/api";
 import { dateShort, cls } from "../lib/format";
-import { Upload, FileSpreadsheet, Trash2, ChevronRight } from "lucide-react";
+import { Upload, FileSpreadsheet, Trash2, ChevronRight, AlertCircle, CheckCircle2, FileText, Info } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function Statements() {
@@ -12,23 +12,41 @@ export default function Statements() {
   const { data } = useQuery({ queryKey: ["statements"], queryFn: API.listStatements });
   const [accountId, setAccountId] = useState<string>("");
   const [uploading, setUploading] = useState(false);
+  const [lastResult, setLastResult] = useState<{ ok: boolean; message: string; details?: any } | null>(null);
 
   const del = useMutation({
     mutationFn: (id: number) => API.deleteStatement(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["statements"] }); toast.success("Eliminado"); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["statements"] }); toast.success("Extracto eliminado"); },
   });
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
-    if (!accountId) { toast.error("Selecciona primero la cuenta"); return; }
+    if (!accountId) {
+      toast.error("Selecciona primero la cuenta bancaria");
+      e.target.value = "";
+      return;
+    }
     setUploading(true);
+    setLastResult(null);
     try {
       const res = await API.uploadStatement(+accountId, f);
-      toast.success(`Extracto subido: ${res.statement.lines.length} líneas, ${res.reconciliation.matched} conciliadas`);
+      const linesCount = res.statement.lines?.length || 0;
+      const matched = res.reconciliation?.matched || 0;
+      const created = res.reconciliation?.created || 0;
+      toast.success(`Extracto procesado: ${linesCount} líneas, ${matched} conciliadas con movimientos existentes`);
+      setLastResult({
+        ok: true,
+        message: `Procesado exitosamente`,
+        details: { linesCount, matched, created, filename: f.name },
+      });
       qc.invalidateQueries({ queryKey: ["statements"] });
+      qc.invalidateQueries({ queryKey: ["movements"] });
+      qc.invalidateQueries({ queryKey: ["unreconciledLines"] });
     } catch (err: any) {
-      toast.error(err.response?.data?.error || "Error al subir extracto");
+      const msg = err?.response?.data?.error || err?.message || "Error al subir extracto";
+      toast.error(msg, { duration: 6000 });
+      setLastResult({ ok: false, message: msg });
     } finally {
       setUploading(false);
       e.target.value = "";
@@ -36,60 +54,154 @@ export default function Statements() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 page-content">
       <div>
-        <h1 className="text-2xl font-semibold">Extractos bancarios</h1>
-        <p className="text-sm text-slate-400">Sube CSV / Excel / PDF y el sistema concilia automáticamente con tus movimientos</p>
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>Extractos bancarios</h1>
+        <p className="text-sm mt-1" style={{ color: 'var(--brand-teal2)' }}>
+          Sube CSV, Excel o PDF · El sistema concilia automáticamente con tus movimientos manuales para detectar omisiones
+        </p>
       </div>
 
-      <div className="card p-4">
-        <h2 className="text-sm font-semibold mb-3">Subir nuevo extracto</h2>
-        <div className="flex flex-wrap gap-2 items-end">
-          <div className="flex-1 min-w-[200px]">
-            <label className="label">Cuenta bancaria</label>
+      {/* Información explicativa */}
+      <div className="card p-4 flex items-start gap-3" style={{ background: 'var(--brand-cream2)' }}>
+        <Info size={18} style={{ color: 'var(--brand-gold)', flexShrink: 0, marginTop: 2 }} />
+        <div className="text-sm" style={{ color: 'var(--brand-teal)' }}>
+          <strong>¿Cómo funciona?</strong> Al subir un extracto, el sistema:
+          <ol className="list-decimal ml-5 mt-1 space-y-0.5 text-xs" style={{ color: 'var(--brand-teal2)' }}>
+            <li>Lee cada línea (fecha, concepto, monto)</li>
+            <li>Compara con los movimientos que registraste manualmente</li>
+            <li>Marca como <span className="text-emerald-600 font-semibold">coincide</span> los que están en ambos lados</li>
+            <li>Te alerta de los que están en el extracto pero no registraste (te falta capturar) — aparecen en <Link to="/finance/movements" className="font-semibold hover:underline" style={{ color: 'var(--brand-gold)' }}>Movimientos</Link></li>
+          </ol>
+        </div>
+      </div>
+
+      {/* Subir nuevo extracto */}
+      <div className="card p-5">
+        <h2 className="text-base font-bold mb-3 flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}>
+          <Upload size={16} style={{ color: 'var(--brand-gold)' }} /> Subir nuevo extracto
+        </h2>
+        <div className="flex flex-wrap gap-3 items-end">
+          <div className="flex-1 min-w-[240px]">
+            <label className="label">Cuenta bancaria *</label>
             <select className="select w-full" value={accountId} onChange={(e) => setAccountId(e.target.value)}>
-              <option value="">— seleccionar —</option>
+              <option value="">— seleccionar cuenta —</option>
               {catalogs?.accounts?.map((a: any) => <option key={a.id} value={a.id}>{a.name} ({a.bank})</option>)}
             </select>
           </div>
-          <label className={cls("btn-primary cursor-pointer", uploading && "opacity-60 pointer-events-none")}>
-            <Upload size={14} /> {uploading ? "Procesando..." : "Subir archivo"}
-            <input type="file" className="hidden" accept=".csv,.xlsx,.xls,.pdf" onChange={onFile} disabled={uploading || !accountId} />
+          <label className={cls(
+            "btn-primary cursor-pointer",
+            (uploading || !accountId) && "opacity-60 pointer-events-none"
+          )}>
+            <Upload size={14} />
+            {uploading ? "Procesando..." : "Subir archivo"}
+            <input
+              type="file"
+              className="hidden"
+              accept=".csv,.xlsx,.xls,.pdf"
+              onChange={onFile}
+              disabled={uploading || !accountId}
+            />
           </label>
         </div>
-        <p className="text-xs text-slate-500 mt-2">Formatos soportados: CSV, Excel (.xlsx, .xls), PDF. El sistema buscará columnas tipo "Fecha", "Concepto", "Débito/Crédito".</p>
+
+        <div className="mt-4 p-3 rounded-lg" style={{ background: 'var(--brand-cream2)', border: '1px solid rgba(45,75,82,0.08)' }}>
+          <div className="text-xs font-semibold mb-1" style={{ color: 'var(--brand-teal)' }}>Formatos y columnas soportadas:</div>
+          <ul className="text-xs space-y-0.5" style={{ color: 'var(--brand-teal2)' }}>
+            <li>✓ <span className="font-mono">CSV</span> · <span className="font-mono">.xlsx</span> · <span className="font-mono">.xls</span> · <span className="font-mono">.pdf</span></li>
+            <li>✓ Detecta columnas: <span className="font-mono">Fecha/Date</span>, <span className="font-mono">Descripción/Memo</span>, <span className="font-mono">Monto/Amount</span> o <span className="font-mono">Debit/Credit</span></li>
+            <li>✓ Compatible con Ocean Bank, Chase, Bank of America, Wells Fargo</li>
+          </ul>
+        </div>
+
+        {/* Feedback del último upload */}
+        {lastResult && (
+          <div className={cls(
+            "mt-3 p-3 rounded-lg flex items-start gap-2",
+            lastResult.ok ? "bg-emerald-50 border border-emerald-200" : "bg-red-50 border border-red-200"
+          )}>
+            {lastResult.ok ? (
+              <CheckCircle2 size={16} className="text-emerald-600 flex-shrink-0 mt-0.5" />
+            ) : (
+              <AlertCircle size={16} className="text-red-600 flex-shrink-0 mt-0.5" />
+            )}
+            <div className="text-sm">
+              <div className={lastResult.ok ? "text-emerald-700 font-semibold" : "text-red-700 font-semibold"}>
+                {lastResult.message}
+              </div>
+              {lastResult.ok && lastResult.details && (
+                <div className="text-xs text-emerald-600 mt-1">
+                  Archivo: <span className="font-mono">{lastResult.details.filename}</span> · {lastResult.details.linesCount} líneas extraídas
+                  {lastResult.details.matched > 0 && ` · ${lastResult.details.matched} conciliadas`}
+                </div>
+              )}
+              {!lastResult.ok && (
+                <div className="text-xs text-red-600 mt-1">
+                  Verifica que el archivo tenga columnas Fecha, Concepto y Monto. Si el formato es de tu banco específico, asegúrate que las columnas sean reconocibles.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
-      <div className="card overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-bg-soft text-xs text-slate-400 uppercase">
-            <tr>
-              <th className="px-3 py-2 text-left">Archivo</th>
-              <th className="px-3 py-2 text-left">Cuenta</th>
-              <th className="px-3 py-2 text-left">Período</th>
-              <th className="px-3 py-2 text-right">Líneas</th>
-              <th className="px-3 py-2"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {!data || data.length === 0 ? (
-              <tr><td colSpan={5} className="p-6 text-center text-slate-500">Aún no hay extractos cargados.</td></tr>
-            ) : data.map((s: any) => (
-              <tr key={s.id} className="border-b border-line/50 table-row">
-                <td className="px-3 py-2 flex items-center gap-2"><FileSpreadsheet size={14} className="text-accent" /> {s.filename}</td>
-                <td className="px-3 py-2 text-xs">{s.account?.name}</td>
-                <td className="px-3 py-2 text-xs">{dateShort(s.periodStart)} → {dateShort(s.periodEnd)}</td>
-                <td className="px-3 py-2 text-right font-mono">{s._count?.lines || 0}</td>
-                <td className="px-3 py-2 text-right">
-                  <div className="inline-flex gap-1">
-                    <Link to={`/statements/${s.id}`} className="btn-ghost p-1"><ChevronRight size={14} /></Link>
-                    <button onClick={() => del.mutate(s.id)} className="btn-ghost text-negative p-1"><Trash2 size={14} /></button>
-                  </div>
-                </td>
+      {/* Lista de extractos cargados */}
+      <div className="card overflow-hidden">
+        <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(45,75,82,0.1)', background: 'var(--brand-cream2)' }}>
+          <h2 className="text-base font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>
+            <FileText size={16} style={{ color: 'var(--brand-gold)' }} /> Extractos cargados
+          </h2>
+          <span className="text-xs font-semibold" style={{ color: 'var(--brand-teal2)' }}>{data?.length || 0} archivos</span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead style={{ background: 'rgba(45,75,82,0.04)' }}>
+              <tr className="text-xs uppercase tracking-wider" style={{ color: 'var(--brand-teal2)' }}>
+                <th className="px-4 py-3 text-left font-semibold">Archivo</th>
+                <th className="px-4 py-3 text-left font-semibold">Cuenta</th>
+                <th className="px-4 py-3 text-left font-semibold">Período</th>
+                <th className="px-4 py-3 text-right font-semibold">Líneas</th>
+                <th className="px-4 py-3"></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {!data || data.length === 0 ? (
+                <tr><td colSpan={5} className="p-8 text-center" style={{ color: 'var(--brand-teal2)' }}>
+                  <FileSpreadsheet size={36} className="mx-auto mb-2" style={{ opacity: 0.3 }} />
+                  Aún no hay extractos cargados. Sube tu primer archivo arriba.
+                </td></tr>
+              ) : data.map((s: any) => (
+                <tr key={s.id} className="table-row" style={{ borderBottom: '1px solid rgba(45,75,82,0.06)' }}>
+                  <td className="px-4 py-3 flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}>
+                    <FileSpreadsheet size={14} style={{ color: 'var(--brand-gold)' }} />
+                    <span className="font-medium">{s.filename}</span>
+                  </td>
+                  <td className="px-4 py-3 text-xs" style={{ color: 'var(--brand-teal2)' }}>{s.account?.name}</td>
+                  <td className="px-4 py-3 text-xs font-mono" style={{ color: 'var(--brand-teal2)' }}>
+                    {dateShort(s.periodStart)} → {dateShort(s.periodEnd)}
+                  </td>
+                  <td className="px-4 py-3 text-right font-mono font-semibold" style={{ color: 'var(--brand-teal)' }}>
+                    {s._count?.lines || 0}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="inline-flex gap-1">
+                      <Link to={`/finance/statements/${s.id}`} className="btn-ghost p-1" title="Ver detalle">
+                        <ChevronRight size={14} />
+                      </Link>
+                      <button
+                        onClick={() => { if (confirm(`¿Eliminar el extracto "${s.filename}"?`)) del.mutate(s.id); }}
+                        className="btn-ghost p-1 text-red-600"
+                        title="Eliminar"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

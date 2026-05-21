@@ -80,17 +80,17 @@ export default function Movements() {
   const hasActiveFilters = Object.values(filters).some(Boolean) || q;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 page-content">
       <div className="flex items-end justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Movimientos</h1>
-          <p className="text-sm text-slate-400">
-            {data?.total || 0} registros · {usd(totals.ing, { compact: true })} ingresos · {usd(totals.egr, { compact: true })} egresos · Neto <span className={totals.neto >= 0 ? "text-positive" : "text-negative"}>{usd(totals.neto, { compact: true })}</span>
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>Movimientos</h1>
+          <p className="text-sm" style={{ color: 'var(--brand-teal2)' }}>
+            {data?.total || 0} registros · <span className="text-emerald-600 font-semibold">{usd(totals.ing, { compact: true })}</span> ingresos · <span className="text-red-600 font-semibold">{usd(totals.egr, { compact: true })}</span> egresos · Neto <span className={cls("font-semibold", totals.neto >= 0 ? "text-emerald-600" : "text-red-600")}>{usd(totals.neto, { compact: true })}</span>
           </p>
         </div>
         <div className="flex gap-2">
-          <button className="btn-secondary" onClick={() => detectMutation.mutate()} disabled={detectMutation.isPending}>
-            <Sparkles size={14} /> {detectMutation.isPending ? "Detectando…" : "Detectar intercompany"}
+          <button className="btn-secondary" onClick={() => detectMutation.mutate()} disabled={detectMutation.isPending} title="Vincula automáticamente transferencias entre cuentas propias para evitar contarlas como ingresos o egresos en el dashboard">
+            <Sparkles size={14} /> {detectMutation.isPending ? "Vinculando…" : "Vincular transferencias internas"}
           </button>
           <button className="btn-primary" onClick={() => setModalOpen(true)}>
             <Plus size={14} /> Nuevo movimiento
@@ -362,7 +362,8 @@ function MovementModal({ open, onClose, catalogs }: { open: boolean; onClose: ()
     if (form.type === "Ingreso" && isEquityOrigin && !form.partnerId) return toast.error("Para origen Equity socio, selecciona el socio");
     if (form.type === "Ingreso" && isLoanOrigin && !form.lenderId) return toast.error("Para origen Préstamo, selecciona el lender");
     if (form.type === "Egreso" && !form.categoryId) return toast.error("Selecciona la categoría del egreso");
-    if (form.type === "Egreso" && !form.projectId) return toast.error("Todo egreso debe estar asociado a un proyecto");
+    // Nota: un egreso PUEDE no estar asociado a proyecto (ej. fee bancario, gasto corporativo).
+    // Solo validamos lender cuando la categoría es pago de deuda.
     if (form.type === "Egreso" && isDebtPayment && !form.lenderId) return toast.error("Para pago de deuda, selecciona el lender");
     if (form.type === "Interbancario" && !form.destAccountId) return toast.error("Selecciona la cuenta destino");
     if (form.type === "Interbancario" && form.accountId === form.destAccountId) return toast.error("Origen y destino deben ser distintos");
@@ -481,11 +482,16 @@ function MovementModal({ open, onClose, catalogs }: { open: boolean; onClose: ()
               </select>
             </div>
             <div className="md:col-span-2">
-              <label className="label">Proyecto asociado * <span className="text-slate-500 text-[11px]">(todo egreso debe pertenecer a un proyecto)</span></label>
-              <select className="select w-full" value={form.projectId} onChange={(e) => update({ projectId: e.target.value })} required>
-                <option value="">— seleccionar proyecto —</option>
+              <label className="label">Proyecto asociado <span className="text-[11px] font-normal" style={{ color: 'var(--brand-teal2)' }}>(opcional — usar "No asociado" para gastos corporativos como fees bancarios)</span></label>
+              <select className="select w-full" value={form.projectId} onChange={(e) => update({ projectId: e.target.value })}>
+                <option value="">— No asociado a proyecto (gasto corporativo / fee bancario) —</option>
                 {catalogs?.projects?.map((p: any) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
               </select>
+              {!form.projectId && (
+                <p className="text-[11px] mt-1" style={{ color: 'var(--brand-gold)' }}>
+                  Este egreso se registrará como gasto corporativo (sin proyecto asociado).
+                </p>
+              )}
             </div>
             {isDebtPayment && (
               <div className="md:col-span-2">

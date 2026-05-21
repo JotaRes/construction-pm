@@ -8,6 +8,7 @@ import Debt from "./pages/Debt";
 import Projects from "./pages/Projects";
 import ProjectDetail from "./pages/ProjectDetail";
 import Accounts from "./pages/Accounts";
+import AccountDetail from "./pages/AccountDetail";
 import Catalogs from "./pages/Catalogs";
 import Statements from "./pages/Statements";
 import StatementDetail from "./pages/StatementDetail";
@@ -28,6 +29,7 @@ export default function FinanceApp() {
         <Route path="projects" element={<Projects />} />
         <Route path="projects/:id" element={<ProjectDetail />} />
         <Route path="accounts" element={<Accounts />} />
+        <Route path="accounts/:id" element={<AccountDetail />} />
         <Route path="catalogs" element={<Catalogs />} />
         <Route path="statements" element={<Statements />} />
         <Route path="statements/:id" element={<StatementDetail />} />
