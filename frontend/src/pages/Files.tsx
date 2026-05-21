@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { filesApi, drawsApi, projectsApi, phasesApi, itemsApi, drawParseApi, docParseApi, financeSyncApi } from '../lib/api'
+import { filesApi, drawsApi, projectsApi, phasesApi, itemsApi, drawParseApi, docParseApi } from '../lib/api'
 import { formatDate, formatUSD } from '../lib/calculations'
 import type { ProjectFile, Draw, Phase } from '../lib/types'
 import { Plus, ExternalLink, Trash2, Upload, FileText, CheckCircle, AlertCircle, ChevronDown, ChevronUp, X } from 'lucide-react'
@@ -11,18 +11,18 @@ const api = axios.create({ baseURL: '/api' })
 const CATEGORIES = ['Contrato', 'Permiso', 'Plano', 'Seguro', 'Draw', 'HOA', 'Legal', 'Inspección', 'Otro']
 
 const DOC_TYPES = [
-  { value: 'DRAW',      label: 'Draw / Inspección Trinity',                      cat: 'Draw' },
-  { value: 'HUD',       label: 'HUD-1 / Closing Disclosure',                     cat: 'Legal' },
-  { value: 'LOAN',      label: 'Carta aprobación préstamo (Lender Commitment) — sincroniza con Finanzas', cat: 'Legal' },
-  { value: 'SURVEY',    label: 'Survey / Levantamiento',                         cat: 'Legal' },
-  { value: 'PLANS',     label: 'Planos Arquitectónicos',                         cat: 'Plano' },
-  { value: 'PERMIT',    label: 'Building Permit',                                cat: 'Permiso' },
-  { value: 'APPRAISAL', label: 'Appraisal / Avalúo',                             cat: 'Otro' },
-  { value: 'BUDGET',    label: 'Construction Budget (PDF)',                      cat: 'Otro' },
-  { value: 'INSURANCE', label: 'Seguro / Insurance',                             cat: 'Seguro' },
-  { value: 'HOA',       label: 'HOA Documents',                                  cat: 'HOA' },
-  { value: 'CONTRACT',  label: 'Contrato GC / Subcontratista',                   cat: 'Contrato' },
-  { value: 'GENERAL',   label: 'Otro documento (solo guardar)',                  cat: 'Otro' },
+  { value: 'DRAW',      label: 'Draw / Inspección Trinity',      cat: 'Draw' },
+  { value: 'HUD',       label: 'HUD-1 / Closing Disclosure',     cat: 'Legal' },
+  { value: 'LOAN',      label: 'Carta aprobación préstamo (Lender Commitment)', cat: 'Legal' },
+  { value: 'SURVEY',    label: 'Survey / Levantamiento',         cat: 'Legal' },
+  { value: 'PLANS',     label: 'Planos Arquitectónicos',         cat: 'Plano' },
+  { value: 'PERMIT',    label: 'Building Permit',                cat: 'Permiso' },
+  { value: 'APPRAISAL', label: 'Appraisal / Avalúo',            cat: 'Otro' },
+  { value: 'BUDGET',    label: 'Construction Budget (PDF)',      cat: 'Otro' },
+  { value: 'INSURANCE', label: 'Seguro / Insurance',            cat: 'Seguro' },
+  { value: 'HOA',       label: 'HOA Documents',                 cat: 'HOA' },
+  { value: 'CONTRACT',  label: 'Contrato GC / Subcontratista',  cat: 'Contrato' },
+  { value: 'GENERAL',   label: 'Otro documento (solo guardar)', cat: 'Otro' },
 ]
 
 const FIELD_LABELS: Record<string, string> = {
@@ -195,37 +195,7 @@ export default function Files({ projectId }: { projectId: string }) {
         await projectsApi.patch(projectId, update)
         queryClient.invalidateQueries({ queryKey: ['projects'] })
         const label = DOC_TYPES.find(d => d.value === dtype)?.label ?? dtype
-        let statusMsg = `✓ ${Object.keys(update).length} campos de "${label}" aplicados al proyecto`
-
-        // === Sincronización LOAN → Módulo Financiero ===
-        // Si es una carta de aprobación de préstamo, además creamos/actualizamos
-        // el lender y el FinLoan en el módulo financiero.
-        if (dtype === 'LOAN' && (p.lender || p.loanAmount)) {
-          try {
-            // Obtener nombre del proyecto técnico para emparejar con FinProject
-            const techProject = await projectsApi.get(projectId)
-            const syncResult = await financeSyncApi.upsertLoanFromTech({
-              lender: String(p.lender || 'Lender sin nombre'),
-              loanNumber: p.loanNumber ? String(p.loanNumber) : undefined,
-              loanAmount: Number(p.loanAmount || 0),
-              interestRate: p.interestRate != null ? Number(p.interestRate) : undefined,
-              loanTermMonths: p.loanTermMonths != null ? Number(p.loanTermMonths) : undefined,
-              settlementDate: p.settlementDate ? String(p.settlementDate) : undefined,
-              day1Disbursement: p.day1Disbursement != null ? Number(p.day1Disbursement) : undefined,
-              holdback: p.holdback != null ? Number(p.holdback) : undefined,
-              interestReserve: p.interestRate != null ? Number(p.interestReserve) : undefined,
-              techProjectName: techProject?.name,
-            })
-            statusMsg += ` · 💰 Finanzas: ${syncResult.action === 'created' ? 'préstamo creado' : 'préstamo actualizado'} (${syncResult.lender.name})`
-            if (syncResult.finProjectMatched) statusMsg += ' + proyecto financiero asociado'
-          } catch (e: unknown) {
-            const msg = (e as { response?: { data?: { error?: string } }; message?: string })?.response?.data?.error
-              ?? (e as Error)?.message ?? 'Error sincronizando con Finanzas'
-            statusMsg += ` · ⚠ Finanzas: ${msg}`
-          }
-        }
-
-        setApplyStatus(statusMsg)
+        setApplyStatus(`✓ ${Object.keys(update).length} campos de "${label}" aplicados al proyecto`)
       }
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { error?: string } }; message?: string })?.response?.data?.error
