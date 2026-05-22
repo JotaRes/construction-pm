@@ -17,9 +17,11 @@ export default function AccountDetail() {
     enabled: !!aid,
   });
   const { data: allAccounts } = useQuery({ queryKey: ["accounts"], queryFn: API.getAccounts });
+  // Query con involvingAccountId — trae TODOS los movimientos donde esta cuenta es
+  // origen O destino. Incluye transferencias recibidas.
   const { data: movData } = useQuery({
     queryKey: ["movements-by-account", aid],
-    queryFn: () => API.listMovements({ accountId: String(aid), limit: 5000 }),
+    queryFn: () => API.listMovements({ involvingAccountId: String(aid), limit: 5000 }),
     enabled: !!aid,
   });
 
@@ -27,15 +29,18 @@ export default function AccountDetail() {
 
   // Saldo calculado de esta cuenta (de allAccounts)
   const computedBalance = allAccounts?.find((a: any) => a.id === aid)?.computedBalance ?? 0;
-  const movements: any[] = movData?.movements || [];
+  const allMovements: any[] = movData?.movements || [];
 
-  // Buscar transferencias hacia esta cuenta (destAccountId === aid)
-  const incomingTransfers = movements.filter((m: any) => m.destAccountId === aid);
+  // Separar: movimientos donde esta cuenta es origen vs donde es destino (transferencias entrantes)
+  const outgoingMovements = allMovements.filter((m: any) => m.accountId === aid);
+  const incomingTransfers = allMovements.filter(
+    (m: any) => m.destAccountId === aid && m.accountId !== aid
+  );
 
-  // Calcular ingresos/egresos
-  const ingresos = movements.filter((m: any) => m.type === "Ingreso").reduce((s, m) => s + m.amount, 0);
-  const egresos = movements.filter((m: any) => m.type === "Egreso").reduce((s, m) => s + m.amount, 0);
-  const transferOut = movements.filter((m: any) => m.type === "Interbancario").reduce((s, m) => s + m.amount, 0);
+  // Calcular ingresos/egresos sobre la cuenta
+  const ingresos = outgoingMovements.filter((m: any) => m.type === "Ingreso").reduce((s, m) => s + m.amount, 0);
+  const egresos = outgoingMovements.filter((m: any) => m.type === "Egreso").reduce((s, m) => s + m.amount, 0);
+  const transferOut = outgoingMovements.filter((m: any) => m.type === "Interbancario").reduce((s, m) => s + m.amount, 0);
   const transferIn = incomingTransfers.reduce((s: number, m: any) => s + m.amount, 0);
 
   return (
@@ -150,7 +155,7 @@ export default function AccountDetail() {
             <Wallet size={16} style={{ color: 'var(--brand-gold)' }} /> Movimientos de la cuenta
           </h2>
           <span className="text-xs font-semibold" style={{ color: 'var(--brand-teal2)' }}>
-            {movements.length + incomingTransfers.length} movimientos
+            {outgoingMovements.length + incomingTransfers.length} movimientos
           </span>
         </div>
 
@@ -166,7 +171,7 @@ export default function AccountDetail() {
               </tr>
             </thead>
             <tbody>
-              {movements.length === 0 && incomingTransfers.length === 0 ? (
+              {outgoingMovements.length === 0 && incomingTransfers.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-4 py-8 text-center" style={{ color: 'var(--brand-teal2)' }}>
                     Sin movimientos registrados en esta cuenta.
@@ -174,7 +179,7 @@ export default function AccountDetail() {
                 </tr>
               ) : (
                 // Combinar y ordenar todos los movimientos
-                [...movements, ...incomingTransfers.map((m: any) => ({ ...m, _isIncoming: true }))]
+                [...outgoingMovements, ...incomingTransfers.map((m: any) => ({ ...m, _isIncoming: true }))]
                   .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                   .map((m: any) => {
                     const isIngreso = m.type === "Ingreso" || m._isIncoming;

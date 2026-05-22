@@ -19,9 +19,20 @@ const includeAll = {
 
 router.get("/", async (req, res) => {
   try {
-    const { accountId, projectId, partnerId, categoryId, originId, providerId, lenderId, type, from, to, q, needsReview, isIntercompany, isReconciled, limit, offset } = req.query as Record<string, string>;
+    const { accountId, involvingAccountId, projectId, partnerId, categoryId, originId, providerId, lenderId, type, from, to, q, needsReview, isIntercompany, isReconciled, limit, offset } = req.query as Record<string, string>;
     const where: any = {};
+    // accountId = movimientos donde la cuenta es ORIGEN (incluye egresos, ingresos y transferencias salientes)
     if (accountId) where.accountId = +accountId;
+    // involvingAccountId = movimientos donde la cuenta es origen O destino
+    //   (incluye transferencias RECIBIDAS además de las salientes)
+    //   Usado por la página de detalle de cuenta para mostrar el flujo bidireccional.
+    if (involvingAccountId) {
+      const aid = +involvingAccountId;
+      where.OR = [
+        { accountId: aid },
+        { destAccountId: aid },
+      ];
+    }
     if (projectId) where.projectId = +projectId;
     if (partnerId) where.partnerId = +partnerId;
     if (categoryId) where.categoryId = +categoryId;
@@ -36,10 +47,18 @@ router.get("/", async (req, res) => {
     if (from) where.date.gte = new Date(from);
     if (to) where.date.lte = new Date(to);
     if (q) {
-      where.OR = [
+      // Combinar búsqueda con OR existente si ya hay (involvingAccountId)
+      const searchOR = [
         { concept: { contains: q } },
         { notes: { contains: q } },
       ];
+      if (where.OR) {
+        // AND combinado: ambas condiciones deben cumplirse
+        where.AND = [{ OR: where.OR }, { OR: searchOR }];
+        delete where.OR;
+      } else {
+        where.OR = searchOR;
+      }
     }
     const take = limit ? Math.min(+limit, 5000) : 500;
     const skip = offset ? +offset : 0;
