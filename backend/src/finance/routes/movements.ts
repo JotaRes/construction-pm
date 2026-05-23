@@ -79,17 +79,32 @@ router.get("/:id", async (req, res) => {
   } catch (e) { fail(res, e); }
 });
 
+// Helpers de detección — defense in depth: el backend NO depende solo del frontend
+async function detectIsEquity(originId?: number | null): Promise<boolean> {
+  if (!originId) return false;
+  const o = await prisma.finIncomeOrigin.findUnique({ where: { id: originId } });
+  if (!o) return false;
+  return /^31\d+/.test(o.code || "") || /equity|aporte|capital(?:izaci[oó]n)?|invers[ií]on\s*socio/i.test(o.name || "");
+}
+async function detectIsLoan(originId?: number | null): Promise<boolean> {
+  if (!originId) return false;
+  const o = await prisma.finIncomeOrigin.findUnique({ where: { id: originId } });
+  if (!o) return false;
+  return /^320[12]/.test(o.code || "") || /pr[ée]stamo|loan|deuda/i.test(o.name || "");
+}
+async function detectIsLoanRepayment(categoryId?: number | null): Promise<boolean> {
+  if (!categoryId) return false;
+  const c = await prisma.finExpenseCategory.findUnique({ where: { id: categoryId } });
+  if (!c) return false;
+  return /pago.*(deuda|pr[ée]stamo)|debt.*pay|amortizaci[oó]n/i.test(c.name || "");
+}
+
 router.post("/", async (req, res) => {
   try {
     const data = { ...req.body };
     if (data.date) data.date = new Date(data.date);
 
     // === Validación + normalización para transferencias interbancarias ===
-    // Una transferencia debe:
-    //  1) tener destAccountId distinto al accountId
-    //  2) marcarse como isIntercompany = true (para no contar como ingreso/egreso real)
-    //  3) no tener categoryId / originId / providerId / partnerId / lenderId
-    //  4) crear automáticamente el "espejo" en la cuenta destino (Ingreso) si no existe.
     if (data.type === "Interbancario") {
       if (!data.destAccountId) {
         return fail(res, "Transferencia interbancaria requiere cuenta destino", 400);
@@ -98,7 +113,6 @@ router.post("/", async (req, res) => {
         return fail(res, "Cuenta origen y destino no pueden ser iguales", 400);
       }
       data.isIntercompany = true;
-      // Limpiar campos que no aplican a transferencia
       data.categoryId = null;
       data.originId = null;
       data.providerId = null;
@@ -107,6 +121,20 @@ router.post("/", async (req, res) => {
       data.isEquity = false;
       data.isLoan = false;
       data.isLoanRepayment = false;
+    }
+
+    // === Defense in depth: si el frontend no setea las flags, las detectamos por código/nombre ===
+    if (data.type === "Ingreso") {
+      const eqBackend = await detectIsEquity(data.originId);
+      const loanBackend = await detectIsLoan(data.originId);
+      // Si el origen es claramente equity y hay socio → marcar
+      if (eqBackend && data.partnerId) data.isEquity = true;
+      // Si el origen es claramente loan y hay lender → marcar
+      if (loanBackend && data.lenderId) data.isLoan = true;
+    }
+    if (data.type === "Egreso" && data.lenderId) {
+      const repayBackend = await detectIsLoanRepayment(data.categoryId);
+      if (repayBackend) data.isLoanRepayment = true;
     }
 
     const created = await prisma.finMovement.create({ data, include: includeAll });
@@ -135,6 +163,29 @@ router.patch("/:id", async (req, res) => {
     delete data.linkedMovement;
     delete data.linkedFrom;
     delete data.loan;
+
+    // Defense in depth: detectar isEquity/isLoan/isLoanRepayment del origen/categoría
+    // si vienen en el patch (o usar el valor existente)
+    const existing = await prisma.finMovement.findUnique({ where: { id: +req.params.id } });
+    const type = data.type ?? existing?.type;
+    const originId = data.originId ?? existing?.originId;
+    const partnerId = data.partnerId ?? existing?.partnerId;
+    const lenderId = data.lenderId ?? existing?.lenderId;
+    const categoryId = data.categoryId ?? existing?.categoryId;
+
+    if (type === "Ingreso") {
+      if (originId) {
+        const eqBackend = await detectIsEquity(originId);
+        const loanBackend = await detectIsLoan(originId);
+        if (eqBackend && partnerId) data.isEquity = true;
+        if (loanBackend && lenderId) data.isLoan = true;
+      }
+    }
+    if (type === "Egreso" && lenderId) {
+      const repayBackend = await detectIsLoanRepayment(categoryId);
+      if (repayBackend) data.isLoanRepayment = true;
+    }
+
     const updated = await prisma.finMovement.update({ where: { id: +req.params.id }, data, include: includeAll });
     await upsertCapitalFromMovement(updated.id);
     await upsertLoanFromMovement(updated.id);

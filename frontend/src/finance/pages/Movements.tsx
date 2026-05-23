@@ -382,7 +382,7 @@ export default function Movements() {
                   </td>
                   <td className="px-3 py-2 text-right">
                     <div className="inline-flex gap-1">
-                      <Link to={`/movements/${m.id}`} className="btn-ghost p-1"><ChevronRight size={14} /></Link>
+                      <Link to={`/finance/movements/${m.id}`} className="btn-ghost p-1" title="Ver detalle / editar"><ChevronRight size={14} /></Link>
                       <button onClick={() => { if (confirm("¿Eliminar movimiento?")) deleteMutation.mutate(m.id); }} className="btn-ghost p-1 text-negative"><Trash2 size={14} /></button>
                     </div>
                   </td>
@@ -440,14 +440,21 @@ function MovementModal({ open, onClose, catalogs }: { open: boolean; onClose: ()
     onError: (e: any) => toast.error(e.response?.data?.error || "Error al crear"),
   });
 
-  // Determinar si el origen seleccionado es "Equity socio"
+  // Determinar si el origen seleccionado es "Equity socio" / "Aporte socios"
+  // Estrategia robusta: matchear por código (31xx = equity, 32xx = deuda) Y por nombre.
   const selectedOrigin = catalogs?.origins?.find((o: any) => String(o.id) === String(form.originId));
-  const isEquityOrigin = selectedOrigin && /equity/i.test(selectedOrigin.name);
-  const isLoanOrigin = selectedOrigin && /pr[ée]stamo|loan/i.test(selectedOrigin.name);
+  const isEquityOrigin = !!(selectedOrigin && (
+    /^31\d+/.test(selectedOrigin.code || "") ||
+    /equity|aporte|capital(?:izaci[oó]n)?|invers[ií]on\s*socio/i.test(selectedOrigin.name || "")
+  ));
+  const isLoanOrigin = !!(selectedOrigin && (
+    /^320[12]/.test(selectedOrigin.code || "") ||  // 3201 (Préstamo Socio), 3202 (Préstamo Bancario)
+    /pr[ée]stamo|loan|deuda/i.test(selectedOrigin.name || "")
+  ));
 
   // Determinar si la categoría seleccionada es "Pago de deuda"
   const selectedCategory = catalogs?.categories?.find((c: any) => String(c.id) === String(form.categoryId));
-  const isDebtPayment = selectedCategory && /pago.*deuda|debt.*pay/i.test(selectedCategory.name);
+  const isDebtPayment = !!(selectedCategory && /pago.*(deuda|pr[ée]stamo)|debt.*pay|amortizaci[oó]n/i.test(selectedCategory.name || ""));
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -456,8 +463,8 @@ function MovementModal({ open, onClose, catalogs }: { open: boolean; onClose: ()
     if (!form.amount || +form.amount <= 0) return toast.error("Ingresa un monto válido");
     if (!form.concept.trim()) return toast.error("Concepto es obligatorio");
     if (form.type === "Ingreso" && !form.originId) return toast.error("Selecciona el origen del ingreso");
-    if (form.type === "Ingreso" && isEquityOrigin && !form.partnerId) return toast.error("Para origen Equity socio, selecciona el socio");
-    if (form.type === "Ingreso" && isLoanOrigin && !form.lenderId) return toast.error("Para origen Préstamo, selecciona el lender");
+    if (form.type === "Ingreso" && isEquityOrigin && !form.partnerId) return toast.error("Para aportes de socio, selecciona QUÉ socio está aportando");
+    if (form.type === "Ingreso" && isLoanOrigin && !form.lenderId) return toast.error("Para un préstamo, selecciona QUIÉN te está prestando (lender)");
     if (form.type === "Egreso" && !form.categoryId) return toast.error("Selecciona la categoría del egreso");
     // Nota: un egreso PUEDE no estar asociado a proyecto (ej. fee bancario, gasto corporativo).
     // Solo validamos lender cuando la categoría es pago de deuda.
