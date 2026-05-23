@@ -3,6 +3,7 @@ import archiver from "archiver";
 import * as XLSX from "xlsx";
 import { prisma } from "../lib/prisma";
 import { fail, ok } from "../lib/respond";
+import { logActivity } from "../services/auditLog";
 
 const router = Router();
 
@@ -198,6 +199,7 @@ router.delete("/wipe-all", async (req, res) => {
     await prisma.finExpenseCategory.deleteMany({});
     await prisma.finIncomeOrigin.deleteMany({});
     await prisma.finSPV.deleteMany({});
+    await logActivity("wipe-all", "FinanceDB", null, "Reset completo del módulo financiero (autorizado con password)");
     ok(res, { wiped: true, message: "Todos los datos del módulo financiero fueron borrados" });
   } catch (e) {
     fail(res, e);

@@ -6,6 +6,7 @@ import AdmZip from "adm-zip";
 import { ok, fail } from "../lib/respond";
 import { importExcelFromBuffer } from "../services/excelImporter";
 import { prisma } from "../lib/prisma";
+import { logActivity } from "../services/auditLog";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
@@ -240,6 +241,9 @@ router.post("/restore", upload.single("file"), async (req, res) => {
       await prisma.finProjectDocument.create({ data: cleanForInsert(d, ["id", "projectId", "filename", "url", "publicId", "mimetype", "size", "kind", "uploadedAt"]) });
     }
     counts.projDocs = (snapshot.projDocs || []).length;
+
+    const totalRecords = Object.values(counts).reduce((s: any, v: any) => s + (Number(v) || 0), 0);
+    await logActivity("restore", "FinanceDB", null, `Restaurados ${totalRecords} registros desde ${filename} (snapshot ${snapshot.exportedAt})`);
 
     ok(res, {
       restored: true,

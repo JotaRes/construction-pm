@@ -152,6 +152,10 @@ export const API = {
   // Reports
   getSourcesUses: () => unwrap<any>(api.get("/reports/sources-uses")),
   getCashflow: (year?: number) => unwrap<any>(api.get("/reports/cashflow", { params: { year } })),
+  getCashflowForecast: () => unwrap<any>(api.get("/reports/cashflow-forecast")),
+  getInsights: () => unwrap<any>(api.get("/reports/insights")),
+  getProjectRatios: () => unwrap<any>(api.get("/reports/project-ratios")),
+  getAuditLog: (limit?: number) => unwrap<any[]>(api.get("/reports/audit-log", { params: { limit } })),
   getTraceability: (movementId: number) => unwrap<any>(api.get(`/reports/traceability/${movementId}`)),
 
   // Backup

@@ -3,6 +3,7 @@ import { prisma } from "../lib/prisma";
 import { ok, fail } from "../lib/respond";
 import { upsertCapitalFromMovement, removeCapitalForMovement } from "../services/capitalSync";
 import { upsertLoanFromMovement, removeLoanForMovement, recalculateLoanRepayments } from "../services/loanSync";
+import { logActivity } from "../services/auditLog";
 
 const router = Router();
 
@@ -142,6 +143,7 @@ router.post("/", async (req, res) => {
     await upsertCapitalFromMovement(created.id);
     await upsertLoanFromMovement(created.id);
     if (created.isLoanRepayment) await recalculateLoanRepayments();
+    await logActivity("create", "FinMovement", created.id, `${created.type} ${created.amount} — ${created.concept}`);
     ok(res, created);
   } catch (e) { fail(res, e); }
 });
@@ -190,6 +192,7 @@ router.patch("/:id", async (req, res) => {
     await upsertCapitalFromMovement(updated.id);
     await upsertLoanFromMovement(updated.id);
     await recalculateLoanRepayments();
+    await logActivity("update", "FinMovement", updated.id, `Actualizado: ${updated.concept}`);
     ok(res, updated);
   } catch (e) { fail(res, e); }
 });
@@ -197,10 +200,12 @@ router.patch("/:id", async (req, res) => {
 router.delete("/:id", async (req, res) => {
   try {
     const id = +req.params.id;
+    const m = await prisma.finMovement.findUnique({ where: { id } });
     await removeCapitalForMovement(id);
     await removeLoanForMovement(id);
     await prisma.finMovement.delete({ where: { id } });
     await recalculateLoanRepayments();
+    if (m) await logActivity("delete", "FinMovement", id, `Eliminado: ${m.type} ${m.amount} — ${m.concept}`);
     ok(res, { deleted: true });
   } catch (e) { fail(res, e); }
 });

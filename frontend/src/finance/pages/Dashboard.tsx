@@ -5,9 +5,11 @@ import { KPI } from "../components/KPI";
 import {
   Wallet, Users, Banknote, Building2, AlertTriangle, TrendingUp, TrendingDown,
   Activity, PieChart as PieIcon, AlertOctagon, Landmark, ArrowRight,
+  Calendar, ShieldAlert, Info,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend,
+  AreaChart, Area, CartesianGrid,
 } from "recharts";
 import { Link } from "react-router-dom";
 
@@ -19,6 +21,16 @@ export default function Dashboard() {
     queryKey: ["dashboard"],
     queryFn: API.getDashboard,
     refetchInterval: 60_000,
+  });
+  const { data: forecast } = useQuery({
+    queryKey: ["cashflow-forecast"],
+    queryFn: API.getCashflowForecast,
+    refetchInterval: 120_000,
+  });
+  const { data: insights } = useQuery({
+    queryKey: ["insights"],
+    queryFn: API.getInsights,
+    refetchInterval: 120_000,
   });
 
   if (isLoading || !data) return <div style={{ color: 'var(--brand-teal)' }}>Cargando dashboard...</div>;
@@ -123,6 +135,118 @@ export default function Dashboard() {
           </>
         )}
       </div>
+
+      {/* === CASHFLOW FORECAST 90 DÍAS === */}
+      {forecast && forecast.forecast90Days && forecast.forecast90Days.length > 0 && (
+        <div className="card p-5">
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <h2 className="text-base font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>
+              <Calendar size={16} style={{ color: 'var(--brand-gold)' }} /> Cashflow forecast (90 días)
+            </h2>
+            <div className="flex items-center gap-4 text-xs flex-wrap">
+              {forecast.runwayDays != null && (
+                <div className="flex items-center gap-1.5">
+                  <span style={{ color: 'var(--brand-teal2)' }}>Runway:</span>
+                  <span className="font-mono font-bold" style={{
+                    color: forecast.runwayDays > 180 ? '#059669' :
+                           forecast.runwayDays > 90 ? '#d97706' : '#dc2626'
+                  }}>
+                    {forecast.runwayDays} días
+                  </span>
+                </div>
+              )}
+              <div className="flex items-center gap-1.5">
+                <span style={{ color: 'var(--brand-teal2)' }}>Interés diario:</span>
+                <span className="font-mono font-bold text-red-600">{usd(forecast.interestPerDay)}</span>
+              </div>
+            </div>
+          </div>
+          <div className="h-64">
+            <ResponsiveContainer>
+              <AreaChart data={forecast.forecast90Days}>
+                <defs>
+                  <linearGradient id="balanceFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#C8922A" stopOpacity={0.4} />
+                    <stop offset="100%" stopColor="#C8922A" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(45,75,82,0.1)" />
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#3A5F68" }} interval={9} />
+                <YAxis tick={{ fontSize: 10, fill: "#3A5F68" }} tickFormatter={(v) => usd(v, { compact: true })} />
+                <Tooltip
+                  contentStyle={{ background: "#fff", border: "1px solid rgba(45,75,82,0.15)", borderRadius: 8 }}
+                  formatter={(v: any) => usd(v as number)}
+                  labelFormatter={(d) => `📅 ${d}`}
+                />
+                <Area type="monotone" dataKey="balance" stroke="#2D4B52" strokeWidth={2} fill="url(#balanceFill)" name="Saldo proyectado" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+          {forecast.upcomingMaturity && forecast.upcomingMaturity.length > 0 && (
+            <div className="mt-3 p-3 rounded-lg bg-amber-50 border border-amber-200">
+              <div className="text-xs font-bold text-amber-700 mb-1">⚠ Vencimientos de préstamo próximos (90 días)</div>
+              <ul className="text-xs space-y-0.5 text-amber-700">
+                {forecast.upcomingMaturity.slice(0, 5).map((m: any) => (
+                  <li key={m.loanId}>
+                    · {m.date?.slice(0, 10)}: <span className="font-mono font-semibold">{usd(m.amount)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* === INSIGHTS EJECUTIVOS (CFO) === */}
+      {insights && insights.total > 0 && (
+        <div className="card p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-base font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>
+              <ShieldAlert size={16} style={{ color: 'var(--brand-gold)' }} /> Insights ejecutivos
+            </h2>
+            <div className="flex items-center gap-2 text-xs">
+              {insights.bySeverity.red > 0 && (
+                <span className="badge bg-red-50 text-red-700 border border-red-200 text-[10px]">
+                  {insights.bySeverity.red} críticas
+                </span>
+              )}
+              {insights.bySeverity.warn > 0 && (
+                <span className="badge bg-amber-50 text-amber-700 border border-amber-200 text-[10px]">
+                  {insights.bySeverity.warn} advertencias
+                </span>
+              )}
+              {insights.bySeverity.info > 0 && (
+                <span className="badge bg-blue-50 text-blue-700 border border-blue-200 text-[10px]">
+                  {insights.bySeverity.info} info
+                </span>
+              )}
+            </div>
+          </div>
+          <ul className="space-y-1.5">
+            {insights.insights.slice(0, 10).map((ins: any, i: number) => (
+              <li key={i} className={cls(
+                "flex items-start gap-2 p-2.5 rounded-lg text-sm",
+                ins.severity === "red" && "bg-red-50 border border-red-200",
+                ins.severity === "warn" && "bg-amber-50 border border-amber-200",
+                ins.severity === "info" && "bg-blue-50 border border-blue-200",
+              )}>
+                {ins.severity === "red" && <ShieldAlert size={14} className="text-red-600 flex-shrink-0 mt-0.5" />}
+                {ins.severity === "warn" && <AlertTriangle size={14} className="text-amber-600 flex-shrink-0 mt-0.5" />}
+                {ins.severity === "info" && <Info size={14} className="text-blue-600 flex-shrink-0 mt-0.5" />}
+                <div className={cls(
+                  "flex-1",
+                  ins.severity === "red" && "text-red-800",
+                  ins.severity === "warn" && "text-amber-800",
+                  ins.severity === "info" && "text-blue-800",
+                )}>
+                  <span className="text-[10px] uppercase tracking-wider font-bold opacity-70 mr-2">{ins.category}</span>
+                  {ins.message}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Alertas rojas */}
       {data.alerts.length > 0 && (
