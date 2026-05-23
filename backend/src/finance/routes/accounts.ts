@@ -49,11 +49,54 @@ router.get("/:id", async (req, res) => {
       include: {
         spv: true,
         movementsFrom: { include: { category: true, origin: true, project: true }, orderBy: { date: "desc" }, take: 200 },
-        statements: { orderBy: { periodStart: "desc" } },
+        statements: { include: { _count: { select: { lines: true } } }, orderBy: { periodStart: "desc" } },
       },
     });
     if (!a) return fail(res, "not found", 404);
     ok(res, a);
+  } catch (e) { fail(res, e); }
+});
+
+// GET /:id/reconciliation — comparación movimientos vs líneas de extracto para esta cuenta
+// Retorna 3 listas:
+//   matched:      movimientos manuales que SÍ aparecen en algún extracto (verde)
+//   bookOnly:     movimientos manuales que NO aparecen en extracto (amarillo — quizás aún no se subió ese período)
+//   bankOnly:     líneas de extracto sin movimiento manual (rojo — falta registrar movimiento)
+router.get("/:id/reconciliation", async (req, res) => {
+  try {
+    const accountId = +req.params.id;
+
+    // Movimientos donde la cuenta es origen O destino (incluye transferencias recibidas)
+    const movements = await prisma.finMovement.findMany({
+      where: { OR: [{ accountId }, { destAccountId: accountId }] },
+      include: { category: true, project: true, account: true, destAccount: true },
+      orderBy: { date: "desc" },
+    });
+
+    // Líneas de extracto de esta cuenta
+    const lines = await prisma.finBankStatementLine.findMany({
+      where: { statement: { accountId } },
+      include: { statement: { select: { id: true, filename: true, periodStart: true, periodEnd: true } } },
+      orderBy: { date: "desc" },
+    });
+
+    const matchedMovIds = new Set(lines.filter(l => l.matchedMovementId).map(l => l.matchedMovementId!));
+    const matched = movements.filter((m) => matchedMovIds.has(m.id));
+    const bookOnly = movements.filter((m) => !matchedMovIds.has(m.id));
+    const bankOnly = lines.filter((l) => l.matchStatus === "unmatched");
+
+    ok(res, {
+      counts: {
+        totalMovements: movements.length,
+        totalLines: lines.length,
+        matched: matched.length,
+        bookOnly: bookOnly.length,
+        bankOnly: bankOnly.length,
+      },
+      matched,
+      bookOnly,
+      bankOnly,
+    });
   } catch (e) { fail(res, e); }
 });
 

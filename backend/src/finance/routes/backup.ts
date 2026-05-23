@@ -171,8 +171,16 @@ router.get("/excel", async (_req, res) => {
 
 // === DELETE /api/finance/backup/wipe-all — Borra todos los datos finance ===
 // Solo borra tablas Fin*, NO toca el módulo técnico.
-router.delete("/wipe-all", async (_req, res) => {
+// PROTEGIDO: requiere header X-Wipe-Password con la contraseña configurada.
+const WIPE_PASSWORD = process.env.WIPE_PASSWORD || "18418598";
+
+router.delete("/wipe-all", async (req, res) => {
   try {
+    // Validar contraseña de confirmación de reseteo
+    const pwd = (req.headers["x-wipe-password"] as string) || (req.body && req.body.password) || "";
+    if (pwd !== WIPE_PASSWORD) {
+      return fail(res, "Contraseña de reseteo incorrecta. El reseteo total fue bloqueado por seguridad.", 403);
+    }
     // Orden importante por foreign keys
     await prisma.finBankStatementLine.deleteMany({});
     await prisma.finBankStatement.deleteMany({});

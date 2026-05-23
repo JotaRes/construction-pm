@@ -538,6 +538,9 @@ model FinLoan {
   classification String?
   totalRepaid   Float    @default(0)
   notes         String?
+  // Auto-sync 1-1 con un movimiento de Ingreso + isLoan + lenderId.
+  // Si el movimiento se borra/actualiza, el préstamo refleja el cambio.
+  sourceMovementId Int? @unique
   createdAt     DateTime @default(now())
   movements     FinMovement[]
 

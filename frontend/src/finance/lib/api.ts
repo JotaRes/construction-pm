@@ -77,7 +77,14 @@ export const API = {
   // Accounts (con saldos calculados)
   getAccounts: () => unwrap<any[]>(api.get("/accounts")),
   getAccountDetail: (id: number) => unwrap<any>(api.get(`/accounts/${id}`)),
+  getAccountReconciliation: (id: number) => unwrap<any>(api.get(`/accounts/${id}/reconciliation`)),
   updateAccountBalances: (id: number, data: any) => unwrap<any>(api.patch(`/accounts/${id}`, data)),
+  uploadStatementToAccount: (accountId: number, file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("accountId", String(accountId));
+    return unwrap<any>(api.post("/statements/upload", fd, { headers: { "Content-Type": "multipart/form-data" } }));
+  },
 
   // Capital
   getCapital: () => unwrap<any>(api.get("/capital")),
@@ -150,7 +157,15 @@ export const API = {
   // Backup
   backupUrl: () => `/api/finance/backup`,
   excelExportUrl: () => `/api/finance/backup/excel`,
-  wipeAllData: () => unwrap<any>(api.delete("/backup/wipe-all")),
+  wipeAllData: (password: string) =>
+    unwrap<any>(api.delete("/backup/wipe-all", { headers: { "X-Wipe-Password": password } })),
+  restoreFromFile: (file: File, password: string) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return unwrap<any>(api.post("/imports/restore", fd, {
+      headers: { "Content-Type": "multipart/form-data", "X-Restore-Password": password },
+    }));
+  },
 };
 
 export default api;

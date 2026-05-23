@@ -7,6 +7,8 @@ import { Modal } from "../components/Modal";
 import {
   Plus, Search, Sparkles, ChevronRight, Trash2, FileCheck,
   AlertCircle, ArrowDownLeft, ArrowUpRight, Repeat, CheckCircle2, X,
+  Calendar, Building2, Tag, Users, Briefcase, Banknote, TrendingUp,
+  SlidersHorizontal,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -31,6 +33,7 @@ export default function Movements() {
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [q, setQ] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const { data: catalogs } = useQuery({ queryKey: ["catalogs"], queryFn: API.getCatalogs });
   const { data, isLoading } = useQuery({
@@ -138,61 +141,155 @@ export default function Movements() {
         </div>
       </div>
 
-      {/* Filtros — fila 1: búsqueda + cuenta + tipo + fechas */}
-      <div className="card p-3 space-y-2">
-        <div className="grid md:grid-cols-12 gap-2">
-          <div className="md:col-span-3 flex items-center gap-2 input">
-            <Search size={14} className="text-slate-500" />
-            <input
-              value={q} onChange={(e) => setQ(e.target.value)}
-              placeholder="Buscar por concepto o notas…"
-              className="bg-transparent outline-none flex-1 text-sm"
-            />
-          </div>
-          <select className="select md:col-span-2" value={filters.accountId || ""} onChange={(e) => setFilters({ ...filters, accountId: e.target.value })}>
-            <option value="">Todas las cuentas</option>
-            {catalogs?.accounts?.map((a: any) => <option key={a.id} value={a.id}>{a.name}</option>)}
-          </select>
-          <select className="select md:col-span-1" value={filters.type || ""} onChange={(e) => setFilters({ ...filters, type: e.target.value })}>
-            <option value="">Tipo</option>
-            <option>Ingreso</option><option>Egreso</option><option value="Interbancario">Transferencia</option>
-          </select>
-          <input type="date" className="input md:col-span-2 text-xs" value={filters.from || ""} onChange={(e) => setFilters({ ...filters, from: e.target.value })} placeholder="Desde" />
-          <input type="date" className="input md:col-span-2 text-xs" value={filters.to || ""} onChange={(e) => setFilters({ ...filters, to: e.target.value })} placeholder="Hasta" />
-          <select className="select md:col-span-2" value={filters.projectId || ""} onChange={(e) => setFilters({ ...filters, projectId: e.target.value })}>
-            <option value="">Todos los proyectos</option>
-            {catalogs?.projects?.map((p: any) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
-          </select>
-        </div>
-        <div className="grid md:grid-cols-12 gap-2">
-          <select className="select md:col-span-3" value={filters.categoryId || ""} onChange={(e) => setFilters({ ...filters, categoryId: e.target.value })}>
-            <option value="">Todas las categorías</option>
-            {catalogs?.categories?.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-          <select className="select md:col-span-2" value={filters.providerId || ""} onChange={(e) => setFilters({ ...filters, providerId: e.target.value })}>
-            <option value="">Todos los proveedores</option>
-            {catalogs?.providers?.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
-          <select className="select md:col-span-2" value={filters.partnerId || ""} onChange={(e) => setFilters({ ...filters, partnerId: e.target.value })}>
-            <option value="">Todos los socios</option>
-            {catalogs?.partners?.map((p: any) => <option key={p.id} value={p.id}>{p.code} · {p.fullName}</option>)}
-          </select>
-          <select className="select md:col-span-2" value={filters.originId || ""} onChange={(e) => setFilters({ ...filters, originId: e.target.value })}>
-            <option value="">Todos los orígenes</option>
-            {catalogs?.origins?.map((o: any) => <option key={o.id} value={o.id}>{o.name}</option>)}
-          </select>
-          <select className="select md:col-span-2" value={filters.lenderId || ""} onChange={(e) => setFilters({ ...filters, lenderId: e.target.value })}>
-            <option value="">Todos los lenders</option>
-            {catalogs?.lenders?.map((l: any) => <option key={l.id} value={l.id}>{l.name}</option>)}
-          </select>
-          <div className="md:col-span-1 flex items-center justify-end">
+      {/* === FILTROS REDISEÑADOS === */}
+      <div className="card overflow-hidden">
+        {/* Fila principal: búsqueda destacada + toggle de filtros avanzados */}
+        <div className="p-4" style={{ background: 'linear-gradient(135deg, var(--brand-cream2) 0%, #ffffff 100%)' }}>
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Búsqueda principal — destacada */}
+            <div className="flex-1 min-w-[240px] relative">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--brand-gold)' }} />
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Buscar por concepto, notas, monto…"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm transition-all"
+                style={{
+                  background: '#ffffff',
+                  border: '1.5px solid rgba(45,75,82,0.15)',
+                  color: 'var(--brand-teal)',
+                  outline: 'none',
+                  boxShadow: '0 1px 3px rgba(45,75,82,0.05)',
+                }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--brand-gold)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(200,146,42,0.15)'; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(45,75,82,0.15)'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(45,75,82,0.05)'; }}
+              />
+            </div>
+
+            {/* Chips de filtros rápidos: Tipo */}
+            <div className="flex items-center gap-1 p-1 rounded-xl" style={{ background: '#ffffff', border: '1px solid rgba(45,75,82,0.1)' }}>
+              {[
+                { val: "", label: "Todos", icon: null },
+                { val: "Ingreso", label: "Ingreso", icon: ArrowDownLeft, color: '#059669' },
+                { val: "Egreso", label: "Egreso", icon: ArrowUpRight, color: '#dc2626' },
+                { val: "Interbancario", label: "Transfer.", icon: Repeat, color: 'var(--brand-gold)' },
+              ].map((t) => {
+                const active = (filters.type || "") === t.val;
+                const Icon = t.icon;
+                return (
+                  <button
+                    key={t.val}
+                    onClick={() => setFilters({ ...filters, type: t.val })}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-1.5 whitespace-nowrap"
+                    style={
+                      active
+                        ? { background: t.color || 'var(--brand-teal)', color: 'white', boxShadow: '0 2px 8px rgba(45,75,82,0.15)' }
+                        : { background: 'transparent', color: 'var(--brand-teal2)' }
+                    }
+                  >
+                    {Icon && <Icon size={11} />}
+                    {t.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Botón toggle de filtros avanzados */}
+            <button
+              onClick={() => setFiltersOpen(!filtersOpen)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
+              style={
+                filtersOpen
+                  ? { background: 'var(--brand-teal)', color: 'white' }
+                  : { background: '#ffffff', color: 'var(--brand-teal)', border: '1.5px solid rgba(45,75,82,0.15)' }
+              }
+            >
+              <SlidersHorizontal size={14} />
+              Filtros avanzados
+              {Object.keys(filters).filter(k => filters[k] && k !== 'type').length > 0 && (
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold" style={{
+                  background: filtersOpen ? 'rgba(255,255,255,0.25)' : 'var(--brand-gold)',
+                  color: filtersOpen ? '#ffffff' : '#ffffff',
+                }}>
+                  {Object.keys(filters).filter(k => filters[k] && k !== 'type').length}
+                </span>
+              )}
+            </button>
+
             {hasActiveFilters && (
-              <button className="btn-ghost text-xs flex items-center gap-1" onClick={clearFilters}>
+              <button
+                onClick={clearFilters}
+                className="inline-flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors"
+              >
                 <X size={12} /> Limpiar
               </button>
             )}
           </div>
         </div>
+
+        {/* Filtros avanzados — colapsables */}
+        {filtersOpen && (
+          <div className="p-4 grid md:grid-cols-2 lg:grid-cols-4 gap-3" style={{ borderTop: '1px solid rgba(45,75,82,0.08)', background: '#ffffff' }}>
+            <FilterField icon={<Calendar size={13} />} label="Desde">
+              <input
+                type="date"
+                className="input w-full text-sm"
+                value={filters.from || ""}
+                onChange={(e) => setFilters({ ...filters, from: e.target.value })}
+              />
+            </FilterField>
+            <FilterField icon={<Calendar size={13} />} label="Hasta">
+              <input
+                type="date"
+                className="input w-full text-sm"
+                value={filters.to || ""}
+                onChange={(e) => setFilters({ ...filters, to: e.target.value })}
+              />
+            </FilterField>
+            <FilterField icon={<Building2 size={13} />} label="Cuenta bancaria">
+              <select className="select w-full text-sm" value={filters.accountId || ""} onChange={(e) => setFilters({ ...filters, accountId: e.target.value })}>
+                <option value="">Todas las cuentas</option>
+                {catalogs?.accounts?.map((a: any) => <option key={a.id} value={a.id}>{a.name}</option>)}
+              </select>
+            </FilterField>
+            <FilterField icon={<Briefcase size={13} />} label="Proyecto">
+              <select className="select w-full text-sm" value={filters.projectId || ""} onChange={(e) => setFilters({ ...filters, projectId: e.target.value })}>
+                <option value="">Todos los proyectos</option>
+                {catalogs?.projects?.map((p: any) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
+              </select>
+            </FilterField>
+            <FilterField icon={<Tag size={13} />} label="Categoría">
+              <select className="select w-full text-sm" value={filters.categoryId || ""} onChange={(e) => setFilters({ ...filters, categoryId: e.target.value })}>
+                <option value="">Todas las categorías</option>
+                {catalogs?.categories?.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </FilterField>
+            <FilterField icon={<Briefcase size={13} />} label="Proveedor">
+              <select className="select w-full text-sm" value={filters.providerId || ""} onChange={(e) => setFilters({ ...filters, providerId: e.target.value })}>
+                <option value="">Todos los proveedores</option>
+                {catalogs?.providers?.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </FilterField>
+            <FilterField icon={<Users size={13} />} label="Socio">
+              <select className="select w-full text-sm" value={filters.partnerId || ""} onChange={(e) => setFilters({ ...filters, partnerId: e.target.value })}>
+                <option value="">Todos los socios</option>
+                {catalogs?.partners?.map((p: any) => <option key={p.id} value={p.id}>{p.code} · {p.fullName}</option>)}
+              </select>
+            </FilterField>
+            <FilterField icon={<TrendingUp size={13} />} label="Origen ingreso">
+              <select className="select w-full text-sm" value={filters.originId || ""} onChange={(e) => setFilters({ ...filters, originId: e.target.value })}>
+                <option value="">Todos los orígenes</option>
+                {catalogs?.origins?.map((o: any) => <option key={o.id} value={o.id}>{o.name}</option>)}
+              </select>
+            </FilterField>
+            <FilterField icon={<Banknote size={13} />} label="Lender (Prestamista)">
+              <select className="select w-full text-sm" value={filters.lenderId || ""} onChange={(e) => setFilters({ ...filters, lenderId: e.target.value })}>
+                <option value="">Todos los lenders</option>
+                {catalogs?.lenders?.map((l: any) => <option key={l.id} value={l.id}>{l.name}</option>)}
+              </select>
+            </FilterField>
+          </div>
+        )}
       </div>
 
       {/* Alertas rojas: líneas de extracto sin registrar */}
@@ -558,5 +655,18 @@ function MovementModal({ open, onClose, catalogs }: { open: boolean; onClose: ()
         </div>
       </form>
     </Modal>
+  );
+}
+
+// Campo de filtro con label icono — usado en panel de filtros avanzados
+function FilterField({ icon, label, children }: { icon: React.ReactNode; label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider font-semibold mb-1.5" style={{ color: 'var(--brand-teal2)' }}>
+        <span style={{ color: 'var(--brand-gold)' }}>{icon}</span>
+        {label}
+      </label>
+      {children}
+    </div>
   );
 }

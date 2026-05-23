@@ -2,6 +2,7 @@ import { Router } from "express";
 import { prisma } from "../lib/prisma";
 import { ok, fail } from "../lib/respond";
 import { upsertCapitalFromMovement, removeCapitalForMovement } from "../services/capitalSync";
+import { upsertLoanFromMovement, removeLoanForMovement, recalculateLoanRepayments } from "../services/loanSync";
 
 const router = Router();
 
@@ -109,7 +110,10 @@ router.post("/", async (req, res) => {
     }
 
     const created = await prisma.finMovement.create({ data, include: includeAll });
+    // Sync con módulos relacionados
     await upsertCapitalFromMovement(created.id);
+    await upsertLoanFromMovement(created.id);
+    if (created.isLoanRepayment) await recalculateLoanRepayments();
     ok(res, created);
   } catch (e) { fail(res, e); }
 });
@@ -133,6 +137,8 @@ router.patch("/:id", async (req, res) => {
     delete data.loan;
     const updated = await prisma.finMovement.update({ where: { id: +req.params.id }, data, include: includeAll });
     await upsertCapitalFromMovement(updated.id);
+    await upsertLoanFromMovement(updated.id);
+    await recalculateLoanRepayments();
     ok(res, updated);
   } catch (e) { fail(res, e); }
 });
@@ -141,7 +147,9 @@ router.delete("/:id", async (req, res) => {
   try {
     const id = +req.params.id;
     await removeCapitalForMovement(id);
+    await removeLoanForMovement(id);
     await prisma.finMovement.delete({ where: { id } });
+    await recalculateLoanRepayments();
     ok(res, { deleted: true });
   } catch (e) { fail(res, e); }
 });
