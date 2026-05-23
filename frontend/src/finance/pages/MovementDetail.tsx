@@ -47,7 +47,7 @@ export default function MovementDetail() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <Link to="/movements" className="btn-ghost"><ArrowLeft size={14} /> Movimientos</Link>
+        <Link to="/finance/movements" className="btn-ghost"><ArrowLeft size={14} /> Movimientos</Link>
         <div className="flex gap-2">
           <button
             className={cls("btn-secondary", m.needsReview && "text-warn")}

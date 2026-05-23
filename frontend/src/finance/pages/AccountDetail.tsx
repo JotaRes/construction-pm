@@ -53,8 +53,9 @@ export default function AccountDetail() {
   const incomingTransfers = allMovements.filter(
     (m: any) => m.destAccountId === aid && m.accountId !== aid
   );
-  const ingresos = outgoingMovements.filter((m: any) => m.type === "Ingreso").reduce((s, m) => s + m.amount, 0);
-  const egresos = outgoingMovements.filter((m: any) => m.type === "Egreso").reduce((s, m) => s + m.amount, 0);
+  // Excluir intercompany de Ingresos/Egresos para no duplicar con las transferencias
+  const ingresos = outgoingMovements.filter((m: any) => m.type === "Ingreso" && !m.isIntercompany).reduce((s, m) => s + m.amount, 0);
+  const egresos = outgoingMovements.filter((m: any) => m.type === "Egreso" && !m.isIntercompany).reduce((s, m) => s + m.amount, 0);
   const transferOut = outgoingMovements.filter((m: any) => m.type === "Interbancario").reduce((s, m) => s + m.amount, 0);
   const transferIn = incomingTransfers.reduce((s: number, m: any) => s + m.amount, 0);
 

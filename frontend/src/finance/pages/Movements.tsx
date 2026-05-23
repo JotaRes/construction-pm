@@ -302,7 +302,7 @@ export default function Movements() {
                 {unreconciledLines.length} {unreconciledLines.length === 1 ? "línea" : "líneas"} de extracto sin registrar manualmente
               </span>
             </div>
-            <Link to="/statements" className="text-xs text-accent hover:underline">Ir a Extractos →</Link>
+            <Link to="/finance/accounts" className="text-xs hover:underline font-semibold" style={{ color: 'var(--brand-gold)' }}>Ir a Cuentas →</Link>
           </div>
           <div className="grid md:grid-cols-2 gap-2">
             {unreconciledLines.slice(0, 6).map((l: any) => (
