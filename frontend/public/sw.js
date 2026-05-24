@@ -1,14 +1,11 @@
-// Service worker simple para Restrepo Acosta Sistema
-// - Caché del app shell para arranque rápido y modo offline limitado
-// - Network-first para APIs (datos siempre frescos)
-// - Cache-first para assets estáticos
-const VERSION = 'ra-sistema-v1'
-const APP_SHELL = ['/', '/manifest.webmanifest', '/favicon.svg', '/icons/icon-192.png']
+// Service worker minimalista para Restrepo Acosta — versión 2
+// IMPORTANTE: el HTML SIEMPRE va a la red (network-only) para evitar
+// que un index.html cacheado apunte a bundles JS viejos que ya no existen
+// (Vite genera hashes nuevos en cada build).
+const VERSION = 'ra-sistema-v2'
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(VERSION).then((cache) => cache.addAll(APP_SHELL)).catch(() => {})
-  )
+  // Skip waiting → activación inmediata
   self.skipWaiting()
 })
 
@@ -16,24 +13,44 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => Promise.all(
       keys.filter((k) => k !== VERSION).map((k) => caches.delete(k))
-    ))
+    )).then(() => self.clients.claim())
   )
-  self.clients.claim()
 })
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url)
 
-  // No interceptamos requests cross-origin, métodos no-GET, o auth
+  // No interceptamos requests cross-origin, métodos no-GET, o APIs
   if (event.request.method !== 'GET' || url.origin !== self.location.origin) return
-
-  // APIs siempre van directo a la red — datos vivos
   if (url.pathname.startsWith('/api/')) return
 
-  // Assets versionados (con hash en el nombre): cache-first
-  if (/\.[a-f0-9]{8}\.(js|css|svg|png|woff2?)$/i.test(url.pathname) ||
-      /\/assets\//i.test(url.pathname) ||
-      /\/icons\//i.test(url.pathname)) {
+  // === HTML / navegación → NETWORK ONLY (nunca cachear) ===
+  // Esto garantiza que después de un deploy, el usuario siempre recibe
+  // el HTML nuevo que apunta a los hashes JS/CSS correctos.
+  if (event.request.mode === 'navigate' || event.request.destination === 'document') {
+    return  // dejar pasar — el navegador hace fetch normal
+  }
+
+  // === Assets versionados (con hash en el nombre) → cache-first ===
+  // Vite emite assets con hash inmortal — seguro cachear long-term
+  if (/\/assets\/.+-[A-Za-z0-9]{8,}\.(js|css|woff2?|png|svg|jpg|webp)$/i.test(url.pathname)) {
+    event.respondWith(
+      caches.match(event.request).then((cached) => {
+        if (cached) return cached
+        return fetch(event.request).then((res) => {
+          if (res.ok) {
+            const clone = res.clone()
+            caches.open(VERSION).then((c) => c.put(event.request, clone)).catch(() => {})
+          }
+          return res
+        })
+      })
+    )
+    return
+  }
+
+  // === Icons y favicon → cache-first ===
+  if (/\/icons\/|\/favicon\.svg/.test(url.pathname)) {
     event.respondWith(
       caches.match(event.request).then((cached) =>
         cached || fetch(event.request).then((res) => {
@@ -44,20 +61,6 @@ self.addEventListener('fetch', (event) => {
           return res
         })
       )
-    )
-    return
-  }
-
-  // App shell (HTML): network-first, fallback al cache
-  if (event.request.mode === 'navigate' || event.request.destination === 'document') {
-    event.respondWith(
-      fetch(event.request).then((res) => {
-        if (res.ok) {
-          const clone = res.clone()
-          caches.open(VERSION).then((c) => c.put('/', clone)).catch(() => {})
-        }
-        return res
-      }).catch(() => caches.match('/').then((c) => c || new Response('Sin conexión', { status: 503 })))
     )
   }
 })
