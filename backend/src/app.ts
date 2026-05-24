@@ -41,12 +41,14 @@ const app = express()
 const PORT = process.env.PORT || 3001
 
 // === Trust proxy ===
-// En Render + Cloudflare, el cliente real está detrás de varios proxies.
-// trust proxy hace que req.ip refleje X-Forwarded-For correctamente,
-// lo que permite que express-rate-limit y otros middlewares vean IPs únicas
-// por cliente en lugar de la IP del proxy de Render (que es siempre la misma).
-// Render usa hasta 2 hops (load balancer + Cloudflare).
-app.set('trust proxy', 2)
+// Render expone el servicio detrás de exactamente 1 hop de proxy (su load balancer),
+// que inyecta el header X-Forwarded-For con la IP real del cliente.
+// Con trust proxy = 1, Express lee ese valor correctamente y express-rate-limit
+// puede identificar IPs únicas por cliente.
+// IMPORTANTE: usar un valor mayor (ej. 2) permitiría a atacantes falsificar su IP
+// con un header X-Forwarded-For manipulado y eludir el rate limiting.
+// Si en el futuro se agrega Cloudflare o una CDN adicional, cambiar a 2.
+app.set('trust proxy', 1)
 
 // ── 1. SECURITY HEADERS (helmet) ─────────────────────────────────────────────
 app.use(
