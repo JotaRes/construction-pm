@@ -11,10 +11,48 @@ const REQUEST_TIMEOUT_MS = 30_000
 const isAllowedHost = (hostname: string) =>
   ALLOWED_HOSTS.some(h => hostname === h || hostname.endsWith('.' + h))
 
+// Mapa de extensiones → MIME types (para inferir cuando upstream no lo da bien)
+const EXT_MIME_MAP: Record<string, string> = {
+  pdf: 'application/pdf',
+  jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
+  webp: 'image/webp', gif: 'image/gif', svg: 'image/svg+xml',
+  mp4: 'video/mp4', mov: 'video/quicktime', webm: 'video/webm',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  xls: 'application/vnd.ms-excel',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  doc: 'application/msword',
+  csv: 'text/csv', txt: 'text/plain', zip: 'application/zip',
+}
+
+// Extrae la extensión de un nombre/path en minúsculas, devuelve '' si no hay
+function getExt(s: string): string {
+  const m = s.match(/\.([a-z0-9]{2,5})(?:[?#]|$)/i)
+  return m ? m[1].toLowerCase() : ''
+}
+
+// RFC 5987 — codifica filename para header HTTP cuando tiene caracteres no-ASCII
+function rfc5987(value: string): string {
+  return encodeURIComponent(value)
+    .replace(/['()]/g, escape)
+    .replace(/\*/g, '%2A')
+    .replace(/%(?:7C|60|5E)/g, unescape)
+}
+
+// Construye un valor Content-Disposition válido aún con caracteres Unicode
+// usando ambos: filename (ASCII fallback) y filename* (RFC 5987 UTF-8)
+function buildContentDisposition(name: string, inline: boolean): string {
+  const cleaned = name.replace(/[\r\n"]/g, '').trim() || 'download'
+  // ASCII-safe version (reemplaza chars no-ASCII por _)
+  const asciiSafe = cleaned.replace(/[^\x20-\x7E]/g, '_')
+  const dispType = inline ? 'inline' : 'attachment'
+  return `${dispType}; filename="${asciiSafe}"; filename*=UTF-8''${rfc5987(cleaned)}`
+}
+
 const fetchWithRedirects = (
   url: string,
   res: Response,
   disposition: string,
+  inferredCt: string | undefined,
   redirectsLeft: number
 ): void => {
   let parsed: URL
@@ -36,7 +74,7 @@ const fetchWithRedirects = (
         return
       }
       const next = new URL(proxyRes.headers.location, url).toString()
-      fetchWithRedirects(next, res, disposition, redirectsLeft - 1)
+      fetchWithRedirects(next, res, disposition, inferredCt, redirectsLeft - 1)
       return
     }
 
@@ -47,36 +85,24 @@ const fetchWithRedirects = (
       return
     }
 
-    // === Inferir Content-Type apropiado ===
-    // Cloudinary a veces sirve PDFs subidos como resource_type=image con un
-    // Content-Type genérico (application/octet-stream u image/*). Si la URL
-    // termina en una extensión conocida, forzamos el mime correcto para que
-    // el navegador y WhatsApp lo abran nativamente.
     const upstreamCt = proxyRes.headers['content-type']
-    const ext = (parsed.pathname.split('.').pop() || '').toLowerCase()
-    const extMimeMap: Record<string, string> = {
-      pdf: 'application/pdf',
-      jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif',
-      mp4: 'video/mp4', mov: 'video/quicktime',
-      xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      xls: 'application/vnd.ms-excel',
-      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      doc: 'application/msword',
-      zip: 'application/zip',
-    }
-    const inferredCt = extMimeMap[ext]
-    const isGeneric = !upstreamCt || upstreamCt === 'application/octet-stream' || upstreamCt.startsWith('binary/')
-    const finalCt = inferredCt || upstreamCt || 'application/octet-stream'
-    // Si upstream dio un image/* pero la extensión es PDF (caso bug de resource_type=image),
-    // sobreescribir con el mime correcto
-    const useInferred = inferredCt && (isGeneric || (ext === 'pdf' && upstreamCt?.startsWith('image/')))
-    res.setHeader('Content-Type', useInferred ? inferredCt : finalCt)
+    const isUpstreamGeneric =
+      !upstreamCt ||
+      upstreamCt === 'application/octet-stream' ||
+      upstreamCt.startsWith('binary/') ||
+      // Cloudinary a veces sirve PDFs como image/* cuando se subieron con resource_type=image
+      (inferredCt === 'application/pdf' && upstreamCt.startsWith('image/'))
+
+    const finalCt = isUpstreamGeneric && inferredCt
+      ? inferredCt
+      : (upstreamCt || inferredCt || 'application/octet-stream')
+
+    res.setHeader('Content-Type', finalCt)
 
     const cl = proxyRes.headers['content-length']
     if (cl) res.setHeader('Content-Length', cl)
     res.setHeader('Content-Disposition', disposition)
     res.setHeader('Cache-Control', 'private, max-age=3600')
-    // Permite que WhatsApp Web y otros previsualicen
     res.setHeader('X-Content-Type-Options', 'nosniff')
     res.status(200)
     proxyRes.pipe(res)
@@ -96,8 +122,8 @@ const fetchWithRedirects = (
 router.get('/', (req: Request, res: Response) => {
   const rawUrl = req.query.url as string
   const inline = req.query.inline === '1'
-  // Permite override del filename desde el query para garantizar extensión correcta
-  // (útil cuando el archivo en Cloudinary fue subido sin extensión visible)
+  // Override del filename desde el query — garantiza nombre + extensión correctos
+  // aunque el archivo en Cloudinary fue subido sin extensión (resource_type=raw)
   const customName = req.query.name as string | undefined
 
   if (!rawUrl) {
@@ -118,23 +144,30 @@ router.get('/', (req: Request, res: Response) => {
     return
   }
 
-  let rawName = customName || decodeURIComponent(parsed.pathname.split('/').pop() ?? 'download')
-  // Si el archivo no tiene extensión pero la URL sí, copiar la extensión
-  const urlExt = parsed.pathname.split('.').pop()?.toLowerCase()
-  const nameHasExt = /\.[a-z0-9]{2,5}$/i.test(rawName)
-  if (!nameHasExt && urlExt && urlExt.length <= 5 && urlExt !== rawName) {
-    rawName = `${rawName}.${urlExt}`
+  // === Decidir el filename final ===
+  // 1. Si viene customName, usarlo (es el nombre amigable que ve el usuario en la app).
+  // 2. Si no, extraer el último segmento del path de la URL.
+  // 3. Asegurar que tenga extensión: copiar desde customName o desde URL si falta.
+  const urlBasename = decodeURIComponent(parsed.pathname.split('/').pop() ?? 'download')
+  let finalName = (customName && customName.trim()) ? customName.trim() : urlBasename
+  const nameExt = getExt(finalName)
+  const urlExt = getExt(parsed.pathname)
+  if (!nameExt) {
+    const ext = urlExt || (customName ? getExt(customName) : '')
+    if (ext) finalName = `${finalName}.${ext}`
   }
-  const safeName = rawName.replace(/"/g, '').replace(/[\r\n]/g, '')
-  const disposition = inline
-    ? `inline; filename="${safeName}"`
-    : `attachment; filename="${safeName}"`
+
+  // === Inferir Content-Type por extensión del NAME (no de la URL — Cloudinary raw no tiene ext) ===
+  const finalExt = getExt(finalName)
+  const inferredCt = EXT_MIME_MAP[finalExt]
+
+  const disposition = buildContentDisposition(finalName, inline)
 
   req.on('close', () => {
     if (!res.writableEnded) res.destroy()
   })
 
-  fetchWithRedirects(rawUrl, res, disposition, MAX_REDIRECTS)
+  fetchWithRedirects(rawUrl, res, disposition, inferredCt, MAX_REDIRECTS)
 })
 
 export default router
