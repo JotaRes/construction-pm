@@ -10,11 +10,13 @@ import {
   FileText, Trash2, Info,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { useConfirm } from "../../components/ConfirmDialog";
 
 export default function AccountDetail() {
   const { id } = useParams();
   const aid = +(id || 0);
   const qc = useQueryClient();
+  const confirm = useConfirm();
   const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState<{ ok: boolean; message: string } | null>(null);
   const [tab, setTab] = useState<"movements" | "reconciliation">("movements");
@@ -245,7 +247,16 @@ export default function AccountDetail() {
                     </div>
                   </div>
                   <button
-                    onClick={() => { if (confirm(`¿Eliminar el extracto "${s.filename}"?`)) deleteStatementMut.mutate(s.id); }}
+                    onClick={async () => {
+                      const ok = await confirm({
+                        title: 'Eliminar extracto bancario',
+                        message: `¿Seguro que quieres eliminar el extracto "${s.filename}"?`,
+                        detail: 'Se eliminarán también todas las líneas del extracto.',
+                        destructive: true,
+                        confirmText: 'Sí, eliminar',
+                      })
+                      if (ok) deleteStatementMut.mutate(s.id);
+                    }}
                     className="btn-ghost p-1 text-red-600 flex-shrink-0"
                     title="Eliminar"
                   >

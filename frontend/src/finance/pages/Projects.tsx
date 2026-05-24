@@ -6,9 +6,11 @@ import { usd, pct, cls } from "../lib/format";
 import { Modal } from "../components/Modal";
 import { Plus, Trash2, Briefcase, ChevronRight, MapPin } from "lucide-react";
 import toast from "react-hot-toast";
+import { useConfirm } from "../../components/ConfirmDialog";
 
 export default function Projects() {
   const qc = useQueryClient();
+  const confirm = useConfirm();
   const { data } = useQuery({ queryKey: ["projects"], queryFn: API.getProjects });
   const { data: catalogs } = useQuery({ queryKey: ["catalogs"], queryFn: API.getCatalogs });
   const [open, setOpen] = useState(false);
@@ -125,7 +127,17 @@ export default function Projects() {
                     </div>
                     <div className="flex items-center gap-1">
                       <button
-                        onClick={(e) => { e.preventDefault(); if (confirm(`¿Eliminar proyecto "${p.name}"?`)) del.mutate(p.id); }}
+                        onClick={async (e) => {
+                          e.preventDefault();
+                          const ok = await confirm({
+                            title: 'Eliminar proyecto',
+                            message: `¿Seguro que quieres eliminar el proyecto "${p.name}"?`,
+                            detail: `Código: ${p.code} · SPV: ${p.spv?.name || 'sin SPV'}. Esta acción no se puede deshacer.`,
+                            destructive: true,
+                            confirmText: 'Sí, eliminar',
+                          })
+                          if (ok) del.mutate(p.id);
+                        }}
                         className="btn-ghost text-red-600 p-1"
                       ><Trash2 size={13} /></button>
                       <ChevronRight size={14} style={{ color: 'var(--brand-gold)' }} />

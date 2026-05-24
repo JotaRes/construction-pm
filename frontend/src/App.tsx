@@ -1,6 +1,8 @@
 import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import AuthGate from './components/AuthGate'
+import { ConfirmProvider } from './components/ConfirmDialog'
+import ModuleGate from './components/ModuleGate'
 import { useQuery } from '@tanstack/react-query'
 import { useProjectStore } from './store/projectStore'
 import { projectsApi } from './lib/api'
@@ -86,13 +88,23 @@ function TechModule() {
 export default function App() {
   return (
     <AuthGate>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Landing />} />
-          <Route path="/tech/*" element={<TechModule />} />
-          <Route path="/finance/*" element={<FinanceApp />} />
-        </Routes>
-      </BrowserRouter>
+      <ConfirmProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route path="/tech/*" element={
+              <ModuleGate moduleName="tech" moduleLabel="Módulo Técnico">
+                <TechModule />
+              </ModuleGate>
+            } />
+            <Route path="/finance/*" element={
+              <ModuleGate moduleName="finance" moduleLabel="Módulo Financiero">
+                <FinanceApp />
+              </ModuleGate>
+            } />
+          </Routes>
+        </BrowserRouter>
+      </ConfirmProvider>
     </AuthGate>
   )
 }

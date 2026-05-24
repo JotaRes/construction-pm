@@ -5,9 +5,11 @@ import { API } from "../lib/api";
 import { dateShort, cls } from "../lib/format";
 import { Upload, FileSpreadsheet, Trash2, ChevronRight, AlertCircle, CheckCircle2, FileText, Info } from "lucide-react";
 import toast from "react-hot-toast";
+import { useConfirm } from "../../components/ConfirmDialog";
 
 export default function Statements() {
   const qc = useQueryClient();
+  const confirm = useConfirm();
   const { data: catalogs } = useQuery({ queryKey: ["catalogs"], queryFn: API.getCatalogs });
   const { data } = useQuery({ queryKey: ["statements"], queryFn: API.listStatements });
   const [accountId, setAccountId] = useState<string>("");
@@ -189,7 +191,16 @@ export default function Statements() {
                         <ChevronRight size={14} />
                       </Link>
                       <button
-                        onClick={() => { if (confirm(`¿Eliminar el extracto "${s.filename}"?`)) del.mutate(s.id); }}
+                        onClick={async () => {
+                          const ok = await confirm({
+                            title: 'Eliminar extracto bancario',
+                            message: `¿Seguro que quieres eliminar el extracto "${s.filename}"?`,
+                            detail: `Se eliminarán también todas las líneas del extracto y la conciliación con movimientos.`,
+                            destructive: true,
+                            confirmText: 'Sí, eliminar',
+                          })
+                          if (ok) del.mutate(s.id);
+                        }}
                         className="btn-ghost p-1 text-red-600"
                         title="Eliminar"
                       >

@@ -8,6 +8,7 @@ import {
   Users, Plus, Trash2, TrendingUp, Banknote, Zap, HandCoins,
   Info, ArrowRight, Calendar,
 } from "lucide-react";
+import { useConfirm } from "../../components/ConfirmDialog";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
   BarChart, Bar, CartesianGrid,
@@ -18,6 +19,7 @@ const PARTNER_COLORS = ["#2D4B52", "#C8922A", "#059669", "#3A5F68", "#E0AD4F", "
 
 export default function Capital() {
   const qc = useQueryClient();
+  const confirm = useConfirm();
   const { data } = useQuery({ queryKey: ["capital"], queryFn: API.getCapital });
   const { data: catalogs } = useQuery({ queryKey: ["catalogs"], queryFn: API.getCatalogs });
   const [openNonBank, setOpenNonBank] = useState(false);
@@ -309,7 +311,16 @@ export default function Capital() {
                   <td className="px-3 py-3 text-right font-mono font-bold" style={{ color: 'var(--brand-gold)' }}>{usd(c.amount)}</td>
                   <td className="px-3 py-3 text-right">
                     <button
-                      onClick={() => { if (confirm(`¿Eliminar aporte de ${c.partner?.fullName}?`)) deleteNonBank.mutate(c.id); }}
+                      onClick={async () => {
+                        const ok = await confirm({
+                          title: 'Eliminar aporte no-bancarizado',
+                          message: `¿Seguro que quieres eliminar el aporte de ${c.partner?.fullName}?`,
+                          detail: `Concepto: "${c.concept}" · Monto: $${c.amount?.toLocaleString()}. Esta acción no se puede deshacer.`,
+                          destructive: true,
+                          confirmText: 'Sí, eliminar',
+                        })
+                        if (ok) deleteNonBank.mutate(c.id);
+                      }}
                       className="btn-ghost text-red-600 p-1"
                     ><Trash2 size={14} /></button>
                   </td>

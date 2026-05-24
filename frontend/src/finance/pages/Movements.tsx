@@ -10,6 +10,7 @@ import {
   Calendar, Building2, Tag, Users, Briefcase, Banknote, TrendingUp,
   SlidersHorizontal,
 } from "lucide-react";
+import { useConfirm } from "../../components/ConfirmDialog";
 import toast from "react-hot-toast";
 
 const TYPE_BADGE: Record<string, { color: string; icon: any; label: string }> = {
@@ -30,6 +31,7 @@ const MATCH_BADGE: Record<string, { color: string; label: string; icon: any }> =
 
 export default function Movements() {
   const qc = useQueryClient();
+  const confirm = useConfirm();
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [q, setQ] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
@@ -383,7 +385,19 @@ export default function Movements() {
                   <td className="px-3 py-2 text-right">
                     <div className="inline-flex gap-1">
                       <Link to={`/finance/movements/${m.id}`} className="btn-ghost p-1" title="Ver detalle / editar"><ChevronRight size={14} /></Link>
-                      <button onClick={() => { if (confirm("¿Eliminar movimiento?")) deleteMutation.mutate(m.id); }} className="btn-ghost p-1 text-negative"><Trash2 size={14} /></button>
+                      <button
+                        onClick={async () => {
+                          const ok = await confirm({
+                            title: 'Eliminar movimiento',
+                            message: `¿Seguro que quieres eliminar el movimiento "${m.concept}"?`,
+                            detail: `Monto: $${m.amount?.toLocaleString()} · ${m.type} · ${m.account?.name || 'sin cuenta'}`,
+                            confirmText: 'Sí, eliminar',
+                            destructive: true,
+                          })
+                          if (ok) deleteMutation.mutate(m.id)
+                        }}
+                        className="btn-ghost p-1 text-negative"
+                      ><Trash2 size={14} /></button>
                     </div>
                   </td>
                 </tr>

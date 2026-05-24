@@ -7,6 +7,7 @@ import {
   TrendingDown, TrendingUp, Layers, FileText,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { useConfirm } from "../../components/ConfirmDialog";
 
 // Definición rica de campos por categoría
 type FieldDef = {
@@ -147,6 +148,7 @@ const API_MAP: Record<string, any> = {
 
 export default function Catalogs() {
   const qc = useQueryClient();
+  const confirm = useConfirm();
   const [tab, setTab] = useState<string>("spvs");
   const { data } = useQuery({ queryKey: ["catalogs"], queryFn: API.getCatalogs });
   const [open, setOpen] = useState(false);
@@ -232,10 +234,16 @@ export default function Catalogs() {
                     <div className="inline-flex gap-1">
                       <button onClick={() => { setEditing(row); setOpen(true); }} className="btn-ghost p-1" title="Editar"><Edit3 size={14} /></button>
                       <button
-                        onClick={() => {
-                          if (confirm(`¿Eliminar "${row.name || row.fullName || row.code}"?`)) {
-                            delMut.mutate({ key: tab, id: row.id });
-                          }
+                        onClick={async () => {
+                          const label = row.name || row.fullName || row.code;
+                          const ok = await confirm({
+                            title: `Eliminar ${current.label.toLowerCase()}`,
+                            message: `¿Seguro que quieres eliminar "${label}"?`,
+                            detail: 'Si este registro está referenciado por movimientos u otros datos, la eliminación puede fallar.',
+                            destructive: true,
+                            confirmText: 'Sí, eliminar',
+                          })
+                          if (ok) delMut.mutate({ key: tab, id: row.id });
                         }}
                         className="btn-ghost p-1 text-red-600"
                         title="Eliminar"

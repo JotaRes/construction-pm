@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { constructionBudgetApi, budgetInitApi } from '../lib/api'
 import { formatUSD } from '../lib/calculations'
 import type { BudgetLine } from '../lib/types'
+import { useConfirm } from '../components/ConfirmDialog'
 import { ChevronDown, ChevronRight, Upload, RefreshCw, CheckCircle, AlertCircle, FileText } from 'lucide-react'
 
 /* ── Inline editable number ─────────────────────── */
@@ -299,6 +300,7 @@ function BudgetPdfPanel({ projectId, onApply }: {
 /* ── Main ────────────────────────────────────────── */
 export default function ConstructionBudget({ projectId }: { projectId: string }) {
   const queryClient = useQueryClient()
+  const confirm = useConfirm()
   const [showPdfPanel, setShowPdfPanel] = useState(false)
 
   const { data: lines = [], isLoading } = useQuery<BudgetLine[]>({
@@ -396,7 +398,16 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
             Importar PDF
           </button>
           <button
-            onClick={() => { if (confirm('¿Reinicializar budget desde template? Se perderán los valores actuales.')) initMut.mutate() }}
+            onClick={async () => {
+              const ok = await confirm({
+                title: 'Reinicializar budget',
+                message: '¿Seguro que quieres reinicializar el budget desde el template?',
+                detail: 'TODOS los valores actuales (valor inicial, presentado, aprobado, pagado) serán reemplazados por los del template. Esta acción no se puede deshacer.',
+                destructive: true,
+                confirmText: 'Sí, reinicializar',
+              })
+              if (ok) initMut.mutate()
+            }}
             disabled={initMut.isPending}
             className="flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg border border-slate-200 bg-white text-slate-500 hover:border-slate-400 transition-colors disabled:opacity-50"
           >

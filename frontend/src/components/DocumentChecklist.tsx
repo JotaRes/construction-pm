@@ -6,6 +6,7 @@ import {
   Mail, MessageCircle, ChevronDown, ChevronRight, FolderOpen,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useConfirm } from './ConfirmDialog'
 
 interface DocItem {
   key: string
@@ -38,6 +39,7 @@ export default function DocumentChecklist({ projectId, projectName, projectAddre
   projectAddress?: string
 }) {
   const qc = useQueryClient()
+  const confirm = useConfirm()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [activeKind, setActiveKind] = useState<string | null>(null)
   const [openGroup, setOpenGroup] = useState<Record<string, boolean>>({
@@ -334,7 +336,16 @@ export default function DocumentChecklist({ projectId, projectName, projectAddre
                               <MessageCircle size={12} />
                             </button>
                             <button
-                              onClick={() => { if (confirm(`¿Eliminar "${f.name}"?`)) deleteMut.mutate(f.id) }}
+                              onClick={async () => {
+                                const ok = await confirm({
+                                  title: 'Eliminar documento',
+                                  message: `¿Seguro que quieres eliminar "${f.name}"?`,
+                                  detail: `Categoría: ${item.label}. Esta acción no se puede deshacer.`,
+                                  destructive: true,
+                                  confirmText: 'Sí, eliminar',
+                                })
+                                if (ok) deleteMut.mutate(f.id)
+                              }}
                               title="Eliminar"
                               className="p-1 rounded hover:bg-red-100 transition-colors text-red-600"
                             >

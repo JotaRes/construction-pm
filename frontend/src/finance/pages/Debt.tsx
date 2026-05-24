@@ -8,6 +8,7 @@ import {
   Plus, Trash2, Banknote, Activity, AlertTriangle, Info,
   TrendingDown, Calendar, Building2, Link2,
 } from "lucide-react";
+import { useConfirm } from "../../components/ConfirmDialog";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
@@ -34,6 +35,7 @@ const CLASS_BADGE: Record<string, string> = {
 
 export default function Debt() {
   const qc = useQueryClient();
+  const confirm = useConfirm();
   const { data: loans } = useQuery({ queryKey: ["loans"], queryFn: API.getLoans });
   const { data: catalogs } = useQuery({ queryKey: ["catalogs"], queryFn: API.getCatalogs });
   const [open, setOpen] = useState(false);
@@ -230,7 +232,16 @@ export default function Debt() {
                   </td>
                   <td className="px-3 py-3 text-right">
                     <button
-                      onClick={() => { if (confirm(`¿Eliminar préstamo de ${l.lender?.name}?`)) deleteMut.mutate(l.id); }}
+                      onClick={async () => {
+                        const ok = await confirm({
+                          title: 'Eliminar préstamo',
+                          message: `¿Seguro que quieres eliminar el préstamo de ${l.lender?.name}?`,
+                          detail: `Monto: $${l.amount?.toLocaleString()} · Saldo: $${(l.outstanding || l.amount)?.toLocaleString()}. Esta acción no se puede deshacer.`,
+                          destructive: true,
+                          confirmText: 'Sí, eliminar',
+                        })
+                        if (ok) deleteMut.mutate(l.id);
+                      }}
                       className="btn-ghost text-red-600 p-1"
                       title={l.sourceMovementId ? "Este préstamo se creó desde un movimiento. Eliminar el movimiento también eliminará el préstamo." : "Eliminar préstamo"}
                     ><Trash2 size={14} /></button>

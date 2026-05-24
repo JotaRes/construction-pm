@@ -9,9 +9,11 @@ import {
   TrendingUp, TrendingDown, Hash, MapPin, Landmark, ChevronRight,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { useConfirm } from "../../components/ConfirmDialog";
 
 export default function Accounts() {
   const qc = useQueryClient();
+  const confirm = useConfirm();
   const { data } = useQuery({ queryKey: ["accounts"], queryFn: API.getAccounts });
   // Totales globales de movimientos para el panel superior
   const { data: movData } = useQuery({
@@ -155,10 +157,15 @@ export default function Accounts() {
                         <Link to={`/finance/accounts/${a.id}`} className="btn-ghost p-1.5" title="Ver movimientos"><ChevronRight size={14} /></Link>
                         <button onClick={() => startEdit(a)} className="btn-ghost p-1.5" title="Editar"><Edit3 size={13} /></button>
                         <button
-                          onClick={() => {
-                            if (confirm(`¿Eliminar cuenta "${a.name}"? Solo se permite si no tiene movimientos.`)) {
-                              deleteMut.mutate(a.id);
-                            }
+                          onClick={async () => {
+                            const ok = await confirm({
+                              title: 'Eliminar cuenta bancaria',
+                              message: `¿Seguro que quieres eliminar la cuenta "${a.name}"?`,
+                              detail: `Banco: ${a.bank}. Solo se puede eliminar si NO tiene movimientos asociados. Esta acción no se puede deshacer.`,
+                              destructive: true,
+                              confirmText: 'Sí, eliminar',
+                            })
+                            if (ok) deleteMut.mutate(a.id);
                           }}
                           className="btn-ghost p-1.5 text-red-600" title="Eliminar"
                         ><Trash2 size={13} /></button>
