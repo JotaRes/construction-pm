@@ -59,59 +59,12 @@
       <div id="app-loading-text">RESTREPO ACOSTA · cargando…</div>
     </div>
     <div id="root"></div>
+    <!--
+      IMPORTANTE: NO agregar scripts inline aquí.
+      El CSP del backend (script-src 'self') bloquea cualquier <script> inline.
+      Toda la lógica de bootstrap (ocultar splash, registrar SW, limpiar cache)
+      vive en src/main.tsx — que sí está permitido porque es del mismo origen.
+    -->
     <script type="module" src="/src/main.tsx"></script>
-    <script>
-      // Ocultar splash cuando React renderice el root, o como fallback tras 2.5s
-      var hideSplash = function () {
-        var s = document.getElementById('app-loading');
-        if (s && !s.classList.contains('hidden')) {
-          s.classList.add('hidden');
-          setTimeout(function () { s && s.parentNode && s.parentNode.removeChild(s) }, 400);
-        }
-      };
-      // Detectar cuando React monta su contenido al <div id="root">
-      var rootEl = document.getElementById('root');
-      if (rootEl && 'MutationObserver' in window) {
-        var obs = new MutationObserver(function (muts) {
-          for (var i = 0; i < muts.length; i++) {
-            if (muts[i].addedNodes.length > 0) { hideSplash(); obs.disconnect(); return; }
-          }
-        });
-        obs.observe(rootEl, { childList: true });
-      }
-      // Fallback absoluto: oculta el splash a los 2.5s pase lo que pase
-      setTimeout(hideSplash, 2500);
-
-      // Limpieza preventiva: si hay caches del SW de cualquier versión vieja, borrarlos
-      // (no espera al SW; corre antes incluso de registrar uno nuevo)
-      if ('caches' in window) {
-        caches.keys().then(function (keys) {
-          keys.forEach(function (k) {
-            // borrar todo excepto el cache actual (que se rellena con la versión deployed)
-            if (k.indexOf('ra-sistema-v3') === -1) caches.delete(k);
-          });
-        }).catch(function () {});
-      }
-
-      // Registrar service worker para PWA — solo en producción HTTPS
-      if ('serviceWorker' in navigator && location.protocol === 'https:') {
-        window.addEventListener('load', function () {
-          navigator.serviceWorker.register('/sw.js').then(function (reg) {
-            // Forzar update check inmediato al cargar
-            reg.update().catch(function () {});
-            // Detectar actualización del SW
-            reg.addEventListener('updatefound', function () {
-              var nw = reg.installing;
-              if (nw) nw.addEventListener('statechange', function () {
-                if (nw.state === 'installed' && navigator.serviceWorker.controller) {
-                  // Hay un SW nuevo esperando — limpiar caches viejos
-                  if (window.caches) caches.keys().then(function (keys) { keys.forEach(function (k) { caches.delete(k) }) });
-                }
-              });
-            });
-          }).catch(function (err) { console.warn('SW registration failed:', err) });
-        });
-      }
-    </script>
   </body>
 </html>

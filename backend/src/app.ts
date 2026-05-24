@@ -57,10 +57,12 @@ app.use(
       directives: {
         defaultSrc:  ["'self'"],
         scriptSrc:   ["'self'"],
-        styleSrc:    ["'self'", "'unsafe-inline'"],   // Tailwind inline styles
+        // style-src incluye fonts.googleapis.com para que el <link rel="stylesheet"> de Google Fonts cargue
+        styleSrc:    ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
         imgSrc:      ["'self'", 'data:', 'https://res.cloudinary.com'],
         connectSrc:  ["'self'"],
-        fontSrc:     ["'self'"],
+        // font-src incluye fonts.gstatic.com (donde Google sirve los .woff2)
+        fontSrc:     ["'self'", 'https://fonts.gstatic.com'],
         objectSrc:   ["'none'"],
         frameSrc:    ["'none'"],
         upgradeInsecureRequests: [],
