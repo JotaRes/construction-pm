@@ -254,6 +254,46 @@ router.get("/insights", async (_req, res) => {
       });
     }
 
+    // 7. Movimientos huérfanos: Ingresos con origen equity-like pero SIN socio asignado
+    //    (probablemente creados antes del fix del regex — necesitan asignar socio para
+    //    aparecer en Capital aportado)
+    const allIncomeMovs = await prisma.finMovement.findMany({
+      where: {
+        type: "Ingreso",
+        partnerId: null,
+        isIntercompany: false,
+      },
+      include: { origin: true, account: true },
+    });
+    const orphanEquity = allIncomeMovs.filter((m) => {
+      const code = m.origin?.code || "";
+      const name = m.origin?.name || "";
+      return /^31\d+/.test(code) || /equity|aporte|capital(?:izaci[oó]n)?|invers[ií]on\s*socio/i.test(name);
+    });
+    if (orphanEquity.length > 0) {
+      insights.push({
+        severity: "red",
+        category: "capital",
+        message: `${orphanEquity.length} ingreso(s) de "Aporte de socio" SIN socio asignado — no se reflejan en Capital. Edítalos y selecciona el socio.`,
+        data: { count: orphanEquity.length, movementIds: orphanEquity.map((m) => m.id) },
+      });
+    }
+
+    // 8. Movimientos huérfanos: Ingresos con origen loan-like pero SIN lender asignado
+    const orphanLoan = allIncomeMovs.filter((m) => {
+      const code = m.origin?.code || "";
+      const name = m.origin?.name || "";
+      return /^320[12]/.test(code) || /pr[ée]stamo|loan|deuda/i.test(name);
+    }).filter((m) => !m.lenderId);
+    if (orphanLoan.length > 0) {
+      insights.push({
+        severity: "red",
+        category: "deuda",
+        message: `${orphanLoan.length} ingreso(s) de "Préstamo" SIN lender asignado — no se reflejan en Deuda. Edítalos y selecciona el lender.`,
+        data: { count: orphanLoan.length, movementIds: orphanLoan.map((m) => m.id) },
+      });
+    }
+
     // Ordenar por severidad
     const sevOrder = { red: 0, warn: 1, info: 2 };
     insights.sort((a, b) => sevOrder[a.severity] - sevOrder[b.severity]);
