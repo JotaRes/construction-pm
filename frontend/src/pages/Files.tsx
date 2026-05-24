@@ -5,6 +5,7 @@ import { formatDate, formatUSD } from '../lib/calculations'
 import type { ProjectFile, Draw, Phase } from '../lib/types'
 import { Plus, ExternalLink, Trash2, Upload, FileText, CheckCircle, AlertCircle, ChevronDown, ChevronUp, X } from 'lucide-react'
 import axios from 'axios'
+import DocumentChecklist from '../components/DocumentChecklist'
 
 const api = axios.create({ baseURL: '/api' })
 
@@ -269,11 +270,24 @@ export default function Files({ projectId }: { projectId: string }) {
     ? Object.entries(extractResult.parsed).filter(([k]) => k !== 'pdfUrl')
     : []
 
+  // Obtener info del proyecto para enriquecer compartidos por email/whatsapp
+  const { data: project } = useQuery<{ name: string; address: string } | null>({
+    queryKey: ['project-info', projectId],
+    queryFn: () => projectsApi.get(projectId),
+  })
+
   if (isLoading) return <div className="text-slate-500 text-sm animate-pulse">Cargando archivos...</div>
 
   return (
     <div className="space-y-6">
       <h1 className="text-xl font-bold text-slate-900">Repositorio de Archivos</h1>
+
+      {/* === CHECKLIST DOCUMENTAL (nueva sección destacada) === */}
+      <DocumentChecklist
+        projectId={projectId}
+        projectName={project?.name}
+        projectAddress={project?.address}
+      />
 
       {/* ── Smart PDF Upload ─────────────────────────────────── */}
       <div className="bg-white rounded-xl border border-[#C8922A]/40 shadow-sm overflow-hidden">

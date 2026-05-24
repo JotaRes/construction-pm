@@ -193,8 +193,11 @@ model ProjectFile {
   projectId String
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   name      String
-  category  String?
+  category  String?    // categoría legacy (Contrato, Permiso, etc.)
+  kind      String?    // categoría del checklist documental (planos, survey, etc.) — ver lib/projectDocChecklist.ts
   url       String
+  mimetype  String?    // ej. application/pdf, image/jpeg
+  size      Int?       // bytes
   createdAt DateTime @default(now())
 }
 

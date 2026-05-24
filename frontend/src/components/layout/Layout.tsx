@@ -3,7 +3,8 @@ import { useQuery } from '@tanstack/react-query'
 import {
   LayoutDashboard, CheckSquare, DollarSign, TrendingUp,
   AlertTriangle, Users, FileText, Folder, Search, BarChart3, Building2,
-  ChevronDown, FolderKanban, ListChecks, FileSpreadsheet, Tag, LogOut
+  ChevronDown, FolderKanban, ListChecks, FileSpreadsheet, Tag, LogOut,
+  Archive,
 } from 'lucide-react'
 import { alertsApi, projectsApi } from '../../lib/api'
 import { logout } from '../AuthGate'
@@ -28,6 +29,7 @@ const navItems = [
   { to: '/tech/notes',      icon: FileText,        label: 'Notas' },
   { to: '/tech/files',      icon: Folder,          label: 'Archivos' },
   { to: '/tech/price-refs', icon: Tag,             label: 'Precios Ref.' },
+  { to: '/tech/import',     icon: Archive,         label: 'Importar / Backup' },
 ]
 
 interface Props {

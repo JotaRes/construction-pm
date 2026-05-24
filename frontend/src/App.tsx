@@ -19,6 +19,7 @@ import Projects from './pages/Projects'
 import Tasks from './pages/Tasks'
 import ConstructionBudget from './pages/ConstructionBudget'
 import PriceReference from './pages/PriceReference'
+import TechImport from './pages/TechImport'
 import Landing from './Landing'
 import FinanceApp from './finance/FinanceApp'
 
@@ -76,6 +77,7 @@ function TechModule() {
         <Route path="tasks" element={<Tasks projectId={activeProjectId} />} />
         <Route path="construction-budget" element={<ConstructionBudget projectId={activeProjectId} />} />
         <Route path="price-refs" element={<PriceReference />} />
+        <Route path="import" element={<TechImport />} />
       </Routes>
     </Layout>
   )

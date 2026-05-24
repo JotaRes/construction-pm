@@ -6,7 +6,7 @@ import type { Phase, Item, ItemEstado, ItemDocument } from '../lib/types'
 import {
   ChevronDown, ChevronRight, X, Calendar, User, FileText,
   DollarSign, Plus, Trash2, Paperclip, Upload, AlertTriangle,
-  ExternalLink,
+  ExternalLink, Download, Mail, MessageCircle,
 } from 'lucide-react'
 
 const ESTADOS: { value: ItemEstado; label: string; color: string; bg: string }[] = [
@@ -64,7 +64,32 @@ function DocumentSection({ item }: { item: Item }) {
   })
 
   const hasFactura = docs.some(d => d.type === 'FACTURA')
-  const warnNoFactura = item.completado && !hasFactura
+  // Alerta crítica: tiene valor ejecutado o está completado, pero NO tiene factura
+  const warnNoFactura = (item.valorEjecutado > 0 || item.completado) && !hasFactura
+  const shareViaEmail = (doc: ItemDocument) => {
+    const subject = encodeURIComponent(`Documento del ítem ${item.itemCode}: ${doc.vendor || doc.name}`)
+    const body = encodeURIComponent(
+      `Hola,\n\nComparto el siguiente documento del ítem de construcción:\n\n` +
+      `Ítem: ${item.itemCode} — ${item.activity}\n` +
+      `Tipo: ${doc.type}\n` +
+      `Proveedor: ${doc.vendor || '—'}\n` +
+      (doc.amount ? `Monto: $${doc.amount.toLocaleString()}\n` : '') +
+      (doc.fileUrl ? `Enlace: ${doc.fileUrl}\n` : '') +
+      (doc.notes ? `\nNotas: ${doc.notes}\n` : '') +
+      `\nSaludos.`
+    )
+    window.open(`mailto:?subject=${subject}&body=${body}`, '_blank')
+  }
+  const shareViaWhatsApp = (doc: ItemDocument) => {
+    const text = encodeURIComponent(
+      `📄 *${doc.type}*\n\n` +
+      `*Ítem:* ${item.itemCode} — ${item.activity}\n` +
+      `*Proveedor:* ${doc.vendor || '—'}\n` +
+      (doc.amount ? `*Monto:* $${doc.amount.toLocaleString()}\n` : '') +
+      (doc.fileUrl ? `\n🔗 ${doc.fileUrl}` : '')
+    )
+    window.open(`https://wa.me/?text=${text}`, '_blank')
+  }
 
   const handleSubmit = () => {
     const fd = new FormData()
@@ -96,9 +121,13 @@ function DocumentSection({ item }: { item: Item }) {
       </div>
 
       {warnNoFactura && (
-        <div className="flex items-center gap-2 bg-[#C8922A]/10 border border-amber-500/30 rounded-lg px-3 py-2 mb-2">
-          <AlertTriangle className="w-3.5 h-3.5 text-[#C8922A] flex-shrink-0" />
-          <span className="text-[10px] text-[#2D4B52]">Ítem marcado como HECHO sin factura adjunta.</span>
+        <div className="flex items-start gap-2 bg-red-50 border border-red-300 rounded-lg px-3 py-2 mb-2">
+          <AlertTriangle className="w-3.5 h-3.5 text-red-600 flex-shrink-0 mt-0.5" />
+          <div className="text-[11px] text-red-700">
+            <strong>⚠ FALTA FACTURA:</strong> Este ítem tiene valor ejecutado de <strong>{formatUSD(item.valorEjecutado || 0)}</strong>
+            {item.completado && ' y está marcado como HECHO'} pero NO tiene factura adjunta.
+            Adjunta el soporte usando el botón "+ Adjuntar" arriba.
+          </div>
         </div>
       )}
 
@@ -156,12 +185,29 @@ function DocumentSection({ item }: { item: Item }) {
                 {doc.amount && <div className="text-[10px] font-mono text-[#C8922A]/80">{formatUSD(doc.amount)}</div>}
               </div>
               {doc.fileUrl && (
-                <a href={doc.fileUrl} target="_blank" rel="noreferrer"
-                  className="text-slate-400 hover:text-[#C8922A] transition-colors flex-shrink-0">
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
+                <>
+                  <a href={`/api/download?url=${encodeURIComponent(doc.fileUrl)}&inline=1`} target="_blank" rel="noreferrer"
+                    title="Ver"
+                    className="text-slate-400 hover:text-[#C8922A] transition-colors flex-shrink-0">
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                  <a href={`/api/download?url=${encodeURIComponent(doc.fileUrl)}`} download={doc.name}
+                    title="Descargar"
+                    className="text-slate-400 hover:text-[#2D4B52] transition-colors flex-shrink-0">
+                    <Download className="w-3.5 h-3.5" />
+                  </a>
+                  <button onClick={() => shareViaEmail(doc)} title="Enviar por correo"
+                    className="text-slate-400 hover:text-blue-500 transition-colors flex-shrink-0">
+                    <Mail className="w-3.5 h-3.5" />
+                  </button>
+                  <button onClick={() => shareViaWhatsApp(doc)} title="Enviar por WhatsApp"
+                    className="text-slate-400 hover:text-green-500 transition-colors flex-shrink-0">
+                    <MessageCircle className="w-3.5 h-3.5" />
+                  </button>
+                </>
               )}
               <button onClick={() => deleteDoc.mutate(doc.id)}
+                title="Eliminar"
                 className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-red-400 transition-all flex-shrink-0">
                 <Trash2 className="w-3 h-3" />
               </button>
@@ -300,7 +346,8 @@ function ItemRow({ item, onUpdate, onOpenPanel, onDelete }: {
   const desviacion = item.valorEjecutado - item.valorPresupuestado
   const docCount = item.documents?.length ?? 0
   const hasFactura = item.documents?.some(d => d.type === 'FACTURA') ?? false
-  const warnDoc = item.completado && !hasFactura
+  // Alerta: el ítem tiene valor ejecutado o está completado pero NO tiene factura
+  const warnDoc = (item.valorEjecutado > 0 || item.completado) && !hasFactura
   let rowBg = 'border-b border-slate-100 hover:bg-white/40 transition-colors group cursor-pointer'
   if (item.completado) rowBg = 'border-b border-slate-200/20 bg-emerald-50/40 hover:bg-emerald-950/30 transition-colors group cursor-pointer'
   else if (item.estado === 'EN_CURSO') rowBg = 'border-b border-slate-200/30 bg-amber-50/60 hover:bg-amber-50/40 transition-colors group cursor-pointer'

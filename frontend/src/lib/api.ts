@@ -63,7 +63,30 @@ export const notesApi = {
 export const filesApi = {
   list: (projectId: string) => api.get(`/projects/${projectId}/files`).then(r => r.data.data),
   create: (projectId: string, data: Record<string, unknown>) => api.post(`/projects/${projectId}/files`, data).then(r => r.data.data),
+  upload: (projectId: string, file: File, kind?: string) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    if (kind) fd.append('kind', kind)
+    return api.post(`/projects/${projectId}/files/upload`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data.data)
+  },
+  patch: (projectId: string, id: string, data: Record<string, unknown>) => api.patch(`/projects/${projectId}/files/${id}`, data).then(r => r.data.data),
   delete: (projectId: string, id: string) => api.delete(`/projects/${projectId}/files/${id}`).then(r => r.data.data),
+  getChecklist: (projectId: string) => api.get(`/projects/${projectId}/document-checklist`).then(r => r.data.data),
+}
+
+// Tech backup/import — paralelo al financiero
+export const techBackupApi = {
+  downloadUrl: () => `/api/backup`,
+  excelExportUrl: () => `/api/backup/excel-tech`,
+  restoreFromFile: (file: File, password: string) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    return api.post('/backup/restore-tech', fd, {
+      headers: { 'Content-Type': 'multipart/form-data', 'X-Restore-Password': password },
+    }).then(r => r.data.data)
+  },
+  wipeAll: (password: string) =>
+    api.delete('/backup/wipe-tech', { headers: { 'X-Wipe-Password': password } }).then(r => r.data.data),
 }
 
 export const constructionBudgetApi = {
