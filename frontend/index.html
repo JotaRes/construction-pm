@@ -82,11 +82,24 @@
       // Fallback absoluto: oculta el splash a los 2.5s pase lo que pase
       setTimeout(hideSplash, 2500);
 
+      // Limpieza preventiva: si hay caches del SW de cualquier versión vieja, borrarlos
+      // (no espera al SW; corre antes incluso de registrar uno nuevo)
+      if ('caches' in window) {
+        caches.keys().then(function (keys) {
+          keys.forEach(function (k) {
+            // borrar todo excepto el cache actual (que se rellena con la versión deployed)
+            if (k.indexOf('ra-sistema-v3') === -1) caches.delete(k);
+          });
+        }).catch(function () {});
+      }
+
       // Registrar service worker para PWA — solo en producción HTTPS
       if ('serviceWorker' in navigator && location.protocol === 'https:') {
         window.addEventListener('load', function () {
           navigator.serviceWorker.register('/sw.js').then(function (reg) {
-            // Detectar actualización del SW y forzar recarga si hay versión nueva
+            // Forzar update check inmediato al cargar
+            reg.update().catch(function () {});
+            // Detectar actualización del SW
             reg.addEventListener('updatefound', function () {
               var nw = reg.installing;
               if (nw) nw.addEventListener('statechange', function () {

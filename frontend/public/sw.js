@@ -1,8 +1,8 @@
-// Service worker minimalista para Restrepo Acosta — versión 2
+// Service worker minimalista para Restrepo Acosta — versión 3
 // IMPORTANTE: el HTML SIEMPRE va a la red (network-only) para evitar
 // que un index.html cacheado apunte a bundles JS viejos que ya no existen
 // (Vite genera hashes nuevos en cada build).
-const VERSION = 'ra-sistema-v2'
+const VERSION = 'ra-sistema-v3'
 
 self.addEventListener('install', (event) => {
   // Skip waiting → activación inmediata
