@@ -1,16 +1,76 @@
 <!doctype html>
-<html lang="es" class="dark">
+<html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Viewport optimizado para móvil + soporte de safe-area en iPhone con notch -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
+
+    <!-- Identidad -->
     <title>Restrepo Acosta — Ecosistema operativo</title>
+    <meta name="description" content="Sistema integral de gestión de proyectos de construcción y finanzas — Restrepo Acosta Global Holding LLC" />
+    <meta name="theme-color" content="#2D4B52" />
+    <meta name="color-scheme" content="light" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/icons/icon-48.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+
+    <!-- PWA — Web App Manifest -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <!-- iOS — instalable como app desde Safari (Compartir → Agregar a inicio) -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="RA Sistema" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180.png" />
+    <link rel="apple-touch-icon" sizes="167x167" href="/icons/icon-167.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/icons/icon-120.png" />
+
+    <meta name="format-detection" content="telephone=no" />
+
+    <!-- Open Graph (link previews en WhatsApp/Telegram) -->
+    <meta property="og:title" content="Restrepo Acosta — Ecosistema operativo" />
+    <meta property="og:description" content="Sistema integral de gestión de proyectos y finanzas" />
+    <meta property="og:image" content="/icons/icon-512.png" />
+    <meta property="og:type" content="website" />
+
+    <!-- Tipografías -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+    <style>
+      /* Safe-area en iPhone con notch */
+      :root { --safe-top: env(safe-area-inset-top); --safe-bottom: env(safe-area-inset-bottom); }
+      /* Evitar zoom involuntario al hacer tap en inputs en iOS (Apple fuerza zoom si font <16px) */
+      @media (max-width: 768px) { input, select, textarea { font-size: 16px !important; } }
+      /* Loading splash mínimo mientras carga el bundle de React */
+      #app-loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #EAE5DF; z-index: 9999; transition: opacity .3s; font-family: 'Inter', system-ui; }
+      #app-loading.hidden { opacity: 0; pointer-events: none; }
+      #app-loading-text { font-family: Georgia, serif; color: #2D4B52; font-size: 14px; letter-spacing: 0.1em; }
+    </style>
   </head>
-  <body class="bg-[#0F172A] text-slate-100">
+  <body style="background-color:#EAE5DF;">
+    <div id="app-loading">
+      <div id="app-loading-text">RESTREPO ACOSTA · cargando…</div>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Ocultar splash una vez React tomó el control
+      window.addEventListener('load', () => {
+        setTimeout(() => { const s = document.getElementById('app-loading'); if (s) s.classList.add('hidden'); setTimeout(() => s && s.remove(), 400); }, 300);
+      });
+      // Registrar service worker para PWA — solo en producción HTTPS
+      if ('serviceWorker' in navigator && location.protocol === 'https:') {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(function (err) { console.warn('SW registration failed:', err) });
+        });
+      }
+    </script>
   </body>
 </html>

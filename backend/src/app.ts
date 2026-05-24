@@ -40,6 +40,14 @@ import finReports from './finance/routes/reports'
 const app = express()
 const PORT = process.env.PORT || 3001
 
+// === Trust proxy ===
+// En Render + Cloudflare, el cliente real está detrás de varios proxies.
+// trust proxy hace que req.ip refleje X-Forwarded-For correctamente,
+// lo que permite que express-rate-limit y otros middlewares vean IPs únicas
+// por cliente en lugar de la IP del proxy de Render (que es siempre la misma).
+// Render usa hasta 2 hops (load balancer + Cloudflare).
+app.set('trust proxy', 2)
+
 // ── 1. SECURITY HEADERS (helmet) ─────────────────────────────────────────────
 app.use(
   helmet({

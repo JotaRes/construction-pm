@@ -405,3 +405,46 @@ input[type=number] { -moz-appearance: textfield; }
   background-color: rgba(255,255,255,0.7) !important;
   backdrop-filter: blur(8px);
 }
+
+/* ============================================================
+   MOBILE OPTIMIZATIONS
+   - Tap targets >44px en botones
+   - Tablas con scroll horizontal automático
+   - Modales fullscreen en pantallas chicas
+   ============================================================ */
+@media (max-width: 768px) {
+  /* Asegurar que tablas no rompan el layout en móvil */
+  table { font-size: 12px; }
+  table th, table td { padding: 8px 6px !important; }
+
+  /* Cards con padding más generoso para tap */
+  .kpi-card { padding: 12px !important; }
+
+  /* Botones con minimum touch target */
+  button, a.btn-primary, a.btn-secondary {
+    min-height: 40px;
+  }
+
+  /* Modales: fullscreen en móvil */
+  .modal-content {
+    max-width: 100% !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+  }
+
+  /* Grids de KPI: una columna en pantallas muy chicas */
+  .grid-cols-5 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+
+  /* Headers más compactos */
+  h1.text-2xl { font-size: 1.25rem !important; }
+}
+
+/* Cualquier tabla dentro de .card debe permitir scroll horizontal limpio */
+.card .overflow-x-auto, .fin-app .card .overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Active state en touch — feedback visual al tap */
+@media (hover: none) {
+  button:active, a:active { opacity: 0.7; transition: opacity 0.1s; }
+}

@@ -4,7 +4,7 @@ import {
   LayoutDashboard, CheckSquare, DollarSign, TrendingUp,
   AlertTriangle, Users, FileText, Folder, Search, BarChart3, Building2,
   ChevronDown, FolderKanban, ListChecks, FileSpreadsheet, Tag, LogOut,
-  Archive,
+  Archive, Menu, X,
 } from 'lucide-react'
 import { alertsApi, projectsApi } from '../../lib/api'
 import { logout } from '../AuthGate'
@@ -131,7 +131,11 @@ function ProjectSwitcher({ projectId }: { projectId: string }) {
 }
 
 export default function Layout({ projectId, children }: Props) {
-  useLocation()
+  const location = useLocation()
+  const [mobileOpen, setMobileOpen] = useState(false)
+
+  // Cerrar sidebar al navegar (en móvil)
+  useEffect(() => { setMobileOpen(false) }, [location.pathname])
 
   const { data: alerts = [] } = useQuery<Alert[]>({
     queryKey: ['alerts', projectId],
@@ -152,12 +156,54 @@ export default function Layout({ projectId, children }: Props) {
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: 'var(--brand-cream)' }}>
-      {/* Sidebar — brand teal */}
-      <aside className="w-56 flex-shrink-0 flex flex-col shadow-xl"
-        style={{ background: 'var(--brand-teal)', borderRight: '1px solid rgba(255,255,255,0.07)' }}>
+      {/* === MOBILE HEADER (visible solo en pantallas chicas) === */}
+      <div
+        className="md:hidden fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 py-3 shadow-sm"
+        style={{ background: 'var(--brand-teal)', paddingTop: 'calc(env(safe-area-inset-top, 0) + 0.75rem)' }}
+      >
+        <button
+          onClick={() => setMobileOpen(true)}
+          className="text-white p-2 -ml-2"
+          aria-label="Abrir menú"
+        >
+          <Menu className="w-6 h-6" />
+        </button>
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+            style={{ background: 'linear-gradient(135deg, #C8922A 0%, #E0AD4F 100%)' }}>
+            <span style={{ color: 'white', fontWeight: 900, fontSize: 13, fontFamily: 'Georgia, serif' }}>RA</span>
+          </div>
+          <div className="text-white text-sm font-semibold" style={{ fontFamily: 'Georgia, serif' }}>Restrepo Acosta</div>
+        </div>
+        <div className="w-8" />
+      </div>
+
+      {/* === Overlay para cerrar sidebar al tocar afuera (móvil) === */}
+      {mobileOpen && (
+        <div
+          className="md:hidden fixed inset-0 z-40 bg-black/60"
+          onClick={() => setMobileOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* === Sidebar — brand teal === */}
+      <aside
+        className={`${mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} fixed md:relative inset-y-0 left-0 z-50 w-64 md:w-56 flex-shrink-0 flex flex-col shadow-xl transition-transform duration-200 ease-out`}
+        style={{ background: 'var(--brand-teal)', borderRight: '1px solid rgba(255,255,255,0.07)' }}
+      >
+
+        {/* Botón cierre en móvil */}
+        <button
+          onClick={() => setMobileOpen(false)}
+          className="md:hidden absolute top-3 right-3 p-2 text-white/70 hover:text-white"
+          aria-label="Cerrar menú"
+        >
+          <X className="w-5 h-5" />
+        </button>
 
         {/* Logo */}
-        <div className="px-4 py-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+        <div className="px-4 py-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', paddingTop: 'calc(env(safe-area-inset-top, 0) + 1.25rem)' }}>
           {/* RA badge */}
           <div className="flex items-center justify-center mb-3">
             <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
@@ -246,10 +292,18 @@ export default function Layout({ projectId, children }: Props) {
         </button>
       </aside>
 
-      <main className="flex-1 overflow-y-auto flex flex-col" style={{ background: 'var(--brand-cream)' }}>
+      <main
+        className="flex-1 overflow-y-auto flex flex-col"
+        style={{ background: 'var(--brand-cream)', paddingTop: 'env(safe-area-inset-top, 0)' }}
+      >
+        {/* Spacer móvil para el header fijo (h ~56px + safe area) */}
+        <div className="md:hidden" style={{ height: 'calc(56px + env(safe-area-inset-top, 0))' }} />
+
         {/* Top bar: module switcher + backup */}
-        <div className="flex items-center justify-end gap-2 px-6 py-2 border-b bg-white/60"
-          style={{ borderColor: 'rgba(0,0,0,0.07)', backdropFilter: 'blur(4px)', minHeight: 44 }}>
+        <div
+          className="flex items-center justify-end gap-2 px-4 md:px-6 py-2 border-b bg-white/60 flex-wrap"
+          style={{ borderColor: 'rgba(0,0,0,0.07)', backdropFilter: 'blur(4px)', minHeight: 44 }}
+        >
           <ModuleSwitcher currentModule="tech" />
           <a
             href="/api/backup"
@@ -262,10 +316,11 @@ export default function Layout({ projectId, children }: Props) {
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
             </svg>
-            Backup del sistema
+            <span className="hidden sm:inline">Backup del sistema</span>
+            <span className="sm:hidden">Backup</span>
           </a>
         </div>
-        <div className="p-6 page-content flex-1">
+        <div className="p-4 md:p-6 page-content flex-1">
           {children}
         </div>
       </main>
