@@ -88,6 +88,15 @@ export default function DocumentChecklist({ projectId, projectName, projectAddre
     e.target.value = ''
   }
 
+  // Construye URL del proxy de descarga.
+  // - Pasa el name original para garantizar Content-Disposition con extensión correcta
+  // - El backend infiere el Content-Type por extensión si Cloudinary no lo da bien
+  const buildDownloadUrl = (file: any) => {
+    const params = new URLSearchParams({ url: file.url })
+    if (file.name) params.set('name', file.name)
+    return `${window.location.origin}/api/download?${params.toString()}`
+  }
+
   const handleShareEmail = (file: any) => {
     const subject = encodeURIComponent(`Documento del proyecto ${projectName || projectId}: ${file.name}`)
     const body = encodeURIComponent(
@@ -95,23 +104,54 @@ export default function DocumentChecklist({ projectId, projectName, projectAddre
       `Proyecto: ${projectName || ''}\n` +
       (projectAddress ? `Dirección: ${projectAddress}\n` : '') +
       `Categoría: ${file.category || file.kind || 'Sin categoría'}\n` +
-      `Documento: ${file.name}\n` +
-      `Enlace: ${file.url}\n\n` +
+      `Documento: ${file.name}\n\n` +
+      `🔗 Descargar: ${buildDownloadUrl(file)}\n\n` +
       `Saludos.`
     )
     window.open(`mailto:?subject=${subject}&body=${body}`, '_blank')
   }
 
-  const handleShareWhatsApp = (file: any) => {
-    const text = encodeURIComponent(
+  // Web Share API nativa cuando esté disponible — permite adjuntar el PDF real al chat
+  // En móvil con soporte (Android Chrome / iOS), abre el selector de apps (WhatsApp, Telegram, etc.)
+  // y comparte el archivo binario. En desktop o sin soporte, fallback a wa.me con link de descarga.
+  const handleShareWhatsApp = async (file: any) => {
+    const downloadUrl = buildDownloadUrl(file)
+    const captionText =
       `📄 *Documento del proyecto*\n\n` +
       `*Proyecto:* ${projectName || projectId}\n` +
       (projectAddress ? `*Dirección:* ${projectAddress}\n` : '') +
       `*Categoría:* ${file.category || file.kind || 'Sin categoría'}\n` +
-      `*Documento:* ${file.name}\n\n` +
-      `🔗 ${file.url}`
-    )
+      `*Documento:* ${file.name}`
+
+    // 1) Intentar compartir el archivo binario directamente (móvil con Web Share Level 2)
+    if (typeof navigator !== 'undefined' && (navigator as any).canShare && (navigator as any).share) {
+      try {
+        const response = await fetch(downloadUrl)
+        if (response.ok) {
+          const blob = await response.blob()
+          const mimetype = file.mimetype || blob.type || 'application/octet-stream'
+          const sharedFile = new File([blob], file.name, { type: mimetype })
+
+          if ((navigator as any).canShare({ files: [sharedFile] })) {
+            await (navigator as any).share({
+              files: [sharedFile],
+              title: file.name,
+              text: captionText,
+            })
+            return
+          }
+        }
+      } catch (err) {
+        // Si el usuario cancela el dialog nativo, lanza AbortError — no es error real
+        if ((err as any)?.name === 'AbortError') return
+        console.warn('Web Share API falló, usando fallback wa.me', err)
+      }
+    }
+
+    // 2) Fallback: abrir WhatsApp Web/App con el LINK de descarga (no es un attach pero al hacer click descarga el PDF correctamente)
+    const text = encodeURIComponent(`${captionText}\n\n🔗 ${downloadUrl}`)
     window.open(`https://wa.me/?text=${text}`, '_blank')
+    toast('Tu navegador no permite adjuntar el archivo. Se compartió el link de descarga.', { icon: 'ℹ️' })
   }
 
   if (!checklist) {
@@ -259,7 +299,7 @@ export default function DocumentChecklist({ projectId, projectName, projectAddre
                           </div>
                           <div className="flex items-center gap-1 flex-shrink-0">
                             <a
-                              href={`/api/download?url=${encodeURIComponent(f.url)}&inline=1`}
+                              href={`/api/download?url=${encodeURIComponent(f.url)}&name=${encodeURIComponent(f.name)}&inline=1`}
                               target="_blank"
                               rel="noreferrer"
                               title="Ver"
@@ -269,7 +309,7 @@ export default function DocumentChecklist({ projectId, projectName, projectAddre
                               <ExternalLink size={12} />
                             </a>
                             <a
-                              href={`/api/download?url=${encodeURIComponent(f.url)}`}
+                              href={`/api/download?url=${encodeURIComponent(f.url)}&name=${encodeURIComponent(f.name)}`}
                               download={f.name}
                               title="Descargar"
                               className="p-1 rounded hover:bg-stone-200 transition-colors"

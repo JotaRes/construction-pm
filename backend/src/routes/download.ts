@@ -47,12 +47,37 @@ const fetchWithRedirects = (
       return
     }
 
-    const ct = proxyRes.headers['content-type']
+    // === Inferir Content-Type apropiado ===
+    // Cloudinary a veces sirve PDFs subidos como resource_type=image con un
+    // Content-Type genérico (application/octet-stream u image/*). Si la URL
+    // termina en una extensión conocida, forzamos el mime correcto para que
+    // el navegador y WhatsApp lo abran nativamente.
+    const upstreamCt = proxyRes.headers['content-type']
+    const ext = (parsed.pathname.split('.').pop() || '').toLowerCase()
+    const extMimeMap: Record<string, string> = {
+      pdf: 'application/pdf',
+      jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif',
+      mp4: 'video/mp4', mov: 'video/quicktime',
+      xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      xls: 'application/vnd.ms-excel',
+      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      doc: 'application/msword',
+      zip: 'application/zip',
+    }
+    const inferredCt = extMimeMap[ext]
+    const isGeneric = !upstreamCt || upstreamCt === 'application/octet-stream' || upstreamCt.startsWith('binary/')
+    const finalCt = inferredCt || upstreamCt || 'application/octet-stream'
+    // Si upstream dio un image/* pero la extensión es PDF (caso bug de resource_type=image),
+    // sobreescribir con el mime correcto
+    const useInferred = inferredCt && (isGeneric || (ext === 'pdf' && upstreamCt?.startsWith('image/')))
+    res.setHeader('Content-Type', useInferred ? inferredCt : finalCt)
+
     const cl = proxyRes.headers['content-length']
-    if (ct) res.setHeader('Content-Type', ct)
     if (cl) res.setHeader('Content-Length', cl)
     res.setHeader('Content-Disposition', disposition)
     res.setHeader('Cache-Control', 'private, max-age=3600')
+    // Permite que WhatsApp Web y otros previsualicen
+    res.setHeader('X-Content-Type-Options', 'nosniff')
     res.status(200)
     proxyRes.pipe(res)
   })
@@ -71,6 +96,9 @@ const fetchWithRedirects = (
 router.get('/', (req: Request, res: Response) => {
   const rawUrl = req.query.url as string
   const inline = req.query.inline === '1'
+  // Permite override del filename desde el query para garantizar extensión correcta
+  // (útil cuando el archivo en Cloudinary fue subido sin extensión visible)
+  const customName = req.query.name as string | undefined
 
   if (!rawUrl) {
     res.status(400).json({ error: 'Missing url parameter' })
@@ -90,8 +118,14 @@ router.get('/', (req: Request, res: Response) => {
     return
   }
 
-  const rawName = decodeURIComponent(parsed.pathname.split('/').pop() ?? 'download')
-  const safeName = rawName.replace(/"/g, '')
+  let rawName = customName || decodeURIComponent(parsed.pathname.split('/').pop() ?? 'download')
+  // Si el archivo no tiene extensión pero la URL sí, copiar la extensión
+  const urlExt = parsed.pathname.split('.').pop()?.toLowerCase()
+  const nameHasExt = /\.[a-z0-9]{2,5}$/i.test(rawName)
+  if (!nameHasExt && urlExt && urlExt.length <= 5 && urlExt !== rawName) {
+    rawName = `${rawName}.${urlExt}`
+  }
+  const safeName = rawName.replace(/"/g, '').replace(/[\r\n]/g, '')
   const disposition = inline
     ? `inline; filename="${safeName}"`
     : `attachment; filename="${safeName}"`

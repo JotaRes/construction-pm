@@ -66,6 +66,12 @@ function DocumentSection({ item }: { item: Item }) {
   const hasFactura = docs.some(d => d.type === 'FACTURA')
   // Alerta crítica: tiene valor ejecutado o está completado, pero NO tiene factura
   const warnNoFactura = (item.valorEjecutado > 0 || item.completado) && !hasFactura
+  const buildDownloadUrl = (url: string, name?: string) => {
+    const params = new URLSearchParams({ url })
+    if (name) params.set('name', name)
+    return `${window.location.origin}/api/download?${params.toString()}`
+  }
+
   const shareViaEmail = (doc: ItemDocument) => {
     const subject = encodeURIComponent(`Documento del ítem ${item.itemCode}: ${doc.vendor || doc.name}`)
     const body = encodeURIComponent(
@@ -74,20 +80,45 @@ function DocumentSection({ item }: { item: Item }) {
       `Tipo: ${doc.type}\n` +
       `Proveedor: ${doc.vendor || '—'}\n` +
       (doc.amount ? `Monto: $${doc.amount.toLocaleString()}\n` : '') +
-      (doc.fileUrl ? `Enlace: ${doc.fileUrl}\n` : '') +
+      (doc.fileUrl ? `Descargar: ${buildDownloadUrl(doc.fileUrl, doc.name)}\n` : '') +
       (doc.notes ? `\nNotas: ${doc.notes}\n` : '') +
       `\nSaludos.`
     )
     window.open(`mailto:?subject=${subject}&body=${body}`, '_blank')
   }
-  const shareViaWhatsApp = (doc: ItemDocument) => {
-    const text = encodeURIComponent(
+
+  // Web Share API nativa para enviar el PDF binario real a WhatsApp/Telegram/email móvil.
+  // Fallback inteligente: wa.me con link de descarga proxy (Content-Disposition correcto).
+  const shareViaWhatsApp = async (doc: ItemDocument) => {
+    if (!doc.fileUrl) {
+      window.alert('Este documento no tiene archivo adjunto.')
+      return
+    }
+    const downloadUrl = buildDownloadUrl(doc.fileUrl, doc.name)
+    const captionText =
       `📄 *${doc.type}*\n\n` +
       `*Ítem:* ${item.itemCode} — ${item.activity}\n` +
       `*Proveedor:* ${doc.vendor || '—'}\n` +
-      (doc.amount ? `*Monto:* $${doc.amount.toLocaleString()}\n` : '') +
-      (doc.fileUrl ? `\n🔗 ${doc.fileUrl}` : '')
-    )
+      (doc.amount ? `*Monto:* $${doc.amount.toLocaleString()}` : '')
+
+    if (typeof navigator !== 'undefined' && (navigator as any).canShare && (navigator as any).share) {
+      try {
+        const response = await fetch(downloadUrl)
+        if (response.ok) {
+          const blob = await response.blob()
+          const sharedFile = new File([blob], doc.name || `${doc.type}.pdf`, { type: blob.type || 'application/pdf' })
+          if ((navigator as any).canShare({ files: [sharedFile] })) {
+            await (navigator as any).share({ files: [sharedFile], title: doc.name, text: captionText })
+            return
+          }
+        }
+      } catch (err) {
+        if ((err as any)?.name === 'AbortError') return
+        console.warn('Web Share API falló:', err)
+      }
+    }
+
+    const text = encodeURIComponent(`${captionText}\n\n🔗 ${downloadUrl}`)
     window.open(`https://wa.me/?text=${text}`, '_blank')
   }
 
@@ -186,12 +217,12 @@ function DocumentSection({ item }: { item: Item }) {
               </div>
               {doc.fileUrl && (
                 <>
-                  <a href={`/api/download?url=${encodeURIComponent(doc.fileUrl)}&inline=1`} target="_blank" rel="noreferrer"
+                  <a href={`/api/download?url=${encodeURIComponent(doc.fileUrl)}&name=${encodeURIComponent(doc.name)}&inline=1`} target="_blank" rel="noreferrer"
                     title="Ver"
                     className="text-slate-400 hover:text-[#C8922A] transition-colors flex-shrink-0">
                     <ExternalLink className="w-3.5 h-3.5" />
                   </a>
-                  <a href={`/api/download?url=${encodeURIComponent(doc.fileUrl)}`} download={doc.name}
+                  <a href={`/api/download?url=${encodeURIComponent(doc.fileUrl)}&name=${encodeURIComponent(doc.name)}`} download={doc.name}
                     title="Descargar"
                     className="text-slate-400 hover:text-[#2D4B52] transition-colors flex-shrink-0">
                     <Download className="w-3.5 h-3.5" />
