@@ -5,7 +5,7 @@ services:
     rootDir: backend
     autoDeploy: yes
     # Build phase — desde rootDir (backend/)
-    #   1) Instala deps backend (incluye devDeps de TS)
+    #   1) Instala deps backend (incluye devDeps de TS) — trigger v2
     #   2) Instala deps frontend FORZANDO devDeps (Vite, Tailwind, PostCSS)
     #   3) Compila el frontend y copia el bundle a backend/public/
     #   4) Switches provider Prisma a postgresql para producción
