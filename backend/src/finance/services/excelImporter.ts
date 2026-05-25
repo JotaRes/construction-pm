@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx";
 import { prisma } from "../lib/prisma";
+import { parseAmountFlexible } from "../../lib/parseAmount";
 
 interface ImportResult {
   movements: number;
@@ -30,12 +31,9 @@ function parseDate(v: any): Date | null {
   return isNaN(dt.getTime()) ? null : dt;
 }
 
+// Soporta formato US ($45,200.00) y europeo ($45.200,00) así como números nativos de Excel.
 function parseAmount(v: any): number {
-  if (v == null || v === "") return 0;
-  if (typeof v === "number") return v;
-  const s = String(v).replace(/[\s$,]/g, "");
-  const n = parseFloat(s);
-  return isNaN(n) ? 0 : n;
+  return parseAmountFlexible(v);
 }
 
 function normalize(s: string | null | undefined): string {

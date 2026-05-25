@@ -2,6 +2,7 @@
 // Diseñado para ser tolerante a múltiples formatos bancarios (Ocean Bank, Chase, BoA, etc.)
 
 import * as XLSX from "xlsx";
+import { parseAmountFlexible } from "../../lib/parseAmount";
 
 export interface ParsedLine {
   date: Date;
@@ -55,18 +56,17 @@ function tryParseDate(v: any): Date | null {
   return isNaN(dt.getTime()) ? null : dt;
 }
 
+// Soporta formato US ($45,200.00), europeo ($45.200,00), paréntesis (contable negativo)
+// y números nativos. Devuelve null si la celda está vacía/no parseable.
 function tryParseAmount(v: any): number | null {
   if (v == null || v === "") return null;
-  if (typeof v === "number") return v;
-  let s = String(v).trim();
-  if (!s) return null;
-  // Detectar valores entre paréntesis = negativo (formato contable)
-  const isParens = /^\(.*\)$/.test(s);
-  s = s.replace(/[\s$,()]/g, "").replace(/^USD/i, "");
-  if (!s) return null;
-  const n = parseFloat(s);
-  if (isNaN(n)) return null;
-  return isParens ? -Math.abs(n) : n;
+  const n = parseAmountFlexible(v);
+  // Distinguir 0 explícito (válido) de input incomprensible (null)
+  if (n === 0) {
+    const s = String(v).replace(/[\s$,.()]/g, "");
+    if (!/^0+$/.test(s)) return null;
+  }
+  return n;
 }
 
 function detectColumns(headers: string[]): {

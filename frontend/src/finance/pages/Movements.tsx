@@ -390,7 +390,7 @@ export default function Movements() {
                           const ok = await confirm({
                             title: 'Eliminar movimiento',
                             message: `¿Seguro que quieres eliminar el movimiento "${m.concept}"?`,
-                            detail: `Monto: $${m.amount?.toLocaleString()} · ${m.type} · ${m.account?.name || 'sin cuenta'}`,
+                            detail: `Monto: ${usd(m.amount ?? 0)} · ${m.type} · ${m.account?.name || 'sin cuenta'}`,
                             confirmText: 'Sí, eliminar',
                             destructive: true,
                           })

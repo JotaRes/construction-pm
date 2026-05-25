@@ -236,7 +236,7 @@ export default function Debt() {
                         const ok = await confirm({
                           title: 'Eliminar préstamo',
                           message: `¿Seguro que quieres eliminar el préstamo de ${l.lender?.name}?`,
-                          detail: `Monto: $${l.amount?.toLocaleString()} · Saldo: $${(l.outstanding || l.amount)?.toLocaleString()}. Esta acción no se puede deshacer.`,
+                          detail: `Monto: ${usd(l.amount ?? 0)} · Saldo: ${usd((l.outstanding ?? l.amount) ?? 0)}. Esta acción no se puede deshacer.`,
                           destructive: true,
                           confirmText: 'Sí, eliminar',
                         })

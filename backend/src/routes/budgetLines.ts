@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express'
 import { PrismaClient } from '@prisma/client'
 import multer from 'multer'
 import { BUDGET_LINES_TEMPLATE } from '../data/budgetLinesTemplate'
+import { parseAmountFlexible } from '../lib/parseAmount'
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pdfParse = require('pdf-parse') as (buffer: Buffer) => Promise<{ text: string }>
 
@@ -126,48 +127,6 @@ router.post('/:id/construction-budget/parse-pdf', upload.single('pdf'), async (r
     res.status(500).json({ data: null, error: String(e) })
   }
 })
-
-/**
- * Parsea un string monetario en US ($45,200.00) o Europeo ($45.200,00) y lo
- * convierte a número. La heurística: el separador decimal es el que aparece
- * más a la derecha. El otro símbolo es el separador de miles.
- *
- * Ejemplos:
- *   "$45.200,00" → 45200    (europeo: . miles, , decimal)
- *   "$45,200.00" → 45200    (US: , miles, . decimal)
- *   "$2,500"     → 2500
- *   "$465.750,00"→ 465750
- *   "$1.500"     → 1500     (ambiguo, pero asume miles si solo hay un . y 3 dígitos después)
- */
-function parseAmountFlexible(raw: string): number {
-  let s = raw.replace(/\$/g, '').replace(/\s/g, '').trim()
-  if (!s) return 0
-  const lastDot = s.lastIndexOf('.')
-  const lastComma = s.lastIndexOf(',')
-  if (lastDot === -1 && lastComma === -1) return parseFloat(s) || 0
-  if (lastDot > -1 && lastComma > -1) {
-    // ambos presentes: el que está más a la derecha es decimal
-    if (lastDot > lastComma) {
-      // US: 45,200.00 → quitar comas, dejar punto decimal
-      return parseFloat(s.replace(/,/g, '')) || 0
-    } else {
-      // EU: 45.200,00 → quitar puntos, cambiar coma por punto
-      return parseFloat(s.replace(/\./g, '').replace(',', '.')) || 0
-    }
-  }
-  // Solo uno presente. Heurística:
-  // Si el separador único es seguido de exactamente 2 dígitos al final → decimal
-  // Si es seguido de 3 dígitos → miles
-  if (lastDot > -1) {
-    const after = s.length - lastDot - 1
-    if (after === 2) return parseFloat(s) || 0
-    return parseFloat(s.replace(/\./g, '')) || 0
-  }
-  // lastComma > -1
-  const after = s.length - lastComma - 1
-  if (after === 2) return parseFloat(s.replace(',', '.')) || 0
-  return parseFloat(s.replace(/,/g, '')) || 0
-}
 
 /**
  * Extrae items del construction budget directamente del PDF.

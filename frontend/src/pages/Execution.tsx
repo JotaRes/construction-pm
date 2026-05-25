@@ -82,7 +82,7 @@ function DocumentSection({ item }: { item: Item }) {
       `Ítem: ${item.itemCode} — ${item.activity}\n` +
       `Tipo: ${doc.type}\n` +
       `Proveedor: ${doc.vendor || '—'}\n` +
-      (doc.amount ? `Monto: $${doc.amount.toLocaleString()}\n` : '') +
+      (doc.amount ? `Monto: ${formatUSD(doc.amount)}\n` : '') +
       (doc.fileUrl ? `Descargar: ${buildDownloadUrl(doc.fileUrl, doc.name)}\n` : '') +
       (doc.notes ? `\nNotas: ${doc.notes}\n` : '') +
       `\nSaludos.`
@@ -102,7 +102,7 @@ function DocumentSection({ item }: { item: Item }) {
       `📄 *${doc.type}*\n\n` +
       `*Ítem:* ${item.itemCode} — ${item.activity}\n` +
       `*Proveedor:* ${doc.vendor || '—'}\n` +
-      (doc.amount ? `*Monto:* $${doc.amount.toLocaleString()}` : '')
+      (doc.amount ? `*Monto:* ${formatUSD(doc.amount)}` : '')
 
     if (typeof navigator !== 'undefined' && (navigator as any).canShare && (navigator as any).share) {
       try {

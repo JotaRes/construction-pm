@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express'
 import { PrismaClient } from '@prisma/client'
 import multer from 'multer'
 import { uploadToCloudinary, resourceTypeFor } from '../lib/cloudinary'
+import { parseAmountFlexible } from '../lib/parseAmount'
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pdfParse = require('pdf-parse') as (buffer: Buffer) => Promise<{ text: string; numpages: number }>
@@ -24,8 +25,10 @@ const upload = multer({
   },
 })
 
+// Wrapper que mantiene la firma original pero usa el helper compartido
+// que soporta formato US ($45,200.00) y europeo ($45.200,00).
 function parseMoney(str: string): number {
-  return parseFloat(str.replace(/[$,\s]/g, '')) || 0
+  return parseAmountFlexible(str)
 }
 
 function normalizeDate(str: string): string | null {

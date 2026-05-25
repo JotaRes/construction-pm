@@ -315,7 +315,7 @@ export default function Capital() {
                         const ok = await confirm({
                           title: 'Eliminar aporte no-bancarizado',
                           message: `¿Seguro que quieres eliminar el aporte de ${c.partner?.fullName}?`,
-                          detail: `Concepto: "${c.concept}" · Monto: $${c.amount?.toLocaleString()}. Esta acción no se puede deshacer.`,
+                          detail: `Concepto: "${c.concept}" · Monto: ${usd(c.amount ?? 0)}. Esta acción no se puede deshacer.`,
                           destructive: true,
                           confirmText: 'Sí, eliminar',
                         })
