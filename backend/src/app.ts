@@ -150,7 +150,7 @@ app.use('/api/finance/backup', finBackup)
 app.use('/api/finance/reports', finReports)
 
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() })
+  res.json({ status: 'ok', timestamp: new Date().toISOString(), version: 'v2-with-module-gate' })
 })
 
 // Serve React frontend from dist/public (production build)
