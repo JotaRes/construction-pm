@@ -1,9 +1,108 @@
 import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { drawsApi, drawParseApi } from '../lib/api'
+import { drawsApi, drawParseApi, constructionBudgetApi } from '../lib/api'
 import { formatUSD, formatDate } from '../lib/calculations'
 import type { Draw, DrawEstado } from '../lib/types'
-import { Upload, FileText, CheckCircle, X, AlertTriangle } from 'lucide-react'
+import { Upload, FileText, CheckCircle, X, AlertTriangle, Receipt, ShieldCheck, Share2, Mail, MessageCircle, Download } from 'lucide-react'
+
+interface BudgetLine {
+  id: string
+  itemNumber: string
+  description: string
+  valorInicial: number
+  valorEjecutado: number
+}
+
+// Botones de share (email, WhatsApp, descarga) para un documento
+function ShareButtons({ url, label }: { url: string; label: string }) {
+  const subject = encodeURIComponent(`Documento: ${label}`)
+  const body = encodeURIComponent(`Aquí el documento "${label}":\n\n${url}`)
+  const wa = encodeURIComponent(`Aquí el documento "${label}":\n${url}`)
+  return (
+    <div className="flex items-center gap-1.5">
+      <a href={url} download target="_blank" rel="noreferrer"
+        title="Descargar"
+        className="text-slate-400 hover:text-[#2D4B52] p-1 rounded transition-colors">
+        <Download className="w-3.5 h-3.5" />
+      </a>
+      <a href={`mailto:?subject=${subject}&body=${body}`}
+        title="Enviar por email"
+        className="text-slate-400 hover:text-[#C8922A] p-1 rounded transition-colors">
+        <Mail className="w-3.5 h-3.5" />
+      </a>
+      <a href={`https://wa.me/?text=${wa}`} target="_blank" rel="noreferrer"
+        title="Compartir por WhatsApp"
+        className="text-slate-400 hover:text-green-600 p-1 rounded transition-colors">
+        <MessageCircle className="w-3.5 h-3.5" />
+      </a>
+    </div>
+  )
+}
+
+// Slot para subir un documento (invoice o approval) con alerta visual si falta
+function DocSlot({
+  draw, kind, label, icon: Icon, accentColor, projectId,
+}: {
+  draw: Draw
+  kind: 'INVOICE' | 'APPROVAL'
+  label: string
+  icon: React.FC<{ className?: string }>
+  accentColor: string
+  projectId: string
+}) {
+  const queryClient = useQueryClient()
+  const fileRef = useRef<HTMLInputElement>(null)
+  const url  = kind === 'INVOICE' ? draw.invoiceLenderUrl  : draw.lenderApprovalUrl
+  const name = kind === 'INVOICE' ? draw.invoiceLenderName : draw.lenderApprovalName
+
+  const uploadMut = useMutation({
+    mutationFn: (f: File) => drawsApi.uploadDoc(draw.id, f, kind),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['draws', projectId] }),
+  })
+  const delMut = useMutation({
+    mutationFn: () => drawsApi.deleteDoc(draw.id, kind),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['draws', projectId] }),
+  })
+
+  const missing = !url
+
+  return (
+    <div className={`rounded-lg border p-3 transition-colors ${missing ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-200'}`}>
+      <div className="flex items-center gap-2 mb-2">
+        <Icon className={`w-3.5 h-3.5 ${accentColor}`} />
+        <div className="text-[10px] font-semibold text-slate-600 uppercase tracking-wider flex-1">{label}</div>
+        {missing
+          ? <span className="text-[9px] text-red-600 font-bold flex items-center gap-1"><AlertTriangle className="w-3 h-3" />FALTA</span>
+          : <span className="text-[9px] text-emerald-700 font-bold flex items-center gap-1"><CheckCircle className="w-3 h-3" />OK</span>}
+      </div>
+      {url ? (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-xs">
+            <FileText className="w-3 h-3 text-slate-400 flex-shrink-0" />
+            <a href={url} target="_blank" rel="noreferrer" className="text-slate-700 hover:text-[#C8922A] truncate">
+              {name || 'Documento'}
+            </a>
+          </div>
+          <div className="flex items-center justify-between">
+            <ShareButtons url={url} label={`Draw #${draw.drawNumber} — ${label}`} />
+            <button onClick={() => delMut.mutate()}
+              className="text-[10px] text-slate-400 hover:text-red-500">
+              Eliminar
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button onClick={() => fileRef.current?.click()} disabled={uploadMut.isPending}
+          className="w-full flex items-center justify-center gap-2 text-xs text-red-700 border border-dashed border-red-300 px-3 py-2 rounded hover:bg-red-100 transition-colors">
+          <Upload className="w-3 h-3" />
+          {uploadMut.isPending ? 'Subiendo...' : 'Subir documento'}
+        </button>
+      )}
+      <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" className="hidden"
+        onChange={e => { const f = e.target.files?.[0]; if (f) uploadMut.mutate(f) }} />
+    </div>
+  )
+}
 
 const ESTADOS: DrawEstado[] = ['EMPTY', 'PENDING', 'WIRED']
 
@@ -31,7 +130,13 @@ function Field({ label, value, onChange, type = 'text', mono = false }: {
   )
 }
 
-function DrawCard({ draw, onUpdate }: { draw: Draw; onUpdate: (id: string, data: Record<string, unknown>) => void }) {
+function DrawCard({ draw, projectId, budgetTotal, budgetExecuted, onUpdate }: {
+  draw: Draw
+  projectId: string
+  budgetTotal: number
+  budgetExecuted: number
+  onUpdate: (id: string, data: Record<string, unknown>) => void
+}) {
   const isEmpty = draw.estado === 'EMPTY'
   const [open, setOpen] = useState(!isEmpty)
 
@@ -41,6 +146,14 @@ function DrawCard({ draw, onUpdate }: { draw: Draw; onUpdate: (id: string, data:
       : raw || null
     onUpdate(draw.id, { [key]: val })
   }
+
+  // Cross-reference con el construction budget
+  const elegible = draw.elegibleTrinity || 0
+  const expectedFromBudget = budgetTotal > 0 ? (budgetExecuted / budgetTotal) : 0
+  const elegiblePct = budgetTotal > 0 ? elegible / budgetTotal : 0
+  const variance = expectedFromBudget - elegiblePct  // positivo si el lender pagó menos de lo ejecutado
+  const hasBudget = budgetTotal > 0
+  const hasMismatch = hasBudget && elegible > 0 && Math.abs(variance) > 0.05  // > 5% diferencia
 
   return (
     <div className={`bg-white rounded-2xl border transition-all ${
@@ -97,6 +210,52 @@ function DrawCard({ draw, onUpdate }: { draw: Draw; onUpdate: (id: string, data:
             <Field label="Fecha Wire" value={draw.fechaWire?.slice(0, 10) ?? ''}
               onChange={v => save('fechaWire', v)} type="date" />
           </div>
+
+          {/* Cross-reference con Construction Budget */}
+          {hasBudget && elegible > 0 && (
+            <div className={`text-[11px] rounded-lg px-3 py-2 border ${hasMismatch ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-emerald-50 border-emerald-200 text-emerald-700'}`}>
+              <div className="font-semibold mb-1 flex items-center gap-1.5">
+                {hasMismatch ? <AlertTriangle className="w-3 h-3" /> : <CheckCircle className="w-3 h-3" />}
+                Cruce con Construction Budget
+              </div>
+              <div className="grid grid-cols-3 gap-2 font-mono text-[10px]">
+                <div>Budget ejecutado: <span className="font-semibold">{(expectedFromBudget * 100).toFixed(1)}%</span></div>
+                <div>Lender pagó: <span className="font-semibold">{(elegiblePct * 100).toFixed(1)}%</span></div>
+                <div className={hasMismatch ? 'text-amber-700' : 'text-emerald-700'}>
+                  Δ: <span className="font-bold">{(variance * 100).toFixed(1)} pts</span>
+                </div>
+              </div>
+              {hasMismatch && (
+                <div className="text-[10px] mt-1 italic">
+                  {variance > 0
+                    ? `El lender pagó ${formatUSD((expectedFromBudget - elegiblePct) * budgetTotal)} menos de lo ejecutado en obra.`
+                    : `El lender pagó ${formatUSD((elegiblePct - expectedFromBudget) * budgetTotal)} más de lo ejecutado en obra (revisar).`}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Documentos del draw — invoice + lender approval */}
+          <div className="space-y-2">
+            <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+              <Share2 className="w-3 h-3" />Documentos del Draw
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <DocSlot draw={draw} kind="INVOICE" label="Factura entregada al lender" icon={Receipt} accentColor="text-amber-600" projectId={projectId} />
+              <DocSlot draw={draw} kind="APPROVAL" label="Aprobación post-inspección" icon={ShieldCheck} accentColor="text-emerald-600" projectId={projectId} />
+            </div>
+          </div>
+
+          {/* PDF original del draw (si existe) */}
+          {draw.pdfUrl && (
+            <div className="text-[11px] flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+              <a href={draw.pdfUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-[#2D4B52] hover:underline">
+                <FileText className="w-3 h-3" />Ver PDF del draw original
+              </a>
+              <ShareButtons url={draw.pdfUrl} label={`Draw #${draw.drawNumber} — PDF`} />
+            </div>
+          )}
+
           <Field label="Notas" value={draw.notas ?? ''} onChange={v => save('notas', v)} />
         </div>
       )}
@@ -286,6 +445,14 @@ export default function Draws({ projectId }: { projectId: string }) {
     queryFn: () => drawsApi.list(projectId),
   })
 
+  const { data: budgetLines = [] } = useQuery<BudgetLine[]>({
+    queryKey: ['construction-budget', projectId],
+    queryFn: () => constructionBudgetApi.list(projectId),
+  })
+
+  const budgetTotal = budgetLines.reduce((s, b) => s + (b.valorInicial || 0), 0)
+  const budgetExecuted = budgetLines.reduce((s, b) => s + (b.valorEjecutado || 0), 0)
+
   const mutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => drawsApi.patch(id, data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['draws', projectId] }),
@@ -294,6 +461,9 @@ export default function Draws({ projectId }: { projectId: string }) {
   const wiredDraws = draws.filter(d => d.estado === 'WIRED')
   const totalWired = wiredDraws.reduce((s, d) => s + d.netWire, 0)
   const lastSaldo = wiredDraws.length > 0 ? wiredDraws[wiredDraws.length - 1].saldoHoldback : 0
+
+  // Auditoría: draws ejecutados (PENDING o WIRED) sin documentos requeridos
+  const drawsConFalta = draws.filter(d => d.estado !== 'EMPTY' && (!d.invoiceLenderUrl || !d.lenderApprovalUrl))
 
   if (isLoading) return <div className="text-slate-500 text-sm animate-pulse">Cargando draws...</div>
 
@@ -310,6 +480,32 @@ export default function Draws({ projectId }: { projectId: string }) {
           Cargar Draw PDF
         </button>
       </div>
+
+      {/* Alerta global de documentos faltantes */}
+      {drawsConFalta.length > 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <div className="text-sm font-semibold text-red-800">
+                {drawsConFalta.length} draw(s) con documentos faltantes
+              </div>
+              <div className="text-xs text-red-700 mt-0.5">
+                Cada draw ejecutado debe tener: <strong>factura al lender</strong> y <strong>aprobación post-inspección</strong>.
+              </div>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {drawsConFalta.map(d => (
+                  <span key={d.id} className="text-[10px] bg-white text-red-700 border border-red-200 px-2 py-0.5 rounded-full font-mono">
+                    Draw #{d.drawNumber}
+                    {!d.invoiceLenderUrl && ' · falta factura'}
+                    {!d.lenderApprovalUrl && ' · falta aprobación'}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-3 gap-4">
         <div className="kpi-card kpi-card-green">
@@ -331,7 +527,9 @@ export default function Draws({ projectId }: { projectId: string }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {draws.map(draw => (
-          <DrawCard key={draw.id} draw={draw} onUpdate={(id, data) => mutation.mutate({ id, data })} />
+          <DrawCard key={draw.id} draw={draw} projectId={projectId}
+            budgetTotal={budgetTotal} budgetExecuted={budgetExecuted}
+            onUpdate={(id, data) => mutation.mutate({ id, data })} />
         ))}
       </div>
 

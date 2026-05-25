@@ -312,4 +312,65 @@ router.delete('/:id', async (req: Request, res: Response) => {
   }
 })
 
+// === POST /:id/reset-execution — borra datos de ejecución de TODOS los items ===
+// Resetea valorEjecutado, completado, estado, fechas reales, observaciones, esNA.
+// MANTIENE la estructura de fases e items (valorPresupuestado intacto).
+router.post('/:id/reset-execution', async (req: Request, res: Response) => {
+  try {
+    const projectId = req.params.id
+    // Buscar todos los items del proyecto
+    const phases = await prisma.phase.findMany({ where: { projectId }, include: { items: true } })
+    const itemIds = phases.flatMap((p) => p.items.map((i) => i.id))
+    if (itemIds.length === 0) {
+      return res.json({ data: { reset: 0 }, error: null })
+    }
+    // Resetear en batch
+    await prisma.item.updateMany({
+      where: { id: { in: itemIds } },
+      data: {
+        valorEjecutado: 0,
+        completado: false,
+        estado: 'PENDIENTE',
+        fechaInicioReal: null,
+        fechaFinReal: null,
+        observaciones: null,
+        esNA: false,
+      },
+    })
+    // También borrar documentos de ítems (facturas, cotizaciones, etc.)
+    await prisma.itemDocument.deleteMany({ where: { itemId: { in: itemIds } } })
+    res.json({ data: { reset: itemIds.length, message: `${itemIds.length} ítems reseteados` }, error: null })
+  } catch (e) {
+    res.status(500).json({ data: null, error: String(e) })
+  }
+})
+
+// === POST /:id/reset-budget — borra valorPresupuestado de TODOS los items ===
+router.post('/:id/reset-budget', async (req: Request, res: Response) => {
+  try {
+    const projectId = req.params.id
+    const phases = await prisma.phase.findMany({ where: { projectId }, include: { items: true } })
+    const itemIds = phases.flatMap((p) => p.items.map((i) => i.id))
+    if (itemIds.length === 0) return res.json({ data: { reset: 0 }, error: null })
+    await prisma.item.updateMany({
+      where: { id: { in: itemIds } },
+      data: { valorPresupuestado: 0 },
+    })
+    res.json({ data: { reset: itemIds.length, message: `${itemIds.length} ítems con presupuesto reseteado` }, error: null })
+  } catch (e) {
+    res.status(500).json({ data: null, error: String(e) })
+  }
+})
+
+// === POST /:id/reset-construction-budget — borra TODAS las líneas del construction budget ===
+router.post('/:id/reset-construction-budget', async (req: Request, res: Response) => {
+  try {
+    const projectId = req.params.id
+    const result = await prisma.budgetLine.deleteMany({ where: { projectId } })
+    res.json({ data: { reset: result.count, message: `${result.count} líneas eliminadas` }, error: null })
+  } catch (e) {
+    res.status(500).json({ data: null, error: String(e) })
+  }
+})
+
 export default router

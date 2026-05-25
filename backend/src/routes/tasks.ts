@@ -24,6 +24,7 @@ router.post('/:id/tasks', async (req: Request, res: Response) => {
         projectId: req.params.id,
         title: req.body.title ?? 'Nueva tarea',
         responsable: req.body.responsable ?? null,
+        responsableEmail: req.body.responsableEmail ?? null,
         priority: req.body.priority ?? 'NORMAL',
         dueDate: req.body.dueDate ? new Date(req.body.dueDate) : null,
         notes: req.body.notes ?? null,
@@ -38,9 +39,18 @@ router.post('/:id/tasks', async (req: Request, res: Response) => {
 
 router.patch('/:projectId/tasks/:id', async (req: Request, res: Response) => {
   try {
+    const data: any = { ...req.body }
+    if (data.dueDate && typeof data.dueDate === 'string') data.dueDate = new Date(data.dueDate)
+    // Si se marca como completada, registrar la fecha
+    if (data.done === true) {
+      const current = await prisma.task.findUnique({ where: { id: req.params.id } })
+      if (current && !current.done) data.completedAt = new Date()
+    } else if (data.done === false) {
+      data.completedAt = null
+    }
     const task = await prisma.task.update({
       where: { id: req.params.id },
-      data: req.body,
+      data,
     })
     res.json({ data: task, error: null })
   } catch (e) {

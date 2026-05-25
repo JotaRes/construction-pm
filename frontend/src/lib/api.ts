@@ -8,6 +8,9 @@ export const projectsApi = {
   dashboard: (id: string) => api.get(`/projects/${id}/dashboard`).then(r => r.data.data),
   create: (data: Record<string, unknown>) => api.post('/projects', data).then(r => r.data.data),
   patch: (id: string, data: Record<string, unknown>) => api.patch(`/projects/${id}`, data).then(r => r.data.data),
+  resetExecution: (id: string) => api.post(`/projects/${id}/reset-execution`).then(r => r.data.data),
+  resetBudget: (id: string) => api.post(`/projects/${id}/reset-budget`).then(r => r.data.data),
+  resetConstructionBudget: (id: string) => api.post(`/projects/${id}/reset-construction-budget`).then(r => r.data.data),
 }
 
 export const phasesApi = {
@@ -23,6 +26,14 @@ export const itemsApi = {
 export const drawsApi = {
   list: (projectId: string) => api.get(`/projects/${projectId}/draws`).then(r => r.data.data),
   patch: (id: string, data: Record<string, unknown>) => api.patch(`/draws/${id}`, data).then(r => r.data.data),
+  uploadDoc: (drawId: string, file: File, kind: 'INVOICE' | 'APPROVAL') => {
+    const fd = new FormData()
+    fd.append('file', file)
+    fd.append('kind', kind)
+    return api.post(`/draws/${drawId}/document`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data.data)
+  },
+  deleteDoc: (drawId: string, kind: 'INVOICE' | 'APPROVAL') =>
+    api.delete(`/draws/${drawId}/document/${kind}`).then(r => r.data.data),
 }
 
 export const providersApi = {
@@ -37,6 +48,17 @@ export const providerQuotesApi = {
     api.post(`/projects/${projectId}/providers/${providerId}/quotes`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data.data),
   delete: (projectId: string, providerId: string, quoteId: string) =>
     api.delete(`/projects/${projectId}/providers/${providerId}/quotes/${quoteId}`).then(r => r.data.data),
+}
+
+export const providerDocumentsApi = {
+  list: (projectId: string, providerId: string) =>
+    api.get(`/projects/${projectId}/providers/${providerId}/documents`).then(r => r.data.data),
+  create: (projectId: string, providerId: string, formData: FormData) =>
+    api.post(`/projects/${projectId}/providers/${providerId}/documents`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data.data),
+  patch: (projectId: string, providerId: string, docId: string, data: Record<string, unknown>) =>
+    api.patch(`/projects/${projectId}/providers/${providerId}/documents/${docId}`, data).then(r => r.data.data),
+  delete: (projectId: string, providerId: string, docId: string) =>
+    api.delete(`/projects/${projectId}/providers/${providerId}/documents/${docId}`).then(r => r.data.data),
 }
 
 export const budgetInitApi = {
@@ -138,4 +160,17 @@ export const docParseApi = {
     fd.append('pdf', file)
     return api.post(`/projects/${projectId}/docs/parse-pdf?type=${type}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data.data)
   },
+}
+
+export interface SystemCapacity {
+  totalBytes: number
+  totalDocs: number
+  limitBytes: number
+  pct: number
+  level: 'ok' | 'warning' | 'critical'
+  breakdown: Record<string, { count: number; bytes: number; estimated?: boolean }>
+}
+
+export const systemApi = {
+  capacity: (): Promise<SystemCapacity> => api.get('/system/capacity').then(r => r.data.data),
 }

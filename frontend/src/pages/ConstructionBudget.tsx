@@ -1,10 +1,12 @@
 import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { constructionBudgetApi, budgetInitApi } from '../lib/api'
+import axios from 'axios'
+import { constructionBudgetApi, budgetInitApi, projectsApi } from '../lib/api'
 import { formatUSD } from '../lib/calculations'
 import type { BudgetLine } from '../lib/types'
 import { useConfirm } from '../components/ConfirmDialog'
-import { ChevronDown, ChevronRight, Upload, RefreshCw, CheckCircle, AlertCircle, FileText } from 'lucide-react'
+import { ChevronDown, ChevronRight, Upload, RefreshCw, CheckCircle, AlertCircle, FileText, Eraser, FileUp } from 'lucide-react'
+import toast from 'react-hot-toast'
 
 /* ── Inline editable number ─────────────────────── */
 function Num({ value, onSave, dim = false }: { value: number; onSave: (v: number) => void; dim?: boolean }) {
@@ -319,6 +321,62 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['construction-budget', projectId] }),
   })
 
+  // === Borrar TODO el construction budget ===
+  const resetCBMut = useMutation({
+    mutationFn: () => projectsApi.resetConstructionBudget(projectId),
+    onSuccess: (r: any) => {
+      queryClient.invalidateQueries({ queryKey: ['construction-budget', projectId] })
+      toast.success(r?.message || 'Construction Budget reseteado')
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.error || 'Error'),
+  })
+
+  const handleClearCB = async () => {
+    const ok = await confirm({
+      title: 'Borrar Construction Budget completo',
+      message: '¿Seguro que quieres borrar TODAS las líneas del Construction Budget?',
+      detail: 'Esta acción elimina todas las líneas (template + extras). Podrás reinicializar desde template o cargar un PDF nuevo después. Esta acción no se puede deshacer.',
+      destructive: true,
+      confirmText: 'Sí, borrar todo',
+      typeToConfirm: 'BORRAR BUDGET',
+    })
+    if (ok) resetCBMut.mutate()
+  }
+
+  // === Importar desde PDF (nuevo flujo con backend mejorado) ===
+  const importPdfMut = useMutation({
+    mutationFn: async (file: File) => {
+      const fd = new FormData()
+      fd.append('pdf', file)
+      const res = await axios.post(`/api/projects/${projectId}/construction-budget/import-from-pdf`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      return res.data.data
+    },
+    onSuccess: (r: any) => {
+      queryClient.invalidateQueries({ queryKey: ['construction-budget', projectId] })
+      toast.success(r?.message || 'PDF importado', { duration: 7000 })
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.error || 'Error al importar PDF'),
+  })
+
+  const handleImportPdf = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]
+    if (!f) return
+    if (lines.length > 0) {
+      const ok = await confirm({
+        title: 'Importar Construction Budget desde PDF',
+        message: '¿Seguro que quieres cargar este PDF? Se reemplazarán TODAS las líneas actuales con las del PDF.',
+        detail: `Archivo: "${f.name}" (${(f.size/1024).toFixed(0)} KB). El sistema extraerá los items con sus montos y reemplazará el contenido actual.`,
+        destructive: true,
+        confirmText: 'Sí, reemplazar e importar',
+      })
+      if (!ok) { e.target.value = ''; return }
+    }
+    importPdfMut.mutate(f)
+    e.target.value = ''
+  }
+
   // Handle PDF match apply: update lines with matched amounts
   const handlePdfApply = async (matches: Array<{ itemCode: string; description: string; amount: number; confidence: number }>) => {
     for (const match of matches) {
@@ -349,30 +407,44 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
 
   if (isLoading) return <div className="text-slate-500 text-sm animate-pulse">Cargando Construction Budget...</div>
 
-  // Empty state — show init button
+  // Empty state — opción de importar PDF o inicializar template
   if (lines.length === 0) {
     return (
       <div className="space-y-5">
         <div>
           <h1 className="text-xl font-bold text-slate-900">Construction Budget</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Lender Report · Hera Holdings LLC</p>
+          <p className="text-sm text-slate-500 mt-0.5">Lender Report · sin líneas todavía</p>
         </div>
-        <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center space-y-4">
+        <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center space-y-5">
           <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto">
             <FileText className="w-7 h-7 text-slate-400" />
           </div>
           <div>
-            <div className="text-base font-semibold text-slate-700">Sin líneas de budget</div>
-            <div className="text-sm text-slate-400 mt-1">Inicializa el template con las 10 divisiones y ~120 líneas estándar</div>
+            <div className="text-base font-semibold text-slate-700">Sin Construction Budget cargado</div>
+            <div className="text-sm text-slate-400 mt-1">Recomendado: carga el PDF del lender para obtener los items exactos con sus valores iniciales</div>
           </div>
-          <button
-            onClick={() => initMut.mutate()}
-            disabled={initMut.isPending}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-[#2D4B52] hover:bg-[#3a6068] text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-50"
-          >
-            {initMut.isPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-            {initMut.isPending ? 'Inicializando...' : 'Inicializar Budget desde Template'}
-          </button>
+          <div className="flex items-center justify-center gap-2 flex-wrap">
+            <label className="inline-flex items-center gap-2 px-5 py-3 bg-[#C8922A] hover:bg-[#E0AD4F] text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer disabled:opacity-50">
+              <Upload className="w-4 h-4" />
+              {importPdfMut.isPending ? 'Importando PDF…' : 'Cargar Construction Budget (PDF)'}
+              <input
+                type="file"
+                accept=".pdf"
+                className="hidden"
+                disabled={importPdfMut.isPending}
+                onChange={handleImportPdf}
+              />
+            </label>
+            <button
+              onClick={() => initMut.mutate()}
+              disabled={initMut.isPending}
+              className="inline-flex items-center gap-2 px-5 py-3 bg-white border border-slate-200 hover:border-[#2D4B52] text-[#2D4B52] text-sm font-semibold rounded-xl transition-colors disabled:opacity-50"
+            >
+              {initMut.isPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+              {initMut.isPending ? 'Inicializando...' : 'O usar template estándar'}
+            </button>
+          </div>
+          <p className="text-[11px] text-slate-400">El PDF debe ser el reporte completo del lender con descripciones e items por monto. El sistema extraerá automáticamente los items y deshabilitará los que no aparezcan en el PDF.</p>
         </div>
       </div>
     )
@@ -388,19 +460,32 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
             Lender Report · Hera Holdings LLC · {lines.length} líneas · {groups.length} divisiones
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* NUEVO: cargar PDF directo y reemplazar todo */}
+          <label className="flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg border border-[#C8922A] bg-[#C8922A] text-white hover:bg-[#E0AD4F] transition-colors cursor-pointer disabled:opacity-50">
+            <FileUp className="w-3.5 h-3.5" />
+            {importPdfMut.isPending ? 'Importando…' : 'Cargar PDF nuevo'}
+            <input
+              type="file"
+              accept=".pdf"
+              className="hidden"
+              disabled={importPdfMut.isPending}
+              onChange={handleImportPdf}
+            />
+          </label>
+          {/* Panel viejo de matching incremental */}
           <button
             onClick={() => setShowPdfPanel(p => !p)}
             className={`flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg border transition-colors
               ${showPdfPanel ? 'bg-[#2D4B52] text-white border-[#2D4B52]' : 'bg-white text-slate-600 border-slate-200 hover:border-[#2D4B52] hover:text-[#2D4B52]'}`}
           >
             <Upload className="w-3.5 h-3.5" />
-            Importar PDF
+            Matching incremental
           </button>
           <button
             onClick={async () => {
               const ok = await confirm({
-                title: 'Reinicializar budget',
+                title: 'Reinicializar budget desde template',
                 message: '¿Seguro que quieres reinicializar el budget desde el template?',
                 detail: 'TODOS los valores actuales (valor inicial, presentado, aprobado, pagado) serán reemplazados por los del template. Esta acción no se puede deshacer.',
                 destructive: true,
@@ -412,7 +497,16 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
             className="flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg border border-slate-200 bg-white text-slate-500 hover:border-slate-400 transition-colors disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${initMut.isPending ? 'animate-spin' : ''}`} />
-            Re-init
+            Re-init template
+          </button>
+          {/* NUEVO: borrar todo el budget */}
+          <button
+            onClick={handleClearCB}
+            disabled={resetCBMut.isPending}
+            className="flex items-center gap-1.5 px-3 py-2 bg-white border border-red-200 hover:bg-red-50 text-red-600 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
+          >
+            <Eraser className="w-3.5 h-3.5" />
+            {resetCBMut.isPending ? 'Borrando…' : 'Borrar todo'}
           </button>
         </div>
       </div>

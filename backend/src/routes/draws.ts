@@ -236,6 +236,31 @@ function parsePermitText(text: string): Record<string, unknown> {
   return result
 }
 
+function parseLOIText(text: string): Record<string, unknown> {
+  const result: Record<string, unknown> = {}
+  const t = text.replace(/\n/g, ' ')
+  const mp = '\\$?([\\d,]+\\.?\\d*)'
+  const dp = '(\\d{1,2}[\\/-]\\d{1,2}[\\/-]\\d{2,4})'
+  // Precio ofertado
+  const salePrice =
+    t.match(new RegExp(`(?:offer\\s*price|purchase\\s*price|sales?\\s*price|amount\\s*offered)\\s*:?\\s*${mp}`, 'i')) ??
+    t.match(new RegExp(`(?:total\\s*consideration|contract\\s*amount)\\s*:?\\s*${mp}`, 'i'))
+  if (salePrice) result.loiSalePrice = parseMoney(salePrice[1])
+  // Fecha de oferta
+  const offerDate =
+    t.match(new RegExp(`(?:offer\\s*date|date\\s*of\\s*offer|effective\\s*date|loi\\s*date|letter\\s*date)\\s*:?\\s*${dp}`, 'i'))
+  if (offerDate) result.loiOfferDate = normalizeDate(offerDate[1])
+  // Fecha esperada de cierre
+  const closeDate =
+    t.match(new RegExp(`(?:closing\\s*date|expected\\s*closing|target\\s*close|proposed\\s*closing|settlement\\s*date)\\s*:?\\s*${dp}`, 'i'))
+  if (closeDate) result.loiExpectedClose = normalizeDate(closeDate[1])
+  // Earnest money
+  const earnest =
+    t.match(new RegExp(`(?:earnest\\s*money|deposit|good\\s*faith)\\s*(?:deposit)?\\s*:?\\s*${mp}`, 'i'))
+  if (earnest) result.loiEarnestMoney = parseMoney(earnest[1])
+  return result
+}
+
 function parseAppraisalText(text: string): Record<string, unknown> {
   const result: Record<string, unknown> = {}
   const t = text.replace(/\n/g, ' ')
@@ -266,6 +291,45 @@ router.get('/:projectId/draws', async (req: Request, res: Response) => {
 router.patch('/:id', async (req: Request, res: Response) => {
   try {
     const draw = await prisma.draw.update({ where: { id: req.params.id }, data: req.body })
+    res.json({ data: draw, error: null })
+  } catch (e) {
+    res.status(500).json({ data: null, error: String(e) })
+  }
+})
+
+// ── POST upload draw document (invoice or lender approval) ──────────────────
+// kind = "INVOICE" (factura presentada al lender) | "APPROVAL" (doc devuelto post-inspección)
+router.post('/:id/document', (req: Request, res: Response) => {
+  upload.single('file')(req, res, async (err) => {
+    if (err) return res.status(400).json({ data: null, error: String(err) })
+    try {
+      if (!req.file) return res.status(400).json({ data: null, error: 'No se subió ningún archivo' })
+      const kind = String(req.body.kind || 'INVOICE').toUpperCase()
+      const fileUrl = await tryCloudinaryUpload(req.file.buffer, 'construction-pm/draw-documents', req.file.mimetype)
+      if (!fileUrl) return res.status(500).json({ data: null, error: 'Cloudinary no configurado' })
+
+      const data: Record<string, unknown> =
+        kind === 'APPROVAL'
+          ? { lenderApprovalUrl: fileUrl, lenderApprovalName: req.file.originalname }
+          : { invoiceLenderUrl: fileUrl, invoiceLenderName: req.file.originalname }
+
+      const draw = await prisma.draw.update({ where: { id: req.params.id }, data })
+      res.json({ data: draw, error: null })
+    } catch (e) {
+      res.status(500).json({ data: null, error: String(e) })
+    }
+  })
+})
+
+// ── DELETE draw document ────────────────────────────────────────────────────
+router.delete('/:id/document/:kind', async (req: Request, res: Response) => {
+  try {
+    const kind = req.params.kind.toUpperCase()
+    const data: Record<string, unknown> =
+      kind === 'APPROVAL'
+        ? { lenderApprovalUrl: null, lenderApprovalName: null }
+        : { invoiceLenderUrl: null, invoiceLenderName: null }
+    const draw = await prisma.draw.update({ where: { id: req.params.id }, data })
     res.json({ data: draw, error: null })
   } catch (e) {
     res.status(500).json({ data: null, error: String(e) })
@@ -340,6 +404,8 @@ router.post('/:projectId/docs/parse-pdf', handleUpload, async (req: Request, res
     const parserMap: Record<string, (t: string) => Record<string, unknown>> = {
       HUD: parseHUDText, LOAN: parseLoanText, SURVEY: parseSurveyText,
       PLANS: parsePlansText, PERMIT: parsePermitText, APPRAISAL: parseAppraisalText,
+      LOI: parseLOIText,
+      OTROS: () => ({}),  // genérico: solo guarda URL, sin extraer datos
     }
     const parser = parserMap[docType.toUpperCase()]
     const parsed: Record<string, unknown> = parser ? parser(pdfData.text) : {}

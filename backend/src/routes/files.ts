@@ -26,16 +26,46 @@ router.get('/:projectId/files', async (req: Request, res: Response) => {
 router.get('/:projectId/document-checklist', async (req: Request, res: Response) => {
   try {
     const projectId = req.params.projectId
-    const files = await prisma.projectFile.findMany({
-      where: { projectId },
-      orderBy: { createdAt: 'desc' },
-    })
+    const [files, project] = await Promise.all([
+      prisma.projectFile.findMany({ where: { projectId }, orderBy: { createdAt: 'desc' } }),
+      prisma.project.findUnique({ where: { id: projectId } }),
+    ])
 
     const byKind = new Map<string, any[]>()
     for (const f of files) {
       const k = f.kind || 'otros'
       if (!byKind.has(k)) byKind.set(k, [])
       byKind.get(k)!.push(f)
+    }
+
+    // Anti-duplicidad: incluir docs del módulo Financiero como "virtual files"
+    // para que aparezcan en el checklist sin duplicar el upload.
+    // Cada doc almacenado en Project (loiUrl, approvalLetterUrl, hudUrl, otrosFinancieroUrl)
+    // se materializa como un ProjectFile virtual con el kind del checklist correspondiente.
+    const virtualMap: Array<{ kind: string; url: string | null; name: string | null }> = [
+      { kind: 'loi_lender',   url: project?.loiUrl ?? null,             name: project?.loiName ?? null },
+      { kind: 'carta_lender', url: project?.approvalLetterUrl ?? null,  name: project?.approvalLetterName ?? null },
+      { kind: 'hud_cierre',   url: project?.hudUrl ?? null,             name: project?.hudName ?? null },
+      { kind: 'otros',        url: project?.otrosFinancieroUrl ?? null, name: project?.otrosFinancieroName ?? null },
+    ]
+    for (const v of virtualMap) {
+      if (!v.url) continue
+      // Si ya hay un ProjectFile real para ese kind, no agregamos el virtual (priorizamos lo real)
+      if ((byKind.get(v.kind)?.length ?? 0) > 0) continue
+      const virt = {
+        id: `virtual-${v.kind}`,
+        projectId,
+        name: v.name || v.kind,
+        kind: v.kind,
+        category: PROJECT_DOC_CHECKLIST.find((d) => d.key === v.kind)?.label ?? 'Financiero',
+        url: v.url,
+        mimetype: null,
+        size: null,
+        createdAt: new Date().toISOString(),
+        source: 'financiero',  // marca de origen para el frontend
+      }
+      if (!byKind.has(v.kind)) byKind.set(v.kind, [])
+      byKind.get(v.kind)!.push(virt)
     }
 
     const items = PROJECT_DOC_CHECKLIST.map((spec) => {

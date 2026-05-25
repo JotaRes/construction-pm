@@ -22,6 +22,7 @@ import itemDocumentRoutes from './routes/itemDocuments'
 import { seedDatabase } from './seed'
 import backupRoutes from './routes/backup'
 import downloadRoutes from './routes/download'
+import capacityRoutes from './routes/capacity'
 
 // === FINANCE MODULE ROUTES ===
 import finCatalogs from './finance/routes/catalogs'
@@ -133,6 +134,7 @@ app.use('/api/draws', drawRoutes)
 
 app.use('/api/backup', backupRoutes)
 app.use('/api/download', downloadRoutes)
+app.use('/api/system', capacityRoutes)
 
 // === FINANCE MODULE — prefijo /api/finance/* ===
 // Auth se comparte con el módulo técnico vía /api/auth (mismo password)

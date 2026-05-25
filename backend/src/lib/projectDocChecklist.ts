@@ -36,6 +36,7 @@ export const PROJECT_DOC_CHECKLIST: DocChecklistItem[] = [
   { key: "hud_cierre", label: "HUD del cierre con lender", description: "HUD-1 / Closing disclosure del cierre del préstamo", required: true, group: "financiamiento" },
 
   // Grupo: Construcción
+  { key: "construction_budget", label: "Construction Budget", description: "Presupuesto detallado de construcción (PDF del lender o GC)", required: true, group: "construccion" },
   { key: "licencia_gc", label: "Licencia del GC", description: "Licencia del general contractor responsable", required: true, group: "construccion" },
   { key: "permiso_construccion", label: "Permiso de construcción", description: "Building permit emitido por el condado", required: true, group: "construccion" },
   { key: "permiso_electrico", label: "Permiso de electricidad", description: "Electrical permit", required: true, group: "construccion" },

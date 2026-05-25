@@ -71,6 +71,20 @@ model Project {
   contingencyPct   Float   @default(0.08)
   targetMarginPct  Float   @default(0.20)
   benchmarkSfTarget Float  @default(220)
+  // Documentos financieros (URLs + nombres originales para auditoría)
+  loiUrl             String?           // Letter of Intent / Acceptance of Offer / Offer Letter
+  loiName            String?
+  approvalLetterUrl  String?           // Carta de aprobación / commitment letter del lender
+  approvalLetterName String?
+  hudUrl             String?           // HUD-1 / Closing Disclosure
+  hudName            String?
+  otrosFinancieroUrl  String?          // "Otros" - genérico (puede ser cualquier doc adicional)
+  otrosFinancieroName String?
+  // Datos extraídos del LOI (para CFO dashboard)
+  loiSalePrice       Float?
+  loiOfferDate       DateTime?
+  loiExpectedClose   DateTime?
+  loiEarnestMoney    Float?
 
   phases      Phase[]
   draws       Draw[]
@@ -121,23 +135,28 @@ model Item {
 }
 
 model Draw {
-  id               String    @id @default(cuid())
-  projectId        String
-  project          Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  drawNumber       Int
-  fechaSolicitud   DateTime?
-  fechaInspeccion  DateTime?
-  fechaWire        DateTime?
-  montoSolicitado  Float     @default(0)
-  elegibleTrinity  Float     @default(0)
-  porcentajeFunded Float     @default(0)
-  netWire          Float     @default(0)
-  upbPre           Float     @default(0)
-  upbPost          Float     @default(0)
-  saldoHoldback    Float     @default(0)
-  notas            String?
-  pdfUrl           String?
-  estado           String    @default("EMPTY")
+  id                  String    @id @default(cuid())
+  projectId           String
+  project             Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  drawNumber          Int
+  fechaSolicitud      DateTime?
+  fechaInspeccion     DateTime?
+  fechaWire           DateTime?
+  montoSolicitado     Float     @default(0)
+  elegibleTrinity     Float     @default(0)
+  porcentajeFunded    Float     @default(0)
+  netWire             Float     @default(0)
+  upbPre              Float     @default(0)
+  upbPost             Float     @default(0)
+  saldoHoldback       Float     @default(0)
+  notas               String?
+  pdfUrl              String?
+  estado              String    @default("EMPTY")
+  // Documentos requeridos por draw
+  invoiceLenderUrl    String?   // factura entregada al lender ANTES de inspección
+  invoiceLenderName   String?
+  lenderApprovalUrl   String?   // documento devuelto por el lender DESPUÉS de inspección
+  lenderApprovalName  String?
 }
 
 model Partner {
@@ -153,17 +172,34 @@ model Partner {
 }
 
 model Provider {
-  id        String          @id @default(cuid())
-  projectId String
-  project   Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  name      String
-  type      String?
-  phone     String?
-  email     String?
-  license   String?
-  notes     String?
-  items     Item[]
-  quotes    ProviderQuote[]
+  id           String          @id @default(cuid())
+  projectId    String
+  project      Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name         String
+  type         String?           // categoría libre (puede ser "Otro: lo que sea")
+  phoneCountry String?           @default("+1")   // código país, default USA
+  phone        String?
+  email        String?
+  license      String?
+  address      String?
+  notes        String?
+  items        Item[]
+  quotes       ProviderQuote[]
+  documents    ProviderDocument[]
+}
+
+model ProviderDocument {
+  id          String    @id @default(cuid())
+  providerId  String
+  provider    Provider  @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  type        String    @default("OTRO")  // SEGURO | COTIZACION | FACTURA | CONTRATO | LICENCIA | W9 | OTRO
+  name        String
+  amount      Float?
+  fileUrl     String?
+  mimetype    String?
+  size        Int?
+  notes       String?
+  createdAt   DateTime  @default(now())
 }
 
 model ProviderQuote {
@@ -235,18 +271,20 @@ model BudgetLine {
 }
 
 model Task {
-  id           String    @id @default(cuid())
-  projectId    String
-  project      Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  title        String
-  responsable  String?
-  done         Boolean   @default(false)
-  priority     String    @default("NORMAL")
-  dueDate      DateTime?
-  notes        String?
-  order        Int       @default(0)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id            String    @id @default(cuid())
+  projectId     String
+  project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title         String
+  responsable   String?
+  responsableEmail String?
+  done          Boolean   @default(false)
+  completedAt   DateTime?
+  priority      String    @default("NORMAL")
+  dueDate       DateTime?
+  notes         String?
+  order         Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
 model ItemDocument {

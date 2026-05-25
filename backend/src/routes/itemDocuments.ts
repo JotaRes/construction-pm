@@ -39,17 +39,49 @@ router.post('/:itemId/documents', upload.single('file'), async (req: Request, re
       const { url } = await uploadToCloudinary(req.file.buffer, 'construction-pm/item-docs', resourceTypeFor(req.file.mimetype))
       fileUrl = url
     }
+    const docName = name || req.file?.originalname || 'Documento'
+    const docAmount = amount ? parseFloat(amount) : null
     const doc = await prisma.itemDocument.create({
       data: {
         itemId: req.params.itemId,
         type,
-        name: name || req.file?.originalname || 'Documento',
+        name: docName,
         vendor: vendor || null,
-        amount: amount ? parseFloat(amount) : null,
+        amount: docAmount,
         fileUrl,
         notes: notes || null,
       },
     })
+
+    // Anti-duplicidad: si el item tiene proveedor asignado y el doc es FACTURA o COTIZACION,
+    // espejarlo automáticamente en el repositorio del proveedor.
+    try {
+      const item = await prisma.item.findUnique({ where: { id: req.params.itemId } })
+      const typeUpper = String(type).toUpperCase()
+      if (item?.providerId && (typeUpper === 'FACTURA' || typeUpper === 'COTIZACION') && fileUrl) {
+        // Solo si no existe ya un doc del mismo proveedor con la misma URL
+        const exists = await prisma.providerDocument.findFirst({
+          where: { providerId: item.providerId, fileUrl },
+        })
+        if (!exists) {
+          await prisma.providerDocument.create({
+            data: {
+              providerId: item.providerId,
+              type: typeUpper,
+              name: docName,
+              amount: docAmount,
+              fileUrl,
+              mimetype: req.file?.mimetype ?? null,
+              size: req.file?.size ?? null,
+              notes: `Auto-vinculado desde item ${item.itemCode ?? item.id}`,
+            },
+          })
+        }
+      }
+    } catch (mirrorErr) {
+      console.warn('No se pudo espejar doc al proveedor:', mirrorErr)
+    }
+
     res.json({ data: doc, error: null })
   } catch (e) {
     res.status(500).json({ data: null, error: String(e) })

@@ -9,6 +9,7 @@ import {
 import { alertsApi, projectsApi } from '../../lib/api'
 import { logout } from '../AuthGate'
 import ModuleSwitcher from '../ModuleSwitcher'
+import CapacityBanner from '../CapacityBanner'
 import { useProjectStore } from '../../store/projectStore'
 import type { Alert, Task } from '../../lib/types'
 import { tasksApi } from '../../lib/api'
@@ -320,6 +321,7 @@ export default function Layout({ projectId, children }: Props) {
             <span className="sm:hidden">Backup</span>
           </a>
         </div>
+        <CapacityBanner />
         <div className="p-4 md:p-6 page-content flex-1">
           {children}
         </div>

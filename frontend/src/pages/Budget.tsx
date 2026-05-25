@@ -1,5 +1,9 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Eraser } from 'lucide-react'
+import { projectsApi } from '../lib/api'
+import { useConfirm } from '../components/ConfirmDialog'
+import toast from 'react-hot-toast'
 import { phasesApi, itemsApi, drawsApi } from '../lib/api'
 import { formatUSD } from '../lib/calculations'
 import type { Phase, Item, Draw } from '../lib/types'
@@ -254,6 +258,29 @@ function PhaseSection({ phase, onUpdate, onCreate, onDelete }: {
 /* ── Main ──────────────────────────────────────── */
 export default function Budget({ projectId }: { projectId: string }) {
   const queryClient = useQueryClient()
+  const confirm = useConfirm()
+
+  const resetBudget = useMutation({
+    mutationFn: () => projectsApi.resetBudget(projectId),
+    onSuccess: (r: any) => {
+      queryClient.invalidateQueries({ queryKey: ['phases', projectId] })
+      toast.success(r?.message || 'Presupuesto reseteado')
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.error || 'Error'),
+  })
+
+  const handleClearBudget = async () => {
+    const ok = await confirm({
+      title: 'Borrar todos los datos del presupuesto',
+      message: '¿Seguro que quieres borrar TODOS los valores presupuestados?',
+      detail: 'Esta acción resetea el valorPresupuestado de TODOS los items a 0. La estructura de fases e items se conserva. La ejecución NO se toca. Esta acción no se puede deshacer.',
+      destructive: true,
+      confirmText: 'Sí, borrar presupuesto',
+      typeToConfirm: 'BORRAR PRESUPUESTO',
+    })
+    if (ok) resetBudget.mutate()
+  }
+
 
   const { data: phases = [], isLoading } = useQuery<Phase[]>({
     queryKey: ['phases', projectId],
@@ -291,11 +318,22 @@ export default function Budget({ projectId }: { projectId: string }) {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-bold text-slate-900">Presupuesto Maestro</h1>
-        <p className="text-sm text-slate-500 mt-0.5">
-          Edita los valores presupuestados por ítem — baseline compartido con Ejecución
-        </p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-xl font-bold text-slate-900">Presupuesto Maestro</h1>
+          <p className="text-sm text-slate-500 mt-0.5">
+            Edita los valores presupuestados por ítem — baseline compartido con Ejecución
+          </p>
+        </div>
+        <button
+          onClick={handleClearBudget}
+          disabled={resetBudget.isPending}
+          className="flex items-center gap-1.5 px-3 py-2 bg-white border border-red-200 hover:bg-red-50 text-red-600 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
+          title="Borrar todos los valores presupuestados (mantiene estructura)"
+        >
+          <Eraser className="w-3.5 h-3.5" />
+          {resetBudget.isPending ? 'Borrando…' : 'Borrar presupuesto'}
+        </button>
       </div>
 
       {/* KPI row */}

@@ -1,13 +1,16 @@
 import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { phasesApi, itemsApi, itemDocumentsApi } from '../lib/api'
+import { phasesApi, itemsApi, itemDocumentsApi, projectsApi } from '../lib/api'
 import { formatUSD } from '../lib/calculations'
 import type { Phase, Item, ItemEstado, ItemDocument } from '../lib/types'
 import {
   ChevronDown, ChevronRight, X, Calendar, User, FileText,
   DollarSign, Plus, Trash2, Paperclip, Upload, AlertTriangle,
-  ExternalLink, Download, Mail, MessageCircle,
+  ExternalLink, Download, Mail, MessageCircle, Eraser, EyeOff, Eye,
+  ChevronsDown, ChevronsUp,
 } from 'lucide-react'
+import { useConfirm } from '../components/ConfirmDialog'
+import toast from 'react-hot-toast'
 
 const ESTADOS: { value: ItemEstado; label: string; color: string; bg: string }[] = [
   { value: 'PENDIENTE', label: 'Pendiente', color: 'text-slate-500',  bg: 'bg-slate-200/60 hover:bg-slate-100' },
@@ -383,23 +386,48 @@ function ItemRow({ item, onUpdate, onOpenPanel, onDelete }: {
   if (item.completado) rowBg = 'border-b border-slate-200/20 bg-emerald-50/40 hover:bg-emerald-950/30 transition-colors group cursor-pointer'
   else if (item.estado === 'EN_CURSO') rowBg = 'border-b border-slate-200/30 bg-amber-50/60 hover:bg-amber-50/40 transition-colors group cursor-pointer'
   return (
-    <tr className={`${rowBg} ${item.esNA ? 'opacity-30' : ''}`} onClick={() => onOpenPanel(item)}>
-      <td className="pl-4 pr-2 py-2.5 w-24" onClick={e => e.stopPropagation()}>
-        <div className="flex gap-1">
-          {ESTADOS.filter(e => e.value !== 'NA').map(e => (
-            <button key={e.value} title={e.label}
-              onClick={() => {
-                const updates: Record<string, unknown> = { estado: e.value }
-                if (e.value === 'DONE') updates.completado = true
-                if (e.value === 'PENDIENTE') updates.completado = false
-                onUpdate(item.id, updates)
-              }}
-              className={`w-2 h-2 rounded-full transition-all ${
-                item.estado === e.value
-                  ? e.value === 'DONE' ? 'bg-emerald-400 scale-125' : e.value === 'EN_CURSO' ? 'bg-amber-400 scale-125' : 'bg-slate-400 scale-125'
-                  : 'bg-slate-200 hover:bg-slate-300'}`}
-            />
-          ))}
+    <tr className={`${rowBg} ${item.esNA ? 'opacity-40' : ''}`} onClick={() => onOpenPanel(item)}>
+      {/* N/A toggle al inicio — un solo click para inhabilitar el ítem que no aplica */}
+      <td className="pl-3 pr-1 py-2.5 w-10" onClick={e => e.stopPropagation()}>
+        <button
+          onClick={() => onUpdate(item.id, { esNA: !item.esNA })}
+          title={item.esNA ? 'Re-habilitar ítem (sí aplica)' : 'Marcar como NO APLICA'}
+          className={`w-7 h-7 rounded-md flex items-center justify-center transition-all ${
+            item.esNA
+              ? 'bg-slate-300 text-slate-600 hover:bg-slate-400'
+              : 'bg-white border border-slate-200 text-slate-300 hover:border-slate-400 hover:text-slate-500'
+          }`}
+        >
+          {item.esNA ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+        </button>
+      </td>
+      {/* Estados — botones grandes con label, fáciles de presionar */}
+      <td className="pl-2 pr-2 py-2.5 w-32" onClick={e => e.stopPropagation()}>
+        <div className="flex gap-0.5">
+          {ESTADOS.filter(e => e.value !== 'NA').map(e => {
+            const active = item.estado === e.value
+            const colors = e.value === 'DONE'
+              ? active ? 'bg-emerald-500 text-white' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+              : e.value === 'EN_CURSO'
+                ? active ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-600 hover:bg-amber-100'
+                : active ? 'bg-slate-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+            return (
+              <button
+                key={e.value}
+                title={e.label}
+                onClick={() => {
+                  const updates: Record<string, unknown> = { estado: e.value }
+                  if (e.value === 'DONE') updates.completado = true
+                  if (e.value === 'PENDIENTE') updates.completado = false
+                  onUpdate(item.id, updates)
+                }}
+                disabled={item.esNA}
+                className={`flex-1 px-1.5 py-1 rounded text-[9px] font-bold uppercase tracking-wider transition-all disabled:opacity-30 disabled:cursor-not-allowed ${colors}`}
+              >
+                {e.value === 'DONE' ? '✓' : e.value === 'EN_CURSO' ? '⋯' : '—'}
+              </button>
+            )
+          })}
         </div>
       </td>
       <td className="px-2 py-2.5 w-16"><span className="text-[10px] font-mono text-slate-400">{item.itemCode}</span></td>
@@ -447,14 +475,16 @@ function ItemRow({ item, onUpdate, onOpenPanel, onDelete }: {
   )
 }
 
-function PhaseSection({ phase, onUpdate, onOpenPanel, onCreate, onDelete }: {
+function PhaseSection({ phase, defaultOpen = false, onUpdate, onOpenPanel, onCreate, onDelete }: {
+  defaultOpen?: boolean
   phase: Phase
   onUpdate: (id: string, data: Record<string, unknown>) => void
   onOpenPanel: (item: Item) => void
   onCreate: (phaseId: string) => void
   onDelete: (id: string) => void
 }) {
-  const [open, setOpen] = useState(true)
+  // FASE 1: colapsadas por defecto para una vista más limpia y amigable
+  const [open, setOpen] = useState(defaultOpen)
   const activeItems = phase.items.filter(i => !i.esNA)
   const doneItems = activeItems.filter(i => i.completado)
   const pct = activeItems.length === 0 ? 0 : (doneItems.length / activeItems.length) * 100
@@ -514,9 +544,12 @@ function PhaseSection({ phase, onUpdate, onOpenPanel, onCreate, onDelete }: {
 
 export default function Execution({ projectId }: { projectId: string }) {
   const queryClient = useQueryClient()
+  const confirm = useConfirm()
   const [filter, setFilter] = useState<string>('ALL')
   const [search, setSearch] = useState('')
   const [panelItem, setPanelItem] = useState<Item | null>(null)
+  const [expandAll, setExpandAll] = useState(false)  // por defecto colapsado
+  const [expandTrigger, setExpandTrigger] = useState(0)  // fuerza re-mount al cambiar
 
   const { data: phases = [], isLoading } = useQuery<Phase[]>({
     queryKey: ['phases', projectId],
@@ -537,6 +570,28 @@ export default function Execution({ projectId }: { projectId: string }) {
     mutationFn: (id: string) => itemsApi.delete(id),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['phases', projectId] }); setPanelItem(null) },
   })
+
+  // Borrar TODOS los datos de ejecución vía endpoint backend (batch atómico)
+  const clearAllExecution = useMutation({
+    mutationFn: () => projectsApi.resetExecution(projectId),
+    onSuccess: (r: any) => {
+      queryClient.invalidateQueries({ queryKey: ['phases', projectId] })
+      toast.success(r?.message || 'Datos de ejecución borrados — estructura mantenida')
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.error || 'Error al borrar datos'),
+  })
+
+  const handleClearAll = async () => {
+    const ok = await confirm({
+      title: 'Borrar todos los datos de ejecución',
+      message: '¿Seguro que quieres borrar TODOS los datos de ejecución?',
+      detail: 'Esta acción resetea: valor ejecutado, estado, fechas reales, observaciones y marcas de N/A de TODOS los items en TODAS las fases. La estructura de fases e items se conserva. Esta acción no se puede deshacer.',
+      destructive: true,
+      confirmText: 'Sí, borrar todos los datos',
+      typeToConfirm: 'BORRAR EJECUCIÓN',
+    })
+    if (ok) clearAllExecution.mutate()
+  }
 
   const handleUpdate = (id: string, data: Record<string, unknown>) => {
     updateMutation.mutate({ id, data })
@@ -576,7 +631,7 @@ export default function Execution({ projectId }: { projectId: string }) {
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 flex-wrap">
             <input type="text" placeholder="Buscar actividad..." value={search} onChange={e => setSearch(e.target.value)}
               className="bg-white border border-slate-200 text-xs text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#C8922A] w-44 placeholder-slate-400" />
             <div className="flex gap-0.5 bg-white rounded-lg p-0.5 border border-slate-200">
@@ -587,11 +642,37 @@ export default function Execution({ projectId }: { projectId: string }) {
                 </button>
               ))}
             </div>
+            {/* Expandir/Colapsar todas las fases */}
+            <button
+              onClick={() => { setExpandAll(!expandAll); setExpandTrigger(t => t + 1) }}
+              className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:border-[#C8922A] text-slate-700 text-xs font-semibold rounded-lg transition-colors"
+              title={expandAll ? 'Colapsar todas las fases' : 'Expandir todas las fases'}
+            >
+              {expandAll ? <ChevronsUp className="w-3.5 h-3.5" /> : <ChevronsDown className="w-3.5 h-3.5" />}
+              {expandAll ? 'Colapsar' : 'Expandir'} todo
+            </button>
+            {/* Borrar todos los datos de ejecución */}
+            <button
+              onClick={handleClearAll}
+              disabled={clearAllExecution.isPending}
+              className="flex items-center gap-1.5 px-3 py-2 bg-white border border-red-200 hover:bg-red-50 text-red-600 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
+              title="Borrar todos los datos de ejecución (mantiene la estructura)"
+            >
+              <Eraser className="w-3.5 h-3.5" />
+              {clearAllExecution.isPending ? 'Borrando…' : 'Borrar datos'}
+            </button>
           </div>
         </div>
         {filteredPhases.map(phase => (
-          <PhaseSection key={phase.id} phase={phase} onUpdate={handleUpdate} onOpenPanel={setPanelItem}
-            onCreate={phaseId => createMutation.mutate(phaseId)} onDelete={id => deleteMutation.mutate(id)} />
+          <PhaseSection
+            key={`${phase.id}-${expandTrigger}`}
+            phase={phase}
+            defaultOpen={expandAll}
+            onUpdate={handleUpdate}
+            onOpenPanel={setPanelItem}
+            onCreate={phaseId => createMutation.mutate(phaseId)}
+            onDelete={id => deleteMutation.mutate(id)}
+          />
         ))}
         {filteredPhases.length === 0 && (
           <div className="text-center py-16 text-slate-400 text-sm">No hay ítems con el filtro seleccionado.</div>

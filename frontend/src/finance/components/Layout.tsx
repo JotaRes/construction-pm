@@ -8,6 +8,7 @@ import {
 import { cls } from "../lib/format";
 import { logout as unifiedLogout } from "../../components/AuthGate";
 import ModuleSwitcher from "../../components/ModuleSwitcher";
+import CapacityBanner from "../../components/CapacityBanner";
 
 const NAV = [
   { to: "/finance/dashboard", label: "Dashboard", icon: LayoutDashboard, group: "Vista ejecutiva" },
@@ -139,6 +140,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <span className="sm:hidden">Backup</span>
           </a>
         </div>
+        <CapacityBanner />
         <div className="max-w-[1600px] mx-auto p-4 md:p-6 flex-1 w-full">{children}</div>
       </main>
     </div>

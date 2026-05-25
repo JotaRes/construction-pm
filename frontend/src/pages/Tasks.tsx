@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { tasksApi } from '../lib/api'
 import type { Task, TaskPriority } from '../lib/types'
-import { Plus, Trash2, CheckSquare, Square, ChevronDown, Calendar, Flag, User, AlertCircle } from 'lucide-react'
+import { Plus, Trash2, CheckSquare, Square, ChevronDown, Calendar, Flag, User, AlertCircle, Mail, CheckCircle2 } from 'lucide-react'
+import { useConfirm } from '../components/ConfirmDialog'
 
 const PRIORITIES: { value: TaskPriority; label: string; color: string; dot: string; bg: string }[] = [
   { value: 'LOW',    label: 'Baja',    color: 'text-slate-400',  dot: 'bg-slate-300',  bg: 'bg-slate-100' },
@@ -72,11 +73,22 @@ function TaskRow({ task, onUpdate, onDelete }: {
                 <User className="w-2.5 h-2.5" />{task.responsable}
               </span>
             )}
+            {(task as any).responsableEmail && (
+              <a href={`mailto:${(task as any).responsableEmail}`} className="flex items-center gap-1 text-[10px] text-blue-500 hover:underline" onClick={e => e.stopPropagation()}>
+                <Mail className="w-2.5 h-2.5" />{(task as any).responsableEmail}
+              </a>
+            )}
             {task.dueDate && (
               <span className={`flex items-center gap-1 text-[10px] font-medium ${overdue ? 'text-red-500' : 'text-slate-400'}`}>
                 <Calendar className="w-2.5 h-2.5" />
                 {overdue ? 'VENCIDA · ' : ''}
                 {new Date(task.dueDate).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' })}
+              </span>
+            )}
+            {(task as any).completedAt && task.done && (
+              <span className="flex items-center gap-1 text-[10px] text-emerald-600 font-medium">
+                <CheckCircle2 className="w-2.5 h-2.5" />
+                Completada {new Date((task as any).completedAt).toLocaleDateString('es', { day: '2-digit', month: 'short' })}
               </span>
             )}
             {task.notes && <span className="text-[10px] text-slate-400 truncate max-w-[200px]">{task.notes}</span>}
@@ -101,33 +113,40 @@ function TaskRow({ task, onUpdate, onDelete }: {
       {/* Expanded panel */}
       {expanded && (
         <div className="px-4 pb-4 pt-1 ml-10 space-y-3 border-t border-slate-100">
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div>
-              <div className="text-[10px] text-slate-400 uppercase mb-1">Responsable</div>
+              <div className="text-[10px] text-slate-400 uppercase mb-1 flex items-center gap-1"><User className="w-2.5 h-2.5" /> Responsable</div>
               <input type="text" defaultValue={task.responsable ?? ''}
                 onBlur={e => onUpdate(task.id, { responsable: e.target.value || null })}
                 placeholder="Nombre o cargo"
                 className="w-full bg-white border border-slate-200 text-xs text-slate-700 px-2 py-1.5 rounded-lg focus:outline-none focus:border-[#C8922A]" />
             </div>
             <div>
-              <div className="text-[10px] text-slate-400 uppercase mb-1">Prioridad</div>
+              <div className="text-[10px] text-slate-400 uppercase mb-1 flex items-center gap-1"><Mail className="w-2.5 h-2.5" /> Email</div>
+              <input type="email" defaultValue={(task as any).responsableEmail ?? ''}
+                onBlur={e => onUpdate(task.id, { responsableEmail: e.target.value || null })}
+                placeholder="email@ejemplo.com"
+                className="w-full bg-white border border-slate-200 text-xs text-slate-700 px-2 py-1.5 rounded-lg focus:outline-none focus:border-[#C8922A]" />
+            </div>
+            <div>
+              <div className="text-[10px] text-slate-400 uppercase mb-1 flex items-center gap-1"><Flag className="w-2.5 h-2.5" /> Prioridad</div>
               <select value={task.priority} onChange={e => onUpdate(task.id, { priority: e.target.value })}
                 className="w-full bg-white border border-slate-200 text-xs text-slate-700 px-2 py-1.5 rounded-lg focus:outline-none focus:border-[#C8922A]">
                 {PRIORITIES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
               </select>
             </div>
             <div>
-              <div className="text-[10px] text-slate-400 uppercase mb-1">Fecha límite</div>
+              <div className="text-[10px] text-slate-400 uppercase mb-1 flex items-center gap-1"><Calendar className="w-2.5 h-2.5" /> Fecha límite</div>
               <input type="date" defaultValue={task.dueDate?.slice(0, 10) ?? ''}
                 onChange={e => onUpdate(task.id, { dueDate: e.target.value || null })}
                 className="w-full bg-white border border-slate-200 text-xs text-slate-700 px-2 py-1.5 rounded-lg focus:outline-none focus:border-[#C8922A]" />
             </div>
           </div>
           <div>
-            <div className="text-[10px] text-slate-400 uppercase mb-1">Notas</div>
+            <div className="text-[10px] text-slate-400 uppercase mb-1">Descripción / Notas</div>
             <textarea value={notesText} onChange={e => setNotesText(e.target.value)}
               onBlur={() => onUpdate(task.id, { notes: notesText || null })}
-              placeholder="Detalles, instrucciones, contexto..." rows={2}
+              placeholder="Detalles, instrucciones, contexto..." rows={3}
               className="w-full bg-white border border-slate-200 text-xs text-slate-700 px-2 py-1.5 rounded-lg focus:outline-none focus:border-[#C8922A] resize-none placeholder-slate-400" />
           </div>
         </div>
@@ -138,10 +157,14 @@ function TaskRow({ task, onUpdate, onDelete }: {
 
 export default function Tasks({ projectId }: { projectId: string }) {
   const queryClient = useQueryClient()
+  const confirm = useConfirm()
   const [newTitle, setNewTitle] = useState('')
   const [newResponsable, setNewResponsable] = useState('')
+  const [newResponsableEmail, setNewResponsableEmail] = useState('')
   const [newPriority, setNewPriority] = useState<TaskPriority>('NORMAL')
   const [newDueDate, setNewDueDate] = useState('')
+  const [newNotes, setNewNotes] = useState('')
+  const [showFullForm, setShowFullForm] = useState(false)
   const [filterDone, setFilterDone] = useState<'all' | 'pending' | 'done'>('all')
 
   const { data: tasks = [], isLoading } = useQuery<Task[]>({
@@ -151,7 +174,11 @@ export default function Tasks({ projectId }: { projectId: string }) {
 
   const createMut = useMutation({
     mutationFn: (data: Record<string, unknown>) => tasksApi.create(projectId, data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['tasks', projectId] }); setNewTitle(''); setNewResponsable(''); setNewDueDate(''); setNewPriority('NORMAL') },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks', projectId] })
+      setNewTitle(''); setNewResponsable(''); setNewResponsableEmail(''); setNewDueDate(''); setNewPriority('NORMAL'); setNewNotes('')
+      setShowFullForm(false)
+    },
   })
   const updateMut = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => tasksApi.patch(projectId, id, data),
@@ -162,10 +189,28 @@ export default function Tasks({ projectId }: { projectId: string }) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks', projectId] }),
   })
 
+  const handleDelete = async (id: string, title: string) => {
+    const ok = await confirm({
+      title: 'Eliminar tarea',
+      message: `¿Seguro que quieres eliminar la tarea "${title}"?`,
+      detail: 'Esta acción no se puede deshacer. Si la tarea ya está completada, considera mantenerla en el histórico.',
+      destructive: true,
+      confirmText: 'Sí, eliminar',
+    })
+    if (ok) deleteMut.mutate(id)
+  }
+
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault()
     if (!newTitle.trim()) return
-    createMut.mutate({ title: newTitle.trim(), responsable: newResponsable || null, priority: newPriority, dueDate: newDueDate || null })
+    createMut.mutate({
+      title: newTitle.trim(),
+      responsable: newResponsable || null,
+      responsableEmail: newResponsableEmail || null,
+      priority: newPriority,
+      dueDate: newDueDate || null,
+      notes: newNotes || null,
+    })
   }
 
   const filtered = tasks.filter(t => {
@@ -225,46 +270,121 @@ export default function Tasks({ projectId }: { projectId: string }) {
         })}
       </div>
 
-      {/* Create form */}
+      {/* === Create form profesional === */}
       <form onSubmit={handleCreate} className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
-        <div className="flex gap-2">
+        <div>
+          <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Concepto (descripción de la tarea) *</label>
           <input type="text" value={newTitle} onChange={e => setNewTitle(e.target.value)}
-            placeholder="Título de la tarea *"
-            className="flex-1 bg-slate-50 border border-slate-200 text-sm text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#C8922A] placeholder-slate-400" />
+            placeholder="Ej. Llamar al inspector para coordinar visita..."
+            className="w-full bg-slate-50 border border-slate-200 text-sm text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#C8922A] placeholder-slate-400" />
         </div>
-        <div className="grid grid-cols-3 gap-2">
-          <input type="text" value={newResponsable} onChange={e => setNewResponsable(e.target.value)}
-            placeholder="Responsable"
-            className="bg-slate-50 border border-slate-200 text-xs text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#C8922A] placeholder-slate-400" />
-          <select value={newPriority} onChange={e => setNewPriority(e.target.value as TaskPriority)}
-            className="bg-slate-50 border border-slate-200 text-xs text-slate-700 px-3 py-2 rounded-lg focus:outline-none focus:border-[#C8922A]">
-            {PRIORITIES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
-          </select>
-          <input type="date" value={newDueDate} onChange={e => setNewDueDate(e.target.value)}
-            className="bg-slate-50 border border-slate-200 text-xs text-slate-700 px-3 py-2 rounded-lg focus:outline-none focus:border-[#C8922A]" />
-        </div>
+        <button
+          type="button"
+          onClick={() => setShowFullForm(s => !s)}
+          className="text-xs text-[#C8922A] hover:underline font-semibold"
+        >
+          {showFullForm ? '▼ Ocultar campos avanzados' : '▶ Mostrar más campos (responsable, email, prioridad, fecha)'}
+        </button>
+        {showFullForm && (
+          <div className="space-y-3 pt-2 border-t border-slate-100">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div>
+                <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1"><User className="w-2.5 h-2.5 inline mr-1" />Responsable</label>
+                <input type="text" value={newResponsable} onChange={e => setNewResponsable(e.target.value)}
+                  placeholder="Nombre del responsable"
+                  className="w-full bg-slate-50 border border-slate-200 text-xs text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#C8922A] placeholder-slate-400" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1"><Mail className="w-2.5 h-2.5 inline mr-1" />Correo del responsable</label>
+                <input type="email" value={newResponsableEmail} onChange={e => setNewResponsableEmail(e.target.value)}
+                  placeholder="email@ejemplo.com"
+                  className="w-full bg-slate-50 border border-slate-200 text-xs text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#C8922A] placeholder-slate-400" />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div>
+                <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1"><Flag className="w-2.5 h-2.5 inline mr-1" />Prioridad</label>
+                <select value={newPriority} onChange={e => setNewPriority(e.target.value as TaskPriority)}
+                  className="w-full bg-slate-50 border border-slate-200 text-xs text-slate-700 px-3 py-2 rounded-lg focus:outline-none focus:border-[#C8922A]">
+                  {PRIORITIES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1"><Calendar className="w-2.5 h-2.5 inline mr-1" />Fecha en que se debe realizar</label>
+                <input type="date" value={newDueDate} onChange={e => setNewDueDate(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 text-xs text-slate-700 px-3 py-2 rounded-lg focus:outline-none focus:border-[#C8922A]" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Notas / detalles</label>
+              <textarea value={newNotes} onChange={e => setNewNotes(e.target.value)}
+                rows={2}
+                placeholder="Contexto, instrucciones, dependencias..."
+                className="w-full bg-slate-50 border border-slate-200 text-xs text-slate-700 px-3 py-2 rounded-lg focus:outline-none focus:border-[#C8922A] resize-none" />
+            </div>
+          </div>
+        )}
         <button type="submit" disabled={!newTitle.trim() || createMut.isPending}
           className="flex items-center gap-2 px-4 py-2 bg-[#C8922A] hover:bg-[#E0AD4F] text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-40">
           <Plus className="w-4 h-4" />Agregar tarea
         </button>
       </form>
 
-      {/* Task list */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        {filtered.length === 0 ? (
-          <div className="text-center py-12">
-            <Flag className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-            <div className="text-slate-400 text-sm">
-              {filterDone === 'done' ? 'Ninguna tarea completada' : filterDone === 'pending' ? 'Sin tareas pendientes' : 'Sin tareas. Agrega una arriba.'}
-            </div>
+      {/* Task list separada: PENDIENTES + COMPLETADAS */}
+      {(filterDone === 'all' || filterDone === 'pending') && (
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50 flex items-center gap-2">
+            <Square className="w-3.5 h-3.5 text-slate-500" />
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-600">Pendientes</span>
+            <span className="text-[10px] text-slate-400 font-mono">({tasks.filter(t => !t.done).length})</span>
           </div>
-        ) : (
-          filtered.map(task => (
+          {tasks.filter(t => !t.done).length === 0 ? (
+            <div className="text-center py-8">
+              <Flag className="w-7 h-7 text-slate-300 mx-auto mb-2" />
+              <div className="text-slate-400 text-sm">Sin tareas pendientes</div>
+            </div>
+          ) : (
+            tasks.filter(t => !t.done).map(task => (
+              <TaskRow key={task.id} task={task}
+                onUpdate={(id, data) => updateMut.mutate({ id, data })}
+                onDelete={id => handleDelete(id, task.title)} />
+            ))
+          )}
+        </div>
+      )}
+
+      {(filterDone === 'all' || filterDone === 'done') && tasks.filter(t => t.done).length > 0 && (
+        <div className="bg-white rounded-xl border border-emerald-200 overflow-hidden">
+          <div className="px-4 py-2.5 border-b border-emerald-100 bg-emerald-50 flex items-center gap-2">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">Cumplidas (histórico)</span>
+            <span className="text-[10px] text-emerald-600 font-mono">({tasks.filter(t => t.done).length})</span>
+          </div>
+          {tasks.filter(t => t.done).map(task => (
             <TaskRow key={task.id} task={task}
               onUpdate={(id, data) => updateMut.mutate({ id, data })}
-              onDelete={id => deleteMut.mutate(id)} />
-          ))
-        )}
+              onDelete={id => handleDelete(id, task.title)} />
+          ))}
+        </div>
+      )}
+
+      {/* Si filterDone es algo específico, mantener mensaje de empty si no hay nada */}
+      {filterDone === 'done' && tasks.filter(t => t.done).length === 0 && (
+        <div className="bg-white rounded-xl border border-slate-200 text-center py-12">
+          <CheckCircle2 className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+          <div className="text-slate-400 text-sm">Ninguna tarea completada todavía</div>
+        </div>
+      )}
+      {filterDone === 'pending' && tasks.filter(t => !t.done).length === 0 && (
+        <div className="bg-white rounded-xl border border-slate-200 text-center py-12">
+          <Flag className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+          <div className="text-slate-400 text-sm">Sin tareas pendientes — ¡todo al día!</div>
+        </div>
+      )}
+
+      {/* compat — antiguo filtered list (oculto pero TS compatible) */}
+      <div className="hidden">
+        {filtered.length}
       </div>
     </div>
   )

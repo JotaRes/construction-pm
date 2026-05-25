@@ -24,16 +24,41 @@ export interface ProviderQuote {
   createdAt: string
 }
 
+export type ProviderDocumentType =
+  | 'SEGURO'
+  | 'COTIZACION'
+  | 'FACTURA'
+  | 'CONTRATO'
+  | 'LICENCIA'
+  | 'W9'
+  | 'OTRO'
+
+export interface ProviderDocument {
+  id: string
+  providerId: string
+  type: ProviderDocumentType
+  name: string
+  amount: number | null
+  fileUrl: string | null
+  mimetype: string | null
+  size: number | null
+  notes: string | null
+  createdAt: string
+}
+
 export interface Provider {
   id: string
   projectId: string
   name: string
   type: string | null
+  phoneCountry: string | null
   phone: string | null
   email: string | null
   license: string | null
+  address: string | null
   notes: string | null
   quotes: ProviderQuote[]
+  documents?: ProviderDocument[]
 }
 
 export interface ItemDocument {
@@ -97,6 +122,10 @@ export interface Draw {
   notas: string | null
   pdfUrl: string | null
   estado: DrawEstado
+  invoiceLenderUrl: string | null
+  invoiceLenderName: string | null
+  lenderApprovalUrl: string | null
+  lenderApprovalName: string | null
 }
 
 export interface Inspection {
@@ -185,6 +214,19 @@ export interface Project {
   contingencyPct: number
   targetMarginPct: number
   benchmarkSfTarget: number
+  // Documentos financieros
+  loiUrl: string | null
+  loiName: string | null
+  approvalLetterUrl: string | null
+  approvalLetterName: string | null
+  hudUrl: string | null
+  hudName: string | null
+  otrosFinancieroUrl: string | null
+  otrosFinancieroName: string | null
+  loiSalePrice: number | null
+  loiOfferDate: string | null
+  loiExpectedClose: string | null
+  loiEarnestMoney: number | null
   phases: Phase[]
   draws: Draw[]
   partners: Partner[]
