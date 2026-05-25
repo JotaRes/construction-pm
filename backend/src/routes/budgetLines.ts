@@ -128,16 +128,204 @@ router.post('/:id/construction-budget/parse-pdf', upload.single('pdf'), async (r
 })
 
 /**
+ * Parsea un string monetario en US ($45,200.00) o Europeo ($45.200,00) y lo
+ * convierte a número. La heurística: el separador decimal es el que aparece
+ * más a la derecha. El otro símbolo es el separador de miles.
+ *
+ * Ejemplos:
+ *   "$45.200,00" → 45200    (europeo: . miles, , decimal)
+ *   "$45,200.00" → 45200    (US: , miles, . decimal)
+ *   "$2,500"     → 2500
+ *   "$465.750,00"→ 465750
+ *   "$1.500"     → 1500     (ambiguo, pero asume miles si solo hay un . y 3 dígitos después)
+ */
+function parseAmountFlexible(raw: string): number {
+  let s = raw.replace(/\$/g, '').replace(/\s/g, '').trim()
+  if (!s) return 0
+  const lastDot = s.lastIndexOf('.')
+  const lastComma = s.lastIndexOf(',')
+  if (lastDot === -1 && lastComma === -1) return parseFloat(s) || 0
+  if (lastDot > -1 && lastComma > -1) {
+    // ambos presentes: el que está más a la derecha es decimal
+    if (lastDot > lastComma) {
+      // US: 45,200.00 → quitar comas, dejar punto decimal
+      return parseFloat(s.replace(/,/g, '')) || 0
+    } else {
+      // EU: 45.200,00 → quitar puntos, cambiar coma por punto
+      return parseFloat(s.replace(/\./g, '').replace(',', '.')) || 0
+    }
+  }
+  // Solo uno presente. Heurística:
+  // Si el separador único es seguido de exactamente 2 dígitos al final → decimal
+  // Si es seguido de 3 dígitos → miles
+  if (lastDot > -1) {
+    const after = s.length - lastDot - 1
+    if (after === 2) return parseFloat(s) || 0
+    return parseFloat(s.replace(/\./g, '')) || 0
+  }
+  // lastComma > -1
+  const after = s.length - lastComma - 1
+  if (after === 2) return parseFloat(s.replace(',', '.')) || 0
+  return parseFloat(s.replace(/,/g, '')) || 0
+}
+
+/**
+ * Extrae items del construction budget directamente del PDF.
+ *
+ * Reconoce la estructura típica:
+ *   "1. Soft Costs $45.200,00"       ← SECTION (skip, es total agregado)
+ *   "2a. Site Preparation"           ← SUBSECTION header (skip, es total)
+ *   "1.1 Survey $2.500,00"           ← ITEM real
+ *   "Totals: $465.750,00"            ← GRAND TOTAL (skip)
+ *
+ * Solo crea budget lines de los items REALES (patron N.N descripcion $monto).
+ */
+interface ParsedBudgetItem {
+  itemCode: string
+  description: string
+  amount: number
+  divCode: string
+  divName: string
+}
+
+function parseConstructionBudgetText(text: string): ParsedBudgetItem[] {
+  // Normalizar: convertir \r\n a \n, eliminar NBSP, líneas vacías
+  const normalized = text
+    .replace(/\r\n/g, '\n')
+    .replace(/ /g, ' ')
+    .replace(/\x00/g, ' ')
+  const rawLines = normalized.split('\n').map(l => l.trim()).filter(Boolean)
+
+  // Pattern para detectar monto al final de la línea (US o EU)
+  const amountAtEnd = /\$\s*([\d.,]+)\s*$/
+  // Patterns de prefijos jerárquicos
+  const sectionHeader     = /^(\d+)\.\s+(.+?)$/   // "1. Soft Costs $45.200,00" o "1. Soft Costs"
+  const subsectionHeader  = /^(\d+[a-z])\.\s+(.+?)$/   // "2a. Site Preparation"
+  const itemPattern       = /^(\d+\.\d+)\s+(.+?)$/   // "1.1 Survey $2.500,00"
+  // Líneas a ignorar
+  const ignoreLine = /^(construction budget|address|owner|time of execution|lot area|building area|labor\/materials|cost|phone|email|totals?:?)/i
+
+  let currentSection: { code: string; name: string } = { code: 'SEC.0', name: 'Sin sección' }
+  const items: ParsedBudgetItem[] = []
+
+  for (const line of rawLines) {
+    if (ignoreLine.test(line)) continue
+
+    // Quitar el monto al final si existe para analizar el prefijo
+    const amtMatch = line.match(amountAtEnd)
+    const amount = amtMatch ? parseAmountFlexible(amtMatch[0]) : 0
+    const withoutAmount = amtMatch ? line.slice(0, line.lastIndexOf('$')).trim() : line
+
+    // Detectar tipo de línea
+    const itemMatch = withoutAmount.match(itemPattern)
+    if (itemMatch) {
+      // ITEM real (N.N descripción)
+      const code = itemMatch[1]
+      const desc = itemMatch[2].trim()
+      if (amount > 0 && desc.length >= 2) {
+        items.push({
+          itemCode: code,
+          description: desc,
+          amount,
+          divCode: currentSection.code,
+          divName: currentSection.name,
+        })
+      }
+      continue
+    }
+
+    const subMatch = withoutAmount.match(subsectionHeader)
+    if (subMatch) {
+      // SUBSECTION header (2a, 2b, 6a, 6b...) → actualizar contexto, NO crear item
+      currentSection = {
+        code: `SEC.${subMatch[1]}`,
+        name: subMatch[2].trim(),
+      }
+      continue
+    }
+
+    const secMatch = withoutAmount.match(sectionHeader)
+    if (secMatch) {
+      // SECTION header (1, 2, 3...) → actualizar contexto, NO crear item
+      currentSection = {
+        code: `SEC.${secMatch[1]}`,
+        name: secMatch[2].trim(),
+      }
+      continue
+    }
+  }
+
+  return items
+}
+
+/**
+ * Fallback parser para PDFs cuya extracción separa los montos de las descripciones
+ * en columnas distintas (todas las descripciones, luego todos los montos).
+ *
+ * Solo se usa si el parser principal no encontró suficientes items.
+ */
+function parseConstructionBudgetColumnSplit(text: string): ParsedBudgetItem[] {
+  const normalized = text.replace(/\r\n/g, '\n').replace(/ /g, ' ')
+  const rawLines = normalized.split('\n').map(l => l.trim()).filter(Boolean)
+
+  const itemPattern      = /^(\d+\.\d+)\s+(.+)$/
+  const subsectionHeader = /^(\d+[a-z])\.\s+(.+)$/
+  const sectionHeader    = /^(\d+)\.\s+(.+)$/
+  const amountLine       = /^\$\s*[\d.,]+\s*$/
+  const ignoreLine = /^(construction budget|address|owner|time of execution|lot area|building area|labor\/materials|cost|phone|email|totals?:?)/i
+
+  // Recolectar items sin monto y montos por separado
+  let currentSection: { code: string; name: string } = { code: 'SEC.0', name: 'Sin sección' }
+  const items: Array<Omit<ParsedBudgetItem, 'amount'>> = []
+  const amounts: number[] = []
+
+  for (const line of rawLines) {
+    if (ignoreLine.test(line)) continue
+    if (amountLine.test(line)) {
+      amounts.push(parseAmountFlexible(line))
+      continue
+    }
+    const im = line.match(itemPattern)
+    if (im) {
+      items.push({
+        itemCode: im[1],
+        description: im[2].replace(/\$.*$/, '').trim(),
+        divCode: currentSection.code,
+        divName: currentSection.name,
+      })
+      continue
+    }
+    const ssm = line.match(subsectionHeader)
+    if (ssm) {
+      currentSection = { code: `SEC.${ssm[1]}`, name: ssm[2].replace(/\$.*$/, '').trim() }
+      continue
+    }
+    const sm = line.match(sectionHeader)
+    if (sm) {
+      currentSection = { code: `SEC.${sm[1]}`, name: sm[2].replace(/\$.*$/, '').trim() }
+      continue
+    }
+  }
+
+  // Alinear por secuencia
+  const result: ParsedBudgetItem[] = []
+  for (let i = 0; i < items.length && i < amounts.length; i++) {
+    if (amounts[i] > 0) {
+      result.push({ ...items[i], amount: amounts[i] })
+    }
+  }
+  return result
+}
+
+/**
  * POST /:id/construction-budget/import-from-pdf
  *
- * Versión mejorada del parser:
- * 1. Extrae items del PDF (línea con descripción + monto)
- * 2. Para cada item del template, intenta matchear con extraídos
- * 3. Si matchea → setea valorInicial con el monto del PDF, esActivo=true
- * 4. Si NO matchea → se deshabilita en el budget (no se borra, queda hidden)
- * 5. Si hay items en el PDF que no están en el template → se crean como nuevos
- *
- * Resultado: solo aparecen items presentes en el PDF, con su valor inicial cargado.
+ * Versión rediseñada (2026-05):
+ * - Parse directo del PDF: extrae TODOS los items con su jerarquía
+ * - Sin matching contra template — usa la estructura propia del PDF
+ * - Soporta formato monetario US ($45,200.00) y Europeo ($45.200,00)
+ * - Ignora section totals, grand totals y headers ornamentales
+ * - Fallback si el PDF viene en formato columnar separado
  */
 router.post('/:id/construction-budget/import-from-pdf', upload.single('pdf'), async (req: Request, res: Response) => {
   try {
@@ -148,115 +336,56 @@ router.post('/:id/construction-budget/import-from-pdf', upload.single('pdf'), as
 
     const projectId = req.params.id
     const { text } = await pdfParse(req.file.buffer)
-    const rawLines = text.split('\n').map((l: string) => l.trim()).filter(Boolean)
 
-    // === EXTRACCIÓN MEJORADA ===
-    // Patrón: línea con descripción seguida de monto $X,XXX.XX
-    // También captura líneas tipo "Foundation .................. $12,500.00"
-    const dollarPattern = /\$[\d,]+(?:\.\d{2})?/g
-    const extracted: Array<{ description: string; amount: number; rawLine: string }> = []
+    // Intentar parser principal (items inline con montos)
+    let items = parseConstructionBudgetText(text)
 
-    for (let i = 0; i < rawLines.length; i++) {
-      const line = rawLines[i]
-      const amounts = line.match(dollarPattern)
-      if (!amounts) continue
-      // Limpiar la línea: quitar dots de tabulación, montos, espacios extra
-      let desc = line.replace(dollarPattern, '').replace(/\.{2,}/g, ' ').replace(/\s+/g, ' ').trim()
-      // Si la descripción quedó vacía, intentar líneas anteriores
-      if (!desc || desc.length < 3) desc = (rawLines[i - 1] ?? '').replace(dollarPattern, '').trim() || desc
-      for (const amt of amounts) {
-        const num = parseFloat(amt.replace(/[$,]/g, ''))
-        if (num >= 50 && num <= 10000000) {
-          extracted.push({ description: desc, amount: num, rawLine: line })
-        }
-      }
+    // Fallback: si encontró muy pocos items, probar formato columnar
+    if (items.length < 5) {
+      const fallback = parseConstructionBudgetColumnSplit(text)
+      if (fallback.length > items.length) items = fallback
     }
 
-    // === MATCHING contra template ===
-    type MatchResult = { template: typeof BUDGET_LINES_TEMPLATE[0]; amount: number; confidence: number }
-    const matches: MatchResult[] = []
-    const usedExtracted = new Set<number>()
-
-    for (const tmpl of BUDGET_LINES_TEMPLATE) {
-      const tmplDesc = tmpl.description.toLowerCase()
-      const tmplWords = tmplDesc.split(/\s+/).filter(w => w.length > 3)
-      if (tmplWords.length === 0) continue
-
-      let best: { idx: number; amount: number; confidence: number } | null = null
-      for (let i = 0; i < extracted.length; i++) {
-        if (usedExtracted.has(i)) continue
-        const ext = extracted[i]
-        const extDesc = ext.description.toLowerCase()
-        const overlap = tmplWords.filter(w => extDesc.includes(w)).length
-        const confidence = overlap / tmplWords.length
-        if (confidence >= 0.4 && (!best || confidence > best.confidence)) {
-          best = { idx: i, amount: ext.amount, confidence }
-        }
-      }
-      if (best) {
-        usedExtracted.add(best.idx)
-        matches.push({ template: tmpl, amount: best.amount, confidence: best.confidence })
-      }
-    }
-
-    // === APLICAR cambios ===
-    await prisma.budgetLine.deleteMany({ where: { projectId } })
-
-    let order = 0
-    for (const m of matches) {
-      await prisma.budgetLine.create({
-        data: {
-          projectId,
-          divCode: m.template.divCode,
-          divName: m.template.divName,
-          itemCode: m.template.itemCode,
-          description: m.template.description,
-          unit: m.template.unit,
-          vendor: m.template.vendor || null,
-          valorInicial: m.amount,  // ← del PDF
-          valorPresentado: 0,
-          valorAprobado: 0,
-          pagadoSubs: 0,
-          order: order++,
-        },
+    if (items.length === 0) {
+      res.status(422).json({
+        data: { rawLines: text.split('\n').length, itemsFound: 0, preview: text.slice(0, 2000) },
+        error: 'No se pudieron extraer items del PDF. Verifica que sea un construction budget legible (no escaneado/imagen) con items numerados tipo "1.1 Descripción $monto".',
       })
+      return
     }
 
-    // Items del PDF que NO matchearon con ningún template → crear como "EXTRA-NNN"
-    let extraIdx = 1
-    for (let i = 0; i < extracted.length; i++) {
-      if (usedExtracted.has(i)) continue
-      const ext = extracted[i]
-      if (ext.description.length < 4) continue
-      // Filtrar líneas que claramente no son items (totales, headers, etc.)
-      if (/^(total|subtotal|grand total|sub total|gross)/i.test(ext.description)) continue
+    // Reemplazar el budget actual con los items extraídos
+    await prisma.budgetLine.deleteMany({ where: { projectId } })
+    let order = 0
+    for (const it of items) {
       await prisma.budgetLine.create({
         data: {
           projectId,
-          divCode: 'EX',
-          divName: 'EXTRAS DEL PDF',
-          itemCode: `EX.${String(extraIdx).padStart(3, '0')}`,
-          description: ext.description.slice(0, 200),
+          divCode: it.divCode,
+          divName: it.divName,
+          itemCode: it.itemCode,
+          description: it.description.slice(0, 200),
           unit: 'LS',
           vendor: null,
-          valorInicial: ext.amount,
+          valorInicial: it.amount,
           valorPresentado: 0,
           valorAprobado: 0,
           pagadoSubs: 0,
           order: order++,
         },
       })
-      extraIdx++
     }
+
+    const totalParsed = items.reduce((s, i) => s + i.amount, 0)
+    const sections = Array.from(new Set(items.map(i => i.divName))).filter(n => n !== 'Sin sección')
 
     res.json({
       data: {
-        rawLines: rawLines.length,
-        extractedFromPdf: extracted.length,
-        templateMatched: matches.length,
-        extrasCreated: extraIdx - 1,
-        totalLines: order,
-        message: `Construction budget cargado: ${matches.length} items del template + ${extraIdx - 1} items extra = ${order} líneas totales`,
+        itemsImported: items.length,
+        sections: sections.length,
+        sectionNames: sections,
+        totalAmount: totalParsed,
+        message: `Construction budget importado: ${items.length} items en ${sections.length} sección(es), total ${totalParsed.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`,
       },
       error: null,
     })
