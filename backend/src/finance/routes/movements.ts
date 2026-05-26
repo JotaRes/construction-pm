@@ -23,17 +23,17 @@ router.get("/", async (req, res) => {
   try {
     const { accountId, involvingAccountId, projectId, partnerId, categoryId, originId, providerId, lenderId, type, from, to, q, needsReview, isIntercompany, isReconciled, limit, offset } = req.query as Record<string, string>;
     const where: any = {};
-    // accountId = movimientos donde la cuenta es ORIGEN (incluye egresos, ingresos y transferencias salientes)
-    if (accountId) where.accountId = +accountId;
-    // involvingAccountId = movimientos donde la cuenta es origen O destino
-    //   (incluye transferencias RECIBIDAS además de las salientes)
-    //   Usado por la página de detalle de cuenta para mostrar el flujo bidireccional.
+    // involvingAccountId = bidireccional: incluye transferencias RECIBIDAS (destAccountId) además de las enviadas (accountId)
+    // Si está presente, toma precedencia sobre accountId para evitar conflictos con Prisma OR
     if (involvingAccountId) {
       const aid = +involvingAccountId;
       where.OR = [
         { accountId: aid },
         { destAccountId: aid },
       ];
+    } else if (accountId) {
+      // accountId = solo movimientos donde esta cuenta es ORIGEN
+      where.accountId = +accountId;
     }
     if (projectId) where.projectId = +projectId;
     if (partnerId) where.partnerId = +partnerId;
@@ -41,7 +41,15 @@ router.get("/", async (req, res) => {
     if (originId) where.originId = +originId;
     if (providerId) where.providerId = +providerId;
     if (lenderId) where.lenderId = +lenderId;
-    if (type) where.type = type;
+    if (type) {
+      // Normalize type to canonical form (handles case variations and synonyms)
+      const t = type.toLowerCase().trim();
+      const normalizedType = t.startsWith("ingr") || t === "income" || t === "entrada" ? "Ingreso"
+        : t.startsWith("egr") || t === "expense" || t === "salida" ? "Egreso"
+        : t.startsWith("inter") || t.startsWith("transfer") ? "Interbancario"
+        : type;
+      where.type = normalizedType;
+    }
     if (needsReview === "true") where.needsReview = true;
     if (isIntercompany === "true") where.isIntercompany = true;
     if (isReconciled === "false") where.isReconciled = false;

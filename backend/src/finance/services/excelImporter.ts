@@ -229,7 +229,14 @@ export async function importExcelFromBuffer(
         continue;
       }
 
-      const tipo = String(tipoRaw);
+      const tipoStr = normalize(String(tipoRaw));
+      const tipo = tipoStr.startsWith("ingr") || tipoStr === "income" || tipoStr === "entrada"
+        ? "Ingreso"
+        : tipoStr.startsWith("egr") || tipoStr === "expense" || tipoStr === "salida" || tipoStr === "gasto"
+        ? "Egreso"
+        : tipoStr.startsWith("inter") || tipoStr.startsWith("transfer")
+        ? "Interbancario"
+        : String(tipoRaw);
       const concepto = String(cell(row[idx.concepto]) || "(sin concepto)");
       const ctaDestName = cell(row[idx.ctaDest]);
       const destAccountId = ctaDestName ? findAccountFuzzy(String(ctaDestName)) : null;

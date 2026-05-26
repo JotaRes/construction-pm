@@ -55,10 +55,12 @@ export default function MovementDetail() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["movement", mid] });
       qc.invalidateQueries({ queryKey: ["movements"] });
+      qc.invalidateQueries({ queryKey: ["movements-by-account"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       qc.invalidateQueries({ queryKey: ["capital"] });
       qc.invalidateQueries({ queryKey: ["loans"] });
       qc.invalidateQueries({ queryKey: ["accounts"] });
+      qc.invalidateQueries({ queryKey: ["account-detail"] });
       toast.success("Movimiento actualizado");
       setEditing(false);
     },

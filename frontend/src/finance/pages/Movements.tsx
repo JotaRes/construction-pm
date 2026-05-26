@@ -58,12 +58,21 @@ export default function Movements() {
   });
 
   const movements: any[] = data?.movements || [];
+  // When filtering by a specific account, we know the perspective
+  const selectedAccountId = filters.accountId ? +filters.accountId : null;
 
   const totals = useMemo(() => {
     const ing = movements.filter((m) => m.type === "Ingreso" && !m.isIntercompany).reduce((s, m) => s + m.amount, 0);
     const egr = movements.filter((m) => m.type === "Egreso" && !m.isIntercompany).reduce((s, m) => s + m.amount, 0);
-    return { ing, egr, neto: ing - egr };
-  }, [movements]);
+    // When a specific account is selected, include transfers in the flow totals
+    const incomingXfer = selectedAccountId
+      ? movements.filter((m) => m.type === "Interbancario" && m.destAccountId === selectedAccountId).reduce((s, m) => s + m.amount, 0)
+      : 0;
+    const outgoingXfer = selectedAccountId
+      ? movements.filter((m) => m.type === "Interbancario" && m.accountId === selectedAccountId).reduce((s, m) => s + m.amount, 0)
+      : 0;
+    return { ing: ing + incomingXfer, egr: egr + outgoingXfer, neto: ing + incomingXfer - egr - outgoingXfer };
+  }, [movements, selectedAccountId]);
 
   const matchCounts = useMemo(() => ({
     matched: movements.filter((m) => m.matchStatus === "matched").length,
@@ -85,7 +94,11 @@ export default function Movements() {
     onSuccess: () => {
       toast.success("Movimiento eliminado");
       qc.invalidateQueries({ queryKey: ["movements"] });
+      qc.invalidateQueries({ queryKey: ["movements-by-account"] });
       qc.invalidateQueries({ queryKey: ["capital"] });
+      qc.invalidateQueries({ queryKey: ["accounts"] });
+      qc.invalidateQueries({ queryKey: ["account-detail"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });
 
@@ -367,7 +380,17 @@ export default function Movements() {
                       <Icon size={10} className="mr-1" /> {tb.label}
                     </span>
                   </td>
-                  <td className="px-3 py-2 text-xs">{m.account?.name?.replace("OB ", "") || "—"}</td>
+                  <td className="px-3 py-2 text-xs">
+                    {m.type === "Interbancario" && m.destAccount ? (
+                      <span className="inline-flex items-center gap-1">
+                        <span className="text-slate-400">{m.account?.name?.replace("OB ", "") || "—"}</span>
+                        <span style={{ color: 'var(--brand-gold)' }}>→</span>
+                        <span style={{ color: 'var(--brand-teal)' }} className="font-medium">{m.destAccount.name.replace("OB ", "")}</span>
+                      </span>
+                    ) : (
+                      m.account?.name?.replace("OB ", "") || "—"
+                    )}
+                  </td>
                   <td className="px-3 py-2 max-w-[260px] truncate" title={m.concept}>
                     <div className="flex items-center gap-1">
                       {m.concept}
@@ -383,8 +406,17 @@ export default function Movements() {
                     {m.partner && <span className="badge bg-accent/10 text-accent">{m.partner.code}</span>}
                   </td>
                   <td className={cls("px-3 py-2 text-right font-mono",
-                    m.type === "Ingreso" ? "text-positive" : m.type === "Egreso" ? "text-negative" : "text-accent"
-                  )}>{usd(m.amount)}</td>
+                    m.type === "Ingreso" ? "text-positive"
+                    : m.type === "Egreso" ? "text-negative"
+                    : m.type === "Interbancario" && selectedAccountId && m.destAccountId === selectedAccountId ? "text-positive"
+                    : m.type === "Interbancario" && selectedAccountId && m.accountId === selectedAccountId ? "text-negative"
+                    : "text-accent"
+                  )}>
+                    {m.type === "Interbancario" && selectedAccountId
+                      ? (m.destAccountId === selectedAccountId ? "+" : "−") + usd(m.amount).replace(/^-/, "")
+                      : usd(m.amount)
+                    }
+                  </td>
                   <td className="px-3 py-2 text-center">
                     <span className={cls("inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border", mb.color)}>
                       <MIcon size={10} /> {mb.label}
@@ -448,8 +480,11 @@ function MovementModal({ open, onClose, catalogs }: { open: boolean; onClose: ()
     onSuccess: () => {
       toast.success("Movimiento creado");
       qc.invalidateQueries({ queryKey: ["movements"] });
+      qc.invalidateQueries({ queryKey: ["movements-by-account"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       qc.invalidateQueries({ queryKey: ["capital"] });
+      qc.invalidateQueries({ queryKey: ["accounts"] });
+      qc.invalidateQueries({ queryKey: ["account-detail"] });
       onClose();
       // Reset
       setForm({
