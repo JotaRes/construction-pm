@@ -300,6 +300,16 @@ router.patch('/:id', async (req: Request, res: Response) => {
   }
 })
 
+// ── DELETE draw ───────────────────────────────────────────────────────────────
+router.delete('/:id', async (req: Request, res: Response) => {
+  try {
+    await prisma.draw.delete({ where: { id: req.params.id } })
+    res.json({ data: { deleted: true }, error: null })
+  } catch (e) {
+    res.status(500).json({ data: null, error: String(e) })
+  }
+})
+
 // ── POST upload draw document (invoice or lender approval) ──────────────────
 // kind = "INVOICE" (factura presentada al lender) | "APPROVAL" (doc devuelto post-inspección)
 router.post('/:id/document', (req: Request, res: Response) => {

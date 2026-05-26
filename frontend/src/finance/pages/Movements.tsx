@@ -40,7 +40,15 @@ export default function Movements() {
   const { data: catalogs } = useQuery({ queryKey: ["catalogs"], queryFn: API.getCatalogs });
   const { data, isLoading } = useQuery({
     queryKey: ["movements", filters, q],
-    queryFn: () => API.listMovements({ ...filters, q: q || undefined, limit: 1000 }),
+    queryFn: () => {
+      const params: Record<string, any> = { ...filters, q: q || undefined, limit: 1000 };
+      // Use involvingAccountId so transfers received (destAccountId) also appear
+      if (params.accountId) {
+        params.involvingAccountId = params.accountId;
+        delete params.accountId;
+      }
+      return API.listMovements(params);
+    },
   });
 
   // Líneas de extracto sin contraparte manual → alertas ROJAS

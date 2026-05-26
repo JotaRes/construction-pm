@@ -3,7 +3,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { drawsApi, drawParseApi, constructionBudgetApi } from '../lib/api'
 import { formatUSD, formatDate } from '../lib/calculations'
 import type { Draw, DrawEstado } from '../lib/types'
-import { Upload, FileText, CheckCircle, X, AlertTriangle, Receipt, ShieldCheck, Share2, Mail, MessageCircle, Download } from 'lucide-react'
+import { Upload, FileText, CheckCircle, X, AlertTriangle, Receipt, ShieldCheck, Share2, Mail, MessageCircle, Download, Trash2 } from 'lucide-react'
+import { useConfirm } from '../components/ConfirmDialog'
+import toast from 'react-hot-toast'
 
 interface BudgetLine {
   id: string
@@ -130,21 +132,34 @@ function Field({ label, value, onChange, type = 'text', mono = false }: {
   )
 }
 
-function DrawCard({ draw, projectId, budgetTotal, budgetExecuted, onUpdate }: {
+function DrawCard({ draw, projectId, budgetTotal, budgetExecuted, onUpdate, onDelete }: {
   draw: Draw
   projectId: string
   budgetTotal: number
   budgetExecuted: number
   onUpdate: (id: string, data: Record<string, unknown>) => void
+  onDelete: (id: string) => void
 }) {
   const isEmpty = draw.estado === 'EMPTY'
   const [open, setOpen] = useState(!isEmpty)
+  const confirm = useConfirm()
 
   const save = (key: string, raw: string) => {
     const val = ['montoSolicitado','elegibleTrinity','netWire','upbPre','upbPost','saldoHoldback','porcentajeFunded'].includes(key)
       ? parseFloat(raw) || 0
       : raw || null
     onUpdate(draw.id, { [key]: val })
+  }
+
+  const handleDelete = async () => {
+    const ok = await confirm({
+      title: `Eliminar Draw #${draw.drawNumber}`,
+      message: `¿Seguro que quieres eliminar el Draw #${draw.drawNumber}?`,
+      detail: 'Esta acción eliminará el draw y todos sus documentos asociados. No se puede deshacer.',
+      destructive: true,
+      confirmText: 'Sí, eliminar draw',
+    })
+    if (ok) onDelete(draw.id)
   }
 
   // Cross-reference con el construction budget
@@ -179,6 +194,13 @@ function DrawCard({ draw, projectId, budgetTotal, budgetExecuted, onUpdate }: {
             className="bg-slate-200 text-xs text-slate-700 border border-slate-200 rounded px-2 py-1 focus:outline-none focus:border-[#C8922A]">
             {ESTADOS.map(e => <option key={e} value={e}>{e}</option>)}
           </select>
+          <button
+            onClick={handleDelete}
+            title="Eliminar draw"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
 
@@ -458,6 +480,15 @@ export default function Draws({ projectId }: { projectId: string }) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['draws', projectId] }),
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => drawsApi.deleteDraw(id),
+    onSuccess: () => {
+      toast.success('Draw eliminado')
+      queryClient.invalidateQueries({ queryKey: ['draws', projectId] })
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.error || 'Error al eliminar draw'),
+  })
+
   const wiredDraws = draws.filter(d => d.estado === 'WIRED')
   const totalWired = wiredDraws.reduce((s, d) => s + d.netWire, 0)
   const lastSaldo = wiredDraws.length > 0 ? wiredDraws[wiredDraws.length - 1].saldoHoldback : 0
@@ -529,7 +560,8 @@ export default function Draws({ projectId }: { projectId: string }) {
         {draws.map(draw => (
           <DrawCard key={draw.id} draw={draw} projectId={projectId}
             budgetTotal={budgetTotal} budgetExecuted={budgetExecuted}
-            onUpdate={(id, data) => mutation.mutate({ id, data })} />
+            onUpdate={(id, data) => mutation.mutate({ id, data })}
+            onDelete={(id) => deleteMutation.mutate(id)} />
         ))}
       </div>
 

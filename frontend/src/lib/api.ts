@@ -34,6 +34,8 @@ export const drawsApi = {
   },
   deleteDoc: (drawId: string, kind: 'INVOICE' | 'APPROVAL') =>
     api.delete(`/draws/${drawId}/document/${kind}`).then(r => r.data.data),
+  deleteDraw: (drawId: string) =>
+    api.delete(`/draws/${drawId}`).then(r => r.data.data),
 }
 
 export const providersApi = {
