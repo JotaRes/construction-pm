@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express'
 import { PrismaClient } from '@prisma/client'
 import multer from 'multer'
+import * as XLSX from 'xlsx'
 import { uploadToCloudinary, resourceTypeFor } from '../lib/cloudinary'
 import { parseAmountFlexible } from '../lib/parseAmount'
 
@@ -9,6 +10,21 @@ const pdfParse = require('pdf-parse') as (buffer: Buffer) => Promise<{ text: str
 
 const router  = Router()
 const prisma  = new PrismaClient()
+
+const EXCEL_MIMES = new Set([
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.oasis.opendocument.spreadsheet',
+  'text/csv',
+])
+
+const EXCEL_EXT_RE = /\.(xlsx|xlsm|xls|ods|csv)$/i
+
+function isExcelFile(mimetype: string | undefined, filename: string | undefined): boolean {
+  if (mimetype && EXCEL_MIMES.has(mimetype)) return true
+  if (filename && EXCEL_EXT_RE.test(filename)) return true
+  return false
+}
 
 const ALLOWED_MIME = [
   'application/pdf',
@@ -128,6 +144,245 @@ function parseDrawText(text: string): Record<string, unknown> {
     if (r) result.porcentajeFunded = parseFloat(r[1]) / 100
   }
   return result
+}
+
+// ── Excel parser for lender draw spreadsheets ───────────────────────────────
+// Lender exports vary in shape. We try three strategies and merge results,
+// with later strategies overriding earlier ones (more specific wins):
+//   1. Flatten the whole workbook to text and run the PDF regex parser.
+//   2. Label/value scan — "Amount Requested" | $45,200 in adjacent cells.
+//   3. Tabular detector — section row (Pre-Draw/Post-Draw merged labels) +
+//      header row + data row. Trinity uses this layout.
+function flattenSheetToText(sheet: XLSX.WorkSheet): string {
+  if (!sheet['!ref']) return ''
+  const range = XLSX.utils.decode_range(sheet['!ref'])
+  const lines: string[] = []
+  for (let r = range.s.r; r <= range.e.r; r++) {
+    const rowParts: string[] = []
+    for (let c = range.s.c; c <= range.e.c; c++) {
+      const addr = XLSX.utils.encode_cell({ r, c })
+      const cell = sheet[addr]
+      if (!cell) continue
+      const v = cell.w ?? cell.v
+      if (v !== undefined && v !== null && v !== '') rowParts.push(String(v))
+    }
+    if (rowParts.length) lines.push(rowParts.join(' '))
+  }
+  return lines.join('\n')
+}
+
+function cellToNumber(v: unknown): number | null {
+  if (v === null || v === undefined || v === '') return null
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null
+  if (v instanceof Date) return null
+  const s = String(v).replace(/[\$\s]/g, '').trim()
+  if (!s) return null
+  // Reject anything that looks like a date (mm/dd/yyyy or mm-dd-yyyy)
+  if (/\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}/.test(s)) return null
+  // Must look like a number: digits with optional decimal/thousands separators and optional %/parentheses
+  if (!/^-?\(?\d[\d.,]*\)?\s*%?$/.test(s)) return null
+  let pct = false
+  let cleaned = s
+  if (cleaned.endsWith('%')) { pct = true; cleaned = cleaned.slice(0, -1) }
+  const n = parseAmountFlexible(cleaned)
+  if (!Number.isFinite(n)) return null
+  return pct ? n / 100 : n
+}
+
+function cellToDate(v: unknown): string | null {
+  if (!v) return null
+  if (v instanceof Date) {
+    const t = v.getTime()
+    if (Number.isFinite(t)) return new Date(t).toISOString()
+    return null
+  }
+  if (typeof v === 'string') return normalizeDate(v)
+  return null
+}
+
+// Map a single header label + section qualifier ("pre" | "post" | null) to a
+// draw field. Returns null if the label isn't recognized. Centralized so the
+// tabular detector and the label/value scanner stay consistent.
+function mapHeaderToField(label: string, section: string | null): string | null {
+  const l = label.toLowerCase().trim()
+  if (/^\s*draw\s*(#|number|no\.?)\s*$/i.test(l)) return 'drawNumber'
+  if (/draw\s*amount|amount\s*requested|total\s*requested|requested\s*amount|monto\s*solicit|solicitado/i.test(l)) return 'montoSolicitado'
+  if (/eligible|trinity\s*eligible|approved\s*amount|amount\s*eligible|elegible/i.test(l)) return 'elegibleTrinity'
+  if (/net\s*wire|wire\s*amount|amount\s*wired|net\s*amount/i.test(l)) return 'netWire'
+  if (/percent(age)?\s*(funded|complete)|%\s*(funded|complete)|funded\s*%|complete\s*%|%\s*financiad/i.test(l)) return 'porcentajeFunded'
+  // Trinity calls remaining undrawn refurb funds "Refurb Balance" or "Refurb Loan Balance"
+  // (Post-Draw column). The "Pre-Draw / Refurb Loan Balance" is the starting balance — we
+  // treat both as the holdback balance, with Post winning since it's the after-draw state.
+  if (/refurb\s*(loan\s*)?balance|holdback\s*balance|saldo\s*holdback|remaining\s*holdback|holdback\s*remaining/i.test(l)) return 'saldoHoldback'
+  if (/^upb$|unpaid\s*principal\s*balance|principal\s*balance/i.test(l)) {
+    if (section === 'pre') return 'upbPre'
+    if (section === 'post') return 'upbPost'
+    return null
+  }
+  if (/upb\s*pre|principal\s*before|beginning\s*principal|prior\s*balance/i.test(l)) return 'upbPre'
+  if (/upb\s*post|principal\s*after|ending\s*principal|new\s*balance|current\s*balance/i.test(l)) return 'upbPost'
+  if (/date\s*ordered|date\s*requested|request\s*date|submission\s*date|fecha\s*solicit/i.test(l)) return 'fechaSolicitud'
+  if (/date\s*inspected|inspection\s*date|fecha\s*inspecc/i.test(l)) return 'fechaInspeccion'
+  if (/date\s*completed|wire\s*date|date\s*wired|fecha\s*wire|funded\s*date|disburs(ed|ement)\s*date/i.test(l)) return 'fechaWire'
+  return null
+}
+
+function setField(out: Record<string, unknown>, field: string, value: unknown) {
+  if (value === null || value === undefined || value === '') return
+  if (field === 'porcentajeFunded' && typeof value === 'number') {
+    out[field] = value > 1 ? value / 100 : value
+    return
+  }
+  if (field === 'drawNumber' && typeof value === 'number') {
+    out[field] = Math.round(value)
+    return
+  }
+  // Don't overwrite an already-set field unless it's saldoHoldback (Post wins over Pre).
+  if (out[field] !== undefined && field !== 'saldoHoldback') return
+  out[field] = value
+}
+
+// Tabular detector for lender Excels like Trinity's:
+// Section row (optional, with "Pre-Draw" / "Post Draw" merged labels)
+// Header row (column names)
+// Data row(s) (one row per draw)
+function parseDrawExcelTabular(sheet: XLSX.WorkSheet): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  if (!sheet['!ref']) return out
+
+  const range = XLSX.utils.decode_range(sheet['!ref'])
+  // Clamp range — some files (like Trinity's) set !ref to A1:Y1000 but only
+  // populate the first ~10 rows. Use !merges and cell presence to find real end.
+  const realRows: unknown[][] = []
+  const lastRowChecked = Math.min(range.e.r, 50) // safety cap
+  for (let r = range.s.r; r <= lastRowChecked; r++) {
+    const row: unknown[] = []
+    let hasContent = false
+    for (let c = range.s.c; c <= range.e.c; c++) {
+      const cell = sheet[XLSX.utils.encode_cell({ r, c })]
+      const v = cell ? (cell.v !== undefined ? cell.v : null) : null
+      row.push(v)
+      if (v !== null && v !== undefined && v !== '') hasContent = true
+    }
+    realRows.push(hasContent ? row : [])
+  }
+
+  // Find header row: a row with >= 4 string cells, followed by a row with >= 2 numeric cells.
+  let headerIdx = -1
+  for (let i = 0; i < realRows.length - 1; i++) {
+    const headerRow = realRows[i]
+    const dataRow   = realRows[i + 1]
+    if (!headerRow.length || !dataRow.length) continue
+    const textCount = headerRow.filter(v => typeof v === 'string' && v.trim().length > 1).length
+    const numCount  = dataRow.filter(v => typeof v === 'number' && Number.isFinite(v)).length
+    if (textCount >= 4 && numCount >= 2) { headerIdx = i; break }
+  }
+  if (headerIdx === -1) return out
+
+  const headerRow = realRows[headerIdx]
+  const dataRow   = realRows[headerIdx + 1]
+  // Section row is the closest row above the header that contains "Pre"/"Post" markers.
+  let sectionRow: unknown[] | null = null
+  for (let i = headerIdx - 1; i >= 0 && i >= headerIdx - 3; i--) {
+    const candidate = realRows[i]
+    const hasSection = candidate.some(v => typeof v === 'string' && /pre[-\s]?draw|post[-\s]?draw|pre\s*draw|post\s*draw/i.test(v))
+    if (hasSection) { sectionRow = candidate; break }
+  }
+
+  // For each header column, determine section by scanning leftward in sectionRow.
+  for (let c = 0; c < headerRow.length; c++) {
+    const label = headerRow[c]
+    if (typeof label !== 'string' || !label.trim()) continue
+
+    let section: string | null = null
+    if (sectionRow) {
+      for (let cc = c; cc >= 0; cc--) {
+        const sv = sectionRow[cc]
+        if (typeof sv === 'string' && sv.trim()) {
+          if (/post/i.test(sv)) section = 'post'
+          else if (/pre/i.test(sv)) section = 'pre'
+          break
+        }
+      }
+    }
+
+    const field = mapHeaderToField(label, section)
+    if (!field) continue
+
+    const value = dataRow[c]
+    if (field === 'fechaSolicitud' || field === 'fechaInspeccion' || field === 'fechaWire') {
+      const d = cellToDate(value)
+      if (d) setField(out, field, d)
+    } else {
+      const n = cellToNumber(value)
+      if (n !== null) setField(out, field, n)
+    }
+  }
+
+  return out
+}
+
+function parseDrawExcel(buffer: Buffer): { parsed: Record<string, unknown>; preview: string } {
+  const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true })
+
+  // 1) Flatten every sheet → run existing regex parser as a baseline.
+  let allText = ''
+  for (const sheetName of workbook.SheetNames) {
+    allText += `\n=== ${sheetName} ===\n` + flattenSheetToText(workbook.Sheets[sheetName])
+  }
+  const textResult = parseDrawText(allText)
+
+  // 2) Tabular detection (Trinity-style: section row + header row + data row).
+  const tabularResult: Record<string, unknown> = {}
+  for (const sheetName of workbook.SheetNames) {
+    const partial = parseDrawExcelTabular(workbook.Sheets[sheetName])
+    for (const [k, v] of Object.entries(partial)) setField(tabularResult, k, v)
+  }
+
+  // 3) Cell-by-cell label/value scan — covers "Label | Value" layouts where the
+  //    value sits in the adjacent right or below cell.
+  const cellResult: Record<string, unknown> = {}
+  for (const sheetName of workbook.SheetNames) {
+    const sheet = workbook.Sheets[sheetName]
+    if (!sheet['!ref']) continue
+    const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, raw: true, defval: null })
+
+    for (let r = 0; r < rows.length; r++) {
+      const row = rows[r] || []
+      for (let c = 0; c < row.length; c++) {
+        const raw = row[c]
+        const cellText = raw === null || raw === undefined ? '' : String(raw).trim()
+        if (!cellText) continue
+
+        const next  = row[c + 1]
+        const below = rows[r + 1]?.[c]
+
+        // Inline drawNumber ("Draw #5")
+        if (cellResult.drawNumber === undefined) {
+          const inline = cellText.match(/draw\s*#?\s*(\d+)/i)
+          if (inline) cellResult.drawNumber = parseInt(inline[1])
+        }
+
+        const field = mapHeaderToField(cellText, null)
+        if (!field || cellResult[field] !== undefined) continue
+
+        if (field === 'fechaSolicitud' || field === 'fechaInspeccion' || field === 'fechaWire') {
+          const d = cellToDate(next) ?? cellToDate(below)
+          if (d) setField(cellResult, field, d)
+        } else {
+          const n = cellToNumber(next) ?? cellToNumber(below)
+          if (n !== null) setField(cellResult, field, n)
+        }
+      }
+    }
+  }
+
+  // Merge priority: tabular > cell-scan > flattened-text regex.
+  const parsed: Record<string, unknown> = { ...textResult }
+  for (const [k, v] of Object.entries(cellResult))    { if (v !== undefined && v !== null && v !== '') parsed[k] = v }
+  for (const [k, v] of Object.entries(tabularResult)) { if (v !== undefined && v !== null && v !== '') parsed[k] = v }
+
+  return { parsed, preview: allText.slice(0, 1500) }
 }
 
 function parseHUDText(text: string): Record<string, unknown> {
@@ -340,6 +595,8 @@ router.delete('/:id', async (req: Request, res: Response) => {
 
 // ── POST upload draw document ────────────────────────────────────────────────
 // kind = "INVOICE" | "APPROVAL" | "EXCEL"
+// When kind=EXCEL and the file is a real spreadsheet, also extract data from it
+// and merge into the draw — saves the user from having to fill fields manually.
 router.post('/:id/document', (req: Request, res: Response) => {
   upload.single('file')(req, res, async (err) => {
     if (err) return res.status(400).json({ data: null, error: String(err) })
@@ -349,15 +606,45 @@ router.post('/:id/document', (req: Request, res: Response) => {
       const fileUrl = await tryCloudinaryUpload(req.file.buffer, 'construction-pm/draw-documents', req.file.mimetype)
       if (!fileUrl) return res.status(500).json({ data: null, error: 'Cloudinary no configurado' })
 
-      const data: Record<string, unknown> =
+      const baseData: Record<string, unknown> =
         kind === 'APPROVAL'
           ? { lenderApprovalUrl: fileUrl, lenderApprovalName: req.file.originalname }
           : kind === 'EXCEL'
           ? { lenderExcelUrl: fileUrl, lenderExcelName: req.file.originalname }
           : { invoiceLenderUrl: fileUrl, invoiceLenderName: req.file.originalname }
 
+      let extracted: Record<string, unknown> = {}
+      let parsedDrawNumber: number | null = null
+      // Auto-extract draw data when an Excel/CSV is uploaded to the EXCEL slot.
+      // Lender Excel is authoritative, so it OVERWRITES existing values for the
+      // fields it provides — the user explicitly asked for this. Anything Trinity
+      // doesn't include in the sheet (e.g. dates) stays as-is for manual fill-in.
+      if (kind === 'EXCEL' && isExcelFile(req.file.mimetype, req.file.originalname)) {
+        try {
+          const { parsed } = parseDrawExcel(req.file.buffer)
+          if (typeof parsed.drawNumber === 'number') parsedDrawNumber = parsed.drawNumber
+          const allowedFields = [
+            'montoSolicitado', 'elegibleTrinity', 'netWire', 'porcentajeFunded',
+            'upbPre', 'upbPost', 'saldoHoldback',
+            'fechaSolicitud', 'fechaInspeccion', 'fechaWire',
+          ]
+          for (const k of allowedFields) {
+            const v = parsed[k]
+            if (v === undefined || v === null || v === '') continue
+            extracted[k] = v
+          }
+        } catch (e) {
+          // Excel parsing failed — keep going so the file is still saved.
+          console.warn('Excel parse failed for draw', req.params.id, e)
+        }
+      }
+
+      const data = { ...extracted, ...baseData }
       const draw = await prisma.draw.update({ where: { id: req.params.id }, data })
-      res.json({ data: draw, error: null })
+      // If we touched netWire, recalc the holdback chain for the whole project.
+      if ('netWire' in extracted) await recalcHoldback(draw.projectId)
+      const updated = await prisma.draw.findUnique({ where: { id: draw.id } })
+      res.json({ data: updated, extracted, parsedDrawNumber, error: null })
     } catch (e) {
       res.status(500).json({ data: null, error: String(e) })
     }
@@ -402,16 +689,33 @@ async function tryCloudinaryUpload(buffer: Buffer, folder: string, mimetype?: st
 }
 
 // ── POST parse-pdf (draw) ────────────────────────────────────────────────────
+// Accepts PDF, image (JPG/PNG/etc), Excel (.xlsx/.xls) or CSV. Routes the file
+// to the right parser and returns the extracted fields plus the storage URL.
 router.post('/:projectId/draws/parse-pdf', handleUpload, async (req: Request, res: Response) => {
   try {
     if (!req.file) return res.status(400).json({ data: null, error: 'No se subió ningún archivo' })
 
     const isImage = req.file.mimetype.startsWith('image/')
-    const fileUrl = await tryCloudinaryUpload(req.file.buffer, 'construction-pm/draw-pdfs', req.file.mimetype)
+    const isExcel = isExcelFile(req.file.mimetype, req.file.originalname)
+    // Excel files go to a dedicated folder; PDFs/images go to draw-pdfs.
+    const folder = isExcel ? 'construction-pm/draw-documents' : 'construction-pm/draw-pdfs'
+    const fileUrl = await tryCloudinaryUpload(req.file.buffer, folder, req.file.mimetype)
 
     if (isImage) {
       return res.json({
         data: { parsed: fileUrl ? { pdfUrl: fileUrl } : {}, preview: null, isImage: true, imageUrl: fileUrl },
+        error: null,
+      })
+    }
+
+    if (isExcel) {
+      const { parsed, preview } = parseDrawExcel(req.file.buffer)
+      if (fileUrl) {
+        parsed.lenderExcelUrl = fileUrl
+        parsed.lenderExcelName = req.file.originalname
+      }
+      return res.json({
+        data: { parsed, preview, isImage: false, imageUrl: null, isExcel: true, fileName: req.file.originalname },
         error: null,
       })
     }

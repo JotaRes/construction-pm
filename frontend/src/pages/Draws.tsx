@@ -77,7 +77,23 @@ function DocSlot({
 
   const uploadMut = useMutation({
     mutationFn: (f: File) => drawsApi.uploadDoc(draw.id, f, kind),
-    onSuccess: () => { toast.success('Archivo subido'); queryClient.invalidateQueries({ queryKey: ['draws', projectId] }) },
+    onSuccess: (result) => {
+      const extractedCount = result?.extracted ? Object.keys(result.extracted).length : 0
+      const parsedDrawN = result?.parsedDrawNumber
+      if (kind === 'EXCEL') {
+        if (parsedDrawN && parsedDrawN !== draw.drawNumber) {
+          toast(`⚠ El Excel pertenece a Draw #${parsedDrawN} pero lo subiste al Draw #${draw.drawNumber}. Verifica antes de guardar.`,
+            { duration: 8000, style: { background: '#FEF3C7', color: '#92400E', border: '1px solid #FCD34D' } })
+        } else if (extractedCount > 0) {
+          toast.success(`Excel subido — ${extractedCount} campo(s) extraído(s) automáticamente`)
+        } else {
+          toast.success('Excel subido — no se detectaron campos automáticos, complétalos manualmente')
+        }
+      } else {
+        toast.success('Archivo subido')
+      }
+      queryClient.invalidateQueries({ queryKey: ['draws', projectId] })
+    },
     onError: (e: any) => toast.error(e?.response?.data?.error || 'Error al subir'),
   })
   const delMut = useMutation({
@@ -321,6 +337,11 @@ function DrawCard({ draw, projectId, budgetTotal, budgetExecuted, onUpdate, onDe
 }
 
 /* ── PDF Parse Panel ─────────────────────────────── */
+const EXCEL_EXT_RE = /\.(xlsx|xlsm|xls|ods|csv)$/i
+const EXCEL_MIME_RE = /(spreadsheetml|ms-excel|opendocument\.spreadsheet|text\/csv)/i
+function isImageFile(f: File) { return f.type.startsWith('image/') }
+function isExcelFile(f: File) { return EXCEL_MIME_RE.test(f.type) || EXCEL_EXT_RE.test(f.name) }
+
 function PdfParsePanel({ projectId, draws, onClose, onApply }: {
   projectId: string
   draws: Draw[]
@@ -331,12 +352,11 @@ function PdfParsePanel({ projectId, draws, onClose, onApply }: {
   const [parsed, setParsed] = useState<Record<string, unknown> | null>(null)
   const [preview, setPreview] = useState('')
   const [imageUrl, setImageUrl] = useState<string | null>(null)
+  const [isExcelResult, setIsExcelResult] = useState(false)
   const [loading, setLoading] = useState(false)
   const [targetDraw, setTargetDraw] = useState<string>('')
   const [error, setError] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
-
-  const isImageFile = (f: File) => f.type.startsWith('image/')
 
   const handleParse = async () => {
     if (!file) return
@@ -347,12 +367,13 @@ function PdfParsePanel({ projectId, draws, onClose, onApply }: {
       setParsed(result.parsed)
       setPreview(result.preview ?? '')
       setImageUrl(result.imageUrl ?? null)
+      setIsExcelResult(!!result.isExcel)
       if (result.parsed.drawNumber) {
         const match = draws.find(d => d.drawNumber === result.parsed.drawNumber)
         if (match) setTargetDraw(match.id)
       }
     } catch (e) {
-      setError('Error procesando el archivo. Verifica que sea un PDF, JPG o PNG válido.')
+      setError('Error procesando el archivo. Verifica que sea un PDF, JPG, PNG o Excel válido.')
     } finally {
       setLoading(false)
     }
@@ -362,7 +383,8 @@ function PdfParsePanel({ projectId, draws, onClose, onApply }: {
     if (!parsed || !targetDraw) return
     const cleanData: Record<string, unknown> = {}
     const fields = ['montoSolicitado','elegibleTrinity','netWire','porcentajeFunded',
-                    'upbPre','upbPost','saldoHoldback','fechaSolicitud','fechaInspeccion','fechaWire','pdfUrl']
+                    'upbPre','upbPost','saldoHoldback','fechaSolicitud','fechaInspeccion','fechaWire',
+                    'pdfUrl','lenderExcelUrl','lenderExcelName']
     fields.forEach(f => { if (parsed[f] !== undefined && parsed[f] !== null) cleanData[f] = parsed[f] })
     // Activate the draw (move out of EMPTY state)
     cleanData.estado = 'PENDING'
@@ -372,7 +394,8 @@ function PdfParsePanel({ projectId, draws, onClose, onApply }: {
 
   const fmtParsed = (k: string, v: unknown) => {
     if (k === 'porcentajeFunded') return `${((v as number) * 100).toFixed(2)}%`
-    if (k === 'pdfUrl') return '✓ archivo guardado'
+    if (k === 'pdfUrl' || k === 'lenderExcelUrl') return '✓ archivo guardado'
+    if (k === 'lenderExcelName') return String(v)
     if (typeof v === 'number') return formatUSD(v as number)
     if (typeof v === 'string' && (v.includes('T00:') || v.includes('Z'))) return formatDate(v)
     return String(v)
@@ -384,7 +407,7 @@ function PdfParsePanel({ projectId, draws, onClose, onApply }: {
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200/40">
           <div>
             <div className="text-sm font-semibold text-slate-900">Cargar Draw</div>
-            <div className="text-xs text-slate-400 mt-0.5">Sube el PDF o foto (JPG/PNG) del draw — el sistema extrae los datos automáticamente del PDF</div>
+            <div className="text-xs text-slate-400 mt-0.5">Sube el PDF, Excel del lender o foto (JPG/PNG) del draw — el sistema extrae los datos automáticamente de PDF y Excel</div>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-500 transition-colors"><X className="w-4 h-4" /></button>
         </div>
@@ -397,18 +420,19 @@ function PdfParsePanel({ projectId, draws, onClose, onApply }: {
                 <Upload className="w-4 h-4" />
                 {file ? file.name : 'Seleccionar archivo'}
               </button>
-              <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif"
+              <input ref={fileRef} type="file"
+                accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.xlsx,.xlsm,.xls,.ods,.csv,application/pdf,image/*,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.oasis.opendocument.spreadsheet,text/csv"
                 className="hidden"
-                onChange={e => { setFile(e.target.files?.[0] ?? null); setParsed(null); setImageUrl(null) }} />
+                onChange={e => { setFile(e.target.files?.[0] ?? null); setParsed(null); setImageUrl(null); setIsExcelResult(false) }} />
               {file && (
                 <button onClick={handleParse} disabled={loading}
                   className="px-4 py-2.5 bg-[#C8922A] btn-animated hover:bg-[#E0AD4F] text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50">
-                  {loading ? 'Procesando...' : isImageFile(file) ? 'Subir imagen' : 'Extraer datos'}
+                  {loading ? 'Procesando...' : isImageFile(file) ? 'Subir imagen' : isExcelFile(file) ? 'Extraer datos del Excel' : 'Extraer datos'}
                 </button>
               )}
             </div>
             <p className="text-[10px] text-slate-400">
-              Formatos aceptados: <span className="font-mono">PDF · JPG · PNG · WEBP · HEIC</span> — hasta 50 MB
+              Formatos aceptados: <span className="font-mono">PDF · Excel (.xlsx/.xls/.csv) · JPG · PNG · WEBP · HEIC</span> — hasta 50 MB
             </p>
           </div>
 
@@ -434,22 +458,31 @@ function PdfParsePanel({ projectId, draws, onClose, onApply }: {
                 <div className="flex items-center gap-2 mb-3">
                   <CheckCircle className="w-4 h-4 text-emerald-400" />
                   <span className="text-xs font-semibold text-slate-700">
-                    {imageUrl ? 'Imagen guardada — completa los campos manualmente' : 'Datos extraídos del PDF'}
+                    {imageUrl ? 'Imagen guardada — completa los campos manualmente'
+                      : isExcelResult ? `Datos extraídos del Excel${Object.keys(parsed).length === 0 ? ' — no se detectaron campos, complétalos manualmente' : ''}`
+                      : 'Datos extraídos del PDF'}
                   </span>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  {Object.entries(parsed).map(([k, v]) => (
-                    <div key={k} className="flex items-center justify-between bg-slate-50/40 rounded-lg px-3 py-1.5">
-                      <span className="text-[10px] text-slate-400 uppercase">
-                        {({'drawNumber':'Draw #','montoSolicitado':'Monto Solicitado','elegibleTrinity':'Eligible Trinity',
-                          'porcentajeFunded':'% Financiado','fechaSolicitud':'Fecha Solicitud','fechaInspeccion':'Fecha Inspección',
-                          'fechaWire':'Fecha Wire','netWire':'Net Wire','pdfUrl':'Archivo PDF',
-                          'upbPre':'UPB Pre','upbPost':'UPB Post','saldoHoldback':'Saldo Holdback'} as Record<string,string>)[k] ?? k}
-                      </span>
-                      <span className="text-xs font-mono text-[#2D4B52]">{fmtParsed(k, v)}</span>
-                    </div>
-                  ))}
-                </div>
+                {Object.keys(parsed).length === 0 ? (
+                  <div className="text-[11px] text-slate-500 italic">
+                    El archivo se guardó pero no fue posible detectar campos automáticamente. Selecciona el draw y llena los valores manualmente abajo.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    {Object.entries(parsed).map(([k, v]) => (
+                      <div key={k} className="flex items-center justify-between bg-slate-50/40 rounded-lg px-3 py-1.5">
+                        <span className="text-[10px] text-slate-400 uppercase">
+                          {({'drawNumber':'Draw #','montoSolicitado':'Monto Solicitado','elegibleTrinity':'Eligible Trinity',
+                            'porcentajeFunded':'% Financiado','fechaSolicitud':'Fecha Solicitud','fechaInspeccion':'Fecha Inspección',
+                            'fechaWire':'Fecha Wire','netWire':'Net Wire','pdfUrl':'Archivo PDF',
+                            'lenderExcelUrl':'Archivo Excel','lenderExcelName':'Nombre Excel',
+                            'upbPre':'UPB Pre','upbPost':'UPB Post','saldoHoldback':'Saldo Holdback'} as Record<string,string>)[k] ?? k}
+                        </span>
+                        <span className="text-xs font-mono text-[#2D4B52]">{fmtParsed(k, v)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -473,7 +506,7 @@ function PdfParsePanel({ projectId, draws, onClose, onApply }: {
           {preview && (
             <details className="text-[10px] text-slate-400 font-mono">
               <summary className="cursor-pointer text-slate-400 hover:text-slate-500 transition-colors">
-                <FileText className="w-3 h-3 inline mr-1" />Ver texto extraído del PDF
+                <FileText className="w-3 h-3 inline mr-1" />Ver texto extraído del {isExcelResult ? 'Excel' : 'PDF'}
               </summary>
               <pre className="mt-2 bg-slate-100 rounded-lg p-3 overflow-x-auto max-h-40 text-slate-600 whitespace-pre-wrap">{preview}</pre>
             </details>

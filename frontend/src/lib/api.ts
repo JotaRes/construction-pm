@@ -35,7 +35,14 @@ export const drawsApi = {
     const fd = new FormData()
     fd.append('file', file)
     fd.append('kind', kind)
-    return api.post(`/draws/${drawId}/document`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data.data)
+    // Return the full envelope so callers can read `extracted` and `parsedDrawNumber` alongside the draw.
+    return api.post(`/draws/${drawId}/document`, fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+      .then(r => r.data as {
+        data: unknown
+        extracted?: Record<string, unknown>
+        parsedDrawNumber?: number | null
+        error: string | null
+      })
   },
   deleteDoc: (drawId: string, kind: 'INVOICE' | 'APPROVAL' | 'EXCEL') =>
     api.delete(`/draws/${drawId}/document/${kind}`).then(r => r.data.data),
