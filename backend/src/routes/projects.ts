@@ -1,10 +1,66 @@
 import { Router, Request, Response } from 'express'
 import { PrismaClient } from '@prisma/client'
+import multer from 'multer'
 import { PHASES_TEMPLATE, INSPECTIONS_TEMPLATE } from '../data/phasesTemplate'
-import { BUDGET_LINES_TEMPLATE } from '../data/budgetLinesTemplate'
+import { parseAmountFlexible } from '../lib/parseAmount'
 
 const router = Router()
 const prisma = new PrismaClient()
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } })
+
+// ── POST /api/projects/parse-hud — parse HUD PDF to auto-fill new project form ──
+// Standalone (no projectId required) — called BEFORE project creation.
+router.post('/parse-hud', upload.single('pdf'), async (req: Request, res: Response) => {
+  try {
+    if (!req.file) { res.status(400).json({ data: null, error: 'No se subió ningún archivo' }); return }
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const pdfParse = require('pdf-parse') as (buf: Buffer) => Promise<{ text: string }>
+    const { text } = await pdfParse(req.file.buffer)
+    const t = text.replace(/\x00/g, ' ').replace(/\n/g, ' ')
+    const mp = '\\$?([\\d,]+\\.?\\d*)'
+    const result: Record<string, unknown> = {}
+
+    // Property address — look for common HUD patterns
+    const addrMatch =
+      t.match(/(?:property\s*(?:address|location|street|described\s*as)|premises\s*(?:located|described|at)|located\s*at)\s*:?\s*(\d+[^,\n$]{5,80})/i) ??
+      t.match(/(?:subject\s*property|property)\s*:?\s*(\d+\s+[A-Za-z][^,\n$]{5,60})/i)
+    if (addrMatch) result.address = addrMatch[1].trim().replace(/\s{2,}/g, ' ')
+
+    // County
+    const countyMatch = t.match(/([A-Za-z][a-zA-Z\s]{2,20})\s+county/i)
+    if (countyMatch) result.county = countyMatch[1].trim()
+
+    // State
+    const stateMatch = t.match(/(?:South\s*Carolina|SC|North\s*Carolina|NC|Georgia|GA|Florida|FL|Tennessee|TN)/i)
+    if (stateMatch) result.state = stateMatch[0].trim()
+
+    // Purchase price
+    const priceMatch =
+      t.match(/\b101\.\s*contract\s*sales?\s*price\s*\$?([\d,]+\.?\d*)/i) ??
+      t.match(new RegExp(`contract\\s*sales?\\s*price\\s*:?\\s*${mp}`, 'i')) ??
+      t.match(new RegExp(`(?:purchase|sale)\\s*price\\s*:?\\s*${mp}`, 'i'))
+    if (priceMatch) result.contractSalesPrice = parseAmountFlexible(priceMatch[1])
+
+    // Loan amount
+    const loanMatch = t.match(new RegExp(`(?:loan|principal|construction)\\s*amount\\s*:?\\s*${mp}`, 'i'))
+    if (loanMatch) result.loanAmount = parseAmountFlexible(loanMatch[1])
+
+    // Holdback
+    const holdbackMatch = t.match(new RegExp(`(?:holdback|retainage|construction\\s*holdback)\\s*:?\\s*${mp}`, 'i'))
+    if (holdbackMatch) result.holdback = parseAmountFlexible(holdbackMatch[1])
+
+    // Cash at settlement
+    const cashMatch =
+      t.match(/\b303\.\s*cash\s*\$?([\d,]+\.?\d*)/i) ??
+      t.match(new RegExp(`cash\\s*(?:at|to)\\s*(?:close|settlement)\\s*:?\\s*${mp}`, 'i'))
+    if (cashMatch) result.cashAtSettlement = parseAmountFlexible(cashMatch[1])
+
+    res.json({ data: result, error: null })
+  } catch (e) {
+    res.status(500).json({ data: null, error: String(e) })
+  }
+})
 
 router.get('/', async (_req: Request, res: Response) => {
   try {
@@ -261,26 +317,6 @@ router.post('/', async (req: Request, res: Response) => {
           fase: ins.fase ?? null,
           estado: 'PENDIENTE',
           order: i,
-        },
-      })
-    }
-
-    let blOrder = 0
-    for (const t of BUDGET_LINES_TEMPLATE) {
-      await prisma.budgetLine.create({
-        data: {
-          projectId: project.id,
-          divCode: t.divCode,
-          divName: t.divName,
-          itemCode: t.itemCode,
-          description: t.description,
-          unit: t.unit,
-          vendor: t.vendor ?? null,
-          valorInicial: t.valorInicial,
-          valorPresentado: 0,
-          valorAprobado: 0,
-          pagadoSubs: 0,
-          order: blOrder++,
         },
       })
     }

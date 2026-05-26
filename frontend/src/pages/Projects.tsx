@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Building2, MapPin, DollarSign, TrendingUp, ChevronRight, X, Trash2 } from 'lucide-react'
+import { Plus, Building2, MapPin, DollarSign, TrendingUp, ChevronRight, X, Trash2, Upload, FileText, CheckCircle, RefreshCw } from 'lucide-react'
 import { projectsApi, projectsDeleteApi } from '../lib/api'
 import { useProjectStore } from '../store/projectStore'
 import { formatUSD } from '../lib/calculations'
@@ -35,7 +35,11 @@ const DATE_FIELDS = [
 
 function NewProjectModal({ onClose, onCreated }: { onClose: () => void; onCreated: (id: string) => void }) {
   const queryClient = useQueryClient()
+  const fileRef = useRef<HTMLInputElement>(null)
   const [form, setForm] = useState<Record<string, string>>({})
+  const [hudParsing, setHudParsing] = useState(false)
+  const [hudFileName, setHudFileName] = useState<string | null>(null)
+  const [hudError, setHudError] = useState<string | null>(null)
 
   const mutation = useMutation({
     mutationFn: (data: Record<string, unknown>) => projectsApi.create(data),
@@ -47,16 +51,39 @@ function NewProjectModal({ onClose, onCreated }: { onClose: () => void; onCreate
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
+  const handleHudUpload = async (file: File) => {
+    setHudParsing(true)
+    setHudError(null)
+    setHudFileName(file.name)
+    try {
+      const parsed = await projectsApi.parseHud(file)
+      const updates: Record<string, string> = {}
+      if (parsed.address) updates.address = String(parsed.address)
+      if (parsed.county) updates.county = String(parsed.county)
+      if (parsed.loanAmount) updates.loanAmount = String(parsed.loanAmount)
+      if (parsed.holdback) updates.holdback = String(parsed.holdback)
+      if (parsed.cashAtSettlement) updates.cashAtSettlement = String(parsed.cashAtSettlement)
+      if (parsed.contractSalesPrice) updates.contractSalesPrice = String(parsed.contractSalesPrice)
+      setForm(f => ({ ...f, ...updates }))
+    } catch {
+      setHudError('No se pudo leer el HUD. Revisa el formato e intenta de nuevo.')
+    } finally {
+      setHudParsing(false)
+    }
+  }
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     const payload: Record<string, unknown> = {}
+    const numKeys = ['arv', 'loanAmount', 'holdback', 'constructionBudget', 'sfHeated', 'sfGarage', 'sfPorches', 'cashAtSettlement', 'contractSalesPrice']
     for (const [k, v] of Object.entries(form)) {
       if (v === '') continue
-      const numKeys = ['arv', 'loanAmount', 'holdback', 'constructionBudget', 'sfHeated', 'sfGarage', 'sfPorches']
       payload[k] = numKeys.includes(k) ? parseFloat(v) || 0 : v
     }
     mutation.mutate(payload)
   }
+
+  const inputCls = "w-full bg-white border border-slate-200 text-sm text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#C8922A] placeholder-slate-400"
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
@@ -72,9 +99,67 @@ function NewProjectModal({ onClose, onCreated }: { onClose: () => void; onCreate
         </div>
 
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-5">
-          {/* Info básica */}
+
+          {/* ── PASO 1: HUD del lote ── */}
+          <div className="rounded-xl border-2 border-dashed border-[#C8922A]/40 bg-[#C8922A]/5 p-4">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-lg bg-[#C8922A]/15 flex items-center justify-center flex-shrink-0">
+                <FileText className="w-4 h-4 text-[#C8922A]" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-semibold text-slate-700 mb-0.5">
+                  Paso 1 — HUD del lote <span className="text-slate-400 font-normal">(opcional pero recomendado)</span>
+                </div>
+                <div className="text-[11px] text-slate-500 mb-2">
+                  Sube el HUD de cierre para auto-completar dirección, condado y datos financieros. Todos los campos quedan editables.
+                </div>
+
+                {hudFileName ? (
+                  <div className="flex items-center gap-2 text-xs">
+                    <CheckCircle className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                    <span className="text-emerald-700 font-medium truncate">{hudFileName}</span>
+                    <button
+                      type="button"
+                      onClick={() => { setHudFileName(null); setHudError(null); if (fileRef.current) fileRef.current.value = '' }}
+                      className="text-slate-400 hover:text-red-500 ml-auto flex-shrink-0"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => fileRef.current?.click()}
+                    disabled={hudParsing}
+                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#C8922A] hover:bg-[#E0AD4F] text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {hudParsing
+                      ? <><RefreshCw className="w-3 h-3 animate-spin" />Leyendo HUD…</>
+                      : <><Upload className="w-3 h-3" />Subir HUD del lote</>}
+                  </button>
+                )}
+
+                {hudError && (
+                  <div className="mt-2 text-[11px] text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1">
+                    {hudError}
+                  </div>
+                )}
+              </div>
+            </div>
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".pdf"
+              className="hidden"
+              onChange={e => { const f = e.target.files?.[0]; if (f) handleHudUpload(f) }}
+            />
+          </div>
+
+          {/* ── PASO 2: Datos básicos ── */}
           <div>
-            <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-3">Información básica</div>
+            <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-3">
+              Paso 2 — Información básica
+            </div>
             <div className="space-y-3">
               {REQUIRED_FIELDS.map(f => (
                 <div key={f.key}>
@@ -87,14 +172,14 @@ function NewProjectModal({ onClose, onCreated }: { onClose: () => void; onCreate
                     value={form[f.key] ?? ''}
                     onChange={e => set(f.key, e.target.value)}
                     required={f.required}
-                    className="w-full bg-white border border-slate-200 text-sm text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-amber-500 placeholder-slate-600"
+                    className={inputCls}
                   />
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Financiero */}
+          {/* ── Financiero ── */}
           <div>
             <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-3">Datos financieros</div>
             <div className="grid grid-cols-2 gap-3">
@@ -106,14 +191,14 @@ function NewProjectModal({ onClose, onCreated }: { onClose: () => void; onCreate
                     placeholder={f.placeholder}
                     value={form[f.key] ?? ''}
                     onChange={e => set(f.key, e.target.value)}
-                    className="w-full bg-white border border-slate-200 text-sm text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-amber-500 placeholder-slate-600"
+                    className={inputCls}
                   />
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Fechas */}
+          {/* ── Fechas ── */}
           <div>
             <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-3">Cronograma</div>
             <div className="grid grid-cols-2 gap-3">
@@ -124,7 +209,7 @@ function NewProjectModal({ onClose, onCreated }: { onClose: () => void; onCreate
                     type="date"
                     value={form[f.key] ?? ''}
                     onChange={e => set(f.key, e.target.value)}
-                    className="w-full bg-white border border-slate-200 text-sm text-slate-700 px-3 py-2 rounded-lg focus:outline-none focus:border-amber-500"
+                    className={inputCls}
                   />
                 </div>
               ))}
@@ -141,13 +226,13 @@ function NewProjectModal({ onClose, onCreated }: { onClose: () => void; onCreate
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-500 hover:text-slate-800 hover:border-slate-200 transition-colors"
+              className="flex-1 px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-500 hover:text-slate-800 transition-colors"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              disabled={mutation.isPending}
+              disabled={mutation.isPending || hudParsing}
               className="flex-1 px-4 py-2.5 rounded-lg bg-[#C8922A] hover:bg-[#E0AD4F] text-sm font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {mutation.isPending ? 'Creando...' : 'Crear proyecto'}

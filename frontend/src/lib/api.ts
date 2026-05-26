@@ -11,6 +11,11 @@ export const projectsApi = {
   resetExecution: (id: string) => api.post(`/projects/${id}/reset-execution`).then(r => r.data.data),
   resetBudget: (id: string) => api.post(`/projects/${id}/reset-budget`).then(r => r.data.data),
   resetConstructionBudget: (id: string) => api.post(`/projects/${id}/reset-construction-budget`).then(r => r.data.data),
+  parseHud: (file: File) => {
+    const fd = new FormData()
+    fd.append('pdf', file)
+    return api.post('/projects/parse-hud', fd, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data.data)
+  },
 }
 
 export const phasesApi = {
