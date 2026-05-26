@@ -1,9 +1,9 @@
 import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { drawsApi, drawParseApi, constructionBudgetApi } from '../lib/api'
+import { drawsApi, drawParseApi, constructionBudgetApi, projectsApi } from '../lib/api'
 import { formatUSD, formatDate } from '../lib/calculations'
 import type { Draw, DrawEstado } from '../lib/types'
-import { Upload, FileText, CheckCircle, X, AlertTriangle, Receipt, ShieldCheck, Share2, Mail, MessageCircle, Download, Trash2 } from 'lucide-react'
+import { Upload, FileText, CheckCircle, X, AlertTriangle, Receipt, ShieldCheck, Share2, Mail, MessageCircle, Download, Trash2, Table2, TrendingDown, ChevronDown } from 'lucide-react'
 import { useConfirm } from '../components/ConfirmDialog'
 import toast from 'react-hot-toast'
 
@@ -41,67 +41,92 @@ function ShareButtons({ url, label }: { url: string; label: string }) {
   )
 }
 
-// Slot para subir un documento (invoice o approval) con alerta visual si falta
+// Slot para subir documentos del draw (invoice, approval, Excel)
 function DocSlot({
-  draw, kind, label, icon: Icon, accentColor, projectId,
+  draw, kind, label, icon: Icon, projectId,
 }: {
   draw: Draw
-  kind: 'INVOICE' | 'APPROVAL'
+  kind: 'INVOICE' | 'APPROVAL' | 'EXCEL'
   label: string
   icon: React.FC<{ className?: string }>
-  accentColor: string
   projectId: string
 }) {
   const queryClient = useQueryClient()
   const fileRef = useRef<HTMLInputElement>(null)
-  const url  = kind === 'INVOICE' ? draw.invoiceLenderUrl  : draw.lenderApprovalUrl
-  const name = kind === 'INVOICE' ? draw.invoiceLenderName : draw.lenderApprovalName
+
+  const url  = kind === 'INVOICE' ? draw.invoiceLenderUrl
+             : kind === 'APPROVAL' ? draw.lenderApprovalUrl
+             : draw.lenderExcelUrl
+  const name = kind === 'INVOICE' ? draw.invoiceLenderName
+             : kind === 'APPROVAL' ? draw.lenderApprovalName
+             : draw.lenderExcelName
+
+  const isExcel   = kind === 'EXCEL'
+  const isRequired = kind === 'INVOICE' || kind === 'APPROVAL'
+  const missing   = !url
+
+  const accept = isExcel
+    ? '.xlsx,.xls,.csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    : '.pdf,.jpg,.jpeg,.png,.webp'
+
+  const colors = {
+    INVOICE:  { border: missing ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-200', icon: 'text-amber-600' },
+    APPROVAL: { border: missing ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-200', icon: 'text-emerald-600' },
+    EXCEL:    { border: missing ? 'bg-blue-50 border-blue-200' : 'bg-blue-50 border-blue-300', icon: 'text-blue-600' },
+  }
 
   const uploadMut = useMutation({
     mutationFn: (f: File) => drawsApi.uploadDoc(draw.id, f, kind),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['draws', projectId] }),
+    onSuccess: () => { toast.success('Archivo subido'); queryClient.invalidateQueries({ queryKey: ['draws', projectId] }) },
+    onError: (e: any) => toast.error(e?.response?.data?.error || 'Error al subir'),
   })
   const delMut = useMutation({
     mutationFn: () => drawsApi.deleteDoc(draw.id, kind),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['draws', projectId] }),
   })
 
-  const missing = !url
-
   return (
-    <div className={`rounded-lg border p-3 transition-colors ${missing ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-200'}`}>
+    <div className={`rounded-lg border p-3 transition-colors ${colors[kind].border}`}>
       <div className="flex items-center gap-2 mb-2">
-        <Icon className={`w-3.5 h-3.5 ${accentColor}`} />
+        <Icon className={`w-3.5 h-3.5 ${colors[kind].icon}`} />
         <div className="text-[10px] font-semibold text-slate-600 uppercase tracking-wider flex-1">{label}</div>
-        {missing
-          ? <span className="text-[9px] text-red-600 font-bold flex items-center gap-1"><AlertTriangle className="w-3 h-3" />FALTA</span>
-          : <span className="text-[9px] text-emerald-700 font-bold flex items-center gap-1"><CheckCircle className="w-3 h-3" />OK</span>}
+        {isRequired && (
+          missing
+            ? <span className="text-[9px] text-red-600 font-bold flex items-center gap-1"><AlertTriangle className="w-3 h-3" />FALTA</span>
+            : <span className="text-[9px] text-emerald-700 font-bold flex items-center gap-1"><CheckCircle className="w-3 h-3" />OK</span>
+        )}
+        {!isRequired && url && (
+          <span className="text-[9px] text-blue-700 font-bold flex items-center gap-1"><CheckCircle className="w-3 h-3" />OK</span>
+        )}
       </div>
       {url ? (
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-xs">
-            <FileText className="w-3 h-3 text-slate-400 flex-shrink-0" />
+            {isExcel ? <Table2 className="w-3 h-3 text-blue-400 flex-shrink-0" /> : <FileText className="w-3 h-3 text-slate-400 flex-shrink-0" />}
             <a href={url} target="_blank" rel="noreferrer" className="text-slate-700 hover:text-[#C8922A] truncate">
               {name || 'Documento'}
             </a>
           </div>
           <div className="flex items-center justify-between">
             <ShareButtons url={url} label={`Draw #${draw.drawNumber} — ${label}`} />
-            <button onClick={() => delMut.mutate()}
-              className="text-[10px] text-slate-400 hover:text-red-500">
+            <button onClick={() => delMut.mutate()} disabled={delMut.isPending}
+              className="text-[10px] text-slate-400 hover:text-red-500 disabled:opacity-40">
               Eliminar
             </button>
           </div>
         </div>
       ) : (
         <button onClick={() => fileRef.current?.click()} disabled={uploadMut.isPending}
-          className="w-full flex items-center justify-center gap-2 text-xs text-red-700 border border-dashed border-red-300 px-3 py-2 rounded hover:bg-red-100 transition-colors">
+          className={`w-full flex items-center justify-center gap-2 text-xs border border-dashed px-3 py-2 rounded transition-colors
+            ${isExcel
+              ? 'text-blue-700 border-blue-300 hover:bg-blue-100'
+              : 'text-red-700 border-red-300 hover:bg-red-100'}`}>
           <Upload className="w-3 h-3" />
-          {uploadMut.isPending ? 'Subiendo...' : 'Subir documento'}
+          {uploadMut.isPending ? 'Subiendo...' : isExcel ? 'Subir Excel del lender' : 'Subir documento'}
         </button>
       )}
-      <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" className="hidden"
-        onChange={e => { const f = e.target.files?.[0]; if (f) uploadMut.mutate(f) }} />
+      <input ref={fileRef} type="file" accept={accept} className="hidden"
+        onChange={e => { const f = e.target.files?.[0]; if (f) { uploadMut.mutate(f); e.target.value = '' } }} />
     </div>
   )
 }
@@ -257,14 +282,15 @@ function DrawCard({ draw, projectId, budgetTotal, budgetExecuted, onUpdate, onDe
             </div>
           )}
 
-          {/* Documentos del draw — invoice + lender approval */}
+          {/* Documentos del draw — invoice + lender approval + Excel */}
           <div className="space-y-2">
             <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
               <Share2 className="w-3 h-3" />Documentos del Draw
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              <DocSlot draw={draw} kind="INVOICE" label="Factura entregada al lender" icon={Receipt} accentColor="text-amber-600" projectId={projectId} />
-              <DocSlot draw={draw} kind="APPROVAL" label="Aprobación post-inspección" icon={ShieldCheck} accentColor="text-emerald-600" projectId={projectId} />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              <DocSlot draw={draw} kind="INVOICE"  label="Nuestra factura al lender"  icon={Receipt}    projectId={projectId} />
+              <DocSlot draw={draw} kind="APPROVAL" label="Aprobación del lender"       icon={ShieldCheck} projectId={projectId} />
+              <DocSlot draw={draw} kind="EXCEL"    label="Tabla Excel del lender"      icon={Table2}     projectId={projectId} />
             </div>
           </div>
 
@@ -461,10 +487,16 @@ function PdfParsePanel({ projectId, draws, onClose, onApply }: {
 export default function Draws({ projectId }: { projectId: string }) {
   const queryClient = useQueryClient()
   const [showParse, setShowParse] = useState(false)
+  const [showTimeline, setShowTimeline] = useState(true)
 
   const { data: draws = [], isLoading } = useQuery<Draw[]>({
     queryKey: ['draws', projectId],
     queryFn: () => drawsApi.list(projectId),
+  })
+
+  const { data: project } = useQuery<any>({
+    queryKey: ['project', projectId],
+    queryFn: () => projectsApi.get(projectId),
   })
 
   const { data: budgetLines = [] } = useQuery<BudgetLine[]>({
@@ -474,6 +506,7 @@ export default function Draws({ projectId }: { projectId: string }) {
 
   const budgetTotal = budgetLines.reduce((s, b) => s + (b.valorInicial || 0), 0)
   const budgetExecuted = budgetLines.reduce((s, b) => s + (b.valorEjecutado || 0), 0)
+  const initialHoldback: number = project?.holdback ?? 0
 
   const mutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => drawsApi.patch(id, data),
@@ -538,23 +571,116 @@ export default function Draws({ projectId }: { projectId: string }) {
         </div>
       )}
 
-      <div className="grid grid-cols-3 gap-4">
+      {/* ── KPI row ── */}
+      <div className="grid grid-cols-4 gap-4">
+        <div className="kpi-card">
+          <div className="text-xs text-slate-400 uppercase mb-1">Holdback inicial</div>
+          <div className="text-xl font-bold font-mono text-slate-800">{formatUSD(initialHoldback)}</div>
+          <div className="text-[10px] text-slate-400 mt-1">Según HUD de cierre</div>
+        </div>
         <div className="kpi-card kpi-card-green">
-          <div className="text-xs text-slate-400 uppercase mb-1">Total Desembolsado</div>
-          <div className="text-2xl font-bold font-mono text-emerald-400">{formatUSD(totalWired)}</div>
+          <div className="text-xs text-slate-400 uppercase mb-1">Total desembolsado</div>
+          <div className="text-xl font-bold font-mono text-emerald-400">{formatUSD(totalWired)}</div>
           <div className="text-xs text-slate-400 mt-1">{wiredDraws.length} draw(s) wired</div>
         </div>
         <div className="kpi-card kpi-card-amber">
-          <div className="text-xs text-slate-400 uppercase mb-1">Saldo Holdback</div>
-          <div className={`text-2xl font-bold font-mono ${lastSaldo < 50000 ? 'text-red-400' : lastSaldo < 100000 ? 'text-[#C8922A]' : 'text-slate-900'}`}>
+          <div className="text-xs text-slate-400 uppercase mb-1">Saldo holdback</div>
+          <div className={`text-xl font-bold font-mono ${lastSaldo < 50000 ? 'text-red-400' : lastSaldo < 100000 ? 'text-[#C8922A]' : 'text-slate-900'}`}>
             {formatUSD(lastSaldo)}
+          </div>
+          <div className="text-[10px] text-slate-400 mt-1">
+            {initialHoldback > 0 ? `${((totalWired / initialHoldback) * 100).toFixed(1)}% consumido` : '—'}
           </div>
         </div>
         <div className="kpi-card">
-          <div className="text-xs text-slate-400 uppercase mb-1">Draws Ejecutados</div>
-          <div className="text-2xl font-bold font-mono text-slate-900">{wiredDraws.length} / {draws.length}</div>
+          <div className="text-xs text-slate-400 uppercase mb-1">Draws ejecutados</div>
+          <div className="text-xl font-bold font-mono text-slate-900">{wiredDraws.length} / {draws.filter(d => d.estado !== 'EMPTY').length}</div>
+          <div className="text-[10px] text-slate-400 mt-1">{draws.filter(d => d.estado === 'EMPTY').length} disponibles</div>
         </div>
       </div>
+
+      {/* ── Holdback sequence timeline ── */}
+      {wiredDraws.length > 0 && (
+        <div className="section-card overflow-hidden">
+          <button
+            onClick={() => setShowTimeline(t => !t)}
+            className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 border-b border-slate-200 hover:bg-slate-100 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <TrendingDown className="w-4 h-4 text-[#2D4B52]" />
+              <span className="text-sm font-semibold text-slate-800">Secuencia de holdback draw a draw</span>
+              <span className="text-[10px] text-slate-400 bg-slate-200 px-2 py-0.5 rounded-full">{wiredDraws.length} draws wired</span>
+            </div>
+            <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showTimeline ? '' : '-rotate-90'}`} />
+          </button>
+          {showTimeline && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    <th className="px-4 py-2 text-left text-[10px] text-slate-400 uppercase tracking-wider w-16">Draw</th>
+                    <th className="px-4 py-2 text-left text-[10px] text-slate-400 uppercase tracking-wider">Fecha Wire</th>
+                    <th className="px-4 py-2 text-right text-[10px] text-slate-400 uppercase tracking-wider">Solicitado</th>
+                    <th className="px-4 py-2 text-right text-[10px] text-emerald-600/70 uppercase tracking-wider">Aprobado (Net Wire)</th>
+                    <th className="px-4 py-2 text-right text-[10px] text-[#C8922A]/80 uppercase tracking-wider">Saldo holdback</th>
+                    <th className="px-4 py-2 text-center text-[10px] text-slate-400 uppercase tracking-wider w-20">% Cons.</th>
+                    <th className="px-4 py-2 text-center text-[10px] text-slate-400 uppercase tracking-wider w-24">Docs</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(() => {
+                    let cumulative = 0
+                    return wiredDraws.map((d) => {
+                      cumulative += d.netWire
+                      const saldo = Math.max(0, initialHoldback - cumulative)
+                      const pct = initialHoldback > 0 ? (cumulative / initialHoldback) * 100 : 0
+                      const hasAllDocs = !!(d.invoiceLenderUrl && d.lenderApprovalUrl)
+                      return (
+                        <tr key={d.id} className="border-b border-slate-100 hover:bg-slate-50">
+                          <td className="px-4 py-2.5">
+                            <span className="w-6 h-6 rounded bg-emerald-500/15 text-emerald-600 text-[10px] font-bold flex items-center justify-center">{d.drawNumber}</span>
+                          </td>
+                          <td className="px-4 py-2.5 text-slate-500">{d.fechaWire ? formatDate(d.fechaWire) : '—'}</td>
+                          <td className="px-4 py-2.5 text-right font-mono text-slate-600">{d.montoSolicitado > 0 ? formatUSD(d.montoSolicitado) : '—'}</td>
+                          <td className="px-4 py-2.5 text-right font-mono font-semibold text-emerald-600">{formatUSD(d.netWire)}</td>
+                          <td className="px-4 py-2.5 text-right font-mono font-bold">
+                            <span className={saldo < 50000 ? 'text-red-500' : saldo < 100000 ? 'text-[#C8922A]' : 'text-slate-800'}>
+                              {formatUSD(saldo)}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <div className="flex items-center gap-1.5 justify-center">
+                              <div className="w-12 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                                <div className="h-full bg-[#2D4B52] rounded-full" style={{ width: `${Math.min(pct, 100)}%` }} />
+                              </div>
+                              <span className="text-[10px] font-mono text-slate-500">{pct.toFixed(0)}%</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-2.5 text-center">
+                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${hasAllDocs ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'}`}>
+                              {hasAllDocs ? '✓ OK' : '⚠ FALTA'}
+                            </span>
+                          </td>
+                        </tr>
+                      )
+                    })
+                  })()}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t-2 border-slate-300 bg-slate-50">
+                    <td colSpan={3} className="px-4 py-2.5 text-xs font-bold text-slate-700 uppercase tracking-wider">Total</td>
+                    <td className="px-4 py-2.5 text-right font-mono font-bold text-emerald-600">{formatUSD(totalWired)}</td>
+                    <td className="px-4 py-2.5 text-right font-mono font-bold">
+                      <span className={lastSaldo < 50000 ? 'text-red-500' : 'text-[#C8922A]'}>{formatUSD(lastSaldo)}</span>
+                    </td>
+                    <td colSpan={2} />
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {draws.map(draw => (

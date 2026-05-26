@@ -31,13 +31,13 @@ export const itemsApi = {
 export const drawsApi = {
   list: (projectId: string) => api.get(`/projects/${projectId}/draws`).then(r => r.data.data),
   patch: (id: string, data: Record<string, unknown>) => api.patch(`/draws/${id}`, data).then(r => r.data.data),
-  uploadDoc: (drawId: string, file: File, kind: 'INVOICE' | 'APPROVAL') => {
+  uploadDoc: (drawId: string, file: File, kind: 'INVOICE' | 'APPROVAL' | 'EXCEL') => {
     const fd = new FormData()
     fd.append('file', file)
     fd.append('kind', kind)
     return api.post(`/draws/${drawId}/document`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data.data)
   },
-  deleteDoc: (drawId: string, kind: 'INVOICE' | 'APPROVAL') =>
+  deleteDoc: (drawId: string, kind: 'INVOICE' | 'APPROVAL' | 'EXCEL') =>
     api.delete(`/draws/${drawId}/document/${kind}`).then(r => r.data.data),
   deleteDraw: (drawId: string) =>
     api.delete(`/draws/${drawId}`).then(r => r.data.data),

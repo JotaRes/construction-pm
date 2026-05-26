@@ -13,6 +13,11 @@ const prisma  = new PrismaClient()
 const ALLOWED_MIME = [
   'application/pdf',
   'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic', 'image/heif',
+  // Excel / spreadsheet formats
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.oasis.opendocument.spreadsheet',
+  'text/csv',
 ]
 
 // ── Use memory storage — files go straight to Cloudinary, never touch disk ──
@@ -21,9 +26,28 @@ const upload = multer({
   limits: { fileSize: 50 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     if (ALLOWED_MIME.includes(file.mimetype)) return cb(null, true)
-    cb(new Error(`Tipo de archivo no permitido: ${file.mimetype}. Use PDF, JPG o PNG.`))
+    // Windows sometimes sends generic octet-stream for xlsx — allow it
+    if (file.mimetype === 'application/octet-stream') return cb(null, true)
+    cb(new Error(`Tipo de archivo no permitido: ${file.mimetype}. Use PDF, JPG, PNG o Excel.`))
   },
 })
+
+// ── Auto-recalc saldoHoldback for all draws in a project, sorted by drawNumber ──
+async function recalcHoldback(projectId: string) {
+  const project = await prisma.project.findUnique({ where: { id: projectId }, select: { holdback: true } })
+  const initialHoldback = project?.holdback ?? 0
+  const draws = await prisma.draw.findMany({
+    where: { projectId },
+    orderBy: { drawNumber: 'asc' },
+    select: { id: true, netWire: true },
+  })
+  let cumulative = 0
+  for (const draw of draws) {
+    cumulative += draw.netWire
+    const saldo = Math.max(0, initialHoldback - cumulative)
+    await prisma.draw.update({ where: { id: draw.id }, data: { saldoHoldback: saldo } })
+  }
+}
 
 // Wrapper que mantiene la firma original pero usa el helper compartido
 // que soporta formato US ($45,200.00) y europeo ($45.200,00).
@@ -294,7 +318,11 @@ router.get('/:projectId/draws', async (req: Request, res: Response) => {
 router.patch('/:id', async (req: Request, res: Response) => {
   try {
     const draw = await prisma.draw.update({ where: { id: req.params.id }, data: req.body })
-    res.json({ data: draw, error: null })
+    // Recalculate saldoHoldback for all draws in the project whenever any draw changes
+    await recalcHoldback(draw.projectId)
+    // Re-fetch to return updated saldoHoldback
+    const updated = await prisma.draw.findUnique({ where: { id: draw.id } })
+    res.json({ data: updated, error: null })
   } catch (e) {
     res.status(500).json({ data: null, error: String(e) })
   }
@@ -310,8 +338,8 @@ router.delete('/:id', async (req: Request, res: Response) => {
   }
 })
 
-// ── POST upload draw document (invoice or lender approval) ──────────────────
-// kind = "INVOICE" (factura presentada al lender) | "APPROVAL" (doc devuelto post-inspección)
+// ── POST upload draw document ────────────────────────────────────────────────
+// kind = "INVOICE" | "APPROVAL" | "EXCEL"
 router.post('/:id/document', (req: Request, res: Response) => {
   upload.single('file')(req, res, async (err) => {
     if (err) return res.status(400).json({ data: null, error: String(err) })
@@ -324,6 +352,8 @@ router.post('/:id/document', (req: Request, res: Response) => {
       const data: Record<string, unknown> =
         kind === 'APPROVAL'
           ? { lenderApprovalUrl: fileUrl, lenderApprovalName: req.file.originalname }
+          : kind === 'EXCEL'
+          ? { lenderExcelUrl: fileUrl, lenderExcelName: req.file.originalname }
           : { invoiceLenderUrl: fileUrl, invoiceLenderName: req.file.originalname }
 
       const draw = await prisma.draw.update({ where: { id: req.params.id }, data })
@@ -341,6 +371,8 @@ router.delete('/:id/document/:kind', async (req: Request, res: Response) => {
     const data: Record<string, unknown> =
       kind === 'APPROVAL'
         ? { lenderApprovalUrl: null, lenderApprovalName: null }
+        : kind === 'EXCEL'
+        ? { lenderExcelUrl: null, lenderExcelName: null }
         : { invoiceLenderUrl: null, invoiceLenderName: null }
     const draw = await prisma.draw.update({ where: { id: req.params.id }, data })
     res.json({ data: draw, error: null })

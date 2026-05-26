@@ -157,6 +157,8 @@ model Draw {
   invoiceLenderName   String?
   lenderApprovalUrl   String?   // documento devuelto por el lender DESPUÉS de inspección
   lenderApprovalName  String?
+  lenderExcelUrl      String?   // tabla Excel del lender por draw
+  lenderExcelName     String?
 }
 
 model Partner {

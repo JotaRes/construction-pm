@@ -126,6 +126,8 @@ export interface Draw {
   invoiceLenderName: string | null
   lenderApprovalUrl: string | null
   lenderApprovalName: string | null
+  lenderExcelUrl: string | null
+  lenderExcelName: string | null
 }
 
 export interface Inspection {
