@@ -97,14 +97,20 @@ async function recalcHoldback(projectId: string) {
 }
 
 // ── Trinity draw PDF: line-by-line budget approval extractor ────────────────
-// Trinity's draw report lists every budget item with the cumulative dollar
-// amount approved as of this draw ("Current Amount Available" column). That
-// maps 1:1 to BudgetLine.valorAprobado in the construction budget.
+// Trinity's draw report lists every budget item with three running totals:
+//   - priorAmount             = amount approved in previous draws (cumulative)
+//   - thisInspectionPct       = % approved IN THIS DRAW only (the delta)
+//   - currentAmountAvailable  = priorAmount + thisDraw approvals (new cumulative)
+// We expose all three so the caller can show per-draw deltas and the new
+// running total without re-processing already-approved items.
 export interface DrawLineApproval {
   itemCode: string
   description: string
+  priorAmount: number
   thisInspectionPct: number
   currentAmountAvailable: number
+  /** currentAmountAvailable - priorAmount — money approved ONLY in this draw. */
+  deltaThisDraw: number
 }
 
 // Match a single item row in the Trinity report. The PDF text glues fields
@@ -122,46 +128,79 @@ export function parseTrinityDrawApprovals(text: string): DrawLineApproval[] {
     if (!trimmed) continue
     const m = trimmed.match(TRINITY_ITEM_RE)
     if (!m) continue
+    const priorAmount = parseFloat(m[5].replace(/,/g, ''))
+    const currentAmountAvailable = parseFloat(m[9].replace(/,/g, ''))
     out.push({
       itemCode: m[1],
       description: m[2].trim(),
+      priorAmount,
       thisInspectionPct: parseFloat(m[8]),
-      currentAmountAvailable: parseFloat(m[9].replace(/,/g, '')),
+      currentAmountAvailable,
+      deltaThisDraw: Math.max(0, currentAmountAvailable - priorAmount),
     })
   }
   return out
 }
 
-// Apply parsed approvals to the project's BudgetLines. Only updates lines
-// whose itemCode matches; reports unmatched codes so the caller can surface
-// them. Cumulative semantics: we set valorAprobado = the lender's stated
-// "currentAmountAvailable" which already represents the cumulative approved
-// amount as of this draw.
+// Apply parsed approvals to the project's BudgetLines.
+// Cumulative semantics: valorAprobado is set to currentAmountAvailable (the
+// lender's running total). To honor the user's "no redundancy" rule we only
+// touch lines where this draw actually contributed something — items at 100%
+// from a previous draw whose row Trinity reprints unchanged are left alone.
+//
+// Returns four counters so the caller can distinguish:
+//   - matched           = items in the PDF that have a budget line
+//   - newlyApprovedItems = items where this specific draw added approval
+//   - newlyApprovedAmount = $ added in this draw (sum of deltas)
+//   - cumulativeApproved  = total valorAprobado across the project after applying
 export async function applyDrawApprovalsToBudget(
   projectId: string,
   approvals: DrawLineApproval[],
-): Promise<{ matched: number; updated: number; unmatched: string[] }> {
-  if (!approvals.length) return { matched: 0, updated: 0, unmatched: [] }
+): Promise<{
+  matched: number
+  newlyApprovedItems: number
+  newlyApprovedAmount: number
+  cumulativeApproved: number
+  unmatched: string[]
+}> {
+  if (!approvals.length) {
+    const lines = await prisma.budgetLine.findMany({ where: { projectId }, select: { valorAprobado: true } })
+    return {
+      matched: 0,
+      newlyApprovedItems: 0,
+      newlyApprovedAmount: 0,
+      cumulativeApproved: lines.reduce((s, l) => s + l.valorAprobado, 0),
+      unmatched: [],
+    }
+  }
   const lines = await prisma.budgetLine.findMany({ where: { projectId } })
   const byCode = new Map<string, (typeof lines)[number]>()
   for (const l of lines) byCode.set(l.itemCode, l)
 
   let matched = 0
-  let updated = 0
+  let newlyApprovedItems = 0
+  let newlyApprovedAmount = 0
   const unmatched: string[] = []
   for (const a of approvals) {
     const line = byCode.get(a.itemCode)
     if (!line) { unmatched.push(a.itemCode); continue }
     matched++
+    // Per the lender's methodology, only the rows where this draw actually
+    // approved something are "new" — skip the carryover rows entirely so we
+    // never recount what an earlier draw already approved.
+    if (a.deltaThisDraw <= 0.005) continue
     if (Math.abs(line.valorAprobado - a.currentAmountAvailable) > 0.005) {
       await prisma.budgetLine.update({
         where: { id: line.id },
         data: { valorAprobado: a.currentAmountAvailable },
       })
-      updated++
     }
+    newlyApprovedItems++
+    newlyApprovedAmount += a.deltaThisDraw
   }
-  return { matched, updated, unmatched }
+  const final = await prisma.budgetLine.findMany({ where: { projectId }, select: { valorAprobado: true } })
+  const cumulativeApproved = final.reduce((s, l) => s + l.valorAprobado, 0)
+  return { matched, newlyApprovedItems, newlyApprovedAmount, cumulativeApproved, unmatched }
 }
 
 // Wrapper que mantiene la firma original pero usa el helper compartido
@@ -740,7 +779,7 @@ router.post('/:id/document', (req: Request, res: Response) => {
 
       let extracted: Record<string, unknown> = {}
       let parsedDrawNumber: number | null = null
-      let budgetUpdate: { matched: number; updated: number; unmatched: string[] } | null = null
+      let budgetUpdate: Awaited<ReturnType<typeof applyDrawApprovalsToBudget>> | null = null
 
       // EXCEL slot — extract draw-level fields from the lender spreadsheet.
       // Lender Excel is authoritative, so it OVERWRITES existing values for the

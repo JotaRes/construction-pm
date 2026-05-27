@@ -200,6 +200,7 @@ export interface Project {
   settlementDate: string | null
   cashAtSettlement: number
   closingCosts: number
+  contractSalesPrice: number
   settlementAgent: string | null
   arv: number
   constructionBudget: number
@@ -213,6 +214,7 @@ export interface Project {
   listingCommission: number
   buyerCommission: number
   targetListingPrice: number
+  expectedPricePerSqft: number
   contingencyPct: number
   targetMarginPct: number
   benchmarkSfTarget: number

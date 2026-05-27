@@ -41,7 +41,7 @@ export const drawsApi = {
         data: unknown
         extracted?: Record<string, unknown>
         parsedDrawNumber?: number | null
-        budgetUpdate?: { matched: number; updated: number; unmatched: string[] } | null
+        budgetUpdate?: BudgetUpdateResult | null
         error: string | null
       })
   },
@@ -164,8 +164,18 @@ export const itemDocumentsApi = {
 export interface DrawLineApproval {
   itemCode: string
   description: string
+  priorAmount: number
   thisInspectionPct: number
   currentAmountAvailable: number
+  deltaThisDraw: number
+}
+
+export interface BudgetUpdateResult {
+  matched: number
+  newlyApprovedItems: number
+  newlyApprovedAmount: number
+  cumulativeApproved: number
+  unmatched: string[]
 }
 
 export const drawParseApi = {
@@ -177,7 +187,7 @@ export const drawParseApi = {
   // Apply previously-parsed Trinity approvals to the project's construction budget.
   applyApprovals: (projectId: string, approvals: DrawLineApproval[]) =>
     api.post(`/projects/${projectId}/draws/apply-approvals`, { approvals })
-      .then(r => r.data.data as { matched: number; updated: number; unmatched: string[] }),
+      .then(r => r.data.data as BudgetUpdateResult),
 }
 
 export const docParseApi = {

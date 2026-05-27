@@ -68,6 +68,7 @@ model Project {
   listingCommission Float  @default(0.03)
   buyerCommission  Float   @default(0.03)
   targetListingPrice Float @default(0)
+  expectedPricePerSqft Float @default(0)  // Manual: precio $/sqft esperado para proyecciones
   // Benchmarks
   contingencyPct   Float   @default(0.08)
   targetMarginPct  Float   @default(0.20)

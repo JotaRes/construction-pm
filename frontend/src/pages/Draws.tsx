@@ -91,12 +91,18 @@ function DocSlot({
           toast.success('Excel subido — no se detectaron campos automáticos, complétalos manualmente')
         }
       } else if (kind === 'APPROVAL') {
-        if (budget && budget.matched > 0) {
-          toast.success(`PDF subido — ${budget.matched} items actualizados en Construction Budget (Aprobado)`)
-        } else if (budget && budget.matched === 0 && budget.unmatched.length === 0) {
-          toast.success('PDF subido')
+        if (budget && budget.newlyApprovedItems > 0) {
+          toast.success(
+            `Draw aplicado: +${budget.newlyApprovedItems} item(s) nuevo(s) por ${formatUSD(budget.newlyApprovedAmount)}.\nTotal aprobado del proyecto: ${formatUSD(budget.cumulativeApproved)}`,
+            { duration: 7000 }
+          )
+        } else if (budget && budget.matched > 0) {
+          toast(`PDF subido — sin nuevos items en este draw (todo ya estaba aprobado)`, { icon: 'ℹ️' })
+        } else if (budget && budget.unmatched.length > 0) {
+          toast(`PDF subido — ${budget.unmatched.length} item codes no coinciden con el budget. Verifica que se haya inicializado.`,
+            { duration: 7000, style: { background: '#FEF3C7', color: '#92400E', border: '1px solid #FCD34D' } })
         } else {
-          toast.success('PDF subido — no se detectaron items aprobados, verifica el formato del lender')
+          toast.success('PDF subido')
         }
       } else {
         toast.success('Archivo subido')
@@ -406,8 +412,13 @@ function PdfParsePanel({ projectId, draws, onClose, onApply }: {
     if (approvals.length > 0) {
       try {
         const res = await drawParseApi.applyApprovals(projectId, approvals)
-        if (res.matched > 0) {
-          toast.success(`${res.matched} items actualizados en Construction Budget (Aprobado)`)
+        if (res.newlyApprovedItems > 0) {
+          toast.success(
+            `+${res.newlyApprovedItems} item(s) nuevo(s) por ${formatUSD(res.newlyApprovedAmount)}.\nTotal aprobado: ${formatUSD(res.cumulativeApproved)}`,
+            { duration: 7000 }
+          )
+        } else if (res.matched > 0) {
+          toast(`Sin nuevos items en este draw — todo ya estaba aprobado.`, { icon: 'ℹ️' })
         }
         queryClient.invalidateQueries({ queryKey: ['construction-budget', projectId] })
       } catch (e) {
@@ -510,39 +521,63 @@ function PdfParsePanel({ projectId, draws, onClose, onApply }: {
                 )}
               </div>
 
-              {/* Line-level approvals preview — only present when parsing a Trinity draw PDF */}
-              {approvals.length > 0 && (
-                <div className="bg-emerald-50/60 border border-emerald-200 rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <CheckCircle className="w-4 h-4 text-emerald-600" />
-                    <span className="text-xs font-semibold text-slate-700">
-                      {approvals.length} items aprobados — se actualizarán en Construction Budget
-                    </span>
+              {/* Line-level approvals preview — only present when parsing a Trinity draw PDF.
+                  Per the lender's methodology, every draw report reprints the full item list
+                  with the cumulative state. We split into "this draw" (newly approved here)
+                  vs "carryover" (already approved in previous draws) so the user can see
+                  exactly what this draw added without re-counting old work. */}
+              {(() => {
+                const newItems = approvals.filter(a => a.deltaThisDraw > 0)
+                const carryover = approvals.filter(a => a.deltaThisDraw <= 0 && a.currentAmountAvailable > 0)
+                const newTotal = newItems.reduce((s, a) => s + a.deltaThisDraw, 0)
+                const carryTotal = carryover.reduce((s, a) => s + a.currentAmountAvailable, 0)
+                if (approvals.length === 0) return null
+                return (
+                  <div className="bg-emerald-50/60 border border-emerald-200 rounded-xl p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 text-emerald-600" />
+                        <span className="text-xs font-semibold text-slate-700">
+                          {newItems.length > 0
+                            ? `+${newItems.length} item(s) nuevo(s) en este draw — ${formatUSD(newTotal)}`
+                            : 'Sin items nuevos en este draw'}
+                        </span>
+                      </div>
+                      {carryover.length > 0 && (
+                        <span className="text-[10px] text-slate-500">
+                          ({carryover.length} previos · {formatUSD(carryTotal)} ya en budget)
+                        </span>
+                      )}
+                    </div>
+                    {newItems.length > 0 && (
+                      <div className="max-h-40 overflow-y-auto">
+                        <table className="w-full text-[11px]">
+                          <thead className="sticky top-0 bg-emerald-50">
+                            <tr className="text-left text-slate-400 uppercase tracking-wider text-[9px]">
+                              <th className="py-1 pr-2 w-12">Item</th>
+                              <th className="py-1 pr-2">Descripción</th>
+                              <th className="py-1 px-2 text-right w-14">% nuevo</th>
+                              <th className="py-1 px-2 text-right w-20">∆ este draw</th>
+                              <th className="py-1 pl-2 text-right w-24">Cumulativo</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {newItems.map((a) => (
+                              <tr key={a.itemCode} className="border-t border-emerald-100">
+                                <td className="py-1 pr-2 font-mono text-slate-600">{a.itemCode}</td>
+                                <td className="py-1 pr-2 text-slate-700 truncate max-w-[160px]">{a.description}</td>
+                                <td className="py-1 px-2 text-right font-mono text-slate-500">{a.thisInspectionPct.toFixed(0)}%</td>
+                                <td className="py-1 px-2 text-right font-mono text-emerald-700 font-bold">+{formatUSD(a.deltaThisDraw)}</td>
+                                <td className="py-1 pl-2 text-right font-mono text-slate-500">{formatUSD(a.currentAmountAvailable)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
-                  <div className="max-h-40 overflow-y-auto">
-                    <table className="w-full text-[11px]">
-                      <thead className="sticky top-0 bg-emerald-50">
-                        <tr className="text-left text-slate-400 uppercase tracking-wider text-[9px]">
-                          <th className="py-1 pr-2 w-12">Item</th>
-                          <th className="py-1 pr-2">Descripción</th>
-                          <th className="py-1 px-2 text-right w-14">% Esta insp.</th>
-                          <th className="py-1 pl-2 text-right w-24">Cum. Aprobado</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {approvals.map((a) => (
-                          <tr key={a.itemCode} className="border-t border-emerald-100">
-                            <td className="py-1 pr-2 font-mono text-slate-600">{a.itemCode}</td>
-                            <td className="py-1 pr-2 text-slate-700 truncate max-w-[180px]">{a.description}</td>
-                            <td className="py-1 px-2 text-right font-mono text-slate-500">{a.thisInspectionPct.toFixed(0)}%</td>
-                            <td className="py-1 pl-2 text-right font-mono text-emerald-700 font-semibold">{formatUSD(a.currentAmountAvailable)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
+                )
+              })()}
 
               <div>
                 <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-2">Aplicar al draw</div>

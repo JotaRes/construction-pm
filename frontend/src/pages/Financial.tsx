@@ -289,6 +289,276 @@ function DocStatus({ label, icon: Icon, url, name, onUpload }: {
   )
 }
 
+// ── Sales projections ────────────────────────────────────────────────────────
+// Computes optimistic / conservative / pessimistic exit scenarios using the
+// real project state as inputs: heated sqft, current UPB, daily rate, time to
+// projected sale, construction budget, closing costs and realtor commissions.
+//
+// Director Constructivo perspective: net profit and ROI must factor in the
+// CARRYING COST of the loan from today until the projected sale date, not
+// just the snapshot interest accrued so far. Sale price drives realtor fees
+// and is the only knob the user controls, so we expose it as $/sqft and run
+// ±10% bands around it for the three scenarios.
+interface SalesProjectionInputs {
+  pricePerSqft: number       // user-controlled
+  sfHeated: number
+  upb: number
+  dailyRate: number
+  interestSoFar: number
+  constructionBudget: number
+  closingCosts: number
+  commissionPct: number      // listing + buyer
+  cashInvested: number       // out-of-pocket equity (cash at settlement + closing)
+  daysToSale: number         // from today to projected sale
+}
+interface ScenarioResult {
+  label: string
+  bandPct: number            // e.g. -0.10, 0, +0.10
+  pricePerSqft: number
+  saleValue: number
+  realtorFees: number
+  carryingInterest: number   // interest from today → sale date
+  totalCost: number          // construction + closing + interest (cum + future) + realtor
+  netProfit: number
+  roi: number                // net / cash invested
+  margin: number             // net / sale value
+}
+
+function computeScenario(label: string, bandPct: number, i: SalesProjectionInputs): ScenarioResult {
+  const adjustedPpsf = Math.max(0, i.pricePerSqft * (1 + bandPct))
+  const saleValue = adjustedPpsf * i.sfHeated
+  const realtorFees = saleValue * i.commissionPct
+  const carryingInterest = i.upb * i.dailyRate * i.daysToSale
+  const totalInterest = i.interestSoFar + carryingInterest
+  const totalCost = i.constructionBudget + i.closingCosts + totalInterest + realtorFees
+  const netProfit = saleValue - totalCost
+  const roi = i.cashInvested > 0 ? (netProfit / i.cashInvested) * 100 : 0
+  const margin = saleValue > 0 ? (netProfit / saleValue) * 100 : 0
+  return { label, bandPct, pricePerSqft: adjustedPpsf, saleValue, realtorFees, carryingInterest, totalCost, netProfit, roi, margin }
+}
+
+function breakevenPricePerSqft(i: SalesProjectionInputs): number {
+  // Solve: salePrice × (1 - commission) = construction + closing + cumInterest + futureInterest
+  // breakevenSale = fixedCosts / (1 - commission); ppsf = breakevenSale / sfHeated
+  const fixedCosts = i.constructionBudget + i.closingCosts + i.interestSoFar + (i.upb * i.dailyRate * i.daysToSale)
+  if (i.sfHeated <= 0) return 0
+  const denom = Math.max(0.001, 1 - i.commissionPct)
+  const breakevenSale = fixedCosts / denom
+  return breakevenSale / i.sfHeated
+}
+
+function ScenarioCard({ s, breakeven, accent }: { s: ScenarioResult; breakeven: number; accent: 'pessimist' | 'base' | 'optimist' }) {
+  const profitable = s.netProfit > 0
+  const beatsBreakeven = s.pricePerSqft >= breakeven
+  const accentBg = accent === 'optimist' ? 'from-emerald-50 to-white border-emerald-200'
+    : accent === 'pessimist' ? 'from-red-50 to-white border-red-200'
+    : 'from-slate-50 to-white border-slate-200'
+  const accentLabel = accent === 'optimist' ? 'text-emerald-700' : accent === 'pessimist' ? 'text-red-700' : 'text-slate-700'
+  return (
+    <div className={`rounded-xl border bg-gradient-to-b ${accentBg} p-4 space-y-2`}>
+      <div className="flex items-center justify-between">
+        <div>
+          <div className={`text-[10px] uppercase font-bold tracking-wider ${accentLabel}`}>{s.label}</div>
+          <div className="text-[10px] text-slate-500">{s.bandPct === 0 ? 'precio base' : `${(s.bandPct * 100).toFixed(0)}% vs base`}</div>
+        </div>
+        <div className="text-right">
+          <div className="text-[10px] text-slate-400 uppercase">$/sqft</div>
+          <div className="font-mono font-bold text-sm text-slate-800">${s.pricePerSqft.toFixed(0)}</div>
+        </div>
+      </div>
+      <div className="border-t border-slate-200/60 pt-2 space-y-1">
+        <div className="flex items-center justify-between text-[11px]">
+          <span className="text-slate-500">Sale value</span>
+          <span className="font-mono font-bold text-slate-800">{formatUSD(s.saleValue)}</span>
+        </div>
+        <div className="flex items-center justify-between text-[11px]">
+          <span className="text-slate-500">− Realtor fees</span>
+          <span className="font-mono text-slate-700">−{formatUSD(s.realtorFees)}</span>
+        </div>
+        <div className="flex items-center justify-between text-[11px]">
+          <span className="text-slate-500">− Carrying interest hasta venta</span>
+          <span className="font-mono text-slate-700">−{formatUSD(s.carryingInterest)}</span>
+        </div>
+        <div className="flex items-center justify-between text-[11px]">
+          <span className="text-slate-500">− Costos totales (acumulado)</span>
+          <span className="font-mono text-slate-700">{formatUSD(s.totalCost)}</span>
+        </div>
+      </div>
+      <div className="border-t border-slate-300 pt-2">
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] font-semibold text-slate-700">NET PROFIT</span>
+          <span className={`font-mono text-base font-bold ${profitable ? 'text-emerald-600' : 'text-red-600'}`}>
+            {formatUSD(s.netProfit)}
+          </span>
+        </div>
+        <div className="grid grid-cols-2 gap-2 mt-1">
+          <div className="text-[10px] text-slate-500">
+            ROI cash: <span className={`font-mono font-bold ${s.roi > 15 ? 'text-emerald-600' : s.roi > 0 ? 'text-slate-700' : 'text-red-600'}`}>{s.roi.toFixed(1)}%</span>
+          </div>
+          <div className="text-[10px] text-slate-500 text-right">
+            Margen: <span className={`font-mono font-bold ${s.margin > 15 ? 'text-emerald-600' : s.margin > 0 ? 'text-slate-700' : 'text-red-600'}`}>{s.margin.toFixed(1)}%</span>
+          </div>
+        </div>
+        {!beatsBreakeven && (
+          <div className="mt-1 text-[10px] text-red-600 flex items-center gap-1">
+            <AlertTriangle className="w-3 h-3" />Bajo breakeven (${breakeven.toFixed(0)}/sqft)
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function SalesProjections({ project, upb, dailyRate, interestSoFar, commissions, projectId }: {
+  project: Project
+  upb: number
+  dailyRate: number
+  interestSoFar: number
+  commissions: number  // unused here but kept for signature
+  projectId: string
+}) {
+  const queryClient = useQueryClient()
+  // Bootstrap manual input from saved value, falling back to ARV/sfHeated, then $0
+  const initialPpsf = project.expectedPricePerSqft && project.expectedPricePerSqft > 0
+    ? project.expectedPricePerSqft
+    : (project.sfHeated > 0 && project.arv > 0 ? Math.round(project.arv / project.sfHeated) : 0)
+  const [pricePerSqft, setPricePerSqft] = useState<number>(initialPpsf)
+  void commissions
+
+  // Compute days from today to expected sale.
+  //   - if targetCompletionDate set: assume +60 days for sale process after completion
+  //   - else if settlementDate + loanTerm in future: assume sale at loan maturity
+  //   - else fallback to 180 days
+  const today = new Date()
+  let daysToSale = 180
+  if (project.targetCompletionDate) {
+    const targetSale = new Date(new Date(project.targetCompletionDate).getTime() + 60 * 86400000)
+    daysToSale = Math.max(30, Math.ceil((targetSale.getTime() - today.getTime()) / 86400000))
+  } else if (project.settlementDate) {
+    const maturity = new Date(new Date(project.settlementDate).getTime() + project.loanTermMonths * 30 * 86400000)
+    if (maturity.getTime() > today.getTime()) {
+      daysToSale = Math.ceil((maturity.getTime() - today.getTime()) / 86400000)
+    }
+  }
+
+  const commissionPct = (project.listingCommission ?? 0) + (project.buyerCommission ?? 0)
+  const cashInvested = (project.cashAtSettlement ?? 0) + (project.closingCosts ?? 0)
+
+  const inputs: SalesProjectionInputs = {
+    pricePerSqft,
+    sfHeated: project.sfHeated || 0,
+    upb,
+    dailyRate,
+    interestSoFar,
+    constructionBudget: project.constructionBudget || 0,
+    closingCosts: project.closingCosts || 0,
+    commissionPct,
+    cashInvested,
+    daysToSale,
+  }
+
+  const scenarios = [
+    computeScenario('Pesimista', -0.10, inputs),
+    computeScenario('Conservador', 0, inputs),
+    computeScenario('Optimista', +0.10, inputs),
+  ]
+  const breakeven = breakevenPricePerSqft(inputs)
+
+  const savePpsf = useMutation({
+    mutationFn: (v: number) => projectsApi.patch(projectId, { expectedPricePerSqft: v }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['project', projectId] }),
+  })
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-[#C8922A]" />
+            Proyecciones de Venta — Escenarios de salida
+          </h2>
+          <p className="text-[11px] text-slate-500 mt-0.5">
+            Análisis financiero integral: incluye intereses acumulados, intereses futuros hasta la venta proyectada,
+            comisiones de realtor, costos de construcción y de cierre. Ajusta el $/sqft esperado para ver impacto en utilidad.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-[10px] text-slate-500 uppercase tracking-wider">Precio esperado $/sqft</label>
+          <div className="flex items-center bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5">
+            <span className="text-slate-400 text-sm">$</span>
+            <input
+              type="number"
+              value={pricePerSqft || ''}
+              onChange={e => setPricePerSqft(Math.max(0, parseFloat(e.target.value) || 0))}
+              onBlur={() => { if (pricePerSqft !== project.expectedPricePerSqft) savePpsf.mutate(pricePerSqft) }}
+              placeholder="0"
+              className="w-24 bg-transparent text-right font-mono text-sm text-slate-800 focus:outline-none"
+            />
+            <span className="text-slate-400 text-xs ml-1">/sqft</span>
+          </div>
+        </div>
+      </div>
+
+      {project.sfHeated === 0 ? (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-xs text-amber-800 flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4" />Define los SF Heated del proyecto para que los cálculos sean precisos.
+        </div>
+      ) : pricePerSqft === 0 ? (
+        <div className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-6 text-xs text-slate-500 text-center">
+          Ingresa un precio esperado por sqft arriba para ver las proyecciones.
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <ScenarioCard s={scenarios[0]} breakeven={breakeven} accent="pessimist" />
+            <ScenarioCard s={scenarios[1]} breakeven={breakeven} accent="base" />
+            <ScenarioCard s={scenarios[2]} breakeven={breakeven} accent="optimist" />
+          </div>
+
+          {/* Diagnostic strip: inputs that drive the scenarios */}
+          <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 grid grid-cols-2 md:grid-cols-5 gap-3 text-[10px]">
+            <div>
+              <div className="text-slate-400 uppercase">SF Heated</div>
+              <div className="font-mono font-bold text-slate-700">{project.sfHeated} sf</div>
+            </div>
+            <div>
+              <div className="text-slate-400 uppercase">Días a venta proyectada</div>
+              <div className="font-mono font-bold text-slate-700">{daysToSale}d</div>
+            </div>
+            <div>
+              <div className="text-slate-400 uppercase">UPB hoy</div>
+              <div className="font-mono font-bold text-slate-700">{formatUSD(upb)}</div>
+            </div>
+            <div>
+              <div className="text-slate-400 uppercase">Comisiones</div>
+              <div className="font-mono font-bold text-slate-700">{(commissionPct * 100).toFixed(1)}%</div>
+            </div>
+            <div>
+              <div className="text-slate-400 uppercase">Breakeven $/sqft</div>
+              <div className="font-mono font-bold text-[#C8922A]">${breakeven.toFixed(0)}</div>
+            </div>
+          </div>
+
+          {/* Director-level read */}
+          <div className="bg-[#2D4B52]/5 border border-[#2D4B52]/15 rounded-lg p-3 text-[11px] text-slate-700">
+            <strong className="text-[#2D4B52]">Lectura del director: </strong>
+            {scenarios[0].netProfit > 0 ? (
+              <>Incluso en el escenario pesimista (${scenarios[0].pricePerSqft.toFixed(0)}/sqft) el proyecto deja {formatUSD(scenarios[0].netProfit)} —
+              la decisión es de timing, no de viabilidad.</>
+            ) : scenarios[1].netProfit > 0 ? (
+              <>El escenario conservador da {formatUSD(scenarios[1].netProfit)} pero el pesimista entra en pérdida.
+              Cualquier retraso o caída de mercado quema utilidad — vigila tiempo y costos.</>
+            ) : (
+              <>Incluso el escenario conservador da pérdida. Necesitas vender por encima de ${breakeven.toFixed(0)}/sqft para cubrir costos —
+              o reducir construction budget / cerrar más rápido para bajar el interest carrying.</>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 export default function Financial({ projectId }: { projectId: string }) {
   const queryClient = useQueryClient()
   const [activePanel, setActivePanel] = useState<ParsePanelConfig | null>(null)
@@ -505,6 +775,16 @@ export default function Financial({ projectId }: { projectId: string }) {
           </div>
         </div>
       </div>
+
+      {/* Sales projections — 3 escenarios + breakeven */}
+      <SalesProjections
+        project={project}
+        upb={upb}
+        dailyRate={dailyRate}
+        interestSoFar={interestSoFar}
+        commissions={commissions}
+        projectId={projectId}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Loan */}
