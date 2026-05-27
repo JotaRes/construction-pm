@@ -48,6 +48,7 @@ model Project {
   settlementDate   DateTime?
   cashAtSettlement Float   @default(0)
   closingCosts     Float   @default(0)
+  contractSalesPrice Float @default(0)
   settlementAgent  String?
   // Valuation
   arv              Float   @default(0)

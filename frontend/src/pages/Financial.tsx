@@ -57,6 +57,7 @@ const HUD_LABELS: Record<string, string> = {
   interestRate: 'Tasa de Interés',
   loanTermMonths: 'Plazo (meses)',
   contractSalesPrice: 'Precio de compra',
+  holdback: 'Holdback (construction funds)',
 }
 
 const LOAN_LABELS: Record<string, string> = {
@@ -93,7 +94,7 @@ const HUD_CFG: ParsePanelConfig = {
   title: 'Cargar HUD-1 / Closing Disclosure',
   subtitle: 'Extrae automáticamente los datos del cierre del préstamo',
   docType: 'HUD',
-  applyFields: ['settlementDate', 'loanAmount', 'cashAtSettlement', 'closingCosts', 'interestRate', 'loanTermMonths', 'contractSalesPrice'],
+  applyFields: ['settlementDate', 'loanAmount', 'cashAtSettlement', 'closingCosts', 'interestRate', 'loanTermMonths', 'contractSalesPrice', 'holdback'],
   labels: HUD_LABELS,
   urlKey: 'hudUrl', nameKey: 'hudName',
 }

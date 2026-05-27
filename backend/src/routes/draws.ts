@@ -505,36 +505,61 @@ function parseHUDText(text: string): Record<string, unknown> {
     t.match(new RegExp(`date\\s*issued\\s*:?\\s*${dp}`, 'i'))
   if (settleDate) result.settlementDate = normalizeDate(settleDate[1])
 
-  // Contract sales price — HUD-1 line 101: "Contract sales price$33,000.00" (no space before $)
+  // ── Contract sales price — HUD-1 line 101 ────────────────────────────────
+  // The amount MUST appear before the next numbered line (102.) on the same row,
+  // otherwise line 101 was left blank (e.g. refinance HUD with no sale) and we
+  // were previously capturing "102" from "102. Personal property" as the price.
+  // Anchor on the `$` to guarantee we matched a real dollar amount.
   const salesPrice =
-    t.match(/\b101\.\s*contract\s*sales?\s*price\s*\$?([\d,]+\.?\d*)/i) ??
-    t.match(new RegExp(`contract\\s*sales?\\s*price\\s*:?\\s*${mp}`, 'i')) ??
-    t.match(new RegExp(`(?:purchase|sale)\\s*price\\s*:?\\s*${mp}`, 'i'))
+    t.match(/\b101\.\s*contract\s*sales?\s*price\s*\$([\d,]+\.\d{2})/i) ??
+    t.match(/contract\s*sales?\s*price[^$\n]{0,40}\$([\d,]+\.\d{2})/i) ??
+    t.match(/(?:purchase|sale)\s*price[^$\n]{0,40}\$([\d,]+\.\d{2})/i)
   if (salesPrice) result.contractSalesPrice = parseMoney(salesPrice[1])
 
-  // Cash at settlement — HUD-1 line 303: "303. Cash   $34,932.25"
+  // ── Cash at settlement — HUD-1 line 303 ──────────────────────────────────
   const cash =
-    t.match(/\b303\.\s*cash\s*\$?([\d,]+\.?\d*)/i) ??
-    t.match(new RegExp(`cash\\s*(?:at|to|from)?\\s*(?:close|settlement|borrower)\\s*:?\\s*${mp}`, 'i')) ??
-    t.match(new RegExp(`cash\\s*to\\s*close\\s*:?\\s*${mp}`, 'i'))
+    t.match(/\b303\.\s*cash[^$\n]{0,40}\$([\d,]+\.\d{2})/i) ??
+    t.match(/cash\s*(?:at|to|from)?\s*(?:close|settlement|borrower)[^$\n]{0,30}\$([\d,]+\.\d{2})/i) ??
+    t.match(/cash\s*to\s*close[^$\n]{0,30}\$([\d,]+\.\d{2})/i)
   if (cash) result.cashAtSettlement = parseMoney(cash[1])
 
-  // Settlement charges — HUD-1 line 103: "Settlement charges to borrower (line 1400)$2,158.80"
-  // Use [^$]* to skip "(line 1400)" which contains digits before the real dollar amount
+  // ── Settlement charges — HUD-1 line 103 / 1400 ──────────────────────────
   const closing =
     t.match(/\b103\.\s*settlement\s+charges?\s+to\s+borrower[^$]*\$([\d,]+\.?\d*)/i) ??
     t.match(/\b1400\.\s*total\s+settlement\s+charges?[^$]*\$([\d,]+\.?\d*)/i) ??
     t.match(new RegExp(`(?:total\\s*)?closing\\s*costs?\\s*(?:\\([A-Z]\\)\\s*)?:?\\s*${mp}`, 'i'))
   if (closing) result.closingCosts = parseMoney(closing[1])
 
-  // Loan amount (construction loan HUD only)
-  const loanAmt = t.match(new RegExp(`loan\\s*amount\\s*:?\\s*${mp}`, 'i'))
-  if (loanAmt) result.loanAmount = parseMoney(loanAmt[1])
+  // ── Loan amount — HUD-1 line 202 ("Principal amount of new loan(s)$402,350")
+  //    or "Loan amount" / "Principal amount" elsewhere. Anchor on `$` to avoid
+  //    capturing line numbers when the field is blank. Reject < $1,000 to skip
+  //    fees and line-charge fragments that look syntactically similar.
+  const loanAmt =
+    t.match(/\b202\.\s*principal\s+amount\s+of\s+new\s+loan[^$]*\$([\d,]+\.?\d*)/i) ??
+    t.match(/principal\s+amount\s+of\s+new\s+loan[^$\n]{0,40}\$([\d,]+\.\d{2})/i) ??
+    t.match(/\bloan\s*amount[^$\n]{0,30}\$([\d,]+\.\d{2})/i) ??
+    t.match(/principal\s+amount[^$\n]{0,30}\$([\d,]+\.\d{2})/i)
+  if (loanAmt) {
+    const v = parseMoney(loanAmt[1])
+    if (v >= 1000) result.loanAmount = v
+  }
 
-  // Interest rate and loan term (construction loan only)
+  // ── Holdback / remaining construction funds — HUD-1 line 109 ────────────
+  //    "109. Remaining construction funds$395,350.00" or similar wording.
+  const holdback =
+    t.match(/\b109\.\s*remaining\s+construc(?:tion|\s*on)\s+funds[^$]*\$([\d,]+\.\d{2})/i) ??
+    t.match(/remaining\s+construc(?:tion|\s*on)\s+funds[^$\n]{0,30}\$([\d,]+\.\d{2})/i) ??
+    t.match(/(?:construction\s+)?holdback[^$\n]{0,30}\$([\d,]+\.\d{2})/i)
+  if (holdback) {
+    const v = parseMoney(holdback[1])
+    if (v >= 1000) result.holdback = v
+  }
+
+  // ── Interest rate (rarely on HUD; usually on Closing Disclosure) ────────
   const rate = t.match(/interest\s*rate\s*:?\s*(\d+\.?\d*)\s*%/i)
   if (rate) result.interestRate = parseFloat(rate[1]) / 100
 
+  // ── Loan term ───────────────────────────────────────────────────────────
   const term = t.match(/loan\s*term\s*:?\s*(\d+)\s*(?:months?|mo\.?|years?|yr\.?)/i)
   if (term) {
     const n = parseInt(term[1])
