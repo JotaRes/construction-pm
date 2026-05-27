@@ -310,11 +310,19 @@ export default function Financial({ projectId }: { projectId: string }) {
   if (loadingP || !project) return <div className="text-slate-500 text-sm animate-pulse">Cargando modelo financiero...</div>
 
   const today = new Date()
-  const wiredDraws = draws.filter(d => d.estado === 'WIRED')
-  const totalDrawn = wiredDraws.reduce((s, d) => s + d.netWire, 0)
+  // Count every draw that actually moved money (netWire > 0), regardless of
+  // whether the user has flipped its estado from PENDING to WIRED — netWire
+  // is what's already left the lender, and that's what accrues interest.
+  const disbursedDraws = draws.filter(d => d.netWire > 0 && d.estado !== 'EMPTY')
+  const totalDrawn = disbursedDraws.reduce((s, d) => s + d.netWire, 0)
   const upb = totalDrawn
 
-  const startDate = project.startDate ? new Date(project.startDate) : new Date()
+  // startDate falls back to settlementDate (loan funding date) when the
+  // construction start hasn't been entered yet — so the dashboard begins
+  // showing real numbers as soon as the HUD is uploaded.
+  const startDate = project.startDate ? new Date(project.startDate)
+    : project.settlementDate ? new Date(project.settlementDate)
+    : new Date()
   const diasDesde = Math.max(0, Math.ceil((today.getTime() - startDate.getTime()) / 86400000))
   const dailyRate = project.interestRate / 365
   const interestSoFar = upb * dailyRate * diasDesde
