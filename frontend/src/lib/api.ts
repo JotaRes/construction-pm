@@ -35,12 +35,13 @@ export const drawsApi = {
     const fd = new FormData()
     fd.append('file', file)
     fd.append('kind', kind)
-    // Return the full envelope so callers can read `extracted` and `parsedDrawNumber` alongside the draw.
+    // Return the full envelope so callers can read extracted/parsedDrawNumber/budgetUpdate.
     return api.post(`/draws/${drawId}/document`, fd, { headers: { 'Content-Type': 'multipart/form-data' } })
       .then(r => r.data as {
         data: unknown
         extracted?: Record<string, unknown>
         parsedDrawNumber?: number | null
+        budgetUpdate?: { matched: number; updated: number; unmatched: string[] } | null
         error: string | null
       })
   },
@@ -160,12 +161,23 @@ export const itemDocumentsApi = {
   delete: (itemId: string, docId: string) => api.delete(`/items/${itemId}/documents/${docId}`).then(r => r.data.data),
 }
 
+export interface DrawLineApproval {
+  itemCode: string
+  description: string
+  thisInspectionPct: number
+  currentAmountAvailable: number
+}
+
 export const drawParseApi = {
   parsePdf: (projectId: string, file: File) => {
     const fd = new FormData()
     fd.append('pdf', file)
     return api.post(`/projects/${projectId}/draws/parse-pdf`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data.data)
   },
+  // Apply previously-parsed Trinity approvals to the project's construction budget.
+  applyApprovals: (projectId: string, approvals: DrawLineApproval[]) =>
+    api.post(`/projects/${projectId}/draws/apply-approvals`, { approvals })
+      .then(r => r.data.data as { matched: number; updated: number; unmatched: string[] }),
 }
 
 export const docParseApi = {

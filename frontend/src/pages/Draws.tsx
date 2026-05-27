@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { drawsApi, drawParseApi, constructionBudgetApi, projectsApi } from '../lib/api'
+import { drawsApi, drawParseApi, constructionBudgetApi, projectsApi, type DrawLineApproval } from '../lib/api'
 import { formatUSD, formatDate } from '../lib/calculations'
 import type { Draw, DrawEstado } from '../lib/types'
 import { Upload, FileText, CheckCircle, X, AlertTriangle, Receipt, ShieldCheck, Share2, Mail, MessageCircle, Download, Trash2, Table2, TrendingDown, ChevronDown } from 'lucide-react'
@@ -80,6 +80,7 @@ function DocSlot({
     onSuccess: (result) => {
       const extractedCount = result?.extracted ? Object.keys(result.extracted).length : 0
       const parsedDrawN = result?.parsedDrawNumber
+      const budget = result?.budgetUpdate
       if (kind === 'EXCEL') {
         if (parsedDrawN && parsedDrawN !== draw.drawNumber) {
           toast(`⚠ El Excel pertenece a Draw #${parsedDrawN} pero lo subiste al Draw #${draw.drawNumber}. Verifica antes de guardar.`,
@@ -89,10 +90,19 @@ function DocSlot({
         } else {
           toast.success('Excel subido — no se detectaron campos automáticos, complétalos manualmente')
         }
+      } else if (kind === 'APPROVAL') {
+        if (budget && budget.matched > 0) {
+          toast.success(`PDF subido — ${budget.matched} items actualizados en Construction Budget (Aprobado)`)
+        } else if (budget && budget.matched === 0 && budget.unmatched.length === 0) {
+          toast.success('PDF subido')
+        } else {
+          toast.success('PDF subido — no se detectaron items aprobados, verifica el formato del lender')
+        }
       } else {
         toast.success('Archivo subido')
       }
       queryClient.invalidateQueries({ queryKey: ['draws', projectId] })
+      if (kind === 'APPROVAL') queryClient.invalidateQueries({ queryKey: ['construction-budget', projectId] })
     },
     onError: (e: any) => toast.error(e?.response?.data?.error || 'Error al subir'),
   })
@@ -348,11 +358,13 @@ function PdfParsePanel({ projectId, draws, onClose, onApply }: {
   onClose: () => void
   onApply: (drawId: string, data: Record<string, unknown>) => void
 }) {
+  const queryClient = useQueryClient()
   const [file, setFile] = useState<File | null>(null)
   const [parsed, setParsed] = useState<Record<string, unknown> | null>(null)
   const [preview, setPreview] = useState('')
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [isExcelResult, setIsExcelResult] = useState(false)
+  const [approvals, setApprovals] = useState<DrawLineApproval[]>([])
   const [loading, setLoading] = useState(false)
   const [targetDraw, setTargetDraw] = useState<string>('')
   const [error, setError] = useState('')
@@ -368,6 +380,7 @@ function PdfParsePanel({ projectId, draws, onClose, onApply }: {
       setPreview(result.preview ?? '')
       setImageUrl(result.imageUrl ?? null)
       setIsExcelResult(!!result.isExcel)
+      setApprovals(Array.isArray(result.approvals) ? result.approvals : [])
       if (result.parsed.drawNumber) {
         const match = draws.find(d => d.drawNumber === result.parsed.drawNumber)
         if (match) setTargetDraw(match.id)
@@ -379,7 +392,7 @@ function PdfParsePanel({ projectId, draws, onClose, onApply }: {
     }
   }
 
-  const handleApply = () => {
+  const handleApply = async () => {
     if (!parsed || !targetDraw) return
     const cleanData: Record<string, unknown> = {}
     const fields = ['montoSolicitado','elegibleTrinity','netWire','porcentajeFunded',
@@ -389,6 +402,18 @@ function PdfParsePanel({ projectId, draws, onClose, onApply }: {
     // Activate the draw (move out of EMPTY state)
     cleanData.estado = 'PENDING'
     onApply(targetDraw, cleanData)
+    // If the PDF carried line-level approvals (Trinity report), update the construction budget.
+    if (approvals.length > 0) {
+      try {
+        const res = await drawParseApi.applyApprovals(projectId, approvals)
+        if (res.matched > 0) {
+          toast.success(`${res.matched} items actualizados en Construction Budget (Aprobado)`)
+        }
+        queryClient.invalidateQueries({ queryKey: ['construction-budget', projectId] })
+      } catch (e) {
+        console.warn('Budget approvals apply failed', e)
+      }
+    }
     onClose()
   }
 
@@ -484,6 +509,40 @@ function PdfParsePanel({ projectId, draws, onClose, onApply }: {
                   </div>
                 )}
               </div>
+
+              {/* Line-level approvals preview — only present when parsing a Trinity draw PDF */}
+              {approvals.length > 0 && (
+                <div className="bg-emerald-50/60 border border-emerald-200 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CheckCircle className="w-4 h-4 text-emerald-600" />
+                    <span className="text-xs font-semibold text-slate-700">
+                      {approvals.length} items aprobados — se actualizarán en Construction Budget
+                    </span>
+                  </div>
+                  <div className="max-h-40 overflow-y-auto">
+                    <table className="w-full text-[11px]">
+                      <thead className="sticky top-0 bg-emerald-50">
+                        <tr className="text-left text-slate-400 uppercase tracking-wider text-[9px]">
+                          <th className="py-1 pr-2 w-12">Item</th>
+                          <th className="py-1 pr-2">Descripción</th>
+                          <th className="py-1 px-2 text-right w-14">% Esta insp.</th>
+                          <th className="py-1 pl-2 text-right w-24">Cum. Aprobado</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {approvals.map((a) => (
+                          <tr key={a.itemCode} className="border-t border-emerald-100">
+                            <td className="py-1 pr-2 font-mono text-slate-600">{a.itemCode}</td>
+                            <td className="py-1 pr-2 text-slate-700 truncate max-w-[180px]">{a.description}</td>
+                            <td className="py-1 px-2 text-right font-mono text-slate-500">{a.thisInspectionPct.toFixed(0)}%</td>
+                            <td className="py-1 pl-2 text-right font-mono text-emerald-700 font-semibold">{formatUSD(a.currentAmountAvailable)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-2">Aplicar al draw</div>

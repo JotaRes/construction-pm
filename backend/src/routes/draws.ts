@@ -48,21 +48,120 @@ const upload = multer({
   },
 })
 
-// ── Auto-recalc saldoHoldback for all draws in a project, sorted by drawNumber ──
+// ── Auto-recalc saldoHoldback and UPB chain for all draws in a project ──
+// saldoHoldback: project.holdback − cumulative netWire (always recomputed)
+// UPB Pre/Post: for each draw, Pre = previous draw's Post; Post = Pre + netWire.
+// We propagate forward starting from the first draw that has a real upbPre value
+// (i.e. the user uploaded the lender's Excel with an actual UPB number) — that
+// becomes the anchor and downstream draws are projected from it. Anchor itself
+// is never overwritten; manually edited downstream values are also preserved if
+// the user has explicitly set them away from the propagated value.
 async function recalcHoldback(projectId: string) {
   const project = await prisma.project.findUnique({ where: { id: projectId }, select: { holdback: true } })
   const initialHoldback = project?.holdback ?? 0
   const draws = await prisma.draw.findMany({
     where: { projectId },
     orderBy: { drawNumber: 'asc' },
-    select: { id: true, netWire: true },
+    select: { id: true, netWire: true, upbPre: true, upbPost: true },
   })
+
   let cumulative = 0
+  let prevPost: number | null = null
+
   for (const draw of draws) {
     cumulative += draw.netWire
     const saldo = Math.max(0, initialHoldback - cumulative)
-    await prisma.draw.update({ where: { id: draw.id }, data: { saldoHoldback: saldo } })
+
+    // UPB chain — only propagate when downstream values are currently 0/null
+    // (the convention used everywhere else in this file for "not yet set").
+    let nextUpbPre: number | null = draw.upbPre || null
+    let nextUpbPost: number | null = draw.upbPost || null
+
+    if ((nextUpbPre === null || nextUpbPre === 0) && prevPost !== null) {
+      nextUpbPre = prevPost
+    }
+    if (nextUpbPre !== null && nextUpbPre > 0 && (nextUpbPost === null || nextUpbPost === 0)) {
+      nextUpbPost = nextUpbPre + draw.netWire
+    }
+
+    const data: Record<string, unknown> = { saldoHoldback: saldo }
+    if (nextUpbPre !== null && nextUpbPre !== draw.upbPre) data.upbPre = nextUpbPre
+    if (nextUpbPost !== null && nextUpbPost !== draw.upbPost) data.upbPost = nextUpbPost
+
+    await prisma.draw.update({ where: { id: draw.id }, data })
+
+    // Advance the chain pointer: prefer the post we have (computed or original),
+    // falling back to the previous step if nothing new is known.
+    prevPost = nextUpbPost ?? prevPost
   }
+}
+
+// ── Trinity draw PDF: line-by-line budget approval extractor ────────────────
+// Trinity's draw report lists every budget item with the cumulative dollar
+// amount approved as of this draw ("Current Amount Available" column). That
+// maps 1:1 to BudgetLine.valorAprobado in the construction budget.
+export interface DrawLineApproval {
+  itemCode: string
+  description: string
+  thisInspectionPct: number
+  currentAmountAvailable: number
+}
+
+// Match a single item row in the Trinity report. The PDF text glues fields
+// together (no spaces between columns) so we anchor on the dollar/percent
+// pattern. Example row text:
+//   "21.1 Survey0.64%$3,000.00$0.000%$0.00100%$3,000.00"
+//   ^ line# + item code + description + line% + $req + $prior + prior% + $eligible + thisPct% + $current
+const TRINITY_ITEM_RE = /^\d{1,3}(\d+\.\d+[A-Za-z]?)\s+(.+?)(\d+\.?\d*)%\$([\d,]+\.\d{2})\$([\d,]+\.\d{2})(\d+(?:\.\d+)?)%\$([\d,]+\.\d{2})(\d+(?:\.\d+)?)%\$([\d,]+\.\d{2})$/
+
+export function parseTrinityDrawApprovals(text: string): DrawLineApproval[] {
+  const normalized = text.replace(/\r\n/g, '\n').replace(/\x00/g, '')
+  const out: DrawLineApproval[] = []
+  for (const ln of normalized.split('\n')) {
+    const trimmed = ln.trim()
+    if (!trimmed) continue
+    const m = trimmed.match(TRINITY_ITEM_RE)
+    if (!m) continue
+    out.push({
+      itemCode: m[1],
+      description: m[2].trim(),
+      thisInspectionPct: parseFloat(m[8]),
+      currentAmountAvailable: parseFloat(m[9].replace(/,/g, '')),
+    })
+  }
+  return out
+}
+
+// Apply parsed approvals to the project's BudgetLines. Only updates lines
+// whose itemCode matches; reports unmatched codes so the caller can surface
+// them. Cumulative semantics: we set valorAprobado = the lender's stated
+// "currentAmountAvailable" which already represents the cumulative approved
+// amount as of this draw.
+export async function applyDrawApprovalsToBudget(
+  projectId: string,
+  approvals: DrawLineApproval[],
+): Promise<{ matched: number; updated: number; unmatched: string[] }> {
+  if (!approvals.length) return { matched: 0, updated: 0, unmatched: [] }
+  const lines = await prisma.budgetLine.findMany({ where: { projectId } })
+  const byCode = new Map<string, (typeof lines)[number]>()
+  for (const l of lines) byCode.set(l.itemCode, l)
+
+  let matched = 0
+  let updated = 0
+  const unmatched: string[] = []
+  for (const a of approvals) {
+    const line = byCode.get(a.itemCode)
+    if (!line) { unmatched.push(a.itemCode); continue }
+    matched++
+    if (Math.abs(line.valorAprobado - a.currentAmountAvailable) > 0.005) {
+      await prisma.budgetLine.update({
+        where: { id: line.id },
+        data: { valorAprobado: a.currentAmountAvailable },
+      })
+      updated++
+    }
+  }
+  return { matched, updated, unmatched }
 }
 
 // Wrapper que mantiene la firma original pero usa el helper compartido
@@ -595,8 +694,9 @@ router.delete('/:id', async (req: Request, res: Response) => {
 
 // ── POST upload draw document ────────────────────────────────────────────────
 // kind = "INVOICE" | "APPROVAL" | "EXCEL"
-// When kind=EXCEL and the file is a real spreadsheet, also extract data from it
-// and merge into the draw — saves the user from having to fill fields manually.
+// EXCEL  → parse spreadsheet and inject draw-level fields (Trinity layout)
+// APPROVAL → parse the Trinity PDF and update the construction budget's
+//            valorAprobado per line item (line-level cross-link).
 router.post('/:id/document', (req: Request, res: Response) => {
   upload.single('file')(req, res, async (err) => {
     if (err) return res.status(400).json({ data: null, error: String(err) })
@@ -615,10 +715,12 @@ router.post('/:id/document', (req: Request, res: Response) => {
 
       let extracted: Record<string, unknown> = {}
       let parsedDrawNumber: number | null = null
-      // Auto-extract draw data when an Excel/CSV is uploaded to the EXCEL slot.
+      let budgetUpdate: { matched: number; updated: number; unmatched: string[] } | null = null
+
+      // EXCEL slot — extract draw-level fields from the lender spreadsheet.
       // Lender Excel is authoritative, so it OVERWRITES existing values for the
-      // fields it provides — the user explicitly asked for this. Anything Trinity
-      // doesn't include in the sheet (e.g. dates) stays as-is for manual fill-in.
+      // fields it provides. Anything Trinity doesn't include (e.g. dates) stays
+      // as-is for manual fill-in.
       if (kind === 'EXCEL' && isExcelFile(req.file.mimetype, req.file.originalname)) {
         try {
           const { parsed } = parseDrawExcel(req.file.buffer)
@@ -634,17 +736,33 @@ router.post('/:id/document', (req: Request, res: Response) => {
             extracted[k] = v
           }
         } catch (e) {
-          // Excel parsing failed — keep going so the file is still saved.
           console.warn('Excel parse failed for draw', req.params.id, e)
+        }
+      }
+
+      // APPROVAL slot — Trinity's draw report PDF carries line-by-line approvals
+      // that map directly to BudgetLine.valorAprobado.
+      if (kind === 'APPROVAL' && req.file.mimetype === 'application/pdf') {
+        try {
+          const pdfData = await pdfParse(req.file.buffer)
+          const approvals = parseTrinityDrawApprovals(pdfData.text)
+          if (approvals.length > 0) {
+            const draw = await prisma.draw.findUnique({ where: { id: req.params.id }, select: { projectId: true } })
+            if (draw) budgetUpdate = await applyDrawApprovalsToBudget(draw.projectId, approvals)
+          }
+        } catch (e) {
+          console.warn('Approval PDF parse failed for draw', req.params.id, e)
         }
       }
 
       const data = { ...extracted, ...baseData }
       const draw = await prisma.draw.update({ where: { id: req.params.id }, data })
-      // If we touched netWire, recalc the holdback chain for the whole project.
-      if ('netWire' in extracted) await recalcHoldback(draw.projectId)
+      // If we touched netWire, recalc the holdback + UPB chain for the project.
+      if ('netWire' in extracted || 'upbPre' in extracted || 'upbPost' in extracted) {
+        await recalcHoldback(draw.projectId)
+      }
       const updated = await prisma.draw.findUnique({ where: { id: draw.id } })
-      res.json({ data: updated, extracted, parsedDrawNumber, error: null })
+      res.json({ data: updated, extracted, parsedDrawNumber, budgetUpdate, error: null })
     } catch (e) {
       res.status(500).json({ data: null, error: String(e) })
     }
@@ -723,11 +841,29 @@ router.post('/:projectId/draws/parse-pdf', handleUpload, async (req: Request, re
     const pdfData = await pdfParse(req.file.buffer)
     const parsed  = parseDrawText(pdfData.text)
     if (fileUrl) parsed.pdfUrl = fileUrl
+    // Line-by-line budget approvals (only present if this is a Trinity report).
+    const approvals = parseTrinityDrawApprovals(pdfData.text)
 
     res.json({
-      data: { parsed, preview: pdfData.text.slice(0, 1500), isImage: false, imageUrl: null },
+      data: { parsed, preview: pdfData.text.slice(0, 1500), isImage: false, imageUrl: null, approvals },
       error: null,
     })
+  } catch (e) {
+    res.status(500).json({ data: null, error: String(e) })
+  }
+})
+
+// Apply previously-parsed Trinity line approvals to the construction budget.
+// The frontend calls this from the "Cargar Draw" modal after the user picks
+// which draw to apply to — it's the modal counterpart of the APPROVAL slot.
+router.post('/:projectId/draws/apply-approvals', async (req: Request, res: Response) => {
+  try {
+    const { approvals } = req.body as { approvals?: DrawLineApproval[] }
+    if (!Array.isArray(approvals) || approvals.length === 0) {
+      return res.json({ data: { matched: 0, updated: 0, unmatched: [] }, error: null })
+    }
+    const result = await applyDrawApprovalsToBudget(req.params.projectId, approvals)
+    res.json({ data: result, error: null })
   } catch (e) {
     res.status(500).json({ data: null, error: String(e) })
   }
