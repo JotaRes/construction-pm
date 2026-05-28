@@ -41,66 +41,6 @@ function Num({ value, onSave, dim = false }: { value: number; onSave: (v: number
   )
 }
 
-/* ── % Aprobado editable (auto-calcula valorAprobado = valorPresentado × pct/100) ── */
-function PctAprob({
-  valorPresentado,
-  valorAprobado,
-  onSaveAprobado,
-}: {
-  valorPresentado: number
-  valorAprobado: number
-  onSaveAprobado: (v: number) => void
-}) {
-  const [editing, setEditing] = useState(false)
-  const [text, setText] = useState('')
-
-  const pct = valorPresentado > 0 ? (valorAprobado / valorPresentado) * 100 : 0
-
-  if (editing) {
-    return (
-      <input
-        type="number"
-        value={text}
-        min={0}
-        max={100}
-        step={0.1}
-        onChange={e => setText(e.target.value)}
-        onBlur={() => {
-          const p = Math.max(0, Math.min(100, parseFloat(text) || 0))
-          onSaveAprobado(valorPresentado * p / 100)
-          setEditing(false)
-        }}
-        onKeyDown={e => {
-          if (e.key === 'Enter') {
-            const p = Math.max(0, Math.min(100, parseFloat(text) || 0))
-            onSaveAprobado(valorPresentado * p / 100)
-            setEditing(false)
-          }
-          if (e.key === 'Escape') setEditing(false)
-        }}
-        className="w-full bg-white border border-[#C8922A]/60 text-xs font-mono text-right text-slate-900 px-1.5 py-0.5 rounded focus:outline-none focus:border-[#C8922A]"
-        autoFocus
-      />
-    )
-  }
-
-  if (valorPresentado === 0) {
-    return <span className="w-full text-right text-[10px] text-slate-300 block">—</span>
-  }
-
-  return (
-    <button
-      onClick={() => { setText(pct.toFixed(1)); setEditing(true) }}
-      title="Clic para editar % aprobado (auto-calcula monto)"
-      className={`w-full text-right text-xs font-mono transition-colors group/p flex items-center justify-end gap-1
-        ${pct > 0 ? 'text-[#C8922A] hover:text-[#E0AD4F]' : 'text-slate-400 hover:text-[#C8922A]'}`}
-    >
-      {pct > 0 ? `${pct.toFixed(1)}%` : <span className="text-slate-400">0%</span>}
-      <span className="text-[9px] opacity-0 group-hover/p:opacity-50 text-[#C8922A]">✏</span>
-    </button>
-  )
-}
-
 /* ── Division section ────────────────────────────── */
 interface DivGroup {
   divCode: string
@@ -147,11 +87,7 @@ function DivSection({
           <span className={`w-28 text-right ${totalPres > 0 ? 'text-[#2D4B52]' : 'text-slate-500'}`}>
             {totalPres > 0 ? formatUSD(totalPres) : '—'}
           </span>
-          {/* % column (div summary — shows pct of Inicial) */}
-          <span className={`w-16 text-right text-[10px] ${pct > 0 ? 'text-[#C8922A]' : 'text-slate-400'}`}>
-            {pct > 0 ? `${pct.toFixed(0)}%` : '—'}
-          </span>
-          <span className={`w-28 text-right ${totalApr > 0 ? 'text-emerald-400' : 'text-slate-500'}`}>
+          <span className={`w-32 text-right ${totalApr > 0 ? 'text-emerald-400' : 'text-slate-500'}`}>
             {totalApr > 0 ? formatUSD(totalApr) : '—'}
           </span>
           <div className="w-24 flex items-center gap-2 justify-end pl-4">
@@ -175,8 +111,7 @@ function DivSection({
               <th className="px-2 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider w-10">Ud.</th>
               <th className="px-2 py-1.5 text-right text-[9px] text-slate-400 uppercase tracking-wider w-28">Inicial ✏</th>
               <th className="px-2 py-1.5 text-right text-[9px] text-slate-400 uppercase tracking-wider w-28">Presentado ✏</th>
-              <th className="px-2 py-1.5 text-right text-[9px] text-[#C8922A]/80 uppercase tracking-wider w-16">% Apr. ✏</th>
-              <th className="px-2 py-1.5 text-right text-[9px] text-emerald-600/70 uppercase tracking-wider w-28">Aprobado ✏</th>
+              <th className="px-2 py-1.5 text-right text-[9px] text-emerald-600/70 uppercase tracking-wider w-32">Aprobado (auto desde Draws)</th>
               <th className="pr-4 pl-2 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider w-24">Progreso</th>
             </tr>
           </thead>
@@ -207,13 +142,6 @@ function DivSection({
                   </td>
                   <td className="px-2 py-2">
                     <Num value={line.valorPresentado} onSave={v => onUpdate(line.id, { valorPresentado: v })} dim={line.valorPresentado === 0} />
-                  </td>
-                  <td className="px-2 py-2">
-                    <PctAprob
-                      valorPresentado={line.valorPresentado}
-                      valorAprobado={line.valorAprobado}
-                      onSaveAprobado={v => onUpdate(line.id, { valorAprobado: v })}
-                    />
                   </td>
                   <td className="px-2 py-2">
                     <Num value={line.valorAprobado} onSave={v => onUpdate(line.id, { valorAprobado: v })} dim={line.valorAprobado === 0} />

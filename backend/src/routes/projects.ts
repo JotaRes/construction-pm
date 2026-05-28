@@ -399,9 +399,23 @@ router.post('/:id/reset-budget', async (req: Request, res: Response) => {
 })
 
 // === POST /:id/reset-construction-budget — borra TODAS las líneas del construction budget ===
+// Si hay draws con APPROVAL PDF cargado, esos draws aplicaron valorAprobado
+// a las líneas que vamos a borrar. Como no almacenamos la planilla original por
+// draw, borrar el budget orfana ese estado: hay que avisar y exigir confirm.
 router.post('/:id/reset-construction-budget', async (req: Request, res: Response) => {
   try {
     const projectId = req.params.id
+    const force = req.query.force === '1' || req.body?.force === true
+    const drawsWithApproval = await prisma.draw.count({
+      where: { projectId, lenderApprovalUrl: { not: null } },
+    })
+    if (drawsWithApproval > 0 && !force) {
+      return res.status(409).json({
+        data: null,
+        error: `Hay ${drawsWithApproval} draw(s) con aprobación cargada. Borrar el budget desvincula esa información. Re-envía con force=1 para confirmar y luego re-sube los PDFs de aprobación.`,
+        meta: { drawsWithApproval },
+      })
+    }
     const result = await prisma.budgetLine.deleteMany({ where: { projectId } })
     res.json({ data: { reset: result.count, message: `${result.count} líneas eliminadas` }, error: null })
   } catch (e) {

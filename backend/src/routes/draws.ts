@@ -67,20 +67,31 @@ async function recalcHoldback(projectId: string) {
 
   let cumulative = 0
   let prevPost: number | null = null
+  let pastAnchor = false // becomes true after we cross the first draw with a real upbPre
 
   for (const draw of draws) {
     cumulative += draw.netWire
     const saldo = Math.max(0, initialHoldback - cumulative)
 
-    // UPB chain — only propagate when downstream values are currently 0/null
-    // (the convention used everywhere else in this file for "not yet set").
+    // UPB chain semantics:
+    //   - The first draw with a non-zero upbPre is the ANCHOR (loaded from the
+    //     lender's Excel). Its upbPre is preserved as-is; upbPost is recomputed
+    //     as upbPre + netWire to keep them consistent.
+    //   - Every draw AFTER the anchor is strictly chain-propagated: upbPre =
+    //     previous draw's upbPost, upbPost = upbPre + netWire. This overwrites
+    //     stale values left behind when an upstream draw is deleted, so the
+    //     chain never has orphan UPB numbers pointing to a draw that no longer
+    //     exists.
     let nextUpbPre: number | null = draw.upbPre || null
     let nextUpbPost: number | null = draw.upbPost || null
 
-    if ((nextUpbPre === null || nextUpbPre === 0) && prevPost !== null) {
+    if (pastAnchor && prevPost !== null) {
+      // Force-propagate from the previous post — overrides any stale value.
       nextUpbPre = prevPost
-    }
-    if (nextUpbPre !== null && nextUpbPre > 0 && (nextUpbPost === null || nextUpbPost === 0)) {
+      nextUpbPost = nextUpbPre + draw.netWire
+    } else if (!pastAnchor && nextUpbPre !== null && nextUpbPre > 0) {
+      // Anchor found — keep upbPre, recompute upbPost from it.
+      pastAnchor = true
       nextUpbPost = nextUpbPre + draw.netWire
     }
 
@@ -90,8 +101,6 @@ async function recalcHoldback(projectId: string) {
 
     await prisma.draw.update({ where: { id: draw.id }, data })
 
-    // Advance the chain pointer: prefer the post we have (computed or original),
-    // falling back to the previous step if nothing new is known.
     prevPost = nextUpbPost ?? prevPost
   }
 }
@@ -747,9 +756,20 @@ router.patch('/:id', async (req: Request, res: Response) => {
 })
 
 // ── DELETE draw ───────────────────────────────────────────────────────────────
+// CRITICAL: must recompute saldoHoldback + UPB chain after delete, otherwise
+// downstream draws keep stale cumulative values (e.g. orphan holdback of $395k
+// reported in production after deleting a wired draw).
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
+    const existing = await prisma.draw.findUnique({
+      where: { id: req.params.id },
+      select: { projectId: true },
+    })
+    if (!existing) {
+      return res.status(404).json({ data: null, error: 'Draw no encontrado' })
+    }
     await prisma.draw.delete({ where: { id: req.params.id } })
+    await recalcHoldback(existing.projectId)
     res.json({ data: { deleted: true }, error: null })
   } catch (e) {
     res.status(500).json({ data: null, error: String(e) })
@@ -780,53 +800,71 @@ router.post('/:id/document', (req: Request, res: Response) => {
       let extracted: Record<string, unknown> = {}
       let parsedDrawNumber: number | null = null
       let budgetUpdate: Awaited<ReturnType<typeof applyDrawApprovalsToBudget>> | null = null
+      let extractionError: string | null = null
 
       // EXCEL slot — extract draw-level fields from the lender spreadsheet.
       // Lender Excel is authoritative, so it OVERWRITES existing values for the
       // fields it provides. Anything Trinity doesn't include (e.g. dates) stays
-      // as-is for manual fill-in.
-      if (kind === 'EXCEL' && isExcelFile(req.file.mimetype, req.file.originalname)) {
-        try {
-          const { parsed } = parseDrawExcel(req.file.buffer)
-          if (typeof parsed.drawNumber === 'number') parsedDrawNumber = parsed.drawNumber
-          const allowedFields = [
-            'montoSolicitado', 'elegibleTrinity', 'netWire', 'porcentajeFunded',
-            'upbPre', 'upbPost', 'saldoHoldback',
-            'fechaSolicitud', 'fechaInspeccion', 'fechaWire',
-          ]
-          for (const k of allowedFields) {
-            const v = parsed[k]
-            if (v === undefined || v === null || v === '') continue
-            extracted[k] = v
+      // as-is for manual fill-in. Parse errors surface to the client so the UI
+      // can show a real failure instead of pretending the upload worked.
+      if (kind === 'EXCEL') {
+        if (!isExcelFile(req.file.mimetype, req.file.originalname)) {
+          extractionError = `Archivo no reconocido como Excel (${req.file.mimetype || 'sin mimetype'}).`
+        } else {
+          try {
+            const { parsed } = parseDrawExcel(req.file.buffer)
+            if (typeof parsed.drawNumber === 'number') parsedDrawNumber = parsed.drawNumber
+            const allowedFields = [
+              'montoSolicitado', 'elegibleTrinity', 'netWire', 'porcentajeFunded',
+              'upbPre', 'upbPost', 'saldoHoldback',
+              'fechaSolicitud', 'fechaInspeccion', 'fechaWire',
+            ]
+            for (const k of allowedFields) {
+              const v = parsed[k]
+              if (v === undefined || v === null || v === '') continue
+              extracted[k] = v
+            }
+            if (Object.keys(extracted).length === 0) {
+              extractionError = 'No se detectó ningún campo en el Excel. Verifica que sea el formato Trinity.'
+            }
+          } catch (e) {
+            console.warn('Excel parse failed for draw', req.params.id, e)
+            extractionError = `Error al parsear Excel: ${e instanceof Error ? e.message : String(e)}`
           }
-        } catch (e) {
-          console.warn('Excel parse failed for draw', req.params.id, e)
         }
       }
 
       // APPROVAL slot — Trinity's draw report PDF carries line-by-line approvals
-      // that map directly to BudgetLine.valorAprobado.
-      if (kind === 'APPROVAL' && req.file.mimetype === 'application/pdf') {
-        try {
-          const pdfData = await pdfParse(req.file.buffer)
-          const approvals = parseTrinityDrawApprovals(pdfData.text)
-          if (approvals.length > 0) {
-            const draw = await prisma.draw.findUnique({ where: { id: req.params.id }, select: { projectId: true } })
-            if (draw) budgetUpdate = await applyDrawApprovalsToBudget(draw.projectId, approvals)
+      // that map directly to BudgetLine.valorAprobado. Surface parser failures
+      // so the user knows the budget was NOT auto-updated.
+      if (kind === 'APPROVAL') {
+        if (req.file.mimetype !== 'application/pdf') {
+          extractionError = `Archivo no es un PDF (${req.file.mimetype || 'sin mimetype'}).`
+        } else {
+          try {
+            const pdfData = await pdfParse(req.file.buffer)
+            const approvals = parseTrinityDrawApprovals(pdfData.text)
+            if (approvals.length > 0) {
+              const draw = await prisma.draw.findUnique({ where: { id: req.params.id }, select: { projectId: true } })
+              if (draw) budgetUpdate = await applyDrawApprovalsToBudget(draw.projectId, approvals)
+            } else {
+              extractionError = 'No se detectaron line items en el PDF. Verifica que sea el reporte de Trinity.'
+            }
+          } catch (e) {
+            console.warn('Approval PDF parse failed for draw', req.params.id, e)
+            extractionError = `Error al parsear PDF: ${e instanceof Error ? e.message : String(e)}`
           }
-        } catch (e) {
-          console.warn('Approval PDF parse failed for draw', req.params.id, e)
         }
       }
 
       const data = { ...extracted, ...baseData }
       const draw = await prisma.draw.update({ where: { id: req.params.id }, data })
-      // If we touched netWire, recalc the holdback + UPB chain for the project.
+      // If we touched netWire or UPB, recalc the holdback + UPB chain.
       if ('netWire' in extracted || 'upbPre' in extracted || 'upbPost' in extracted) {
         await recalcHoldback(draw.projectId)
       }
       const updated = await prisma.draw.findUnique({ where: { id: draw.id } })
-      res.json({ data: updated, extracted, parsedDrawNumber, budgetUpdate, error: null })
+      res.json({ data: updated, extracted, parsedDrawNumber, budgetUpdate, extractionError, error: null })
     } catch (e) {
       res.status(500).json({ data: null, error: String(e) })
     }
@@ -834,17 +872,39 @@ router.post('/:id/document', (req: Request, res: Response) => {
 })
 
 // ── DELETE draw document ────────────────────────────────────────────────────
+// When the lender Excel is removed, the auto-extracted numeric fields it
+// populated (montoSolicitado, elegibleTrinity, netWire, %funded, UPB pre/post,
+// fechas) must be cleared too — otherwise the draw still looks "loaded" while
+// the source document is gone, and recalcHoldback runs on stale netWire values.
 router.delete('/:id/document/:kind', async (req: Request, res: Response) => {
   try {
     const kind = req.params.kind.toUpperCase()
-    const data: Record<string, unknown> =
-      kind === 'APPROVAL'
-        ? { lenderApprovalUrl: null, lenderApprovalName: null }
-        : kind === 'EXCEL'
-        ? { lenderExcelUrl: null, lenderExcelName: null }
-        : { invoiceLenderUrl: null, invoiceLenderName: null }
+    let data: Record<string, unknown>
+    if (kind === 'APPROVAL') {
+      data = { lenderApprovalUrl: null, lenderApprovalName: null }
+    } else if (kind === 'EXCEL') {
+      data = {
+        lenderExcelUrl: null,
+        lenderExcelName: null,
+        montoSolicitado: 0,
+        elegibleTrinity: 0,
+        netWire: 0,
+        porcentajeFunded: 0,
+        upbPre: 0,
+        upbPost: 0,
+        fechaSolicitud: null,
+        fechaInspeccion: null,
+        fechaWire: null,
+      }
+    } else {
+      data = { invoiceLenderUrl: null, invoiceLenderName: null }
+    }
     const draw = await prisma.draw.update({ where: { id: req.params.id }, data })
-    res.json({ data: draw, error: null })
+    if (kind === 'EXCEL') {
+      await recalcHoldback(draw.projectId)
+    }
+    const updated = await prisma.draw.findUnique({ where: { id: draw.id } })
+    res.json({ data: updated, error: null })
   } catch (e) {
     res.status(500).json({ data: null, error: String(e) })
   }

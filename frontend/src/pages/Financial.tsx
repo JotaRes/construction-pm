@@ -1,8 +1,17 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { projectsApi, drawsApi, docParseApi } from '../lib/api'
+import { projectsApi, drawsApi, docParseApi, constructionBudgetApi } from '../lib/api'
 import { formatUSD, formatPct, formatDate } from '../lib/calculations'
 import type { Project, Draw } from '../lib/types'
+
+interface BudgetLine {
+  id: string
+  itemCode: string
+  description: string
+  valorInicial: number
+  valorPresentado: number
+  valorAprobado: number
+}
 import {
   Upload, CheckCircle, X, AlertTriangle, FileText, FileSignature,
   Receipt, Building2, FileQuestion, Calendar, TrendingUp, Activity, DollarSign,
@@ -290,22 +299,26 @@ function DocStatus({ label, icon: Icon, url, name, onUpload }: {
 }
 
 // ── Sales projections ────────────────────────────────────────────────────────
-// Computes optimistic / conservative / pessimistic exit scenarios using the
-// real project state as inputs: heated sqft, current UPB, daily rate, time to
-// projected sale, construction budget, closing costs and realtor commissions.
+// Director Constructivo view: rentabilidad por escenario de venta, basado en
+// gastos EJECUTADOS (lo que el lender ya aprobó vía draws) + interés acumulado
+// hasta hoy + costos futuros hasta la venta proyectada.
 //
-// Director Constructivo perspective: net profit and ROI must factor in the
-// CARRYING COST of the loan from today until the projected sale date, not
-// just the snapshot interest accrued so far. Sale price drives realtor fees
-// and is the only knob the user controls, so we expose it as $/sqft and run
-// ±10% bands around it for the three scenarios.
+// Toda variable de entrada se toma del estado del proyecto:
+//   - executedSpend = Σ valorAprobado del construction budget (= lo que el
+//     lender ha reconocido en los draws). Si está en 0, fallback a
+//     project.constructionBudget para no quedar ciegos.
+//   - cashInvested = cashAtSettlement + closingCosts (equity de bolsillo)
+//   - daysToSale = days hasta targetCompletionDate+60, o loan maturity, o 180
+//   - interest hoy = UPB × dailyRate × diasDesde
+//   - interest futuro = UPB × dailyRate × daysToSale
 interface SalesProjectionInputs {
   pricePerSqft: number       // user-controlled
   sfHeated: number
   upb: number
   dailyRate: number
   interestSoFar: number
-  constructionBudget: number
+  executedSpend: number      // lender-approved costs to date
+  remainingBudget: number    // budget pending to complete (so total cost includes finishing)
   closingCosts: number
   commissionPct: number      // listing + buyer
   cashInvested: number       // out-of-pocket equity (cash at settlement + closing)
@@ -313,12 +326,16 @@ interface SalesProjectionInputs {
 }
 interface ScenarioResult {
   label: string
-  bandPct: number            // e.g. -0.10, 0, +0.10
+  bandPct: number
   pricePerSqft: number
   saleValue: number
   realtorFees: number
-  carryingInterest: number   // interest from today → sale date
-  totalCost: number          // construction + closing + interest (cum + future) + realtor
+  interestSoFar: number      // already accrued
+  interestFuture: number     // interest from today → sale date
+  executedSpend: number
+  remainingBudget: number
+  closingCosts: number
+  totalCost: number
   netProfit: number
   roi: number                // net / cash invested
   margin: number             // net / sale value
@@ -328,23 +345,29 @@ function computeScenario(label: string, bandPct: number, i: SalesProjectionInput
   const adjustedPpsf = Math.max(0, i.pricePerSqft * (1 + bandPct))
   const saleValue = adjustedPpsf * i.sfHeated
   const realtorFees = saleValue * i.commissionPct
-  const carryingInterest = i.upb * i.dailyRate * i.daysToSale
-  const totalInterest = i.interestSoFar + carryingInterest
-  const totalCost = i.constructionBudget + i.closingCosts + totalInterest + realtorFees
+  const interestFuture = i.upb * i.dailyRate * i.daysToSale
+  const totalCost = i.executedSpend + i.remainingBudget + i.closingCosts + i.interestSoFar + interestFuture + realtorFees
   const netProfit = saleValue - totalCost
   const roi = i.cashInvested > 0 ? (netProfit / i.cashInvested) * 100 : 0
   const margin = saleValue > 0 ? (netProfit / saleValue) * 100 : 0
-  return { label, bandPct, pricePerSqft: adjustedPpsf, saleValue, realtorFees, carryingInterest, totalCost, netProfit, roi, margin }
+  return {
+    label, bandPct,
+    pricePerSqft: adjustedPpsf,
+    saleValue, realtorFees,
+    interestSoFar: i.interestSoFar,
+    interestFuture,
+    executedSpend: i.executedSpend,
+    remainingBudget: i.remainingBudget,
+    closingCosts: i.closingCosts,
+    totalCost, netProfit, roi, margin,
+  }
 }
 
 function breakevenPricePerSqft(i: SalesProjectionInputs): number {
-  // Solve: salePrice × (1 - commission) = construction + closing + cumInterest + futureInterest
-  // breakevenSale = fixedCosts / (1 - commission); ppsf = breakevenSale / sfHeated
-  const fixedCosts = i.constructionBudget + i.closingCosts + i.interestSoFar + (i.upb * i.dailyRate * i.daysToSale)
+  const fixedCosts = i.executedSpend + i.remainingBudget + i.closingCosts + i.interestSoFar + (i.upb * i.dailyRate * i.daysToSale)
   if (i.sfHeated <= 0) return 0
   const denom = Math.max(0.001, 1 - i.commissionPct)
-  const breakevenSale = fixedCosts / denom
-  return breakevenSale / i.sfHeated
+  return (fixedCosts / denom) / i.sfHeated
 }
 
 function ScenarioCard({ s, breakeven, accent }: { s: ScenarioResult; breakeven: number; accent: 'pessimist' | 'base' | 'optimist' }) {
@@ -366,24 +389,40 @@ function ScenarioCard({ s, breakeven, accent }: { s: ScenarioResult; breakeven: 
           <div className="font-mono font-bold text-sm text-slate-800">${s.pricePerSqft.toFixed(0)}</div>
         </div>
       </div>
-      <div className="border-t border-slate-200/60 pt-2 space-y-1">
+
+      <div className="border-t border-slate-200/60 pt-2 space-y-0.5">
         <div className="flex items-center justify-between text-[11px]">
           <span className="text-slate-500">Sale value</span>
           <span className="font-mono font-bold text-slate-800">{formatUSD(s.saleValue)}</span>
         </div>
-        <div className="flex items-center justify-between text-[11px]">
-          <span className="text-slate-500">− Realtor fees</span>
-          <span className="font-mono text-slate-700">−{formatUSD(s.realtorFees)}</span>
+        <div className="flex items-center justify-between text-[10px]">
+          <span className="text-slate-400">− Gastos ejecutados (lender)</span>
+          <span className="font-mono text-slate-600">−{formatUSD(s.executedSpend)}</span>
         </div>
-        <div className="flex items-center justify-between text-[11px]">
-          <span className="text-slate-500">− Carrying interest hasta venta</span>
-          <span className="font-mono text-slate-700">−{formatUSD(s.carryingInterest)}</span>
+        {s.remainingBudget > 0 && (
+          <div className="flex items-center justify-between text-[10px]">
+            <span className="text-slate-400">− Falta por ejecutar (budget)</span>
+            <span className="font-mono text-slate-600">−{formatUSD(s.remainingBudget)}</span>
+          </div>
+        )}
+        <div className="flex items-center justify-between text-[10px]">
+          <span className="text-slate-400">− Closing costs</span>
+          <span className="font-mono text-slate-600">−{formatUSD(s.closingCosts)}</span>
         </div>
-        <div className="flex items-center justify-between text-[11px]">
-          <span className="text-slate-500">− Costos totales (acumulado)</span>
-          <span className="font-mono text-slate-700">{formatUSD(s.totalCost)}</span>
+        <div className="flex items-center justify-between text-[10px]">
+          <span className="text-slate-400">− Interés acumulado a hoy</span>
+          <span className="font-mono text-slate-600">−{formatUSD(s.interestSoFar)}</span>
+        </div>
+        <div className="flex items-center justify-between text-[10px]">
+          <span className="text-slate-400">− Interés futuro hasta venta</span>
+          <span className="font-mono text-slate-600">−{formatUSD(s.interestFuture)}</span>
+        </div>
+        <div className="flex items-center justify-between text-[10px]">
+          <span className="text-slate-400">− Realtor fees</span>
+          <span className="font-mono text-slate-600">−{formatUSD(s.realtorFees)}</span>
         </div>
       </div>
+
       <div className="border-t border-slate-300 pt-2">
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-semibold text-slate-700">NET PROFIT</span>
@@ -399,7 +438,7 @@ function ScenarioCard({ s, breakeven, accent }: { s: ScenarioResult; breakeven: 
             Margen: <span className={`font-mono font-bold ${s.margin > 15 ? 'text-emerald-600' : s.margin > 0 ? 'text-slate-700' : 'text-red-600'}`}>{s.margin.toFixed(1)}%</span>
           </div>
         </div>
-        {!beatsBreakeven && (
+        {breakeven > 0 && !beatsBreakeven && (
           <div className="mt-1 text-[10px] text-red-600 flex items-center gap-1">
             <AlertTriangle className="w-3 h-3" />Bajo breakeven (${breakeven.toFixed(0)}/sqft)
           </div>
@@ -409,26 +448,57 @@ function ScenarioCard({ s, breakeven, accent }: { s: ScenarioResult; breakeven: 
   )
 }
 
-function SalesProjections({ project, upb, dailyRate, interestSoFar, commissions, projectId }: {
+// Small inline editable field — saves on blur.
+function InlineNum({ value, onSave, placeholder, suffix }: {
+  value: number; onSave: (v: number) => void; placeholder?: string; suffix?: string
+}) {
+  const [text, setText] = useState<string>(value > 0 ? String(value) : '')
+  return (
+    <div className="flex items-center bg-white border border-slate-200 rounded-lg px-2 py-1">
+      <input
+        type="number"
+        value={text}
+        onChange={e => setText(e.target.value)}
+        onBlur={() => {
+          const n = Math.max(0, parseFloat(text) || 0)
+          if (n !== value) onSave(n)
+        }}
+        placeholder={placeholder ?? '0'}
+        className="w-20 bg-transparent text-right font-mono text-xs text-slate-800 focus:outline-none"
+      />
+      {suffix && <span className="text-[10px] text-slate-400 ml-0.5">{suffix}</span>}
+    </div>
+  )
+}
+
+function SalesProjections({ project, upb, dailyRate, interestSoFar, projectId, budgetLines }: {
   project: Project
   upb: number
   dailyRate: number
   interestSoFar: number
-  commissions: number  // unused here but kept for signature
   projectId: string
+  budgetLines: BudgetLine[]
 }) {
   const queryClient = useQueryClient()
-  // Bootstrap manual input from saved value, falling back to ARV/sfHeated, then $0
-  const initialPpsf = project.expectedPricePerSqft && project.expectedPricePerSqft > 0
-    ? project.expectedPricePerSqft
-    : (project.sfHeated > 0 && project.arv > 0 ? Math.round(project.arv / project.sfHeated) : 0)
-  const [pricePerSqft, setPricePerSqft] = useState<number>(initialPpsf)
-  void commissions
 
-  // Compute days from today to expected sale.
-  //   - if targetCompletionDate set: assume +60 days for sale process after completion
-  //   - else if settlementDate + loanTerm in future: assume sale at loan maturity
-  //   - else fallback to 180 days
+  // Real executed spend = sum of approved budget lines (the lender's official
+  // recognition of completed work via the draw approvals). Falls back to the
+  // project's constructionBudget header if no lines have been initialized.
+  const executedSpend = budgetLines.reduce((s, l) => s + (l.valorAprobado || 0), 0)
+  const totalBudget = budgetLines.reduce((s, l) => s + (l.valorInicial || 0), 0) || (project.constructionBudget ?? 0)
+  const remainingBudget = Math.max(0, totalBudget - executedSpend)
+
+  // Bootstrap manual input from saved value, falling back to ARV/sfHeated
+  const savedPpsf = project.expectedPricePerSqft || 0
+  const fallbackPpsf = project.sfHeated > 0 && project.arv > 0 ? Math.round(project.arv / project.sfHeated) : 0
+  const [pricePerSqft, setPricePerSqft] = useState<number>(savedPpsf > 0 ? savedPpsf : fallbackPpsf)
+  // When the saved value upstream changes (e.g. another tab or after a save), pull it in.
+  useEffect(() => {
+    if (savedPpsf > 0 && Math.abs(savedPpsf - pricePerSqft) > 0.005) setPricePerSqft(savedPpsf)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedPpsf])
+
+  // Days until projected sale.
   const today = new Date()
   let daysToSale = 180
   if (project.targetCompletionDate) {
@@ -450,7 +520,8 @@ function SalesProjections({ project, upb, dailyRate, interestSoFar, commissions,
     upb,
     dailyRate,
     interestSoFar,
-    constructionBudget: project.constructionBudget || 0,
+    executedSpend,
+    remainingBudget,
     closingCosts: project.closingCosts || 0,
     commissionPct,
     cashInvested,
@@ -464,10 +535,20 @@ function SalesProjections({ project, upb, dailyRate, interestSoFar, commissions,
   ]
   const breakeven = breakevenPricePerSqft(inputs)
 
+  // Sell-today snapshot — uses pricePerSqft × sfHeated with zero future interest.
+  const sellToday: ScenarioResult = computeScenario('Si vendo HOY', 0, { ...inputs, daysToSale: 0 })
+
   const savePpsf = useMutation({
     mutationFn: (v: number) => projectsApi.patch(projectId, { expectedPricePerSqft: v }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['project', projectId] }),
   })
+  const saveSf = useMutation({
+    mutationFn: (v: number) => projectsApi.patch(projectId, { sfHeated: v }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['project', projectId] }),
+  })
+
+  const missingSf = (project.sfHeated || 0) === 0
+  const missingPpsf = pricePerSqft === 0
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
@@ -477,37 +558,46 @@ function SalesProjections({ project, upb, dailyRate, interestSoFar, commissions,
             <TrendingUp className="w-4 h-4 text-[#C8922A]" />
             Proyecciones de Venta — Escenarios de salida
           </h2>
-          <p className="text-[11px] text-slate-500 mt-0.5">
-            Análisis financiero integral: incluye intereses acumulados, intereses futuros hasta la venta proyectada,
-            comisiones de realtor, costos de construcción y de cierre. Ajusta el $/sqft esperado para ver impacto en utilidad.
+          <p className="text-[11px] text-slate-500 mt-0.5 max-w-2xl">
+            Costos en cada escenario = gastos YA ejecutados (aprobados por el lender vía draws) +
+            faltante por ejecutar + closing + interés acumulado + interés futuro hasta venta + comisiones.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <label className="text-[10px] text-slate-500 uppercase tracking-wider">Precio esperado $/sqft</label>
-          <div className="flex items-center bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5">
-            <span className="text-slate-400 text-sm">$</span>
-            <input
-              type="number"
-              value={pricePerSqft || ''}
-              onChange={e => setPricePerSqft(Math.max(0, parseFloat(e.target.value) || 0))}
-              onBlur={() => { if (pricePerSqft !== project.expectedPricePerSqft) savePpsf.mutate(pricePerSqft) }}
-              placeholder="0"
-              className="w-24 bg-transparent text-right font-mono text-sm text-slate-800 focus:outline-none"
-            />
-            <span className="text-slate-400 text-xs ml-1">/sqft</span>
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-1.5">
+            <label className="text-[10px] text-slate-500 uppercase tracking-wider">SF Heated</label>
+            <InlineNum value={project.sfHeated || 0} onSave={v => saveSf.mutate(v)} suffix="sf" />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <label className="text-[10px] text-slate-500 uppercase tracking-wider">Precio esperado</label>
+            <div className="flex items-center bg-slate-50 border border-slate-200 rounded-lg px-2 py-1">
+              <span className="text-slate-400 text-xs">$</span>
+              <input
+                type="number"
+                value={pricePerSqft || ''}
+                onChange={e => setPricePerSqft(Math.max(0, parseFloat(e.target.value) || 0))}
+                onBlur={() => { if (Math.abs(pricePerSqft - (project.expectedPricePerSqft || 0)) > 0.005) savePpsf.mutate(pricePerSqft) }}
+                placeholder="0"
+                className="w-20 bg-transparent text-right font-mono text-xs text-slate-800 focus:outline-none"
+              />
+              <span className="text-slate-400 text-[10px] ml-0.5">/sqft</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {project.sfHeated === 0 ? (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-xs text-amber-800 flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4" />Define los SF Heated del proyecto para que los cálculos sean precisos.
+      {(missingSf || missingPpsf) && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-[11px] text-amber-800 flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+          {missingSf && missingPpsf
+            ? 'Define SF Heated y precio esperado $/sqft para ver las proyecciones.'
+            : missingSf
+              ? 'Define los SF Heated del proyecto.'
+              : 'Ingresa un precio esperado $/sqft.'}
         </div>
-      ) : pricePerSqft === 0 ? (
-        <div className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-6 text-xs text-slate-500 text-center">
-          Ingresa un precio esperado por sqft arriba para ver las proyecciones.
-        </div>
-      ) : (
+      )}
+
+      {!missingSf && !missingPpsf && (
         <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <ScenarioCard s={scenarios[0]} breakeven={breakeven} accent="pessimist" />
@@ -515,14 +605,34 @@ function SalesProjections({ project, upb, dailyRate, interestSoFar, commissions,
             <ScenarioCard s={scenarios[2]} breakeven={breakeven} accent="optimist" />
           </div>
 
+          {/* "Si vendo HOY" — snapshot a precio base */}
+          <div className="bg-gradient-to-r from-[#2D4B52]/10 to-[#C8922A]/10 border border-[#2D4B52]/20 rounded-lg p-3 grid grid-cols-2 md:grid-cols-4 gap-2 text-[11px]">
+            <div>
+              <div className="text-slate-500 uppercase text-[9px]">Si vendo HOY (sin esperar)</div>
+              <div className="font-mono font-bold text-sm text-slate-800">{formatUSD(sellToday.saleValue)}</div>
+            </div>
+            <div>
+              <div className="text-slate-500 uppercase text-[9px]">Net si vendo HOY</div>
+              <div className={`font-mono font-bold text-sm ${sellToday.netProfit > 0 ? 'text-emerald-600' : 'text-red-600'}`}>{formatUSD(sellToday.netProfit)}</div>
+            </div>
+            <div>
+              <div className="text-slate-500 uppercase text-[9px]">Costo de esperar a venta proyectada</div>
+              <div className="font-mono font-bold text-sm text-[#C8922A]">−{formatUSD(scenarios[1].interestFuture)}</div>
+            </div>
+            <div>
+              <div className="text-slate-500 uppercase text-[9px]">Net en escenario base</div>
+              <div className={`font-mono font-bold text-sm ${scenarios[1].netProfit > 0 ? 'text-emerald-600' : 'text-red-600'}`}>{formatUSD(scenarios[1].netProfit)}</div>
+            </div>
+          </div>
+
           {/* Diagnostic strip: inputs that drive the scenarios */}
-          <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 grid grid-cols-2 md:grid-cols-5 gap-3 text-[10px]">
+          <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 grid grid-cols-2 md:grid-cols-6 gap-3 text-[10px]">
             <div>
               <div className="text-slate-400 uppercase">SF Heated</div>
               <div className="font-mono font-bold text-slate-700">{project.sfHeated} sf</div>
             </div>
             <div>
-              <div className="text-slate-400 uppercase">Días a venta proyectada</div>
+              <div className="text-slate-400 uppercase">Días a venta</div>
               <div className="font-mono font-bold text-slate-700">{daysToSale}d</div>
             </div>
             <div>
@@ -530,8 +640,12 @@ function SalesProjections({ project, upb, dailyRate, interestSoFar, commissions,
               <div className="font-mono font-bold text-slate-700">{formatUSD(upb)}</div>
             </div>
             <div>
-              <div className="text-slate-400 uppercase">Comisiones</div>
-              <div className="font-mono font-bold text-slate-700">{(commissionPct * 100).toFixed(1)}%</div>
+              <div className="text-slate-400 uppercase">Ejecutado (lender)</div>
+              <div className="font-mono font-bold text-emerald-700">{formatUSD(executedSpend)}</div>
+            </div>
+            <div>
+              <div className="text-slate-400 uppercase">Falta ejecutar</div>
+              <div className="font-mono font-bold text-slate-700">{formatUSD(remainingBudget)}</div>
             </div>
             <div>
               <div className="text-slate-400 uppercase">Breakeven $/sqft</div>
@@ -543,14 +657,16 @@ function SalesProjections({ project, upb, dailyRate, interestSoFar, commissions,
           <div className="bg-[#2D4B52]/5 border border-[#2D4B52]/15 rounded-lg p-3 text-[11px] text-slate-700">
             <strong className="text-[#2D4B52]">Lectura del director: </strong>
             {scenarios[0].netProfit > 0 ? (
-              <>Incluso en el escenario pesimista (${scenarios[0].pricePerSqft.toFixed(0)}/sqft) el proyecto deja {formatUSD(scenarios[0].netProfit)} —
-              la decisión es de timing, no de viabilidad.</>
+              <>Incluso en el pesimista (${scenarios[0].pricePerSqft.toFixed(0)}/sqft) el proyecto deja {formatUSD(scenarios[0].netProfit)} —
+              la decisión es de timing y velocidad, no de viabilidad.</>
             ) : scenarios[1].netProfit > 0 ? (
-              <>El escenario conservador da {formatUSD(scenarios[1].netProfit)} pero el pesimista entra en pérdida.
-              Cualquier retraso o caída de mercado quema utilidad — vigila tiempo y costos.</>
+              <>El conservador da {formatUSD(scenarios[1].netProfit)} pero el pesimista entra en pérdida.
+              Cualquier retraso quema utilidad: cada día cuesta {formatUSD(upb * dailyRate)} en interés. Vigila tiempo y costos.</>
+            ) : breakeven > 0 ? (
+              <>Incluso el conservador da pérdida ({formatUSD(scenarios[1].netProfit)}). Necesitas vender sobre ${breakeven.toFixed(0)}/sqft para cubrir costos,
+              o reducir el faltante por ejecutar y/o acelerar la venta para bajar carrying.</>
             ) : (
-              <>Incluso el escenario conservador da pérdida. Necesitas vender por encima de ${breakeven.toFixed(0)}/sqft para cubrir costos —
-              o reducir construction budget / cerrar más rápido para bajar el interest carrying.</>
+              <>Falta información para evaluar — completa precio $/sqft y SF Heated.</>
             )}
           </div>
         </>
@@ -570,6 +686,10 @@ export default function Financial({ projectId }: { projectId: string }) {
   const { data: draws = [] } = useQuery<Draw[]>({
     queryKey: ['draws', projectId],
     queryFn: () => drawsApi.list(projectId),
+  })
+  const { data: budgetLines = [] } = useQuery<BudgetLine[]>({
+    queryKey: ['construction-budget', projectId],
+    queryFn: () => constructionBudgetApi.list(projectId),
   })
 
   const patchProject = useMutation({
@@ -782,8 +902,8 @@ export default function Financial({ projectId }: { projectId: string }) {
         upb={upb}
         dailyRate={dailyRate}
         interestSoFar={interestSoFar}
-        commissions={commissions}
         projectId={projectId}
+        budgetLines={budgetLines}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">

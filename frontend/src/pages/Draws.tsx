@@ -81,7 +81,11 @@ function DocSlot({
       const extractedCount = result?.extracted ? Object.keys(result.extracted).length : 0
       const parsedDrawN = result?.parsedDrawNumber
       const budget = result?.budgetUpdate
-      if (kind === 'EXCEL') {
+      const extractionError = (result as any)?.extractionError as string | null | undefined
+      if (extractionError) {
+        toast.error(`Archivo subido pero la extracción automática falló: ${extractionError}`,
+          { duration: 9000, style: { background: '#FEE2E2', color: '#991B1B', border: '1px solid #FCA5A5' } })
+      } else if (kind === 'EXCEL') {
         if (parsedDrawN && parsedDrawN !== draw.drawNumber) {
           toast(`⚠ El Excel pertenece a Draw #${parsedDrawN} pero lo subiste al Draw #${draw.drawNumber}. Verifica antes de guardar.`,
             { duration: 8000, style: { background: '#FEF3C7', color: '#92400E', border: '1px solid #FCD34D' } })
@@ -108,13 +112,25 @@ function DocSlot({
         toast.success('Archivo subido')
       }
       queryClient.invalidateQueries({ queryKey: ['draws', projectId] })
-      if (kind === 'APPROVAL') queryClient.invalidateQueries({ queryKey: ['construction-budget', projectId] })
+      if (kind === 'APPROVAL' || kind === 'EXCEL') {
+        queryClient.invalidateQueries({ queryKey: ['construction-budget', projectId] })
+        queryClient.invalidateQueries({ queryKey: ['project', projectId] })
+      }
     },
     onError: (e: any) => toast.error(e?.response?.data?.error || 'Error al subir'),
   })
   const delMut = useMutation({
     mutationFn: () => drawsApi.deleteDoc(draw.id, kind),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['draws', projectId] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['draws', projectId] })
+      if (kind === 'EXCEL') {
+        queryClient.invalidateQueries({ queryKey: ['construction-budget', projectId] })
+        queryClient.invalidateQueries({ queryKey: ['project', projectId] })
+        toast.success('Excel eliminado — campos extraídos limpiados y holdback recalculado')
+      } else {
+        toast.success('Documento eliminado')
+      }
+    },
   })
 
   return (
@@ -637,14 +653,23 @@ export default function Draws({ projectId }: { projectId: string }) {
 
   const mutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => drawsApi.patch(id, data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['draws', projectId] }),
+    onSuccess: () => {
+      // PATCH on any draw triggers recalcHoldback on the backend (saldo + UPB chain),
+      // which touches multiple draws and the project's snapshot — refresh all of them
+      // so the Financial dashboard and Construction Budget reflect the new state.
+      queryClient.invalidateQueries({ queryKey: ['draws', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['project', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['construction-budget', projectId] })
+    },
   })
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => drawsApi.deleteDraw(id),
     onSuccess: () => {
-      toast.success('Draw eliminado')
+      toast.success('Draw eliminado — recalculando holdback y budget')
       queryClient.invalidateQueries({ queryKey: ['draws', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['construction-budget', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['project', projectId] })
     },
     onError: (e: any) => toast.error(e?.response?.data?.error || 'Error al eliminar draw'),
   })
