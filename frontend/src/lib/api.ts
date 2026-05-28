@@ -31,6 +31,7 @@ export const itemsApi = {
 
 export const drawsApi = {
   list: (projectId: string) => api.get(`/projects/${projectId}/draws`).then(r => r.data.data),
+  create: (projectId: string) => api.post(`/projects/${projectId}/draws`).then(r => r.data.data),
   patch: (id: string, data: Record<string, unknown>) => api.patch(`/draws/${id}`, data).then(r => r.data.data),
   uploadDoc: (drawId: string, file: File, kind: 'INVOICE' | 'APPROVAL' | 'EXCEL') => {
     const fd = new FormData()

@@ -675,6 +675,16 @@ export default function Draws({ projectId }: { projectId: string }) {
     onError: (e: any) => toast.error(e?.response?.data?.error || 'Error al eliminar draw'),
   })
 
+  const addDrawMutation = useMutation({
+    mutationFn: () => drawsApi.create(projectId),
+    onSuccess: (created: any) => {
+      toast.success(`Draw #${created?.drawNumber ?? ''} creado`)
+      queryClient.invalidateQueries({ queryKey: ['draws', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['project', projectId] })
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.error || 'Error al crear draw'),
+  })
+
   const wiredDraws = draws.filter(d => d.estado === 'WIRED')
   const totalWired = wiredDraws.reduce((s, d) => s + d.netWire, 0)
   // Derive saldo holdback directly from the contract value minus everything wired.
@@ -719,6 +729,13 @@ export default function Draws({ projectId }: { projectId: string }) {
             className="flex items-center gap-2 px-3 py-2 border border-red-200 text-red-700 hover:bg-red-50 text-xs font-medium rounded-xl transition-colors">
             <Trash2 className="w-3.5 h-3.5" />
             Resetear sección
+          </button>
+          <button onClick={() => addDrawMutation.mutate()}
+            disabled={addDrawMutation.isPending}
+            title="Agregar un draw vacío al final de la lista"
+            className="flex items-center gap-2 px-3 py-2 border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-medium rounded-xl transition-colors disabled:opacity-40">
+            <span className="text-base leading-none">+</span>
+            {addDrawMutation.isPending ? 'Agregando...' : 'Agregar draw'}
           </button>
           <button onClick={() => setShowParse(true)}
             className="flex items-center gap-2 px-4 py-2 bg-[#C8922A] btn-animated hover:bg-[#E0AD4F] text-white text-sm font-medium rounded-xl transition-colors">

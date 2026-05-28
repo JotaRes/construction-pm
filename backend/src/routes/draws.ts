@@ -744,6 +744,43 @@ router.get('/:projectId/draws', async (req: Request, res: Response) => {
   }
 })
 
+// ── POST create draw ────────────────────────────────────────────────────────
+// Adds a new EMPTY draw with the next sequential number. Used when the user
+// has deleted draws and needs more capacity, or when a project genuinely has
+// more than the default 8 draws. No hard cap — the lender, not the system,
+// decides how many draws a project gets.
+router.post('/:projectId/draws', async (req: Request, res: Response) => {
+  try {
+    const projectId = req.params.projectId
+    const last = await prisma.draw.findFirst({
+      where: { projectId },
+      orderBy: { drawNumber: 'desc' },
+      select: { drawNumber: true },
+    })
+    const nextNumber = (last?.drawNumber ?? 0) + 1
+    const created = await prisma.draw.create({
+      data: {
+        projectId,
+        drawNumber: nextNumber,
+        estado: 'EMPTY',
+        montoSolicitado: 0,
+        elegibleTrinity: 0,
+        porcentajeFunded: 0,
+        netWire: 0,
+        upbPre: 0,
+        upbPost: 0,
+        saldoHoldback: 0,
+      },
+    })
+    // recalcHoldback so the new row inherits the running UPB / holdback chain
+    await recalcHoldback(projectId)
+    const fresh = await prisma.draw.findUnique({ where: { id: created.id } })
+    res.json({ data: fresh, error: null })
+  } catch (e) {
+    res.status(500).json({ data: null, error: String(e) })
+  }
+})
+
 // ── PATCH draw ───────────────────────────────────────────────────────────────
 router.patch('/:id', async (req: Request, res: Response) => {
   try {
