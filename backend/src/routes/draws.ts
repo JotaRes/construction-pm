@@ -890,9 +890,12 @@ router.post('/:id/document', (req: Request, res: Response) => {
         }
       }
 
-      // APPROVAL slot — Trinity's draw report PDF carries line-by-line approvals
-      // that map directly to BudgetLine.valorAprobado. Surface parser failures
-      // so the user knows the budget was NOT auto-updated.
+      // APPROVAL slot — Trinity's draw report PDF carries TWO pieces of info:
+      //   (a) line-by-line approvals → drives BudgetLine.valorAprobado
+      //   (b) draw header (drawNumber, dates, total elegible) → drives the
+      //       draw record itself, so the user doesn't have to also upload the
+      //       Excel just to populate fechas/elegibleTrinity.
+      // Surface parser failures so the user knows the budget was NOT updated.
       if (kind === 'APPROVAL') {
         if (req.file.mimetype !== 'application/pdf') {
           extractionError = `Archivo no es un PDF (${req.file.mimetype || 'sin mimetype'}).`
@@ -905,6 +908,31 @@ router.post('/:id/document', (req: Request, res: Response) => {
               if (draw) budgetUpdate = await applyDrawApprovalsToBudget(draw.projectId, approvals)
             } else {
               extractionError = 'No se detectaron line items en el PDF. Verifica que sea el reporte de Trinity.'
+            }
+            // Draw-header extraction — dates, drawNumber, total elegible.
+            // parseDrawText already handles the Trinity header format. Only fill
+            // fields that are currently empty so we never clobber user edits.
+            const headerFields = parseDrawText(pdfData.text)
+            if (typeof headerFields.drawNumber === 'number') parsedDrawNumber = headerFields.drawNumber
+            const safeFields: Array<keyof typeof headerFields> = [
+              'fechaSolicitud', 'fechaInspeccion', 'fechaWire',
+              'elegibleTrinity', 'montoSolicitado', 'porcentajeFunded',
+            ]
+            const existing = await prisma.draw.findUnique({ where: { id: req.params.id } })
+            const isBlank = (v: unknown) => v === null || v === undefined || v === '' || v === 0
+            for (const k of safeFields) {
+              const v = headerFields[k]
+              if (v === undefined || v === null || v === '') continue
+              if (existing && !isBlank((existing as Record<string, unknown>)[k as string])) continue
+              extracted[k as string] = v
+            }
+            // If the line approvals sum gave us a total ($ this draw), also
+            // surface it as elegibleTrinity when the regex missed it.
+            if (!extracted.elegibleTrinity && approvals.length > 0) {
+              const cumThisDraw = approvals.reduce((s, a) => s + a.deltaThisDraw, 0)
+              if (cumThisDraw > 0 && (!existing || isBlank(existing.elegibleTrinity))) {
+                extracted.elegibleTrinity = cumThisDraw
+              }
             }
           } catch (e) {
             console.warn('Approval PDF parse failed for draw', req.params.id, e)
@@ -934,10 +962,11 @@ router.post('/:id/document', (req: Request, res: Response) => {
         }
       }
 
-      // Recalc whenever the draw cash flow or the project's anchor moved.
-      if ('netWire' in extracted || 'upbPre' in extracted || 'upbPost' in extracted || projectPatched) {
-        await recalcHoldback(draw.projectId)
-      }
+      // Always recalc — uploading ANY lender document (Excel, PDF approval) is
+      // a signal that the holdback / UPB chain may need to refresh. Cheap to run
+      // and removes a whole class of "I uploaded the PDF but the saldo stays
+      // at zero" bugs caused by missing the recalc trigger.
+      await recalcHoldback(draw.projectId)
       const updated = await prisma.draw.findUnique({ where: { id: draw.id } })
       res.json({ data: updated, extracted, projectPatched, parsedDrawNumber, budgetUpdate, extractionError, error: null })
     } catch (e) {
