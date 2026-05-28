@@ -398,6 +398,35 @@ router.post('/:id/reset-budget', async (req: Request, res: Response) => {
   }
 })
 
+// === POST /:id/reset-draws-section — limpia TODO el módulo Draws ===
+// Borra todos los draws del proyecto Y resetea los campos contractuales del
+// HUD-1 (loanAmount, holdback, day1Disbursement, interestReserve) que alimentan
+// las KPIs de la sección. Caso de uso: el usuario terminó un proyecto o quiere
+// volver a cargar el HUD desde cero. SIN esto, project.holdback queda con un
+// valor stale (ej. $395,350) que sigue apareciendo en "Holdback inicial" aunque
+// no haya ningún draw en la base.
+router.post('/:id/reset-draws-section', async (req: Request, res: Response) => {
+  try {
+    const projectId = req.params.id
+    const deleted = await prisma.draw.deleteMany({ where: { projectId } })
+    await prisma.project.update({
+      where: { id: projectId },
+      data: {
+        loanAmount: 0,
+        holdback: 0,
+        day1Disbursement: 0,
+        interestReserve: 0,
+      },
+    })
+    res.json({
+      data: { drawsDeleted: deleted.count, message: `${deleted.count} draw(s) eliminados y campos contractuales reseteados.` },
+      error: null,
+    })
+  } catch (e) {
+    res.status(500).json({ data: null, error: String(e) })
+  }
+})
+
 // === POST /:id/reset-construction-budget — borra TODAS las líneas del construction budget ===
 // Si hay draws con APPROVAL PDF cargado, esos draws aplicaron valorAprobado
 // a las líneas que vamos a borrar. Como no almacenamos la planilla original por

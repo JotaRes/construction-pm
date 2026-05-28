@@ -11,6 +11,7 @@ export const projectsApi = {
   resetExecution: (id: string) => api.post(`/projects/${id}/reset-execution`).then(r => r.data.data),
   resetBudget: (id: string) => api.post(`/projects/${id}/reset-budget`).then(r => r.data.data),
   resetConstructionBudget: (id: string) => api.post(`/projects/${id}/reset-construction-budget`).then(r => r.data.data),
+  resetDrawsSection: (id: string) => api.post(`/projects/${id}/reset-draws-section`).then(r => r.data.data),
   parseHud: (file: File) => {
     const fd = new FormData()
     fd.append('pdf', file)

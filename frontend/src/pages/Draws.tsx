@@ -629,6 +629,7 @@ function PdfParsePanel({ projectId, draws, onClose, onApply }: {
 
 export default function Draws({ projectId }: { projectId: string }) {
   const queryClient = useQueryClient()
+  const confirm = useConfirm()
   const [showParse, setShowParse] = useState(false)
   const [showTimeline, setShowTimeline] = useState(true)
 
@@ -676,7 +677,11 @@ export default function Draws({ projectId }: { projectId: string }) {
 
   const wiredDraws = draws.filter(d => d.estado === 'WIRED')
   const totalWired = wiredDraws.reduce((s, d) => s + d.netWire, 0)
-  const lastSaldo = wiredDraws.length > 0 ? wiredDraws[wiredDraws.length - 1].saldoHoldback : 0
+  // Derive saldo holdback directly from the contract value minus everything wired.
+  // This is the single source of truth for the KPI — never trust a stored
+  // saldoHoldback that could be stale (e.g. left behind on empty draws from a
+  // previous chain). When initialHoldback is 0, saldo is 0 (no holdback set).
+  const lastSaldo = Math.max(0, initialHoldback - totalWired)
 
   // Auditoría: draws ejecutados (PENDING o WIRED) sin documentos requeridos
   const drawsConFalta = draws.filter(d => d.estado !== 'EMPTY' && (!d.invoiceLenderUrl || !d.lenderApprovalUrl))
@@ -690,11 +695,37 @@ export default function Draws({ projectId }: { projectId: string }) {
           <h1 className="text-xl font-bold text-slate-900">Draw Tracker</h1>
           <p className="text-sm text-slate-500 mt-0.5">Hera Holdings LLC — Historial de desembolsos</p>
         </div>
-        <button onClick={() => setShowParse(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-[#C8922A] btn-animated hover:bg-[#E0AD4F] text-white text-sm font-medium rounded-xl transition-colors">
-          <Upload className="w-4 h-4" />
-          Cargar Draw PDF
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={async () => {
+              const ok = await confirm({
+                title: 'Resetear sección Draws',
+                message: 'Esto borrará TODOS los draws de este proyecto y reseteará los campos contractuales (loanAmount, holdback, day1, interestReserve). Las KPIs volverán a $0.',
+                detail: 'Después vuelve a cargar el HUD-1 y los Excel/PDF de los draws para repoblar el módulo.',
+                confirmText: 'Resetear',
+                destructive: true,
+                typeToConfirm: 'RESETEAR',
+              })
+              if (!ok) return
+              try {
+                await projectsApi.resetDrawsSection(projectId)
+                toast.success('Sección Draws reseteada — todas las KPIs y draws limpiados.')
+                queryClient.invalidateQueries({ queryKey: ['draws', projectId] })
+                queryClient.invalidateQueries({ queryKey: ['project', projectId] })
+                queryClient.invalidateQueries({ queryKey: ['construction-budget', projectId] })
+              } catch (e: any) {
+                toast.error(e?.response?.data?.error || 'Error al resetear')
+              }
+            }}
+            className="flex items-center gap-2 px-3 py-2 border border-red-200 text-red-700 hover:bg-red-50 text-xs font-medium rounded-xl transition-colors">
+            <Trash2 className="w-3.5 h-3.5" />
+            Resetear sección
+          </button>
+          <button onClick={() => setShowParse(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-[#C8922A] btn-animated hover:bg-[#E0AD4F] text-white text-sm font-medium rounded-xl transition-colors">
+            <Upload className="w-4 h-4" />
+            Cargar Draw PDF
+          </button>
+        </div>
       </div>
 
       {/* Alerta global de documentos faltantes */}

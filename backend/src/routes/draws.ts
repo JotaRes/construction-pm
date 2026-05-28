@@ -357,6 +357,9 @@ function mapHeaderToField(label: string, section: string | null): string | null 
   if (/eligible|trinity\s*eligible|approved\s*amount|amount\s*eligible|elegible/i.test(l)) return 'elegibleTrinity'
   if (/net\s*wire|wire\s*amount|amount\s*wired|net\s*amount/i.test(l)) return 'netWire'
   if (/percent(age)?\s*(funded|complete)|%\s*(funded|complete)|funded\s*%|complete\s*%|%\s*financiad/i.test(l)) return 'porcentajeFunded'
+  // "Refurb Loan Amount" — the project-level holdback (total construction reserve)
+  // BEFORE any draw was disbursed. Trinity prints it in the Pre-Draw section.
+  if (/refurb\s*loan\s*amount|construction\s*holdback\s*total|holdback\s*total/i.test(l)) return 'projectHoldback'
   // Trinity calls remaining undrawn refurb funds "Refurb Balance" or "Refurb Loan Balance"
   // (Post-Draw column). The "Pre-Draw / Refurb Loan Balance" is the starting balance — we
   // treat both as the holdback balance, with Post winning since it's the after-draw state.
@@ -798,6 +801,7 @@ router.post('/:id/document', (req: Request, res: Response) => {
           : { invoiceLenderUrl: fileUrl, invoiceLenderName: req.file.originalname }
 
       let extracted: Record<string, unknown> = {}
+      let projectExtracted: Record<string, unknown> = {}
       let parsedDrawNumber: number | null = null
       let budgetUpdate: Awaited<ReturnType<typeof applyDrawApprovalsToBudget>> | null = null
       let extractionError: string | null = null
@@ -814,15 +818,30 @@ router.post('/:id/document', (req: Request, res: Response) => {
           try {
             const { parsed } = parseDrawExcel(req.file.buffer)
             if (typeof parsed.drawNumber === 'number') parsedDrawNumber = parsed.drawNumber
-            const allowedFields = [
+            const drawFields = [
               'montoSolicitado', 'elegibleTrinity', 'netWire', 'porcentajeFunded',
               'upbPre', 'upbPost', 'saldoHoldback',
               'fechaSolicitud', 'fechaInspeccion', 'fechaWire',
             ]
-            for (const k of allowedFields) {
+            for (const k of drawFields) {
               const v = parsed[k]
               if (v === undefined || v === null || v === '') continue
               extracted[k] = v
+            }
+            // Trinity's Excel doesn't have a separate "Eligible" column — the
+            // Draw Amount IS the eligible/approved amount (else it wouldn't have
+            // been wired). Mirror montoSolicitado into elegibleTrinity so the
+            // CFO dashboard math stays honest.
+            if (extracted.montoSolicitado && !extracted.elegibleTrinity) {
+              extracted.elegibleTrinity = extracted.montoSolicitado
+            }
+            // Project-level holdback ("Refurb Loan Amount") — the original
+            // construction reserve before any draw. Hand it up to the route so
+            // we can update the Project record if it wasn't set yet (e.g. HUD
+            // not uploaded). Without this, recalcHoldback would clamp every
+            // saldoHoldback to 0 because initialHoldback=0.
+            if (typeof parsed.projectHoldback === 'number' && parsed.projectHoldback > 0) {
+              projectExtracted.holdback = parsed.projectHoldback
             }
             if (Object.keys(extracted).length === 0) {
               extractionError = 'No se detectó ningún campo en el Excel. Verifica que sea el formato Trinity.'
@@ -859,12 +878,31 @@ router.post('/:id/document', (req: Request, res: Response) => {
 
       const data = { ...extracted, ...baseData }
       const draw = await prisma.draw.update({ where: { id: req.params.id }, data })
-      // If we touched netWire or UPB, recalc the holdback + UPB chain.
-      if ('netWire' in extracted || 'upbPre' in extracted || 'upbPost' in extracted) {
+
+      // If the Excel gave us a project-level holdback (Refurb Loan Amount) AND
+      // the project has none yet, persist it. We never overwrite a holdback
+      // that's already configured — the HUD or commitment letter wins for that.
+      let projectPatched: Record<string, unknown> | null = null
+      if (projectExtracted.holdback) {
+        const existing = await prisma.project.findUnique({
+          where: { id: draw.projectId },
+          select: { holdback: true },
+        })
+        if (existing && (existing.holdback === 0 || existing.holdback === null)) {
+          await prisma.project.update({
+            where: { id: draw.projectId },
+            data: { holdback: projectExtracted.holdback as number },
+          })
+          projectPatched = { holdback: projectExtracted.holdback }
+        }
+      }
+
+      // Recalc whenever the draw cash flow or the project's anchor moved.
+      if ('netWire' in extracted || 'upbPre' in extracted || 'upbPost' in extracted || projectPatched) {
         await recalcHoldback(draw.projectId)
       }
       const updated = await prisma.draw.findUnique({ where: { id: draw.id } })
-      res.json({ data: updated, extracted, parsedDrawNumber, budgetUpdate, extractionError, error: null })
+      res.json({ data: updated, extracted, projectPatched, parsedDrawNumber, budgetUpdate, extractionError, error: null })
     } catch (e) {
       res.status(500).json({ data: null, error: String(e) })
     }
