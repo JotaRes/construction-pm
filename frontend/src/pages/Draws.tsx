@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { drawsApi, drawParseApi, constructionBudgetApi, projectsApi, type DrawLineApproval } from '../lib/api'
 import { formatUSD, formatDate } from '../lib/calculations'
 import type { Draw, DrawEstado } from '../lib/types'
-import { Upload, FileText, CheckCircle, X, AlertTriangle, Receipt, ShieldCheck, Share2, Mail, MessageCircle, Download, Trash2, Table2, TrendingDown, ChevronDown } from 'lucide-react'
+import { Upload, FileText, CheckCircle, X, AlertTriangle, Receipt, ShieldCheck, Share2, Mail, MessageCircle, Download, Trash2, Table2, TrendingDown, ChevronDown, RefreshCw } from 'lucide-react'
 import { useConfirm } from '../components/ConfirmDialog'
 import toast from 'react-hot-toast'
 
@@ -729,6 +729,35 @@ export default function Draws({ projectId }: { projectId: string }) {
             className="flex items-center gap-2 px-3 py-2 border border-red-200 text-red-700 hover:bg-red-50 text-xs font-medium rounded-xl transition-colors">
             <Trash2 className="w-3.5 h-3.5" />
             Resetear sección
+          </button>
+          <button onClick={async () => {
+              const ok = await confirm({
+                title: 'Reparar Construction Budget',
+                message: 'Recompute el valor APROBADO de cada línea desde los draws vivos. Útil si quedaron aprobaciones huérfanas tras borrar draws antiguos.',
+                detail: 'Esta acción no toca tus draws — sólo reconstruye la columna APROBADO sumando aportes de los APPROVAL PDFs cargados actualmente. Re-procesa cada PDF desde Cloudinary.',
+                confirmText: 'Reparar budget',
+              })
+              if (!ok) return
+              try {
+                const t = toast.loading('Re-procesando PDFs de aprobación...')
+                const r = await drawParseApi.rebuildContributions(projectId)
+                toast.dismiss(t)
+                const errors = r.report.filter(x => x.error).length
+                toast.success(
+                  `Reparado: ${r.drawsProcessed} draw(s) procesados, total aprobado ${formatUSD(r.totalAprobado)}${errors > 0 ? ` · ${errors} con error` : ''}`,
+                  { duration: 8000 }
+                )
+                queryClient.invalidateQueries({ queryKey: ['draws', projectId] })
+                queryClient.invalidateQueries({ queryKey: ['construction-budget', projectId] })
+                queryClient.invalidateQueries({ queryKey: ['project', projectId] })
+              } catch (e: any) {
+                toast.error(e?.response?.data?.error || 'Error al reparar')
+              }
+            }}
+            title="Reconstruir la columna APROBADO del budget desde los PDFs de aprobación cargados"
+            className="flex items-center gap-2 px-3 py-2 border border-blue-200 text-blue-700 hover:bg-blue-50 text-xs font-medium rounded-xl transition-colors">
+            <RefreshCw className="w-3.5 h-3.5" />
+            Reparar budget
           </button>
           <button onClick={() => addDrawMutation.mutate()}
             disabled={addDrawMutation.isPending}

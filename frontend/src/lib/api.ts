@@ -192,6 +192,20 @@ export const drawParseApi = {
   applyApprovals: (projectId: string, drawId: string, approvals: DrawLineApproval[]) =>
     api.post(`/projects/${projectId}/draws/apply-approvals`, { drawId, approvals })
       .then(r => r.data.data as BudgetUpdateResult),
+  // Saneo: recompute valorAprobado del proyecto desde contribuciones vivas
+  // (limpia datos legacy sin contrib registrada).
+  rebuildBudget: (projectId: string) =>
+    api.post(`/projects/${projectId}/budget/rebuild-from-contributions`)
+      .then(r => r.data.data as { lines: number; totalAprobado: number }),
+  // Saneo profundo: re-descarga cada APPROVAL PDF, lo re-parsea y reconstruye
+  // contribuciones desde cero. Útil para repoblar trazabilidad de datos legacy.
+  rebuildContributions: (projectId: string) =>
+    api.post(`/projects/${projectId}/draws/rebuild-contributions`)
+      .then(r => r.data.data as {
+        drawsProcessed: number
+        totalAprobado: number
+        report: Array<{ drawNumber: number; matched: number; newlyApprovedItems: number; newlyApprovedAmount: number; error?: string }>
+      }),
 }
 
 export const docParseApi = {

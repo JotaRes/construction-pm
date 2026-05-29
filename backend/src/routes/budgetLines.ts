@@ -33,9 +33,12 @@ router.get('/:id/construction-budget', async (req: Request, res: Response) => {
 
 // Whitelist explícita — req.body sólo puede tocar campos editables por el
 // usuario desde la UI. Bloquea mass-assignment de projectId/itemCode/order/etc.
+// IMPORTANTE: valorAprobado NO está aquí — es derivado de DrawLineContribution
+// (suma de aportes por draw vivo). Editarlo manualmente rompe la trazabilidad
+// y el siguiente recompute lo sobrescribiría.
 const BUDGET_LINE_EDITABLE_FIELDS = new Set([
   'description', 'unit', 'vendor',
-  'valorInicial', 'valorPresentado', 'valorAprobado', 'pagadoSubs',
+  'valorInicial', 'valorPresentado', 'pagadoSubs',
 ])
 
 router.patch('/:projectId/construction-budget/:id', async (req: Request, res: Response) => {

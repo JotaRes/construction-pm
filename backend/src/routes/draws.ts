@@ -78,30 +78,36 @@ async function recalcHoldback(projectId: string) {
     //     lender's Excel). Its upbPre is preserved as-is; upbPost is recomputed
     //     as upbPre + netWire to keep them consistent.
     //   - Every draw AFTER the anchor is strictly chain-propagated: upbPre =
-    //     previous draw's upbPost, upbPost = upbPre + netWire. This overwrites
-    //     stale values left behind when an upstream draw is deleted, so the
-    //     chain never has orphan UPB numbers pointing to a draw that no longer
-    //     exists.
-    let nextUpbPre: number | null = draw.upbPre || null
-    let nextUpbPost: number | null = draw.upbPost || null
+    //     previous draw's upbPost, upbPost = upbPre + netWire.
+    //   - Every draw BEFORE the anchor (todavía sin anchor encontrado) se
+    //     resetea explícitamente a upbPre=0, upbPost=netWire — esto evita que
+    //     valores stale dejados al borrar un upstream draw se queden vivos.
+    let nextUpbPre: number
+    let nextUpbPost: number
 
     if (pastAnchor && prevPost !== null) {
       // Force-propagate from the previous post — overrides any stale value.
       nextUpbPre = prevPost
       nextUpbPost = nextUpbPre + draw.netWire
-    } else if (!pastAnchor && nextUpbPre !== null && nextUpbPre > 0) {
+    } else if (!pastAnchor && draw.upbPre > 0) {
       // Anchor found — keep upbPre, recompute upbPost from it.
       pastAnchor = true
+      nextUpbPre = draw.upbPre
       nextUpbPost = nextUpbPre + draw.netWire
+    } else {
+      // Pre-anchor o sin anchor en todo el set: reset explícito a 0.
+      // Si el draw tenía netWire, igual su upbPost = netWire (puede ser el
+      // primer draw real de un proyecto donde el HUD no se ha cargado).
+      nextUpbPre = 0
+      nextUpbPost = draw.netWire
     }
 
-    const data: Record<string, unknown> = { saldoHoldback: saldo }
-    if (nextUpbPre !== null && nextUpbPre !== draw.upbPre) data.upbPre = nextUpbPre
-    if (nextUpbPost !== null && nextUpbPost !== draw.upbPost) data.upbPost = nextUpbPost
+    await prisma.draw.update({
+      where: { id: draw.id },
+      data: { saldoHoldback: saldo, upbPre: nextUpbPre, upbPost: nextUpbPost },
+    })
 
-    await prisma.draw.update({ where: { id: draw.id }, data })
-
-    prevPost = nextUpbPost ?? prevPost
+    prevPost = nextUpbPost
   }
 }
 
@@ -251,6 +257,17 @@ export async function applyDrawApprovalsToBudget(
   const final = await prisma.budgetLine.findMany({ where: { projectId }, select: { valorAprobado: true } })
   const cumulativeApproved = final.reduce((s, l) => s + l.valorAprobado, 0)
   return { matched, newlyApprovedItems, newlyApprovedAmount, cumulativeApproved, unmatched }
+}
+
+// Recalcula valorAprobado de TODAS las líneas del proyecto desde sus contribuciones.
+// Necesario para sanear datos legacy (líneas con valorAprobado heredado de antes
+// de que existiera DrawLineContribution) y para garantizar que borrar un draw
+// limpie incluso aprobaciones que nunca tuvieron contribución registrada.
+export async function recomputeProjectBudgetFromContributions(projectId: string) {
+  const lines = await prisma.budgetLine.findMany({
+    where: { projectId }, select: { id: true },
+  })
+  await recomputeBudgetLinesFromContributions(lines.map(l => l.id))
 }
 
 // Limpia todas las contribuciones de un draw y recalcula las líneas de budget
@@ -849,10 +866,9 @@ router.patch('/:id', async (req: Request, res: Response) => {
 })
 
 // ── DELETE draw ───────────────────────────────────────────────────────────────
-// CRITICAL: must (1) recompute the budget lines this draw contributed to,
-// (2) recompute saldoHoldback + UPB chain — otherwise downstream draws keep
-// stale cumulative values and the construction budget keeps approvals that
-// belong to a draw that no longer exists.
+// CRITICAL: must (1) recompute todo el budget del proyecto desde contribuciones
+// vivas (incluso datos legacy sin contribución quedan en 0 si nadie los respalda),
+// (2) recompute saldoHoldback + UPB chain — para no dejar valores stale.
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
     const existing = await prisma.draw.findUnique({
@@ -862,17 +878,14 @@ router.delete('/:id', async (req: Request, res: Response) => {
     if (!existing) {
       return res.status(404).json({ data: null, error: 'Draw no encontrado' })
     }
-    // Capturar líneas afectadas ANTES del delete (el cascade borra las contribs).
-    const contribs = await prisma.drawLineContribution.findMany({
-      where: { drawId: req.params.id }, select: { budgetLineId: true },
-    })
-    const touchedLineIds = contribs.map(c => c.budgetLineId)
     await prisma.draw.delete({ where: { id: req.params.id } })
-    // Cascade ya borró las contribuciones. Recalcular las líneas afectadas
-    // suma cero del draw eliminado → su aporte desaparece del valorAprobado.
-    await recomputeBudgetLinesFromContributions(touchedLineIds)
+    // Cascade ya borró las contribuciones de este draw. Hacemos recompute
+    // PROJECT-WIDE: cualquier línea sin contribuciones vivas (incluso heredadas
+    // de antes de la trazabilidad) vuelve a $0. Así borrar el draw siempre
+    // deja el construction budget coherente.
+    await recomputeProjectBudgetFromContributions(existing.projectId)
     await recalcHoldback(existing.projectId)
-    res.json({ data: { deleted: true, budgetLinesRecomputed: touchedLineIds.length }, error: null })
+    res.json({ data: { deleted: true }, error: null })
   } catch (e) {
     res.status(500).json({ data: null, error: String(e) })
   }
@@ -1073,9 +1086,11 @@ router.delete('/:id/document/:kind', async (req: Request, res: Response) => {
     // El APPROVAL pdf de Trinity es la fuente única de las aprobaciones por
     // línea — al borrarlo, las contribuciones de este draw al budget también
     // deben desaparecer (queja del usuario: "al eliminar un draw, no se borran
-    // los datos automaticos en el construction budget").
+    // los datos automaticos en el construction budget"). Hacemos recompute
+    // project-wide para sanear también datos legacy sin contribución registrada.
     if (kind === 'APPROVAL') {
-      await clearDrawContributions(req.params.id)
+      await prisma.drawLineContribution.deleteMany({ where: { drawId: req.params.id } })
+      await recomputeProjectBudgetFromContributions(draw.projectId)
     }
     if (kind === 'EXCEL') {
       await recalcHoldback(draw.projectId)
@@ -1149,6 +1164,78 @@ router.post('/:projectId/draws/parse-pdf', handleUpload, async (req: Request, re
       data: { parsed, preview: pdfData.text.slice(0, 1500), isImage: false, imageUrl: null, approvals },
       error: null,
     })
+  } catch (e) {
+    res.status(500).json({ data: null, error: String(e) })
+  }
+})
+
+// ── POST rebuild-budget-from-contributions ──────────────────────────────────
+// Botón admin: recompute todo el valorAprobado del proyecto desde las
+// contribuciones vivas. Sirve para sanear datos legacy (aprobaciones cargadas
+// antes de que existiera DrawLineContribution) o para forzar consistencia.
+router.post('/:projectId/budget/rebuild-from-contributions', async (req: Request, res: Response) => {
+  try {
+    await recomputeProjectBudgetFromContributions(req.params.projectId)
+    await recalcHoldback(req.params.projectId)
+    const lines = await prisma.budgetLine.findMany({
+      where: { projectId: req.params.projectId },
+      select: { valorAprobado: true },
+    })
+    const total = lines.reduce((s, l) => s + l.valorAprobado, 0)
+    res.json({ data: { lines: lines.length, totalAprobado: total }, error: null })
+  } catch (e) {
+    res.status(500).json({ data: null, error: String(e) })
+  }
+})
+
+// ── POST rebuild-contributions-from-pdfs ────────────────────────────────────
+// Botón admin: para cada draw con APPROVAL PDF cargado en Cloudinary, lo
+// descarga, lo re-parsea y reconstruye sus contribuciones. Útil cuando el
+// estado se desincronizó o cuando subiste draws antes de que existiera la
+// trazabilidad de contribuciones.
+router.post('/:projectId/draws/rebuild-contributions', async (req: Request, res: Response) => {
+  try {
+    const projectId = req.params.projectId
+    const draws = await prisma.draw.findMany({
+      where: { projectId, lenderApprovalUrl: { not: null } },
+      select: { id: true, drawNumber: true, lenderApprovalUrl: true },
+      orderBy: { drawNumber: 'asc' },
+    })
+    // Empezar limpio: borra todas las contribuciones del proyecto.
+    await prisma.drawLineContribution.deleteMany({
+      where: { draw: { projectId } },
+    })
+    const report: Array<{ drawNumber: number; matched: number; newlyApprovedItems: number; newlyApprovedAmount: number; error?: string }> = []
+    for (const d of draws) {
+      if (!d.lenderApprovalUrl) continue
+      try {
+        const r = await fetch(d.lenderApprovalUrl)
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        const buf = Buffer.from(await r.arrayBuffer())
+        const pdfData = await pdfParse(buf)
+        const approvals = parseTrinityDrawApprovals(pdfData.text)
+        const result = await applyDrawApprovalsToBudget(projectId, d.id, approvals)
+        report.push({
+          drawNumber: d.drawNumber,
+          matched: result.matched,
+          newlyApprovedItems: result.newlyApprovedItems,
+          newlyApprovedAmount: result.newlyApprovedAmount,
+        })
+      } catch (e) {
+        report.push({
+          drawNumber: d.drawNumber,
+          matched: 0, newlyApprovedItems: 0, newlyApprovedAmount: 0,
+          error: e instanceof Error ? e.message : String(e),
+        })
+      }
+    }
+    await recomputeProjectBudgetFromContributions(projectId)
+    await recalcHoldback(projectId)
+    const lines = await prisma.budgetLine.findMany({
+      where: { projectId }, select: { valorAprobado: true },
+    })
+    const totalAprobado = lines.reduce((s, l) => s + l.valorAprobado, 0)
+    res.json({ data: { drawsProcessed: draws.length, totalAprobado, report }, error: null })
   } catch (e) {
     res.status(500).json({ data: null, error: String(e) })
   }

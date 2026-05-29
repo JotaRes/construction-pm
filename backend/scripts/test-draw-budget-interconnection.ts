@@ -12,6 +12,7 @@ import {
   applyDrawApprovalsToBudget,
   clearDrawContributions,
   recomputeBudgetLinesFromContributions,
+  recomputeProjectBudgetFromContributions,
 } from '../src/routes/draws'
 
 const pdfParse = require('pdf-parse') as (buffer: Buffer) => Promise<{ text: string }>
@@ -223,6 +224,42 @@ async function main() {
     assert('Borrar draw 1 (cascade): 0 contribuciones huérfanas',
       contribsFinal.length === 0, `${contribsFinal.length} restantes`)
   }
+
+  // 14. CASO LEGACY: simular aprobaciones cargadas SIN contribuciones (estado
+  //     anterior a DrawLineContribution). El usuario carga valores directos a
+  //     valorAprobado, después borra el draw → el budget debe quedar limpio.
+  console.log('\n  --- CASO LEGACY (sin contribuciones) ---')
+  const legacyDraw = await prisma.draw.create({
+    data: { projectId: project.id, drawNumber: 5, estado: 'WIRED', netWire: 10000 },
+  })
+  // Simular estado legacy: asignar valorAprobado directo, SIN contribución.
+  const someLines = await prisma.budgetLine.findMany({
+    where: { projectId: project.id }, take: 3,
+  })
+  for (const l of someLines) {
+    await prisma.budgetLine.update({
+      where: { id: l.id }, data: { valorAprobado: 5000 },
+    })
+  }
+  const legacySumBefore = (await prisma.budgetLine.findMany({
+    where: { projectId: project.id }, select: { valorAprobado: true },
+  })).reduce((s, l) => s + l.valorAprobado, 0)
+  assert('Setup legacy: 3 líneas con $5,000 cada una (sin contrib)',
+    legacySumBefore === 15000, `$${legacySumBefore}`)
+  const contribsLegacy = await prisma.drawLineContribution.findMany({
+    where: { drawId: legacyDraw.id },
+  })
+  assert('Setup legacy: 0 contribuciones del draw',
+    contribsLegacy.length === 0, `${contribsLegacy.length} contribs`)
+
+  // Acción: borrar draw legacy y hacer recompute project-wide
+  await prisma.draw.delete({ where: { id: legacyDraw.id } })
+  await recomputeProjectBudgetFromContributions(project.id)
+  const legacySumAfter = (await prisma.budgetLine.findMany({
+    where: { projectId: project.id }, select: { valorAprobado: true },
+  })).reduce((s, l) => s + l.valorAprobado, 0)
+  assert('LEGACY: borrar draw + recompute project-wide → valorAprobado = 0',
+    legacySumAfter < 0.01, `$${legacySumAfter.toFixed(2)} restante`)
 
   // CLEANUP
   await cleanup()
