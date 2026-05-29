@@ -427,7 +427,7 @@ function PdfParsePanel({ projectId, draws, onClose, onApply }: {
     // If the PDF carried line-level approvals (Trinity report), update the construction budget.
     if (approvals.length > 0) {
       try {
-        const res = await drawParseApi.applyApprovals(projectId, approvals)
+        const res = await drawParseApi.applyApprovals(projectId, targetDraw, approvals)
         if (res.newlyApprovedItems > 0) {
           toast.success(
             `+${res.newlyApprovedItems} item(s) nuevo(s) por ${formatUSD(res.newlyApprovedAmount)}.\nTotal aprobado: ${formatUSD(res.cumulativeApproved)}`,

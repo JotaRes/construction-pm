@@ -161,6 +161,25 @@ model Draw {
   lenderApprovalName  String?
   lenderExcelUrl      String?   // tabla Excel del lender por draw
   lenderExcelName     String?
+  contributions       DrawLineContribution[]
+}
+
+// Trazabilidad Draw→BudgetLine: cuánto aportó este draw a cada item del construction budget.
+// valorAprobado de cada BudgetLine = SUM(deltaAmount) de todas sus contribuciones.
+// Borrar un draw o su APPROVAL pdf elimina las contribuciones por cascade y dispara
+// recálculo del valorAprobado — así el budget refleja siempre los draws vivos.
+model DrawLineContribution {
+  id            String     @id @default(cuid())
+  drawId        String
+  draw          Draw       @relation(fields: [drawId], references: [id], onDelete: Cascade)
+  budgetLineId  String
+  budgetLine    BudgetLine @relation(fields: [budgetLineId], references: [id], onDelete: Cascade)
+  itemCode      String
+  deltaAmount   Float
+  createdAt     DateTime   @default(now())
+
+  @@unique([drawId, budgetLineId])
+  @@index([budgetLineId])
 }
 
 model Partner {
@@ -272,6 +291,7 @@ model BudgetLine {
   valorAprobado   Float   @default(0)
   pagadoSubs      Float   @default(0)
   order           Int     @default(0)
+  contributions   DrawLineContribution[]
 }
 
 model Task {

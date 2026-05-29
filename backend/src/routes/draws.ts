@@ -151,19 +151,44 @@ export function parseTrinityDrawApprovals(text: string): DrawLineApproval[] {
   return out
 }
 
-// Apply parsed approvals to the project's BudgetLines.
-// Cumulative semantics: valorAprobado is set to currentAmountAvailable (the
-// lender's running total). To honor the user's "no redundancy" rule we only
-// touch lines where this draw actually contributed something — items at 100%
-// from a previous draw whose row Trinity reprints unchanged are left alone.
+// Recalcula valorAprobado de las líneas indicadas sumando todas sus contribuciones
+// activas (= contribuciones cuyo Draw aún existe). Es la operación inversa que
+// hace coherente el budget cuando se borra un draw o su APPROVAL pdf.
+export async function recomputeBudgetLinesFromContributions(budgetLineIds: string[]) {
+  if (budgetLineIds.length === 0) return
+  const unique = Array.from(new Set(budgetLineIds))
+  const groups = await prisma.drawLineContribution.groupBy({
+    by: ['budgetLineId'],
+    where: { budgetLineId: { in: unique } },
+    _sum: { deltaAmount: true },
+  })
+  const totalsByLine = new Map<string, number>()
+  for (const g of groups) totalsByLine.set(g.budgetLineId, g._sum.deltaAmount ?? 0)
+  // Líneas sin ninguna contribución viva quedan en 0 — su draw fue borrado.
+  await Promise.all(
+    unique.map(id =>
+      prisma.budgetLine.update({
+        where: { id },
+        data: { valorAprobado: totalsByLine.get(id) ?? 0 },
+      })
+    )
+  )
+}
+
+// Apply parsed approvals to the project's BudgetLines — IDEMPOTENT y TRAZABLE.
+// Cada draw guarda sus contribuciones (DrawLineContribution) por línea. Re-aplicar
+// el mismo PDF reemplaza las contribuciones previas del draw — nunca duplica.
+// Al borrar el draw (o su APPROVAL), las contribuciones desaparecen por cascade
+// y recomputeBudgetLinesFromContributions deja el valorAprobado coherente.
 //
-// Returns four counters so the caller can distinguish:
-//   - matched           = items in the PDF that have a budget line
-//   - newlyApprovedItems = items where this specific draw added approval
-//   - newlyApprovedAmount = $ added in this draw (sum of deltas)
-//   - cumulativeApproved  = total valorAprobado across the project after applying
+// Devuelve cuatro contadores para que la UI los muestre al usuario:
+//   - matched              = items del PDF con línea de budget existente
+//   - newlyApprovedItems   = líneas donde este draw aportó >0
+//   - newlyApprovedAmount  = $ aportado por este draw (suma de deltas)
+//   - cumulativeApproved   = total valorAprobado del proyecto después de aplicar
 export async function applyDrawApprovalsToBudget(
   projectId: string,
+  drawId: string,
   approvals: DrawLineApproval[],
 ): Promise<{
   matched: number
@@ -172,7 +197,18 @@ export async function applyDrawApprovalsToBudget(
   cumulativeApproved: number
   unmatched: string[]
 }> {
+  // Borra contribuciones anteriores de este draw — re-aplicar el mismo PDF
+  // siempre arranca de cero para este draw (los demás draws se respetan).
+  const priorContribs = await prisma.drawLineContribution.findMany({
+    where: { drawId }, select: { budgetLineId: true },
+  })
+  const touchedFromPrior = priorContribs.map(c => c.budgetLineId)
+  if (priorContribs.length > 0) {
+    await prisma.drawLineContribution.deleteMany({ where: { drawId } })
+  }
+
   if (!approvals.length) {
+    await recomputeBudgetLinesFromContributions(touchedFromPrior)
     const lines = await prisma.budgetLine.findMany({ where: { projectId }, select: { valorAprobado: true } })
     return {
       matched: 0,
@@ -182,6 +218,7 @@ export async function applyDrawApprovalsToBudget(
       unmatched: [],
     }
   }
+
   const lines = await prisma.budgetLine.findMany({ where: { projectId } })
   const byCode = new Map<string, (typeof lines)[number]>()
   for (const l of lines) byCode.set(l.itemCode, l)
@@ -190,26 +227,42 @@ export async function applyDrawApprovalsToBudget(
   let newlyApprovedItems = 0
   let newlyApprovedAmount = 0
   const unmatched: string[] = []
+  const touched = new Set<string>(touchedFromPrior)
+
   for (const a of approvals) {
     const line = byCode.get(a.itemCode)
     if (!line) { unmatched.push(a.itemCode); continue }
     matched++
-    // Per the lender's methodology, only the rows where this draw actually
-    // approved something are "new" — skip the carryover rows entirely so we
-    // never recount what an earlier draw already approved.
     if (a.deltaThisDraw <= 0.005) continue
-    if (Math.abs(line.valorAprobado - a.currentAmountAvailable) > 0.005) {
-      await prisma.budgetLine.update({
-        where: { id: line.id },
-        data: { valorAprobado: a.currentAmountAvailable },
-      })
-    }
+    await prisma.drawLineContribution.create({
+      data: {
+        drawId,
+        budgetLineId: line.id,
+        itemCode: a.itemCode,
+        deltaAmount: a.deltaThisDraw,
+      },
+    })
+    touched.add(line.id)
     newlyApprovedItems++
     newlyApprovedAmount += a.deltaThisDraw
   }
+
+  await recomputeBudgetLinesFromContributions(Array.from(touched))
   const final = await prisma.budgetLine.findMany({ where: { projectId }, select: { valorAprobado: true } })
   const cumulativeApproved = final.reduce((s, l) => s + l.valorAprobado, 0)
   return { matched, newlyApprovedItems, newlyApprovedAmount, cumulativeApproved, unmatched }
+}
+
+// Limpia todas las contribuciones de un draw y recalcula las líneas de budget
+// afectadas. Se llama al borrar el draw o su APPROVAL pdf.
+export async function clearDrawContributions(drawId: string) {
+  const contribs = await prisma.drawLineContribution.findMany({
+    where: { drawId }, select: { budgetLineId: true },
+  })
+  if (contribs.length === 0) return
+  const lineIds = contribs.map(c => c.budgetLineId)
+  await prisma.drawLineContribution.deleteMany({ where: { drawId } })
+  await recomputeBudgetLinesFromContributions(lineIds)
 }
 
 // Wrapper que mantiene la firma original pero usa el helper compartido
@@ -472,7 +525,7 @@ function parseDrawExcelTabular(sheet: XLSX.WorkSheet): Record<string, unknown> {
   return out
 }
 
-function parseDrawExcel(buffer: Buffer): { parsed: Record<string, unknown>; preview: string } {
+export function parseDrawExcel(buffer: Buffer): { parsed: Record<string, unknown>; preview: string } {
   const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true })
 
   // 1) Flatten every sheet → run existing regex parser as a baseline.
@@ -796,9 +849,10 @@ router.patch('/:id', async (req: Request, res: Response) => {
 })
 
 // ── DELETE draw ───────────────────────────────────────────────────────────────
-// CRITICAL: must recompute saldoHoldback + UPB chain after delete, otherwise
-// downstream draws keep stale cumulative values (e.g. orphan holdback of $395k
-// reported in production after deleting a wired draw).
+// CRITICAL: must (1) recompute the budget lines this draw contributed to,
+// (2) recompute saldoHoldback + UPB chain — otherwise downstream draws keep
+// stale cumulative values and the construction budget keeps approvals that
+// belong to a draw that no longer exists.
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
     const existing = await prisma.draw.findUnique({
@@ -808,9 +862,17 @@ router.delete('/:id', async (req: Request, res: Response) => {
     if (!existing) {
       return res.status(404).json({ data: null, error: 'Draw no encontrado' })
     }
+    // Capturar líneas afectadas ANTES del delete (el cascade borra las contribs).
+    const contribs = await prisma.drawLineContribution.findMany({
+      where: { drawId: req.params.id }, select: { budgetLineId: true },
+    })
+    const touchedLineIds = contribs.map(c => c.budgetLineId)
     await prisma.draw.delete({ where: { id: req.params.id } })
+    // Cascade ya borró las contribuciones. Recalcular las líneas afectadas
+    // suma cero del draw eliminado → su aporte desaparece del valorAprobado.
+    await recomputeBudgetLinesFromContributions(touchedLineIds)
     await recalcHoldback(existing.projectId)
-    res.json({ data: { deleted: true }, error: null })
+    res.json({ data: { deleted: true, budgetLinesRecomputed: touchedLineIds.length }, error: null })
   } catch (e) {
     res.status(500).json({ data: null, error: String(e) })
   }
@@ -905,8 +967,12 @@ router.post('/:id/document', (req: Request, res: Response) => {
             const approvals = parseTrinityDrawApprovals(pdfData.text)
             if (approvals.length > 0) {
               const draw = await prisma.draw.findUnique({ where: { id: req.params.id }, select: { projectId: true } })
-              if (draw) budgetUpdate = await applyDrawApprovalsToBudget(draw.projectId, approvals)
+              if (draw) budgetUpdate = await applyDrawApprovalsToBudget(draw.projectId, req.params.id, approvals)
             } else {
+              // PDF subido pero sin items → si había contribuciones previas de
+              // este draw (re-upload), límpialas para no dejar aprobaciones
+              // que ya no respaldan ningún PDF activo.
+              await clearDrawContributions(req.params.id)
               extractionError = 'No se detectaron line items en el PDF. Verifica que sea el reporte de Trinity.'
             }
             // Draw-header extraction — dates, drawNumber, total elegible.
@@ -1004,6 +1070,13 @@ router.delete('/:id/document/:kind', async (req: Request, res: Response) => {
       data = { invoiceLenderUrl: null, invoiceLenderName: null }
     }
     const draw = await prisma.draw.update({ where: { id: req.params.id }, data })
+    // El APPROVAL pdf de Trinity es la fuente única de las aprobaciones por
+    // línea — al borrarlo, las contribuciones de este draw al budget también
+    // deben desaparecer (queja del usuario: "al eliminar un draw, no se borran
+    // los datos automaticos en el construction budget").
+    if (kind === 'APPROVAL') {
+      await clearDrawContributions(req.params.id)
+    }
     if (kind === 'EXCEL') {
       await recalcHoldback(draw.projectId)
     }
@@ -1082,15 +1155,24 @@ router.post('/:projectId/draws/parse-pdf', handleUpload, async (req: Request, re
 })
 
 // Apply previously-parsed Trinity line approvals to the construction budget.
-// The frontend calls this from the "Cargar Draw" modal after the user picks
-// which draw to apply to — it's the modal counterpart of the APPROVAL slot.
+// El frontend pasa el drawId que el usuario eligió en el modal — necesario para
+// trazar QUÉ draw aportó cada contribución (clave para limpiarlas si se borra).
 router.post('/:projectId/draws/apply-approvals', async (req: Request, res: Response) => {
   try {
-    const { approvals } = req.body as { approvals?: DrawLineApproval[] }
-    if (!Array.isArray(approvals) || approvals.length === 0) {
-      return res.json({ data: { matched: 0, updated: 0, unmatched: [] }, error: null })
+    const { approvals, drawId } = req.body as { approvals?: DrawLineApproval[]; drawId?: string }
+    if (!drawId || typeof drawId !== 'string') {
+      return res.status(400).json({ data: null, error: 'drawId requerido para aplicar approvals' })
     }
-    const result = await applyDrawApprovalsToBudget(req.params.projectId, approvals)
+    if (!Array.isArray(approvals) || approvals.length === 0) {
+      return res.json({ data: { matched: 0, newlyApprovedItems: 0, newlyApprovedAmount: 0, cumulativeApproved: 0, unmatched: [] }, error: null })
+    }
+    // Verificar que el draw pertenece a este proyecto — sin esto un usuario
+    // podría aplicar aprobaciones de un proyecto a draws de otro.
+    const draw = await prisma.draw.findUnique({ where: { id: drawId }, select: { projectId: true } })
+    if (!draw || draw.projectId !== req.params.projectId) {
+      return res.status(404).json({ data: null, error: 'Draw no pertenece a este proyecto' })
+    }
+    const result = await applyDrawApprovalsToBudget(req.params.projectId, drawId, approvals)
     res.json({ data: result, error: null })
   } catch (e) {
     res.status(500).json({ data: null, error: String(e) })

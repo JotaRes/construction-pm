@@ -31,11 +31,32 @@ router.get('/:id/construction-budget', async (req: Request, res: Response) => {
   }
 })
 
+// Whitelist explícita — req.body sólo puede tocar campos editables por el
+// usuario desde la UI. Bloquea mass-assignment de projectId/itemCode/order/etc.
+const BUDGET_LINE_EDITABLE_FIELDS = new Set([
+  'description', 'unit', 'vendor',
+  'valorInicial', 'valorPresentado', 'valorAprobado', 'pagadoSubs',
+])
+
 router.patch('/:projectId/construction-budget/:id', async (req: Request, res: Response) => {
   try {
+    // Defensa: el id debe existir y pertenecer al projectId del path.
+    const existing = await prisma.budgetLine.findUnique({
+      where: { id: req.params.id }, select: { projectId: true },
+    })
+    if (!existing || existing.projectId !== req.params.projectId) {
+      return res.status(404).json({ data: null, error: 'Budget line no encontrada en este proyecto' })
+    }
+    const data: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(req.body || {})) {
+      if (BUDGET_LINE_EDITABLE_FIELDS.has(k)) data[k] = v
+    }
+    if (Object.keys(data).length === 0) {
+      return res.status(400).json({ data: null, error: 'No hay campos editables en el payload' })
+    }
     const line = await prisma.budgetLine.update({
       where: { id: req.params.id },
-      data: req.body,
+      data,
     })
     res.json({ data: line, error: null })
   } catch (e) {

@@ -187,8 +187,10 @@ export const drawParseApi = {
     return api.post(`/projects/${projectId}/draws/parse-pdf`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data.data)
   },
   // Apply previously-parsed Trinity approvals to the project's construction budget.
-  applyApprovals: (projectId: string, approvals: DrawLineApproval[]) =>
-    api.post(`/projects/${projectId}/draws/apply-approvals`, { approvals })
+  // drawId es obligatorio: el backend guarda contribuciones por draw para poder
+  // revertirlas si el draw se borra.
+  applyApprovals: (projectId: string, drawId: string, approvals: DrawLineApproval[]) =>
+    api.post(`/projects/${projectId}/draws/apply-approvals`, { drawId, approvals })
       .then(r => r.data.data as BudgetUpdateResult),
 }
 
