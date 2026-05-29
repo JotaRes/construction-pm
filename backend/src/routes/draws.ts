@@ -852,9 +852,21 @@ router.post('/:projectId/draws', async (req: Request, res: Response) => {
 })
 
 // ── PATCH draw ───────────────────────────────────────────────────────────────
+// Auto-promueve el estado cuando el usuario edita netWire/elegibleTrinity y se
+// olvida de actualizar el dropdown — así el KPI de holdback queda coherente.
 router.patch('/:id', async (req: Request, res: Response) => {
   try {
-    const draw = await prisma.draw.update({ where: { id: req.params.id }, data: req.body })
+    const body = { ...(req.body as Record<string, unknown>) }
+    if (body.estado === undefined) {
+      const current = await prisma.draw.findUnique({ where: { id: req.params.id }, select: { estado: true, netWire: true, elegibleTrinity: true } })
+      if (current && current.estado !== 'WIRED') {
+        const nextNetWire = typeof body.netWire === 'number' ? body.netWire : current.netWire
+        const nextElegible = typeof body.elegibleTrinity === 'number' ? body.elegibleTrinity : current.elegibleTrinity
+        if (nextNetWire > 0) body.estado = 'WIRED'
+        else if (nextElegible > 0 && current.estado === 'EMPTY') body.estado = 'PENDING'
+      }
+    }
+    const draw = await prisma.draw.update({ where: { id: req.params.id }, data: body })
     // Recalculate saldoHoldback for all draws in the project whenever any draw changes
     await recalcHoldback(draw.projectId)
     // Re-fetch to return updated saldoHoldback
@@ -1018,6 +1030,23 @@ router.post('/:id/document', (req: Request, res: Response) => {
             extractionError = `Error al parsear PDF: ${e instanceof Error ? e.message : String(e)}`
           }
         }
+      }
+
+      // Auto-promover el estado del draw cuando hay desembolso real.
+      // - netWire > 0 → WIRED (dinero ya salió del lender)
+      // - elegibleTrinity > 0 sin netWire → PENDING (Trinity aprobó, falta wire)
+      // Sin esto, el draw se queda en EMPTY/PENDING y el KPI "Saldo holdback"
+      // del header se calcula mal (bug reportado por el usuario en LOTE 87).
+      // No degradamos: si el draw ya está WIRED, no lo regresamos a PENDING.
+      const currentDraw = await prisma.draw.findUnique({ where: { id: req.params.id }, select: { estado: true } })
+      const netWireNew = typeof extracted.netWire === 'number' ? extracted.netWire : 0
+      const elegibleNew = typeof extracted.elegibleTrinity === 'number' ? extracted.elegibleTrinity : 0
+      const promotedEstado =
+        netWireNew > 0 ? 'WIRED'
+        : (elegibleNew > 0 && currentDraw?.estado === 'EMPTY') ? 'PENDING'
+        : null
+      if (promotedEstado && currentDraw?.estado !== 'WIRED') {
+        (extracted as Record<string, unknown>).estado = promotedEstado
       }
 
       const data = { ...extracted, ...baseData }

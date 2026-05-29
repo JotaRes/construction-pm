@@ -685,16 +685,17 @@ export default function Draws({ projectId }: { projectId: string }) {
     onError: (e: any) => toast.error(e?.response?.data?.error || 'Error al crear draw'),
   })
 
-  const wiredDraws = draws.filter(d => d.estado === 'WIRED')
-  const totalWired = wiredDraws.reduce((s, d) => s + d.netWire, 0)
-  // Derive saldo holdback directly from the contract value minus everything wired.
-  // This is the single source of truth for the KPI — never trust a stored
-  // saldoHoldback that could be stale (e.g. left behind on empty draws from a
-  // previous chain). When initialHoldback is 0, saldo is 0 (no holdback set).
+  // Saldo holdback: usar netWire (la realidad financiera), NO estado === 'WIRED'.
+  // Antes el KPI se quedaba en $395,350 cuando el draw tenía netWire pero su
+  // estado seguía en PENDING/EMPTY — usuario reportó este bug con LOTE 87.
+  // Misma regla que backend/recalcHoldback (acumula netWire de TODOS los draws).
+  const drawsConWire = draws.filter(d => d.netWire > 0)
+  const totalWired = drawsConWire.reduce((s, d) => s + d.netWire, 0)
+  const wiredDraws = drawsConWire // backward-compat para vistas que lo usan abajo
   const lastSaldo = Math.max(0, initialHoldback - totalWired)
 
-  // Auditoría: draws ejecutados (PENDING o WIRED) sin documentos requeridos
-  const drawsConFalta = draws.filter(d => d.estado !== 'EMPTY' && (!d.invoiceLenderUrl || !d.lenderApprovalUrl))
+  // Auditoría: draws con desembolso (netWire) sin documentos requeridos
+  const drawsConFalta = draws.filter(d => (d.netWire > 0 || d.estado !== 'EMPTY') && (!d.invoiceLenderUrl || !d.lenderApprovalUrl))
 
   if (isLoading) return <div className="text-slate-500 text-sm animate-pulse">Cargando draws...</div>
 
