@@ -74,8 +74,19 @@ export async function reconcileStatement(statementId: number): Promise<ReconResu
       if (usedMovIds.has(m.id)) continue;
       const days = Math.abs((m.date.getTime() - line.date.getTime()) / 86400000);
       if (days > 5) continue;
+      // Determinar tipo del movimiento DESDE LA PERSPECTIVA DE ESTA CUENTA —
+      // igual que el match exacto. Un Interbancario que llega a esta cuenta
+      // (destAccountId === stmt.accountId) es un crédito aquí aunque su `type`
+      // sea "Egreso"/"Interbancario" desde la cuenta origen. Sin esto, los
+      // ingresos intercompany nunca conciliaban en el paso aproximado.
       const movAmt = m.amount;
-      const movType: "credit" | "debit" = m.type === "Ingreso" ? "credit" : "debit";
+      let movType: "credit" | "debit";
+      if (m.accountId === stmt.accountId) {
+        movType = m.type === "Ingreso" ? "credit" : "debit";
+      } else {
+        // El movimiento toca esta cuenta sólo como destino → entró dinero.
+        movType = "credit";
+      }
       if (Math.abs(movAmt - line.amount) < 0.01 && movType === line.type) {
         await prisma.finBankStatementLine.update({
           where: { id: line.id },

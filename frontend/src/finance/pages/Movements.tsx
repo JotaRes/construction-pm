@@ -102,6 +102,22 @@ export default function Movements() {
     },
   });
 
+  // Registrar un movimiento directamente desde una línea de extracto no conciliada.
+  // Cierra la omisión con un clic: crea el FinMovement con los datos de la línea
+  // y lo marca conciliado, sin salir de Movimientos.
+  const registerFromLine = useMutation({
+    mutationFn: (lineId: number) => API.createMovementFromLine(lineId),
+    onSuccess: () => {
+      toast.success("Movimiento registrado desde el extracto");
+      qc.invalidateQueries({ queryKey: ["movements"] });
+      qc.invalidateQueries({ queryKey: ["unreconciledLines"] });
+      qc.invalidateQueries({ queryKey: ["accounts"] });
+      qc.invalidateQueries({ queryKey: ["account-detail"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.error || e?.message || "Error al registrar"),
+  });
+
   const clearFilters = () => { setFilters({}); setQ(""); };
   const hasActiveFilters = Object.values(filters).some(Boolean) || q;
 
@@ -329,12 +345,22 @@ export default function Movements() {
           </div>
           <div className="grid md:grid-cols-2 gap-2">
             {unreconciledLines.slice(0, 6).map((l: any) => (
-              <div key={l.id} className="flex items-center justify-between text-xs bg-bg-card rounded px-2 py-1.5 border border-line">
+              <div key={l.id} className="flex items-center justify-between gap-2 text-xs bg-bg-card rounded px-2 py-1.5 border border-line">
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="font-mono text-slate-500">{dateShort(l.date)}</span>
                   <span className="truncate" title={l.description}>{l.description}</span>
                 </div>
-                <span className={cls("font-mono", l.type === "credit" ? "text-positive" : "text-negative")}>{l.type === "credit" ? "+" : "-"}{usd(l.amount)}</span>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <span className={cls("font-mono", l.type === "credit" ? "text-positive" : "text-negative")}>{l.type === "credit" ? "+" : "-"}{usd(l.amount)}</span>
+                  <button
+                    onClick={() => registerFromLine.mutate(l.id)}
+                    disabled={registerFromLine.isPending}
+                    title="Registrar este movimiento del banco que no estaba inscrito"
+                    className="px-2 py-0.5 rounded text-[11px] font-semibold bg-negative/15 text-negative hover:bg-negative/25 disabled:opacity-40 whitespace-nowrap"
+                  >
+                    + Registrar
+                  </button>
+                </div>
               </div>
             ))}
           </div>
