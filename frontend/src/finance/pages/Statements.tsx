@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useState } from "react";
 import { API } from "../lib/api";
 import { dateShort, cls } from "../lib/format";
-import { Upload, FileSpreadsheet, Trash2, ChevronRight, AlertCircle, CheckCircle2, FileText, Info } from "lucide-react";
+import { Upload, FileSpreadsheet, Trash2, ChevronRight, AlertCircle, CheckCircle2, FileText, Info, Download, Mail, MessageCircle } from "lucide-react";
 import toast from "react-hot-toast";
 import { useConfirm } from "../../components/ConfirmDialog";
 
@@ -186,8 +186,38 @@ export default function Statements() {
                     {s._count?.lines || 0}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <div className="inline-flex gap-1">
-                      <Link to={`/finance/statements/${s.id}`} className="btn-ghost p-1" title="Ver detalle">
+                    <div className="inline-flex gap-1 items-center">
+                      {s.url ? (
+                        <>
+                          <a href={s.url} target="_blank" rel="noreferrer" className="btn-ghost p-1" title="Ver archivo original">
+                            <FileText size={14} />
+                          </a>
+                          <a href={s.url} download className="btn-ghost p-1" title="Descargar archivo">
+                            <Download size={14} />
+                          </a>
+                          <a
+                            href={`mailto:?subject=${encodeURIComponent(`Extracto ${s.account?.name ?? ''} ${dateShort(s.periodStart)}–${dateShort(s.periodEnd)}`)}&body=${encodeURIComponent(`Adjunto el extracto bancario:\n\n${s.url}`)}`}
+                            className="btn-ghost p-1"
+                            title="Enviar por email"
+                          >
+                            <Mail size={14} />
+                          </a>
+                          <a
+                            href={`https://wa.me/?text=${encodeURIComponent(`Extracto ${s.account?.name ?? ''} ${dateShort(s.periodStart)}–${dateShort(s.periodEnd)}\n${s.url}`)}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="btn-ghost p-1"
+                            title="Compartir por WhatsApp"
+                          >
+                            <MessageCircle size={14} />
+                          </a>
+                        </>
+                      ) : (
+                        <span className="text-[10px] italic mr-2" style={{ color: 'var(--brand-teal2)' }} title="Sube el extracto de nuevo para ver/descargar el archivo">
+                          archivo no guardado
+                        </span>
+                      )}
+                      <Link to={`/finance/statements/${s.id}`} className="btn-ghost p-1" title="Ver detalle de líneas">
                         <ChevronRight size={14} />
                       </Link>
                       <button

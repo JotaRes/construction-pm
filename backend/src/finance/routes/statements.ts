@@ -4,6 +4,7 @@ import { prisma } from "../lib/prisma";
 import { ok, fail } from "../lib/respond";
 import { parseStatementFile } from "../services/statementParser";
 import { reconcileStatement, getUnreconciledLines } from "../services/reconciliation";
+import { uploadToCloudinary, resourceTypeFor } from "../../lib/cloudinary";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
@@ -48,6 +49,21 @@ router.post("/upload", upload.single("file"), async (req, res) => {
     const parsed = await parseStatementFile(req.file.buffer, req.file.originalname, req.file.mimetype);
     if (!parsed.lines.length) return fail(res, "no se pudieron extraer líneas del archivo", 400);
 
+    // Subir archivo original a Cloudinary — necesario para ver/descargar/share
+    // desde la UI. Falla silenciosa si Cloudinary no está configurado: el extracto
+    // igual se crea con sus líneas; sólo no habrá link al archivo original.
+    let fileUrl: string | null = null;
+    try {
+      const { url } = await uploadToCloudinary(
+        req.file.buffer,
+        "finance/bank-statements",
+        resourceTypeFor(req.file.mimetype),
+      );
+      fileUrl = url;
+    } catch (e) {
+      console.warn("[statements] cloudinary upload failed", e);
+    }
+
     const stmt = await prisma.finBankStatement.create({
       data: {
         accountId,
@@ -56,6 +72,7 @@ router.post("/upload", upload.single("file"), async (req, res) => {
         openingBalance: parsed.openingBalance,
         closingBalance: parsed.closingBalance,
         filename: req.file.originalname,
+        url: fileUrl,
         lines: {
           create: parsed.lines.map((l) => ({
             date: l.date,

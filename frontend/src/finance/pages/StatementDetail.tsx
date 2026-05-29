@@ -2,7 +2,7 @@ import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { API } from "../lib/api";
 import { usd, dateShort, cls } from "../lib/format";
-import { ArrowLeft, RefreshCcw, Plus } from "lucide-react";
+import { ArrowLeft, RefreshCcw, Plus, Download, Mail, MessageCircle, FileText } from "lucide-react";
 import toast from "react-hot-toast";
 
 const STATUS_BADGE: Record<string, string> = {
@@ -34,22 +34,57 @@ export default function StatementDetail() {
   const matched = data.lines.filter((l: any) => l.matchStatus !== "unmatched").length;
   const unmatched = data.lines.length - matched;
 
+  // Compartir extracto por email/WhatsApp/descarga
+  const fileUrl: string | null = data.url ?? null
+  const shareLabel = `Extracto ${data.account?.name ?? ''} ${dateShort(data.periodStart)}–${dateShort(data.periodEnd)}`
+  const emailHref = fileUrl ? `mailto:?subject=${encodeURIComponent(shareLabel)}&body=${encodeURIComponent(`Adjunto el extracto:\n\n${fileUrl}`)}` : null
+  const waHref = fileUrl ? `https://wa.me/?text=${encodeURIComponent(`${shareLabel}\n${fileUrl}`)}` : null
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 page-content">
       <div className="flex items-center justify-between">
-        <Link to="/statements" className="btn-ghost"><ArrowLeft size={14} /> Extractos</Link>
-        <button className="btn-secondary" onClick={() => reconcile.mutate()} disabled={reconcile.isPending}>
-          <RefreshCcw size={14} /> {reconcile.isPending ? "Conciliando..." : "Re-conciliar"}
-        </button>
+        {/* Path relativo (sin slash inicial) — Link absoluto a "/statements" matchea el
+            catch-all del router root y rebota a la landing, lo que vuelve a evaluar el
+            AuthGate y muestra el prompt de password. */}
+        <Link to="../statements" className="btn-ghost"><ArrowLeft size={14} /> Extractos</Link>
+        <div className="flex items-center gap-2">
+          {fileUrl ? (
+            <>
+              <a href={fileUrl} target="_blank" rel="noreferrer" className="btn-ghost" title="Ver archivo original">
+                <FileText size={14} /> Ver archivo
+              </a>
+              <a href={fileUrl} download className="btn-ghost" title="Descargar">
+                <Download size={14} /> Descargar
+              </a>
+              {emailHref && (
+                <a href={emailHref} className="btn-ghost" title="Enviar por email">
+                  <Mail size={14} />
+                </a>
+              )}
+              {waHref && (
+                <a href={waHref} target="_blank" rel="noreferrer" className="btn-ghost" title="Compartir por WhatsApp">
+                  <MessageCircle size={14} />
+                </a>
+              )}
+            </>
+          ) : (
+            <span className="text-xs text-slate-400 italic">Archivo original no disponible (extracto cargado antes del cambio Cloudinary)</span>
+          )}
+          <button className="btn-secondary" onClick={() => reconcile.mutate()} disabled={reconcile.isPending}>
+            <RefreshCcw size={14} /> {reconcile.isPending ? "Conciliando..." : "Re-conciliar"}
+          </button>
+        </div>
       </div>
 
       <div className="card p-4">
         <h2 className="font-semibold text-lg">{data.filename}</h2>
         <p className="text-sm text-slate-400">{data.account?.name} · {dateShort(data.periodStart)} → {dateShort(data.periodEnd)}</p>
-        <div className="flex gap-4 mt-3 text-sm">
+        <div className="flex gap-4 mt-3 text-sm flex-wrap">
           <span><strong className="text-positive">{matched}</strong> conciliadas</span>
           <span><strong className="text-warn">{unmatched}</strong> pendientes</span>
           <span><strong>{data.lines.length}</strong> líneas totales</span>
+          {data.openingBalance != null && <span>Apertura: <strong className="font-mono">{usd(data.openingBalance)}</strong></span>}
+          {data.closingBalance != null && <span>Cierre: <strong className="font-mono">{usd(data.closingBalance)}</strong></span>}
         </div>
       </div>
 
@@ -78,7 +113,7 @@ export default function StatementDetail() {
                     <button onClick={() => createMov.mutate(l.id)} className="btn-secondary text-xs"><Plus size={12} /> Crear movimiento</button>
                   )}
                   {l.matchedMovementId && (
-                    <Link to={`/movements/${l.matchedMovementId}`} className="text-xs text-accent hover:underline">Ver movimiento →</Link>
+                    <Link to={`../movements/${l.matchedMovementId}`} className="text-xs text-accent hover:underline">Ver movimiento →</Link>
                   )}
                 </td>
               </tr>
