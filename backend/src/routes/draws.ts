@@ -128,12 +128,21 @@ export interface DrawLineApproval {
   deltaThisDraw: number
 }
 
-// Match a single item row in the Trinity report. The PDF text glues fields
-// together (no spaces between columns) so we anchor on the dollar/percent
-// pattern. Example row text:
+// Trinity tiene DOS formatos de Draw Report — el parser soporta ambos.
+//
+// Formato A (legacy, con itemCode N.N):
 //   "21.1 Survey0.64%$3,000.00$0.000%$0.00100%$3,000.00"
-//   ^ line# + item code + description + line% + $req + $prior + prior% + $eligible + thisPct% + $current
-const TRINITY_ITEM_RE = /^\d{1,3}(\d+\.\d+[A-Za-z]?)\s+(.+?)(\d+\.?\d*)%\$([\d,]+\.\d{2})\$([\d,]+\.\d{2})(\d+(?:\.\d+)?)%\$([\d,]+\.\d{2})(\d+(?:\.\d+)?)%\$([\d,]+\.\d{2})$/
+//   line# + itemCode + desc + line% + $req + $prior + prior% + $eligible + this% + $current
+//
+// Formato B (actual 2026, con "Eligible to Fund This Inspection" extra y sin itemCode):
+//   "2Survey0.53%$2,432.00$0.005%$121.60100%$2,432.00"
+//   line# + desc + line% + $req + $prior + prior% + $eligibleToFund + this% + $current
+//
+// En B el itemCode no viene en el PDF — se resuelve por match de descripción
+// contra el budget en applyDrawApprovalsToBudget(). Devolvemos itemCode vacío
+// para que el matcher use la descripción.
+const TRINITY_ITEM_RE_A = /^\d{1,3}(\d+\.\d+[A-Za-z]?)\s+(.+?)(\d+\.?\d*)%\$([\d,]+\.\d{2})\$([\d,]+\.\d{2})(\d+(?:\.\d+)?)%\$([\d,]+\.\d{2})(\d+(?:\.\d+)?)%\$([\d,]+\.\d{2})$/
+const TRINITY_ITEM_RE_B = /^\d{1,3}([A-Za-z][^%]*?)(\d+\.?\d*)%\$([\d,]+\.\d{2})\$([\d,]+\.\d{2})(\d+(?:\.\d+)?)%\$([\d,]+\.\d{2})(\d+(?:\.\d+)?)%\$([\d,]+\.\d{2})$/
 
 export function parseTrinityDrawApprovals(text: string): DrawLineApproval[] {
   const normalized = text.replace(/\r\n/g, '\n').replace(/\x00/g, '')
@@ -141,20 +150,62 @@ export function parseTrinityDrawApprovals(text: string): DrawLineApproval[] {
   for (const ln of normalized.split('\n')) {
     const trimmed = ln.trim()
     if (!trimmed) continue
-    const m = trimmed.match(TRINITY_ITEM_RE)
-    if (!m) continue
-    const priorAmount = parseFloat(m[5].replace(/,/g, ''))
-    const currentAmountAvailable = parseFloat(m[9].replace(/,/g, ''))
-    out.push({
-      itemCode: m[1],
-      description: m[2].trim(),
-      priorAmount,
-      thisInspectionPct: parseFloat(m[8]),
-      currentAmountAvailable,
-      deltaThisDraw: Math.max(0, currentAmountAvailable - priorAmount),
-    })
+
+    // Probar formato A primero (más estricto: tiene itemCode N.N)
+    let m = trimmed.match(TRINITY_ITEM_RE_A)
+    if (m) {
+      const priorAmount = parseFloat(m[5].replace(/,/g, ''))
+      const currentAmountAvailable = parseFloat(m[9].replace(/,/g, ''))
+      out.push({
+        itemCode: m[1],
+        description: m[2].trim(),
+        priorAmount,
+        thisInspectionPct: parseFloat(m[8]),
+        currentAmountAvailable,
+        deltaThisDraw: Math.max(0, currentAmountAvailable - priorAmount),
+      })
+      continue
+    }
+
+    // Formato B: sin itemCode, line# pegado a descripción.
+    // Columnas: lineNum + desc + lineP% + $req + $prior + priorP% + $eligibleThis + thisP% + $current
+    m = trimmed.match(TRINITY_ITEM_RE_B)
+    if (m) {
+      const description = m[1].trim()
+      const priorAmount = parseFloat(m[4].replace(/,/g, ''))
+      const eligibleThisInspection = parseFloat(m[6].replace(/,/g, ''))
+      const currentAmountAvailable = parseFloat(m[8].replace(/,/g, ''))
+      out.push({
+        itemCode: '', // resuelto en applyDrawApprovalsToBudget por descripción
+        description,
+        priorAmount,
+        thisInspectionPct: parseFloat(m[7]),
+        currentAmountAvailable,
+        // Formato B trae el valor directo de "Eligible to Fund This Inspection".
+        // Sólo cuenta como delta si Trinity efectivamente aprobó dinero en este draw
+        // (eligible > 0 Y current > prior — evita falsos positivos de headers).
+        deltaThisDraw: (eligibleThisInspection > 0 && currentAmountAvailable > priorAmount)
+          ? eligibleThisInspection
+          : 0,
+      })
+    }
   }
   return out
+}
+
+// Normaliza descripción para matching robusto:
+//   - lowercase, trim
+//   - remueve guiones iniciales ("- Lumber" → "Lumber")
+//   - colapsa whitespace
+//   - elimina caracteres no alfanuméricos al final ("Survey  " → "survey")
+function normalizeItemDescription(s: string): string {
+  return s
+    .toLowerCase()
+    .trim()
+    .replace(/^[-–—\s]+/, '')   // strip leading dashes used as bullets
+    .replace(/\s+/g, ' ')
+    .replace(/[^a-z0-9 ]/g, '') // strip punctuation that varies between sources
+    .trim()
 }
 
 // Recalcula valorAprobado de las líneas indicadas sumando todas sus contribuciones
@@ -227,24 +278,38 @@ export async function applyDrawApprovalsToBudget(
 
   const lines = await prisma.budgetLine.findMany({ where: { projectId } })
   const byCode = new Map<string, (typeof lines)[number]>()
-  for (const l of lines) byCode.set(l.itemCode, l)
+  const byDesc = new Map<string, (typeof lines)[number]>()
+  for (const l of lines) {
+    if (l.itemCode) byCode.set(l.itemCode, l)
+    const norm = normalizeItemDescription(l.description)
+    if (norm) byDesc.set(norm, l)
+  }
 
   let matched = 0
   let newlyApprovedItems = 0
   let newlyApprovedAmount = 0
   const unmatched: string[] = []
   const touched = new Set<string>(touchedFromPrior)
+  const usedLineIds = new Set<string>()
 
   for (const a of approvals) {
-    const line = byCode.get(a.itemCode)
-    if (!line) { unmatched.push(a.itemCode); continue }
+    // 1) Match por itemCode si viene en el PDF (formato A legacy)
+    let line = a.itemCode ? byCode.get(a.itemCode) : undefined
+    // 2) Fallback: match por descripción normalizada (formato B 2026)
+    if (!line) {
+      const norm = normalizeItemDescription(a.description)
+      const candidate = norm ? byDesc.get(norm) : undefined
+      if (candidate && !usedLineIds.has(candidate.id)) line = candidate
+    }
+    if (!line) { unmatched.push(a.itemCode || a.description); continue }
+    usedLineIds.add(line.id)
     matched++
     if (a.deltaThisDraw <= 0.005) continue
     await prisma.drawLineContribution.create({
       data: {
         drawId,
         budgetLineId: line.id,
-        itemCode: a.itemCode,
+        itemCode: line.itemCode,
         deltaAmount: a.deltaThisDraw,
       },
     })
@@ -335,8 +400,25 @@ function parseDrawText(text: string): Record<string, unknown> {
   ]
   const totalRowStr = totalRowCandidates.find(s => s && s.length > 10) ?? ''
   if (totalRowStr) {
+    // Pares en la fila TOTAL del PDF Trinity (siempre 3):
+    //   [0] LineP% / $TotalBudget (siempre 100% del construction budget)
+    //   [1] PriorP% / $Eligible-to-Fund-This-Inspection (o $0 si primer draw)
+    //   [2] ThisP% / $CurrentAmountAvailable (acumulado total del proyecto)
+    // El "monto de este draw" es [1] cuando prior > 0, sino [2] (primer draw).
+    // No confundir con LotsCumulative — para "monto solicitado del draw" usar
+    // la columna "Eligible to Fund THIS Inspection".
     const pairs = [...totalRowStr.matchAll(/(\d+\.\d{2})\s*%\s*\$\s*([\d,]+\.\d{2})/g)]
-    if (pairs.length > 0) {
+    if (pairs.length >= 3) {
+      const middleAmount = parseMoney(pairs[1][2])
+      const lastAmount   = parseMoney(pairs[pairs.length - 1][2])
+      // Si middle > 0, es el monto de este draw (formato B con priors).
+      // Si middle = 0, primer draw legacy → el último par es el monto.
+      const thisDrawAmount = middleAmount > 0 ? middleAmount : lastAmount
+      const cumulativePct  = parseFloat(pairs[pairs.length - 1][1]) / 100
+      result.elegibleTrinity  = thisDrawAmount
+      result.montoSolicitado  = thisDrawAmount
+      result.porcentajeFunded = cumulativePct
+    } else if (pairs.length > 0) {
       const last = pairs[pairs.length - 1]
       result.elegibleTrinity  = parseMoney(last[2])
       result.montoSolicitado  = parseMoney(last[2])
