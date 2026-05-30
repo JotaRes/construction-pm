@@ -1316,7 +1316,7 @@ router.post('/:projectId/draws/rebuild-contributions', async (req: Request, res:
     await prisma.drawLineContribution.deleteMany({
       where: { draw: { projectId } },
     })
-    const report: Array<{ drawNumber: number; matched: number; newlyApprovedItems: number; newlyApprovedAmount: number; error?: string }> = []
+    const report: Array<{ drawNumber: number; matched: number; newlyApprovedItems: number; newlyApprovedAmount: number; headerRefreshed?: boolean; error?: string }> = []
     for (const d of draws) {
       if (!d.lenderApprovalUrl) continue
       try {
@@ -1326,11 +1326,31 @@ router.post('/:projectId/draws/rebuild-contributions', async (req: Request, res:
         const pdfData = await pdfParse(buf)
         const approvals = parseTrinityDrawApprovals(pdfData.text)
         const result = await applyDrawApprovalsToBudget(projectId, d.id, approvals)
+
+        // Refrescar también el header del draw: el parser viejo guardó
+        // valores como elegibleTrinity = cumulativo (formato B mal leído).
+        // Re-extraer del PDF actualizado para corregir.
+        const headerFields = parseDrawText(pdfData.text)
+        const headerData: Record<string, unknown> = {}
+        const fields: Array<keyof typeof headerFields> = [
+          'fechaSolicitud', 'fechaInspeccion', 'fechaWire',
+          'elegibleTrinity', 'montoSolicitado', 'porcentajeFunded',
+        ]
+        for (const k of fields) {
+          const v = headerFields[k]
+          if (v !== undefined && v !== null && v !== '') headerData[k as string] = v
+        }
+        let headerRefreshed = false
+        if (Object.keys(headerData).length > 0) {
+          await prisma.draw.update({ where: { id: d.id }, data: headerData })
+          headerRefreshed = true
+        }
         report.push({
           drawNumber: d.drawNumber,
           matched: result.matched,
           newlyApprovedItems: result.newlyApprovedItems,
           newlyApprovedAmount: result.newlyApprovedAmount,
+          headerRefreshed,
         })
       } catch (e) {
         report.push({
