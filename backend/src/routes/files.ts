@@ -3,10 +3,73 @@ import { PrismaClient } from '@prisma/client'
 import multer from 'multer'
 import { uploadToCloudinary, resourceTypeFor } from '../lib/cloudinary'
 import { PROJECT_DOC_CHECKLIST, DOC_KEYS, GROUP_LABELS } from '../lib/projectDocChecklist'
+import { extractPdfText } from '../lib/pdfOcr'
+import {
+  parseHUDText, parseLoanText, parseSurveyText, parsePlansText,
+  parsePermitText, parseAppraisalText, parseLOIText,
+} from './draws'
 
 const router = Router()
 const prisma = new PrismaClient()
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } })
+
+// Mapeo de `kind` del checklist documental a parser + campos que se aplican al proyecto.
+// Cuando el usuario sube un archivo con cualquiera de estos kinds, el sistema
+// extrae automáticamente los datos del PDF (con OCR si está escaneado) y
+// actualiza el Project SIN sobrescribir valores ya configurados a mano.
+//
+// Cualquier nuevo tipo de documento se agrega aquí — TODO upload pasa por el
+// mismo flujo: archivo → Cloudinary → parser → aplicar al Project.
+const KIND_PARSER_MAP: Record<string, {
+  parser: (text: string) => Record<string, unknown>;
+  fields: string[];
+}> = {
+  // Documentos de diseño: plano principal + variantes (site, drenaje, landscape)
+  planos:         { parser: parsePlansText,     fields: ['sfHeated', 'sfGarage', 'sfPorches', 'bedrooms', 'bathrooms', 'foundationType', 'architecturalPlan'] },
+  licencia_plano: { parser: parsePlansText,     fields: ['sfHeated', 'sfGarage', 'sfPorches', 'bedrooms', 'bathrooms', 'foundationType'] },
+  siteplan:       { parser: parsePlansText,     fields: ['sfHeated', 'sfGarage', 'sfPorches', 'foundationType'] },
+  drenaje:        { parser: parsePlansText,     fields: ['foundationType'] },
+  landscape:      { parser: parsePlansText,     fields: ['sfPorches'] },
+  // Lote
+  survey:         { parser: parseSurveyText,    fields: ['parcelId', 'lotAcres', 'address', 'county'] },
+  hud_lote:       { parser: parseHUDText,       fields: ['settlementDate', 'closingCosts', 'cashAtSettlement', 'contractSalesPrice'] },
+  // Financiamiento
+  hud_cierre:     { parser: parseHUDText,       fields: ['settlementDate', 'closingCosts', 'cashAtSettlement', 'contractSalesPrice', 'loanAmount', 'holdback'] },
+  loi_lender:     { parser: parseLOIText,       fields: ['loiSalePrice', 'loiOfferDate', 'loiExpectedClose', 'loiEarnestMoney'] },
+  carta_lender:   { parser: parseLoanText,      fields: ['lender', 'loanNumber', 'loanAmount', 'interestRate', 'loanTermMonths', 'holdback', 'day1Disbursement', 'interestReserve', 'settlementDate'] },
+  // Permisos
+  permiso_construccion: { parser: parsePermitText, fields: ['permitNumber', 'permitIssued', 'permitExpires', 'county'] },
+  permiso_electrico:    { parser: parsePermitText, fields: ['permitNumber', 'permitIssued', 'permitExpires'] },
+  permiso_hoa:          { parser: parsePermitText, fields: ['permitNumber', 'permitIssued', 'permitExpires'] },
+}
+
+// Aplica datos extraídos al proyecto SIN sobrescribir valores ya configurados.
+// Sólo actualiza un campo si su valor actual es null/0/'' (placeholder).
+// Esto evita que un re-upload accidental pise datos curados a mano.
+async function applyExtractedToProject(
+  projectId: string,
+  extracted: Record<string, unknown>,
+  allowedFields: string[],
+): Promise<string[]> {
+  const project = await prisma.project.findUnique({ where: { id: projectId } })
+  if (!project) return []
+  const update: Record<string, unknown> = {}
+  const applied: string[] = []
+  for (const k of allowedFields) {
+    const v = extracted[k]
+    if (v === undefined || v === null || v === '') continue
+    const current = (project as Record<string, unknown>)[k]
+    // Sólo aplicar si el valor actual es vacío/zero
+    const isEmpty = current === null || current === undefined || current === '' || current === 0
+    if (!isEmpty) continue
+    update[k] = v
+    applied.push(k)
+  }
+  if (applied.length > 0) {
+    await prisma.project.update({ where: { id: projectId }, data: update })
+  }
+  return applied
+}
 
 // === GET /projects/:id/files — listar todos los archivos ===
 router.get('/:projectId/files', async (req: Request, res: Response) => {
@@ -122,8 +185,16 @@ router.post('/:projectId/files', async (req: Request, res: Response) => {
   }
 })
 
-// === POST /projects/:id/files/upload — sube archivo a Cloudinary y crea ProjectFile ===
+// === POST /projects/:id/files/upload — sube archivo + auto-extrae datos ===
 // Form-data: file (binario), kind (categoría del checklist), name (opcional)
+// Si el kind tiene parser asociado (KIND_PARSER_MAP), el sistema:
+//   1. Sube el archivo a Cloudinary
+//   2. Extrae texto del PDF (OCR fallback si está escaneado)
+//   3. Aplica los campos extraídos al Project sin sobrescribir valores existentes
+//   4. Devuelve { file, extracted, applied } para que el frontend muestre feedback
+//
+// Resuelve el bug: antes del fix, subir un plano sólo guardaba el PDF; ahora
+// también puebla sfHeated/sfGarage/etc en el Project que alimenta CFO Dashboard.
 router.post('/:projectId/files/upload', upload.single('file'), async (req: Request, res: Response) => {
   try {
     if (!req.file) return res.status(400).json({ data: null, error: 'No se subió archivo' })
@@ -151,7 +222,27 @@ router.post('/:projectId/files/upload', upload.single('file'), async (req: Reque
       },
     })
 
-    res.json({ data: file, error: null })
+    // Auto-extracción para PDFs cuyo kind tiene parser configurado.
+    let extracted: Record<string, unknown> = {}
+    let applied: string[] = []
+    let extractionError: string | null = null
+    let ocrUsed = false
+    const parserCfg = kind ? KIND_PARSER_MAP[kind] : undefined
+    const isPdf = req.file.mimetype === 'application/pdf' || (req.file.originalname || '').toLowerCase().endsWith('.pdf')
+
+    if (parserCfg && isPdf) {
+      try {
+        const pdfData = await extractPdfText(req.file.buffer)
+        ocrUsed = pdfData.ocrUsed
+        extracted = parserCfg.parser(pdfData.text)
+        applied = await applyExtractedToProject(req.params.projectId, extracted, parserCfg.fields)
+      } catch (e) {
+        extractionError = e instanceof Error ? e.message : String(e)
+        console.warn('[files/upload] auto-extract failed for kind', kind, e)
+      }
+    }
+
+    res.json({ data: { file, extracted, applied, ocrUsed, extractionError }, error: null })
   } catch (e) {
     console.error('[files/upload] error:', e)
     res.status(500).json({ data: null, error: String(e) })

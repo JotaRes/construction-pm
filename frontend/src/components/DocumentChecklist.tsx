@@ -54,10 +54,49 @@ export default function DocumentChecklist({ projectId, projectName, projectAddre
 
   const uploadMut = useMutation({
     mutationFn: ({ file, kind }: { file: File; kind: string }) => filesApi.upload(projectId, file, kind),
-    onSuccess: () => {
+    onSuccess: (result: any) => {
       qc.invalidateQueries({ queryKey: ['document-checklist', projectId] })
       qc.invalidateQueries({ queryKey: ['files', projectId] })
-      toast.success('Documento cargado')
+      // Si el backend extrajo + aplicó campos al proyecto, lo mostramos al usuario
+      // para que vea que el sistema actualizó automáticamente sfHeated, holdback, etc.
+      const applied: string[] = result?.applied ?? []
+      const extracted: Record<string, unknown> = result?.extracted ?? {}
+      const ocrUsed: boolean = !!result?.ocrUsed
+      const extractionError: string | null = result?.extractionError ?? null
+
+      if (applied.length > 0) {
+        const friendly: Record<string, string> = {
+          sfHeated: 'pies cuadrados (heated)', sfGarage: 'pies cuadrados (garaje)',
+          sfPorches: 'pies cuadrados (porches)', bedrooms: 'habitaciones',
+          bathrooms: 'baños', foundationType: 'tipo de cimentación',
+          parcelId: 'parcel ID', lotAcres: 'acres del lote',
+          address: 'dirección', county: 'condado',
+          lender: 'lender', loanNumber: 'número de préstamo',
+          loanAmount: 'monto del préstamo', interestRate: 'tasa de interés',
+          holdback: 'holdback', day1Disbursement: 'desembolso día 1',
+          interestReserve: 'reserva de interés', settlementDate: 'fecha settlement',
+          closingCosts: 'costos de cierre', cashAtSettlement: 'cash at settlement',
+          contractSalesPrice: 'precio de venta', permitNumber: 'número de permiso',
+          permitIssued: 'fecha emisión permiso', permitExpires: 'fecha vencimiento permiso',
+          loiSalePrice: 'precio LOI', loiOfferDate: 'fecha oferta LOI',
+          loiExpectedClose: 'cierre esperado LOI', loiEarnestMoney: 'earnest money LOI',
+        }
+        const fieldNames = applied.map(k => friendly[k] || k).join(', ')
+        toast.success(
+          `✓ Documento cargado. ${applied.length} campo(s) aplicados al proyecto: ${fieldNames}${ocrUsed ? ' (OCR usado)' : ''}`,
+          { duration: 8000 }
+        )
+        // Invalidate project queries to refresh CFO Dashboard, etc.
+        qc.invalidateQueries({ queryKey: ['projects'] })
+        qc.invalidateQueries({ queryKey: ['project', projectId] })
+        qc.invalidateQueries({ queryKey: ['dashboard'] })
+      } else if (Object.keys(extracted).length > 0) {
+        toast(`Documento cargado. Extraje ${Object.keys(extracted).length} campo(s) pero ya estaban configurados en el proyecto.`, { duration: 6000 })
+      } else if (extractionError) {
+        toast(`Documento cargado. No fue posible extraer datos automáticamente: ${extractionError}`, { icon: '⚠', duration: 8000 })
+      } else {
+        toast.success('Documento cargado')
+      }
     },
     onError: (e: any) => toast.error(e?.response?.data?.error || 'Error al subir'),
   })
