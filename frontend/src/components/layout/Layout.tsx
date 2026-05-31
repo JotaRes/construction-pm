@@ -207,9 +207,31 @@ export default function Layout({ projectId, children }: Props) {
         <div className="px-4 py-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', paddingTop: 'calc(env(safe-area-inset-top, 0) + 1.25rem)' }}>
           {/* RA badge */}
           <div className="flex items-center justify-center mb-3">
-            <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, #C8922A 0%, #E0AD4F 100%)', boxShadow: '0 4px 16px rgba(200,146,42,0.5)' }}>
-              <span style={{ color: 'white', fontWeight: 900, fontSize: 22, letterSpacing: '-1px', fontFamily: 'Georgia, serif', lineHeight: 1 }}>RA</span>
+            {/* Logo mark — torres teal + arco gold sobre fondo cream */}
+            <div
+              className="flex items-center justify-center flex-shrink-0"
+              style={{
+                width: 42, height: 42, borderRadius: 10,
+                background: '#FDFCFA',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.22), 0 1px 0 rgba(255,255,255,0.15) inset',
+                border: '1px solid rgba(255,255,255,0.10)',
+                cursor: 'pointer',
+                transition: 'transform 0.2s cubic-bezier(0.175,0.885,0.32,1.275), box-shadow 0.2s',
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLDivElement).style.transform = 'scale(1.06)'
+                ;(e.currentTarget as HTMLDivElement).style.boxShadow = '0 4px 16px rgba(0,0,0,0.28), 0 0 0 1px rgba(200,146,42,0.25)'
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLDivElement).style.transform = 'scale(1)'
+                ;(e.currentTarget as HTMLDivElement).style.boxShadow = '0 2px 10px rgba(0,0,0,0.22), 0 1px 0 rgba(255,255,255,0.15) inset'
+              }}
+            >
+              <svg width="30" height="26" viewBox="0 0 90 80" fill="none">
+                <polygon points="12,74 12,18 41,6 41,74" fill="#2D4B52"/>
+                <polygon points="46,74 46,28 67,20 67,74" fill="#3A5F68"/>
+                <path d="M 5,68 Q 42,50 82,61" stroke="#C8922A" strokeWidth="6.5" fill="none" strokeLinecap="round"/>
+              </svg>
             </div>
           </div>
           <div className="text-center">
