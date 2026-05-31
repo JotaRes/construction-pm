@@ -15,8 +15,8 @@ router.post('/parse-hud', upload.single('pdf'), async (req: Request, res: Respon
   try {
     if (!req.file) { res.status(400).json({ data: null, error: 'No se subió ningún archivo' }); return }
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const pdfParse = require('pdf-parse') as (buf: Buffer) => Promise<{ text: string }>
-    const { text } = await pdfParse(req.file.buffer)
+    const { extractPdfText } = await import('../lib/pdfOcr')
+    const { text } = await extractPdfText(req.file.buffer)
     const t = text.replace(/\x00/g, ' ').replace(/\n/g, ' ')
     const mp = '\\$?([\\d,]+\\.?\\d*)'
     const result: Record<string, unknown> = {}

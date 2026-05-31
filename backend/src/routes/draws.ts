@@ -4,6 +4,7 @@ import multer from 'multer'
 import * as XLSX from 'xlsx'
 import { uploadToCloudinary, resourceTypeFor } from '../lib/cloudinary'
 import { parseAmountFlexible } from '../lib/parseAmount'
+import { extractPdfText } from '../lib/pdfOcr'
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pdfParse = require('pdf-parse') as (buffer: Buffer) => Promise<{ text: string; numpages: number }>
@@ -169,24 +170,23 @@ export function parseTrinityDrawApprovals(text: string): DrawLineApproval[] {
 
     // Formato B: sin itemCode, line# pegado a descripción.
     // Columnas: lineNum + desc + lineP% + $req + $prior + priorP% + $eligibleThis + thisP% + $current
+    // La columna "Current Amount Available" ($current) es lo que Trinity certifica
+    // como APROBADO hasta este draw. El usuario lo confirmó: a ese valor el lender
+    // le aplica su % funded (típico Hera 84.88%) para producir el netWire, que es
+    // lo que reduce el holdback. NO usamos Eligible to Fund This Inspection —
+    // esa es una columna interna de Trinity, no el monto aprobado.
     m = trimmed.match(TRINITY_ITEM_RE_B)
     if (m) {
       const description = m[1].trim()
       const priorAmount = parseFloat(m[4].replace(/,/g, ''))
-      const eligibleThisInspection = parseFloat(m[6].replace(/,/g, ''))
       const currentAmountAvailable = parseFloat(m[8].replace(/,/g, ''))
       out.push({
-        itemCode: '', // resuelto en applyDrawApprovalsToBudget por descripción
+        itemCode: '',
         description,
         priorAmount,
         thisInspectionPct: parseFloat(m[7]),
         currentAmountAvailable,
-        // Formato B trae el valor directo de "Eligible to Fund This Inspection".
-        // Sólo cuenta como delta si Trinity efectivamente aprobó dinero en este draw
-        // (eligible > 0 Y current > prior — evita falsos positivos de headers).
-        deltaThisDraw: (eligibleThisInspection > 0 && currentAmountAvailable > priorAmount)
-          ? eligibleThisInspection
-          : 0,
+        deltaThisDraw: Math.max(0, currentAmountAvailable - priorAmount),
       })
     }
   }
@@ -401,24 +401,16 @@ function parseDrawText(text: string): Record<string, unknown> {
   const totalRowStr = totalRowCandidates.find(s => s && s.length > 10) ?? ''
   if (totalRowStr) {
     // Pares en la fila TOTAL del PDF Trinity (siempre 3):
-    //   [0] LineP% / $TotalBudget (siempre 100% del construction budget)
-    //   [1] PriorP% / $Eligible-to-Fund-This-Inspection (o $0 si primer draw)
-    //   [2] ThisP% / $CurrentAmountAvailable (acumulado total del proyecto)
-    // El "monto de este draw" es [1] cuando prior > 0, sino [2] (primer draw).
-    // No confundir con LotsCumulative — para "monto solicitado del draw" usar
-    // la columna "Eligible to Fund THIS Inspection".
+    //   [0] 100% / $TotalBudget (total del construction budget)
+    //   [1] PriorP% / $PriorOrEligibleThisInspection
+    //   [2] ThisP% / $CurrentAmountAvailable (lo APROBADO acumulado por Trinity)
+    // El "monto solicitado del draw" es el ÚLTIMO par — Current Amount Available —
+    // ese es el total certificado por Trinity. El lender Hera/etc le aplica su
+    // % funded para calcular el netWire que efectivamente desembolsa y descuenta
+    // del holdback. Trinity certifica el VALOR APROBADO, el lender decide cuánto
+    // efectivamente desembolsa basado en sus condiciones de loan.
     const pairs = [...totalRowStr.matchAll(/(\d+\.\d{2})\s*%\s*\$\s*([\d,]+\.\d{2})/g)]
-    if (pairs.length >= 3) {
-      const middleAmount = parseMoney(pairs[1][2])
-      const lastAmount   = parseMoney(pairs[pairs.length - 1][2])
-      // Si middle > 0, es el monto de este draw (formato B con priors).
-      // Si middle = 0, primer draw legacy → el último par es el monto.
-      const thisDrawAmount = middleAmount > 0 ? middleAmount : lastAmount
-      const cumulativePct  = parseFloat(pairs[pairs.length - 1][1]) / 100
-      result.elegibleTrinity  = thisDrawAmount
-      result.montoSolicitado  = thisDrawAmount
-      result.porcentajeFunded = cumulativePct
-    } else if (pairs.length > 0) {
+    if (pairs.length > 0) {
       const last = pairs[pairs.length - 1]
       result.elegibleTrinity  = parseMoney(last[2])
       result.montoSolicitado  = parseMoney(last[2])
@@ -1070,7 +1062,7 @@ router.post('/:id/document', (req: Request, res: Response) => {
           extractionError = `Archivo no es un PDF (${req.file.mimetype || 'sin mimetype'}).`
         } else {
           try {
-            const pdfData = await pdfParse(req.file.buffer)
+            const pdfData = await extractPdfText(req.file.buffer)
             const approvals = parseTrinityDrawApprovals(pdfData.text)
             if (approvals.length > 0) {
               const draw = await prisma.draw.findUnique({ where: { id: req.params.id }, select: { projectId: true } })
@@ -1265,9 +1257,10 @@ router.post('/:projectId/draws/parse-pdf', handleUpload, async (req: Request, re
       })
     }
 
-    const pdfData = await pdfParse(req.file.buffer)
+    const pdfData = await extractPdfText(req.file.buffer)
     const parsed  = parseDrawText(pdfData.text)
     if (fileUrl) parsed.pdfUrl = fileUrl
+    if (pdfData.ocrUsed) parsed.ocrUsed = true
     // Line-by-line budget approvals (only present if this is a Trinity report).
     const approvals = parseTrinityDrawApprovals(pdfData.text)
 
@@ -1323,7 +1316,7 @@ router.post('/:projectId/draws/rebuild-contributions', async (req: Request, res:
         const r = await fetch(d.lenderApprovalUrl)
         if (!r.ok) throw new Error(`HTTP ${r.status}`)
         const buf = Buffer.from(await r.arrayBuffer())
-        const pdfData = await pdfParse(buf)
+        const pdfData = await extractPdfText(buf)
         const approvals = parseTrinityDrawApprovals(pdfData.text)
         const result = await applyDrawApprovalsToBudget(projectId, d.id, approvals)
 
@@ -1412,7 +1405,7 @@ router.post('/:projectId/docs/parse-pdf', handleUpload, async (req: Request, res
       })
     }
 
-    const pdfData = await pdfParse(req.file.buffer)
+    const pdfData = await extractPdfText(req.file.buffer)
     const docType = (req.query.type as string) || 'HUD'
     const parserMap: Record<string, (t: string) => Record<string, unknown>> = {
       HUD: parseHUDText, LOAN: parseLoanText, SURVEY: parseSurveyText,

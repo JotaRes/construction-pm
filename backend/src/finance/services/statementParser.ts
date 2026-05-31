@@ -214,9 +214,10 @@ export async function parseStatementFile(buffer: Buffer, filename: string, mimet
       warnings.push(`${parseErrors} fila(s) se omitieron por falta de fecha o monto válido.`);
     }
   } else if (lower.endsWith(".pdf") || mimetype === "application/pdf") {
-    const pdfParse = (await import("pdf-parse")).default;
-    const data = await pdfParse(buffer);
+    const { extractPdfText } = await import("../../lib/pdfOcr");
+    const data = await extractPdfText(buffer);
     const text = data.text || "";
+    if (data.ocrUsed) warnings.push("PDF escaneado: se usó OCR para extraer el texto. Verificá las líneas detectadas.");
     const parsedPdf = parsePdfStatement(text, warnings);
     lines.push(...parsedPdf.lines);
     if (lines.length === 0) {

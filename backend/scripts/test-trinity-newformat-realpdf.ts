@@ -80,9 +80,10 @@ async function main() {
 
   assert("Parser extrae > 30 líneas del PDF nuevo formato",
     approvals.length > 30, `${approvals.length} líneas`);
-  // Lot 827 Draw 2 — 6 items con delta real en este draw
-  assert("Parser detecta 6 items con delta > 0",
-    approvals.filter(a => a.deltaThisDraw > 0).length === 6);
+  // Lot 827 Draw 2 — 15 items con delta real en este draw
+  // (Current Amount Available - Prior Amount = lo aprobado por Trinity en este draw)
+  assert("Parser detecta 15 items con delta > 0",
+    approvals.filter(a => a.deltaThisDraw > 0).length === 15);
 
   // 3. Crear draw y aplicar
   const draw = await prisma.draw.create({
@@ -93,20 +94,20 @@ async function main() {
 
   assert("Match: ≥ 12 budget lines coinciden con items del PDF",
     result.matched >= 12, `${result.matched} matched`);
-  // El PDF Lot 827 (draw 2) muestra que sólo 6 items tienen delta > 0 en este draw
-  // (los demás ya estaban aprobados al 100% en draw 1). Validamos eso exactamente.
-  assert("Match: 6 items aportan delta > 0 en draw 2",
-    result.newlyApprovedItems === 6, `${result.newlyApprovedItems} new`);
-  // Suma de deltas reales del PDF = $19,112.68
-  assert("Match: cumulativeApproved ≈ $19,112",
-    Math.abs(result.cumulativeApproved - 19112.68) < 5,
+  // En el PDF Lot 827, 15 items tienen delta > 0 con la regla correcta
+  // (Current Amount Available - Prior Amount Inspection).
+  assert("Match: 15 items aportan delta > 0",
+    result.newlyApprovedItems === 15, `${result.newlyApprovedItems} new`);
+  // Suma de Current Amount Available = $89,295.66 (cumulative Trinity-certified)
+  assert("Match: cumulativeApproved ≈ $89,295",
+    Math.abs(result.cumulativeApproved - 89295.66) < 5,
     `$${result.cumulativeApproved.toFixed(2)}`);
 
-  // 4. Verificar líneas específicas — Survey aporta $121.60 en este draw
-  // (eligible to fund this inspection), no $2,432 (current cumulative)
+  // 4. Verificar líneas específicas — Survey aporta $2,432 (Current Amount Available)
+  // que es lo que Trinity certifica como aprobado para esta línea
   const survey = await prisma.budgetLine.findFirst({ where: { projectId: project.id, itemCode: "1.1" } });
-  assert("Línea Survey (1.1) aprobada = $121.60 (este draw)",
-    survey != null && Math.abs(survey.valorAprobado - 121.60) < 1,
+  assert("Línea Survey (1.1) aprobada = $2,432 (Current Amount Available)",
+    survey != null && Math.abs(survey.valorAprobado - 2432) < 1,
     `$${survey?.valorAprobado.toFixed(2)}`);
 
   const clearing = await prisma.budgetLine.findFirst({ where: { projectId: project.id, itemCode: "2.1" } });
