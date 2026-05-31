@@ -135,15 +135,26 @@ export interface DrawLineApproval {
 //   "21.1 Survey0.64%$3,000.00$0.000%$0.00100%$3,000.00"
 //   line# + itemCode + desc + line% + $req + $prior + prior% + $eligible + this% + $current
 //
-// Formato B (actual 2026, con "Eligible to Fund This Inspection" extra y sin itemCode):
+// Formato B (actual 2026, sin itemCode):
 //   "2Survey0.53%$2,432.00$0.005%$121.60100%$2,432.00"
-//   line# + desc + line% + $req + $prior + prior% + $eligibleToFund + this% + $current
+//   line# + desc + lineP% + $req + $prior + priorP% + $eligibleThis + thisP% + $current
 //
-// En B el itemCode no viene en el PDF — se resuelve por match de descripción
-// contra el budget en applyDrawApprovalsToBudget(). Devolvemos itemCode vacío
-// para que el matcher use la descripción.
-const TRINITY_ITEM_RE_A = /^\d{1,3}(\d+\.\d+[A-Za-z]?)\s+(.+?)(\d+\.?\d*)%\$([\d,]+\.\d{2})\$([\d,]+\.\d{2})(\d+(?:\.\d+)?)%\$([\d,]+\.\d{2})(\d+(?:\.\d+)?)%\$([\d,]+\.\d{2})$/
-const TRINITY_ITEM_RE_B = /^\d{1,3}([A-Za-z][^%]*?)(\d+\.?\d*)%\$([\d,]+\.\d{2})\$([\d,]+\.\d{2})(\d+(?:\.\d+)?)%\$([\d,]+\.\d{2})(\d+(?:\.\d+)?)%\$([\d,]+\.\d{2})$/
+// CRITICAL: las descripciones pueden contener % adentro ("GC Fee — 5% of Total
+// Budget"). Anclamos la "cola numérica" (7 grupos al final) y dejamos que la
+// descripción sea cualquier cosa (.+? lazy) entre el line# y la cola.
+//
+// "Cola numérica" Trinity:
+//   lineP% $req $prior priorP% $eligThis thisP% $current
+// 7 grupos. Esto NO ambiguo porque la cola está al final de línea ($).
+const TRINITY_TAIL = /(\d+\.?\d*)%\$([\d,]+\.\d{2})\$([\d,]+\.\d{2})(\d+(?:\.\d+)?)%\$([\d,]+\.\d{2})(\d+(?:\.\d+)?)%\$([\d,]+\.\d{2})$/
+// Formato A: prefijo es lineNum + itemCode N.N + espacio + desc
+const TRINITY_ITEM_RE_A = new RegExp(
+  `^\\d{1,3}(\\d+\\.\\d+[A-Za-z]?)\\s+(.+?)${TRINITY_TAIL.source}`
+)
+// Formato B: prefijo es lineNum + desc (cualquier cosa, incluso % adentro)
+const TRINITY_ITEM_RE_B = new RegExp(
+  `^\\d{1,3}([A-Za-z].+?)${TRINITY_TAIL.source}`
+)
 
 export function parseTrinityDrawApprovals(text: string): DrawLineApproval[] {
   const normalized = text.replace(/\r\n/g, '\n').replace(/\x00/g, '')
@@ -152,7 +163,9 @@ export function parseTrinityDrawApprovals(text: string): DrawLineApproval[] {
     const trimmed = ln.trim()
     if (!trimmed) continue
 
-    // Probar formato A primero (más estricto: tiene itemCode N.N)
+    // Probar formato A primero (más estricto: tiene itemCode N.N).
+    // Grupos: 1=itemCode, 2=desc, 3=lineP%, 4=$req, 5=$prior, 6=priorP%,
+    //         7=$eligThis, 8=thisP%, 9=$current
     let m = trimmed.match(TRINITY_ITEM_RE_A)
     if (m) {
       const priorAmount = parseFloat(m[5].replace(/,/g, ''))
@@ -168,13 +181,11 @@ export function parseTrinityDrawApprovals(text: string): DrawLineApproval[] {
       continue
     }
 
-    // Formato B: sin itemCode, line# pegado a descripción.
-    // Columnas: lineNum + desc + lineP% + $req + $prior + priorP% + $eligibleThis + thisP% + $current
-    // La columna "Current Amount Available" ($current) es lo que Trinity certifica
-    // como APROBADO hasta este draw. El usuario lo confirmó: a ese valor el lender
-    // le aplica su % funded (típico Hera 84.88%) para producir el netWire, que es
-    // lo que reduce el holdback. NO usamos Eligible to Fund This Inspection —
-    // esa es una columna interna de Trinity, no el monto aprobado.
+    // Formato B. Grupos: 1=desc, 2=lineP%, 3=$req, 4=$prior, 5=priorP%,
+    //                    6=$eligThis, 7=thisP%, 8=$current
+    // "Current Amount Available" ($current) es lo que Trinity certifica como
+    // APROBADO hasta este draw. El lender Hera/etc le aplica su % funded
+    // (típico 84.88%) para producir el netWire que descuenta del holdback.
     m = trimmed.match(TRINITY_ITEM_RE_B)
     if (m) {
       const description = m[1].trim()
@@ -366,7 +377,7 @@ function normalizeDate(str: string): string | null {
   return null
 }
 
-function parseDrawText(text: string): Record<string, unknown> {
+export function parseDrawText(text: string): Record<string, unknown> {
   const result: Record<string, unknown> = {}
   const t = text.replace(/\n/g, ' ')
   const drawNum = t.match(/Draw\s*(?:#|No\.?)?\s*(\d+)/i)
@@ -679,7 +690,7 @@ export function parseDrawExcel(buffer: Buffer): { parsed: Record<string, unknown
   return { parsed, preview: allText.slice(0, 1500) }
 }
 
-function parseHUDText(text: string): Record<string, unknown> {
+export function parseHUDText(text: string): Record<string, unknown> {
   const result: Record<string, unknown> = {}
   // U+0000 null bytes are a PDF font-ligature artifact ("tt" → null byte in this font family).
   // Must replace with space BEFORE other normalization so \s patterns work.
@@ -764,13 +775,30 @@ function parseHUDText(text: string): Record<string, unknown> {
   return result
 }
 
-function parseLoanText(text: string): Record<string, unknown> {
+export function parseLoanText(text: string): Record<string, unknown> {
   const result: Record<string, unknown> = {}
   const t = text.replace(/\n/g, ' ')
   const mp = '\\$?([\\d,]+\\.?\\d*)'
   const dp = '(\\d{1,2}[\\/-]\\d{1,2}[\\/-]\\d{2,4})'
-  const lenderMatch = t.match(/(?:lender|mortgagee|bank)\s*(?:name)?\s*:?\s*([A-Za-z][A-Za-z0-9\s,\.&]+?)(?=\s{2,}|\s*\n|,|\.|LLC|Inc|Corp|Holdings)/i)
-  if (lenderMatch) result.lender = lenderMatch[1].trim()
+  // Lender: el header del documento suele tener "X LLC" o "X Holdings".
+  // Capturamos por sufijo corporativo (LLC, Inc, Corp, Holdings, Partners,
+  // Bank) en lugar de prefijo "Lender:", porque el primero es más robusto
+  // en cartas reales donde "lender" no precede al nombre.
+  // Blacklist: palabras de TÍTULO de documento que no son nombres de empresa
+  const TITLE_BLACKLIST = /^(Loan|Approval|Letter|Subject|Borrower|Statement|Confirmation|Commitment|Disclosure|Note|Mortgage|Agreement|Application|Document|Page)$/
+  const candidates = [...t.matchAll(/\b([A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+){0,3})\s+(Holdings?|LLC|Inc|Corp|Partners?|Bank|Capital|Lending)\b/g)]
+  for (const c of candidates) {
+    const firstWord = c[1].split(/\s+/)[0]
+    if (!TITLE_BLACKLIST.test(firstWord)) {
+      result.lender = `${c[1].trim()} ${c[2]}`
+      break
+    }
+  }
+  // Fallback: si hay "Lender: X" explícito, lo usa
+  if (!result.lender) {
+    const lenderMatch = t.match(/(?:lender|mortgagee)\s*(?:name)?\s*:\s*([A-Z][A-Za-z0-9\s,\.&]{3,80}?)(?:\s{2,}|\n|,|\.)/)
+    if (lenderMatch) result.lender = lenderMatch[1].trim()
+  }
   const loanNum = t.match(/(?:loan\s*(?:number|#|no\.?|num)|commitment\s*(?:number|#|no\.?))\s*:?\s*([A-Z0-9\-]+)/i)
   if (loanNum) result.loanNumber = loanNum[1].trim()
   const loanAmt = t.match(new RegExp(`(?:loan|principal|commitment|face|construction)\\s*(?:loan\\s*)?amount\\s*:?\\s*${mp}`, 'i'))
@@ -790,10 +818,13 @@ function parseLoanText(text: string): Record<string, unknown> {
   return result
 }
 
-function parseSurveyText(text: string): Record<string, unknown> {
+export function parseSurveyText(text: string): Record<string, unknown> {
   const result: Record<string, unknown> = {}
   const t = text.replace(/\n/g, ' ')
-  const parcel = t.match(/(?:parcel\s*(?:id|number|#|no\.?)|tax\s*(?:id|map|parcel|pin))\s*:?\s*([A-Z0-9\-\.]+)/i)
+  // TM# es el código que usa SC County para parcel ID en surveys escaneados.
+  // Aceptamos múltiples variantes que aparecen en surveys reales (TM#, Tax Map,
+  // Parcel ID, Tax Parcel) — incluye guiones, puntos y espacios cortos.
+  const parcel = t.match(/(?:parcel\s*(?:id|number|#|no\.?)|tax\s*(?:id|map|parcel|pin)|tm\s*#)\s*:?\s*([A-Z0-9\-\.]{6,})/i)
   if (parcel) result.parcelId = parcel[1].trim()
   const acres = t.match(/(\d+\.?\d*)\s*(?:acres?|ac\.?)\b/i)
   if (acres) result.lotAcres = parseFloat(acres[1])
@@ -804,29 +835,75 @@ function parseSurveyText(text: string): Record<string, unknown> {
   return result
 }
 
-function parsePlansText(text: string): Record<string, unknown> {
+export function parsePlansText(text: string): Record<string, unknown> {
   const result: Record<string, unknown> = {}
   const t = text.replace(/\n/g, ' ')
-  const heated = t.match(/(?:heated|conditioned|living|habitable)\s*(?:area|square\s*feet|sf|sqft|sq\.?\s*ft\.?)\s*:?\s*([\d,]+)/i)
-  if (heated) result.sfHeated = parseInt(heated[1].replace(/,/g, ''))
-  const garage = t.match(/(?:garage|attached\s*garage)\s*(?:area|sf|sqft|sq\.?\s*ft\.?)?\s*:?\s*([\d,]+)/i)
-  if (garage) result.sfGarage = parseInt(garage[1].replace(/,/g, ''))
-  const porch = t.match(/(?:porch|deck|covered\s*porch|screened)\s*(?:area|sf|sqft|sq\.?\s*ft\.?)?\s*:?\s*([\d,]+)/i)
-  if (porch) result.sfPorches = parseInt(porch[1].replace(/,/g, ''))
+
+  // Plans típicos USA listan en orden inverso al regex anterior:
+  //   "AREA: 2400 S.F. HEATED - FIRST FLOOR"
+  //   "1013 S.F. UNHEATED - GARAGE"
+  // El número PRECEDE a "S.F. HEATED|UNHEATED" + tag (GARAGE, PORCH, etc.).
+  // Probamos AMBOS órdenes: número→SF→keyword y keyword→SF→número.
+  //
+  // CRITICAL: "S.F. HEATED" matchea antes que "S.F. UNHEATED" porque sin
+  // el negative lookbehind, "unheated" tiene "heated" como sufijo. Usamos
+  // (?<!un)heated o anchor estricto.
+
+  // Patrón A (número primero): "2400 S.F. HEATED" — NO debe matchear "UNHEATED"
+  const heatedA = t.match(/(\d{3,5})\s*(?:s\.?f\.?|sq\.?\s*ft\.?|sqft)\s*(?:area)?\s*[-–—:.,]?\s*(?<!un)(?:heated|conditioned|living|habitable)/i)
+  const heatedB = t.match(/(?<!un)(?:heated|conditioned|living|habitable)\s*(?:area|square\s*feet|sf|sqft|sq\.?\s*ft\.?)\s*:?\s*([\d,]+)/i)
+  const heatedMatch = heatedA || heatedB
+  if (heatedMatch) {
+    const v = parseInt(heatedMatch[1].replace(/,/g, ''))
+    if (v >= 500 && v <= 20000) result.sfHeated = v
+  }
+
+  // Garage: aceptamos "UNHEATED - GARAGE" porque garage suele ser unheated
+  const garageA = t.match(/(\d{3,5})\s*(?:s\.?f\.?|sq\.?\s*ft\.?|sqft)\s*(?:un)?heated\s*[-–—:.,]?\s*garage/i)
+  const garageB = t.match(/(?:garage|attached\s*garage)\s*(?:area|sf|sqft|sq\.?\s*ft\.?)?\s*:?\s*([\d,]+)/i)
+  const garageMatch = garageA || garageB
+  if (garageMatch) {
+    const v = parseInt(garageMatch[1].replace(/,/g, ''))
+    if (v >= 100 && v <= 5000) result.sfGarage = v
+  }
+
+  // Porches: pueden ser múltiples (front + rear). Sumamos todos.
+  let totalPorch = 0
+  const porchA = t.matchAll(/(\d{2,4})\s*(?:s\.?f\.?|sq\.?\s*ft\.?|sqft)\s*(?:un)?heated\s*[-–—:.,]?\s*(?:rear\s*porch|front\s*porch|porch|deck|screened)/gi)
+  for (const m of porchA) {
+    const v = parseInt(m[1].replace(/,/g, ''))
+    if (v >= 30 && v <= 2000) totalPorch += v
+  }
+  if (totalPorch === 0) {
+    const porchB = t.match(/(?:porch|deck|covered\s*porch|screened)\s*(?:area|sf|sqft|sq\.?\s*ft\.?)?\s*:?\s*([\d,]+)/i)
+    if (porchB) {
+      const v = parseInt(porchB[1].replace(/,/g, ''))
+      if (v >= 30 && v <= 2000) totalPorch = v
+    }
+  }
+  if (totalPorch > 0) result.sfPorches = totalPorch
+
   const beds = t.match(/(\d+)\s*(?:bedroom|bed\s*room|br)s?\b/i)
-  if (beds) result.bedrooms = parseInt(beds[1])
+  if (beds) {
+    const v = parseInt(beds[1])
+    if (v >= 1 && v <= 10) result.bedrooms = v
+  }
   const baths = t.match(/(\d+(?:\.\d)?)\s*(?:bathroom|bath\s*room|ba)s?\b/i)
   if (baths) result.bathrooms = baths[1]
-  const found = t.match(/foundation\s*(?:type|system)?\s*:?\s*(slab|crawl\s*space|basement|pier)/i)
+  const found = t.match(/foundation\s*(?:type|system)?\s*:?\s*(slab|crawl\s*space|crawlspace|basement|pier)/i)
   if (found) result.foundationType = found[1].trim()
   return result
 }
 
-function parsePermitText(text: string): Record<string, unknown> {
+export function parsePermitText(text: string): Record<string, unknown> {
   const result: Record<string, unknown> = {}
   const t = text.replace(/\n/g, ' ')
   const dp = '(\\d{1,2}[\\/-]\\d{1,2}[\\/-]\\d{2,4})'
-  const permitNum = t.match(/permit\s*(?:number|#|no\.?|num)\s*:?\s*([A-Z0-9\-]+)/i)
+  // Trunca cualquier palabra pegada después del código (PDF often glues "Issue"
+  // del campo siguiente: "Permit#:BR26-000029Issue Date:..."). El permit # de
+  // SC tiene formato AB##-NNNNNN — exactamente 2 letras, 2 dígitos, guión, 6 dígitos.
+  // Fallback más amplio para otros formatos: dígitos+guiones hasta 20 chars.
+  const permitNum = t.match(/permit\s*(?:number|#|no\.?|num)\s*:?\s*([A-Z]{0,4}\d{2,4}-?\d{4,8})/i)
   if (permitNum) result.permitNumber = permitNum[1].trim()
   const issued = t.match(new RegExp(`(?:issue[d]?\\s*date|date\\s*issued|permit\\s*date|approved)\\s*:?\\s*${dp}`, 'i'))
   if (issued) result.permitIssued = normalizeDate(issued[1])
@@ -837,7 +914,7 @@ function parsePermitText(text: string): Record<string, unknown> {
   return result
 }
 
-function parseLOIText(text: string): Record<string, unknown> {
+export function parseLOIText(text: string): Record<string, unknown> {
   const result: Record<string, unknown> = {}
   const t = text.replace(/\n/g, ' ')
   const mp = '\\$?([\\d,]+\\.?\\d*)'
@@ -862,16 +939,28 @@ function parseLOIText(text: string): Record<string, unknown> {
   return result
 }
 
-function parseAppraisalText(text: string): Record<string, unknown> {
+export function parseAppraisalText(text: string): Record<string, unknown> {
   const result: Record<string, unknown> = {}
   const t = text.replace(/\n/g, ' ')
-  const mp = '\\$?([\\d,]+\\.?\\d*)'
-  const arv = t.match(new RegExp(`(?:market\\s*value|appraised\\s*(?:value|amount)|as\\s*completed\\s*value|after\\s*repair\\s*value|arv|indicated\\s*value)\\s*:?\\s*${mp}`, 'i'))
-  if (arv) result.arv = parseMoney(arv[1])
-  const gla = t.match(/(?:gla|gross\s*living\s*area|gross\s*livable|net\s*livable)\s*:?\s*([\d,]+)/i)
-  if (gla) result.sfHeated = parseInt(gla[1].replace(/,/g, ''))
-  const target = t.match(new RegExp(`(?:estimated\\s*value|list(?:ing)?\\s*(?:price|value)|as\\s*is\\s*value)\\s*:?\\s*${mp}`, 'i'))
-  if (target) result.targetListingPrice = parseMoney(target[1])
+  // "Opinion of Value: $619,000" es el header dominante en appraisals USPAP.
+  // Requerimos $ + dígitos para evitar capturar montos sueltos.
+  const arv = t.match(/(?:opinion\s*of\s*value|market\s*value|appraised\s*(?:value|amount)|as\s*completed\s*value|after\s*repair\s*value|arv|indicated\s*value)[^$\n]{0,40}\$([\d,]+(?:\.\d{2})?)/i)
+  if (arv) {
+    const v = parseMoney(arv[1])
+    if (v >= 1000) result.arv = v
+  }
+  // GLA (Gross Living Area) o variantes
+  const gla = t.match(/(?:gla|gross\s*living\s*area|gross\s*livable|net\s*livable|living\s*area)\s*:?\s*([\d,]+)\s*(?:sf|sqft|sq\.?\s*ft\.?)?/i)
+  if (gla) {
+    const v = parseInt(gla[1].replace(/,/g, ''))
+    if (v >= 500 && v <= 20000) result.sfHeated = v
+  }
+  // Target listing (puede no estar en appraisal — pero si lo hay)
+  const target = t.match(/(?:estimated\s*value|list(?:ing)?\s*(?:price|value)|as\s*is\s*value)[^$\n]{0,40}\$([\d,]+(?:\.\d{2})?)/i)
+  if (target) {
+    const v = parseMoney(target[1])
+    if (v >= 1000) result.targetListingPrice = v
+  }
   return result
 }
 
