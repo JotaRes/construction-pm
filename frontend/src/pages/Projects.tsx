@@ -1,10 +1,11 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Building2, MapPin, DollarSign, TrendingUp, ChevronRight, X, Trash2, Upload, FileText, CheckCircle, RefreshCw } from 'lucide-react'
+import { Plus, Building2, MapPin, DollarSign, TrendingUp, ChevronRight, X, Trash2, Upload, FileText, CheckCircle, RefreshCw, Pencil } from 'lucide-react'
 import { projectsApi, projectsDeleteApi } from '../lib/api'
 import { useProjectStore } from '../store/projectStore'
 import { formatUSD } from '../lib/calculations'
+import toast from 'react-hot-toast'
 import type { Project, Draw } from '../lib/types'
 
 type ProjectListItem = Pick<Project, 'id' | 'name' | 'spv' | 'address' | 'arv' | 'constructionBudget' | 'holdback'> & {
@@ -244,11 +245,287 @@ function NewProjectModal({ onClose, onCreated }: { onClose: () => void; onCreate
   )
 }
 
-function ProjectCard({ project, isActive, onSelect, onDelete }: {
+// Definición de los campos editables agrupados por sección. Cada campo
+// declara su tipo de input para que el modal sepa cómo renderizar.
+// Esto refleja exactamente el whitelist del backend.
+type FieldDef = { key: string; label: string; type: 'text' | 'number' | 'date' | 'tel' | 'email'; placeholder?: string }
+
+const EDIT_SECTIONS: Array<{ title: string; fields: FieldDef[] }> = [
+  {
+    title: 'Identidad',
+    fields: [
+      { key: 'name',     label: 'Nombre del proyecto', type: 'text', placeholder: 'Lote 88 — Highland Rd' },
+      { key: 'spv',      label: 'SPV (LLC del proyecto)', type: 'text', placeholder: 'Highland 88 LLC' },
+      { key: 'holding',  label: 'Holding (empresa matriz)', type: 'text', placeholder: 'Restrepo Acosta Global Holding LLC' },
+      { key: 'address',  label: 'Dirección', type: 'text', placeholder: '123 N Highland Rd, Westminster SC' },
+      { key: 'county',   label: 'Condado', type: 'text', placeholder: 'Oconee' },
+      { key: 'hoa',      label: 'HOA', type: 'text', placeholder: 'Chickasaw Point' },
+      { key: 'parcelId', label: 'Parcel ID', type: 'text', placeholder: '323-01-06-002' },
+    ],
+  },
+  {
+    title: 'Físico',
+    fields: [
+      { key: 'lotAcres',         label: 'Acres del lote', type: 'number', placeholder: '0' },
+      { key: 'sfHeated',         label: 'SF Heated (área vivible)', type: 'number', placeholder: '2400' },
+      { key: 'sfGarage',         label: 'SF Garage', type: 'number', placeholder: '0' },
+      { key: 'sfPorches',        label: 'SF Porches', type: 'number', placeholder: '0' },
+      { key: 'bedrooms',         label: 'Habitaciones', type: 'number', placeholder: '3' },
+      { key: 'bathrooms',        label: 'Baños', type: 'text', placeholder: '2.5' },
+      { key: 'foundationType',   label: 'Tipo de cimentación', type: 'text', placeholder: 'crawlspace / slab / basement' },
+      { key: 'architecturalPlan',label: 'Plano arquitectónico', type: 'text', placeholder: '2400-5 CRAWLSPACE' },
+    ],
+  },
+  {
+    title: 'Permisos',
+    fields: [
+      { key: 'permitNumber',  label: 'Número de permiso', type: 'text', placeholder: 'BR26-XXXXXX' },
+      { key: 'permitIssued',  label: 'Fecha emisión', type: 'date' },
+      { key: 'permitExpires', label: 'Fecha vencimiento (180 días)', type: 'date' },
+      { key: 'inspectorPhone',label: 'Teléfono inspector condado', type: 'tel' },
+      { key: 'hoaPhone',      label: 'Teléfono HOA', type: 'tel' },
+    ],
+  },
+  {
+    title: 'General Contractor',
+    fields: [
+      { key: 'gcName',     label: 'Nombre GC', type: 'text', placeholder: 'AMA, LLC' },
+      { key: 'gcPhone',    label: 'Teléfono GC', type: 'tel' },
+      { key: 'gcLicense',  label: 'Licencia SC', type: 'text' },
+      { key: 'gcEmail',    label: 'Email GC', type: 'email' },
+    ],
+  },
+  {
+    title: 'Financiamiento',
+    fields: [
+      { key: 'lender',           label: 'Lender', type: 'text', placeholder: 'Hera Holdings LLC' },
+      { key: 'loanNumber',       label: 'Loan #', type: 'text', placeholder: 'HERA-2026-XXXX' },
+      { key: 'loanAmount',       label: 'Loan Amount', type: 'number', placeholder: '0' },
+      { key: 'day1Disbursement', label: 'Day 1 Disbursement', type: 'number', placeholder: '0' },
+      { key: 'interestReserve',  label: 'Interest Reserve', type: 'number', placeholder: '0' },
+      { key: 'holdback',         label: 'Holdback', type: 'number', placeholder: '0' },
+      { key: 'interestRate',     label: 'Tasa anual (decimal — ej 0.085)', type: 'number', placeholder: '0.085' },
+      { key: 'loanTermMonths',   label: 'Plazo (meses)', type: 'number', placeholder: '18' },
+      { key: 'settlementDate',   label: 'Fecha settlement', type: 'date' },
+      { key: 'cashAtSettlement', label: 'Cash at Settlement', type: 'number', placeholder: '0' },
+      { key: 'closingCosts',     label: 'Closing Costs', type: 'number', placeholder: '0' },
+      { key: 'contractSalesPrice', label: 'Contract Sales Price', type: 'number', placeholder: '0' },
+      { key: 'settlementAgent',  label: 'Settlement Agent', type: 'text' },
+    ],
+  },
+  {
+    title: 'Valoración',
+    fields: [
+      { key: 'arv',                label: 'ARV (After Repair Value)', type: 'number', placeholder: '0' },
+      { key: 'constructionBudget', label: 'Construction Budget', type: 'number', placeholder: '0' },
+    ],
+  },
+  {
+    title: 'Inspector tercero (Trinity)',
+    fields: [
+      { key: 'trinityName',  label: 'Nombre', type: 'text' },
+      { key: 'trinityPhone', label: 'Teléfono', type: 'tel' },
+      { key: 'trinityEmail', label: 'Email', type: 'email' },
+    ],
+  },
+  {
+    title: 'Cronograma',
+    fields: [
+      { key: 'startDate',            label: 'Fecha inicio obra', type: 'date' },
+      { key: 'targetCompletionDate', label: 'Fecha objetivo CO', type: 'date' },
+    ],
+  },
+  {
+    title: 'Realtor / Venta',
+    fields: [
+      { key: 'realtorName',         label: 'Realtor', type: 'text' },
+      { key: 'realtorBrokerage',    label: 'Brokerage', type: 'text' },
+      { key: 'realtorPhone',        label: 'Teléfono', type: 'tel' },
+      { key: 'realtorEmail',        label: 'Email', type: 'email' },
+      { key: 'listingCommission',   label: 'Comisión listing (decimal — ej 0.03)', type: 'number' },
+      { key: 'buyerCommission',     label: 'Comisión buyer (decimal — ej 0.03)', type: 'number' },
+      { key: 'targetListingPrice',  label: 'Precio listing objetivo', type: 'number' },
+      { key: 'expectedPricePerSqft',label: 'Precio $/sqft esperado', type: 'number' },
+    ],
+  },
+  {
+    title: 'Benchmarks',
+    fields: [
+      { key: 'contingencyPct',    label: 'Contingencia (decimal — ej 0.08)', type: 'number' },
+      { key: 'targetMarginPct',   label: 'Margen objetivo (decimal — ej 0.20)', type: 'number' },
+      { key: 'benchmarkSfTarget', label: '$/SF benchmark (ej 220)', type: 'number' },
+    ],
+  },
+]
+
+const NUM_KEYS = new Set<string>(
+  EDIT_SECTIONS.flatMap(s => s.fields).filter(f => f.type === 'number').map(f => f.key)
+)
+const DATE_KEYS = new Set<string>(
+  EDIT_SECTIONS.flatMap(s => s.fields).filter(f => f.type === 'date').map(f => f.key)
+)
+
+function EditProjectModal({ projectId, onClose }: { projectId: string; onClose: () => void }) {
+  const queryClient = useQueryClient()
+  const [form, setForm] = useState<Record<string, string>>({})
+  const [openSection, setOpenSection] = useState<string>('Identidad')
+
+  // Cargar datos actuales del proyecto y poblar el form
+  const { data: project, isLoading } = useQuery<Record<string, unknown>>({
+    queryKey: ['project', projectId],
+    queryFn: () => projectsApi.get(projectId),
+  })
+
+  useEffect(() => {
+    if (!project) return
+    const next: Record<string, string> = {}
+    for (const section of EDIT_SECTIONS) {
+      for (const f of section.fields) {
+        const v = project[f.key]
+        if (v === null || v === undefined) { next[f.key] = ''; continue }
+        if (DATE_KEYS.has(f.key) && typeof v === 'string') {
+          // ISO date → YYYY-MM-DD para input type=date
+          next[f.key] = v.slice(0, 10)
+        } else {
+          next[f.key] = String(v)
+        }
+      }
+    }
+    setForm(next)
+  }, [project])
+
+  const mutation = useMutation({
+    mutationFn: (data: Record<string, unknown>) => projectsApi.patch(projectId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] })
+      queryClient.invalidateQueries({ queryKey: ['project', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      toast.success('Proyecto actualizado')
+      onClose()
+    },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Error al guardar'
+      toast.error(msg)
+    },
+  })
+
+  const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!project) return
+    // Sólo enviar campos cuyo valor cambió respecto al original
+    const payload: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(form)) {
+      const orig = project[k]
+      const origStr = orig === null || orig === undefined ? '' :
+        DATE_KEYS.has(k) && typeof orig === 'string' ? orig.slice(0, 10) : String(orig)
+      if (v === origStr) continue
+      if (v === '') {
+        // Campo vacío en input — pasar null para limpiar
+        payload[k] = null
+      } else if (NUM_KEYS.has(k)) {
+        const n = parseFloat(v)
+        if (!Number.isNaN(n)) payload[k] = n
+      } else if (DATE_KEYS.has(k)) {
+        payload[k] = new Date(v).toISOString()
+      } else {
+        payload[k] = v
+      }
+    }
+    if (Object.keys(payload).length === 0) {
+      toast('No hay cambios para guardar', { icon: 'ℹ️' })
+      return
+    }
+    mutation.mutate(payload)
+  }
+
+  const inputCls = "w-full bg-white border border-slate-200 text-sm text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#C8922A] placeholder-slate-400"
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+      <div className="bg-slate-50 border border-slate-200 rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+          <div>
+            <h2 className="text-base font-bold text-slate-900">Editar proyecto</h2>
+            <p className="text-xs text-slate-400 mt-0.5">
+              {project?.name as string ?? '...'} · Los campos vacíos al guardar limpian el dato
+            </p>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {isLoading ? (
+          <div className="p-10 text-center text-sm text-slate-400">Cargando...</div>
+        ) : (
+          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 py-5 space-y-3">
+            {EDIT_SECTIONS.map(section => (
+              <div key={section.title} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setOpenSection(openSection === section.title ? '' : section.title)}
+                  className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors"
+                >
+                  <span className="text-sm font-semibold text-slate-700">{section.title}</span>
+                  <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform ${openSection === section.title ? 'rotate-90' : ''}`} />
+                </button>
+                {openSection === section.title && (
+                  <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-slate-100 pt-3">
+                    {section.fields.map(f => (
+                      <div key={f.key}>
+                        <label className="block text-[11px] text-slate-500 mb-1">{f.label}</label>
+                        <input
+                          type={f.type}
+                          step={f.type === 'number' ? 'any' : undefined}
+                          value={form[f.key] ?? ''}
+                          onChange={e => set(f.key, e.target.value)}
+                          placeholder={f.placeholder}
+                          className={inputCls}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {mutation.isError && (
+              <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-xs px-3 py-2 rounded-lg">
+                Error al guardar: {String(mutation.error)}
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-3 sticky bottom-0 bg-slate-50 -mx-6 px-6 pb-3 border-t border-slate-200">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-500 hover:text-slate-800 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={mutation.isPending}
+                className="flex-1 px-4 py-2.5 rounded-lg bg-[#C8922A] hover:bg-[#E0AD4F] text-sm font-semibold text-white transition-colors disabled:opacity-50"
+              >
+                {mutation.isPending ? 'Guardando...' : 'Guardar cambios'}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function ProjectCard({ project, isActive, onSelect, onDelete, onEdit }: {
   project: ProjectListItem
   isActive: boolean
   onSelect: () => void
   onDelete: () => void
+  onEdit: () => void
 }) {
   const totalDrawn = project.draws.filter(d => d.estado === 'WIRED').reduce((s, d) => s + d.netWire, 0)
   const drawPct = project.holdback > 0 ? (totalDrawn / project.holdback) * 100 : 0
@@ -256,14 +533,23 @@ function ProjectCard({ project, isActive, onSelect, onDelete }: {
   return (
     <div className={`relative bg-white rounded-xl border transition-all group
       ${isActive ? 'border-blue-500 ring-1 ring-blue-500/30' : 'border-slate-200 hover:border-slate-200'}`}>
-      {/* Delete button — top right, visible on hover */}
-      <button
-        onClick={e => { e.stopPropagation(); onDelete() }}
-        className="absolute top-3 right-3 p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all opacity-0 group-hover:opacity-100 z-10"
-        title="Eliminar proyecto"
-      >
-        <Trash2 className="w-3.5 h-3.5" />
-      </button>
+      {/* Edit + Delete buttons — top right, visible on hover */}
+      <div className="absolute top-3 right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all z-10">
+        <button
+          onClick={e => { e.stopPropagation(); onEdit() }}
+          className="p-1.5 rounded-lg text-slate-500 hover:text-[#C8922A] hover:bg-[#C8922A]/10 transition-colors"
+          title="Editar información general del proyecto"
+        >
+          <Pencil className="w-3.5 h-3.5" />
+        </button>
+        <button
+          onClick={e => { e.stopPropagation(); onDelete() }}
+          className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+          title="Eliminar proyecto"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      </div>
 
       <button onClick={onSelect} className="w-full text-left p-5">
         <div className="flex items-start justify-between mb-4 pr-6">
@@ -353,6 +639,7 @@ function ConfirmDeleteModal({ projectName, onConfirm, onCancel, isPending }: {
 
 export default function Projects() {
   const [showModal, setShowModal] = useState(false)
+  const [editTarget, setEditTarget] = useState<ProjectListItem | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<ProjectListItem | null>(null)
   const { activeProjectId, setActiveProjectId } = useProjectStore()
   const navigate = useNavigate()
@@ -418,6 +705,7 @@ export default function Projects() {
               project={p}
               isActive={p.id === activeProjectId}
               onSelect={() => handleSelect(p.id)}
+              onEdit={() => setEditTarget(p)}
               onDelete={() => setDeleteTarget(p)}
             />
           ))}
@@ -426,6 +714,10 @@ export default function Projects() {
 
       {showModal && (
         <NewProjectModal onClose={() => setShowModal(false)} onCreated={handleCreated} />
+      )}
+
+      {editTarget && (
+        <EditProjectModal projectId={editTarget.id} onClose={() => setEditTarget(null)} />
       )}
 
       {deleteTarget && (

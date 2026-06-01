@@ -327,11 +327,52 @@ router.post('/', async (req: Request, res: Response) => {
   }
 })
 
+// Whitelist explícita — campos editables del proyecto desde la UI.
+// Bloquea mass-assignment de id/createdAt/foreignKeys que rompan integridad.
+const PROJECT_EDITABLE_FIELDS = new Set([
+  // Identidad
+  'name', 'spv', 'holding', 'address', 'county', 'hoa', 'parcelId',
+  // Físico
+  'lotAcres', 'sfHeated', 'sfGarage', 'sfPorches', 'bedrooms', 'bathrooms',
+  'architecturalPlan', 'foundationType',
+  // Permisos
+  'permitNumber', 'permitIssued', 'permitExpires', 'inspectorPhone', 'hoaPhone',
+  // GC
+  'gcName', 'gcPhone', 'gcLicense', 'gcEmail',
+  // Financiamiento
+  'lender', 'loanNumber', 'loanAmount', 'day1Disbursement', 'interestReserve',
+  'holdback', 'interestRate', 'loanTermMonths', 'settlementDate',
+  'cashAtSettlement', 'closingCosts', 'contractSalesPrice', 'settlementAgent',
+  // Valoración
+  'arv', 'constructionBudget',
+  // Inspector
+  'trinityName', 'trinityPhone', 'trinityEmail',
+  // Target
+  'targetCompletionDate', 'startDate',
+  // Realtor
+  'realtorName', 'realtorBrokerage', 'realtorPhone', 'realtorEmail',
+  'listingCommission', 'buyerCommission', 'targetListingPrice', 'expectedPricePerSqft',
+  // Benchmarks
+  'contingencyPct', 'targetMarginPct', 'benchmarkSfTarget',
+  // Documentos financieros (URLs)
+  'loiUrl', 'loiName', 'approvalLetterUrl', 'approvalLetterName',
+  'hudUrl', 'hudName', 'otrosFinancieroUrl', 'otrosFinancieroName',
+  // LOI extraído
+  'loiSalePrice', 'loiOfferDate', 'loiExpectedClose', 'loiEarnestMoney',
+])
+
 router.patch('/:id', async (req: Request, res: Response) => {
   try {
+    const data: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(req.body || {})) {
+      if (PROJECT_EDITABLE_FIELDS.has(k)) data[k] = v
+    }
+    if (Object.keys(data).length === 0) {
+      return res.status(400).json({ data: null, error: 'No hay campos editables en el payload' })
+    }
     const project = await prisma.project.update({
       where: { id: req.params.id },
-      data: req.body,
+      data,
     })
     res.json({ data: project, error: null })
   } catch (e) {
