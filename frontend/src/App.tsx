@@ -24,6 +24,7 @@ import PriceReference from './pages/PriceReference'
 import TechImport from './pages/TechImport'
 import Landing from './Landing'
 import FinanceApp from './finance/FinanceApp'
+import { useTheme } from './hooks/useTheme'
 
 function TechModule() {
   const { activeProjectId, setActiveProjectId } = useProjectStore()
@@ -86,6 +87,7 @@ function TechModule() {
 }
 
 export default function App() {
+  useTheme() // inicializa data-theme en <html> desde localStorage
   return (
     <AuthGate>
       <ConfirmProvider>

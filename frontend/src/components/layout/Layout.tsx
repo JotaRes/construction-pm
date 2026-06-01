@@ -10,6 +10,7 @@ import { alertsApi, projectsApi } from '../../lib/api'
 import { logout } from '../AuthGate'
 import ModuleSwitcher from '../ModuleSwitcher'
 import CapacityBanner from '../CapacityBanner'
+import { ThemeToggle } from '../ThemeToggle'
 import { useProjectStore } from '../../store/projectStore'
 import type { Alert, Task } from '../../lib/types'
 import { tasksApi } from '../../lib/api'
@@ -327,6 +328,7 @@ export default function Layout({ projectId, children }: Props) {
           className="flex items-center justify-end gap-2 px-4 md:px-6 py-2 border-b bg-white/60 flex-wrap"
           style={{ borderColor: 'rgba(0,0,0,0.07)', backdropFilter: 'blur(4px)', minHeight: 44 }}
         >
+          <ThemeToggle />
           <ModuleSwitcher currentModule="tech" />
           <a
             href="/api/backup"
