@@ -160,7 +160,7 @@ const frontendPath = path.join(__dirname, '../public')
 if (fs.existsSync(frontendPath)) {
   app.use(express.static(frontendPath))
   // All non-API routes → React app (client-side routing)
-  app.get('*', (_req, res) => {
+  app.get('/{*path}', (_req, res) => {
     res.sendFile(path.join(frontendPath, 'index.html'))
   })
 }
