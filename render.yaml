@@ -24,13 +24,8 @@ services:
       cp -R ../frontend/dist/. public/
       ls -la public/
       echo "=== Build complete ==="
-    # Start phase — sed corre AQUÍ porque Render provee el schema desde git
-    # (los source files se resetean entre build y start, solo artifacts persisten)
     startCommand: |
       set -e
-      echo "=== Fixing Prisma provider for production ==="
-      sed -i 's/provider = "sqlite"/provider = "postgresql"/' prisma/schema.prisma
-      echo "provider after sed:"; grep provider prisma/schema.prisma | head -3
       echo "=== Prisma generate ==="
       npx prisma generate
       echo "=== Prisma DB push ==="
