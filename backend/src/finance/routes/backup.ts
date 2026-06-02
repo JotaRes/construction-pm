@@ -1,6 +1,28 @@
 import { Router } from "express";
 import archiver from "archiver";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
+
+// Helper: convierte un array de objetos en hoja exceljs (semántica de
+// XLSX.utils.json_to_sheet). Las keys del primer objeto son la cabecera.
+async function writeWorkbookBuffer(
+  sheets: Array<{ name: string; rows: Record<string, unknown>[] }>
+): Promise<Buffer> {
+  const wb = new ExcelJS.Workbook();
+  for (const s of sheets) {
+    const ws = wb.addWorksheet(s.name.slice(0, 31));
+    if (s.rows.length === 0) {
+      ws.addRow(["(sin datos)"]);
+      continue;
+    }
+    const keys = Object.keys(s.rows[0]);
+    ws.addRow(keys);
+    for (const r of s.rows) {
+      ws.addRow(keys.map((k) => r[k] ?? null));
+    }
+  }
+  const ab = await wb.xlsx.writeBuffer();
+  return Buffer.from(ab as ArrayBuffer);
+}
 import { prisma } from "../lib/prisma";
 import { fail, ok } from "../lib/respond";
 import { logActivity } from "../services/auditLog";
@@ -84,19 +106,15 @@ router.get("/excel", async (_req, res) => {
   try {
     const snap = await buildSnapshot();
 
-    const wb = XLSX.utils.book_new();
-
-    // Helper para construir sheet legible
+    const sheetsToWrite: Array<{ name: string; rows: Record<string, unknown>[] }> = [];
     const addSheet = (name: string, rows: any[], pick?: (r: any) => any) => {
       if (rows.length === 0) {
-        const ws = XLSX.utils.aoa_to_sheet([["(sin datos)"]]);
-        XLSX.utils.book_append_sheet(wb, ws, name.slice(0, 31));
+        sheetsToWrite.push({ name, rows: [] });
         return;
       }
-      const flat = rows.map((r) => {
+      const flat: Record<string, unknown>[] = rows.map((r) => {
         const o = pick ? pick(r) : r;
-        // Aplanar fechas
-        const result: any = {};
+        const result: Record<string, unknown> = {};
         for (const [k, v] of Object.entries(o)) {
           if (v instanceof Date) result[k] = v.toISOString().slice(0, 10);
           else if (v && typeof v === "object" && !Array.isArray(v)) result[k] = (v as any).name || (v as any).code || JSON.stringify(v);
@@ -104,8 +122,7 @@ router.get("/excel", async (_req, res) => {
         }
         return result;
       });
-      const ws = XLSX.utils.json_to_sheet(flat);
-      XLSX.utils.book_append_sheet(wb, ws, name.slice(0, 31));
+      sheetsToWrite.push({ name, rows: flat });
     };
 
     addSheet("SPVs", snap.spvs);
@@ -161,7 +178,7 @@ router.get("/excel", async (_req, res) => {
       Estado: l.matchStatus, "ID statement": l.statementId,
     }));
 
-    const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+    const buf = await writeWorkbookBuffer(sheetsToWrite);
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", `attachment; filename="finance-export-${new Date().toISOString().slice(0, 10)}.xlsx"`);
     res.send(buf);

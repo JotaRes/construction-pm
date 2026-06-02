@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express'
 import { PrismaClient } from '@prisma/client'
 import multer from 'multer'
-import * as XLSX from 'xlsx'
+import ExcelJS from 'exceljs'
 import { uploadToCloudinary, resourceTypeFor } from '../lib/cloudinary'
 import { parseAmountFlexible } from '../lib/parseAmount'
 import { extractPdfText } from '../lib/pdfOcr'
@@ -455,20 +455,58 @@ export function parseDrawText(text: string): Record<string, unknown> {
 //   2. Label/value scan — "Amount Requested" | $45,200 in adjacent cells.
 //   3. Tabular detector — section row (Pre-Draw/Post-Draw merged labels) +
 //      header row + data row. Trinity uses this layout.
-function flattenSheetToText(sheet: XLSX.WorkSheet): string {
-  if (!sheet['!ref']) return ''
-  const range = XLSX.utils.decode_range(sheet['!ref'])
-  const lines: string[] = []
-  for (let r = range.s.r; r <= range.e.r; r++) {
-    const rowParts: string[] = []
-    for (let c = range.s.c; c <= range.e.c; c++) {
-      const addr = XLSX.utils.encode_cell({ r, c })
-      const cell = sheet[addr]
-      if (!cell) continue
-      const v = cell.w ?? cell.v
-      if (v !== undefined && v !== null && v !== '') rowParts.push(String(v))
+// Convierte un Excel buffer en estructura plana { sheets: [{name, rows[][]}, ...] }.
+// exceljs es async y orientado a objetos — para no reescribir todas las heurísticas
+// del parser Trinity, hacemos una conversión one-shot a matrices y mantenemos el
+// resto del código basado en `unknown[][]`.
+//
+// Una "row" es `unknown[]` donde cada celda es null, string, number, o Date.
+// Esto coincide con el shape que xlsx devolvía en `sheet_to_json({header:1})`.
+interface SheetRows { name: string; rows: unknown[][] }
+
+async function loadWorkbookRows(buffer: Buffer): Promise<SheetRows[]> {
+  const wb = new ExcelJS.Workbook()
+  await wb.xlsx.load(buffer as unknown as ArrayBuffer)
+  const out: SheetRows[] = []
+  wb.eachSheet((sheet) => {
+    const rows: unknown[][] = []
+    const lastRow = sheet.actualRowCount > 0 ? sheet.rowCount : 0
+    const lastCol = sheet.actualColumnCount > 0 ? sheet.columnCount : 0
+    for (let r = 1; r <= lastRow; r++) {
+      const row = sheet.getRow(r)
+      const arr: unknown[] = []
+      for (let c = 1; c <= lastCol; c++) {
+        const cell = row.getCell(c)
+        const v = cell.value
+        // Resolver fórmulas → resultado calculado (cuando el archivo lo trae)
+        if (v && typeof v === 'object' && 'result' in (v as object)) {
+          arr.push((v as { result: unknown }).result ?? null)
+        } else if (v && typeof v === 'object' && 'richText' in (v as object)) {
+          arr.push((v as { richText: Array<{ text: string }> }).richText.map(t => t.text).join(''))
+        } else if (v && typeof v === 'object' && 'hyperlink' in (v as object)) {
+          arr.push((v as { text?: string; hyperlink?: string }).text ?? (v as { hyperlink: string }).hyperlink)
+        } else {
+          arr.push(v === undefined ? null : v)
+        }
+      }
+      rows.push(arr)
     }
-    if (rowParts.length) lines.push(rowParts.join(' '))
+    out.push({ name: sheet.name, rows })
+  })
+  return out
+}
+
+function flattenRowsToText(rows: unknown[][]): string {
+  const lines: string[] = []
+  for (const row of rows) {
+    const parts: string[] = []
+    for (const v of row) {
+      if (v === null || v === undefined || v === '') continue
+      // exceljs entrega Date objects nativos — preservamos string igual que el viejo cell.w
+      if (v instanceof Date) parts.push(v.toISOString())
+      else parts.push(String(v))
+    }
+    if (parts.length) lines.push(parts.join(' '))
   }
   return lines.join('\n')
 }
@@ -477,7 +515,7 @@ function cellToNumber(v: unknown): number | null {
   if (v === null || v === undefined || v === '') return null
   if (typeof v === 'number') return Number.isFinite(v) ? v : null
   if (v instanceof Date) return null
-  const s = String(v).replace(/[\$\s]/g, '').trim()
+  const s = String(v).replace(/[$\s]/g, '').trim()
   if (!s) return null
   // Reject anything that looks like a date (mm/dd/yyyy or mm-dd-yyyy)
   if (/\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}/.test(s)) return null
@@ -551,23 +589,18 @@ function setField(out: Record<string, unknown>, field: string, value: unknown) {
 // Section row (optional, with "Pre-Draw" / "Post Draw" merged labels)
 // Header row (column names)
 // Data row(s) (one row per draw)
-function parseDrawExcelTabular(sheet: XLSX.WorkSheet): Record<string, unknown> {
+function parseDrawExcelTabular(sheetRows: unknown[][]): Record<string, unknown> {
   const out: Record<string, unknown> = {}
-  if (!sheet['!ref']) return out
+  if (!sheetRows.length) return out
 
-  const range = XLSX.utils.decode_range(sheet['!ref'])
-  // Clamp range — some files (like Trinity's) set !ref to A1:Y1000 but only
-  // populate the first ~10 rows. Use !merges and cell presence to find real end.
+  // Clamp — Trinity files can have phantom rows. Cap a 50 como antes.
   const realRows: unknown[][] = []
-  const lastRowChecked = Math.min(range.e.r, 50) // safety cap
-  for (let r = range.s.r; r <= lastRowChecked; r++) {
-    const row: unknown[] = []
+  const lastRowChecked = Math.min(sheetRows.length, 50)
+  for (let r = 0; r < lastRowChecked; r++) {
+    const row = sheetRows[r] ?? []
     let hasContent = false
-    for (let c = range.s.c; c <= range.e.c; c++) {
-      const cell = sheet[XLSX.utils.encode_cell({ r, c })]
-      const v = cell ? (cell.v !== undefined ? cell.v : null) : null
-      row.push(v)
-      if (v !== null && v !== undefined && v !== '') hasContent = true
+    for (const v of row) {
+      if (v !== null && v !== undefined && v !== '') { hasContent = true; break }
     }
     realRows.push(hasContent ? row : [])
   }
@@ -627,30 +660,28 @@ function parseDrawExcelTabular(sheet: XLSX.WorkSheet): Record<string, unknown> {
   return out
 }
 
-export function parseDrawExcel(buffer: Buffer): { parsed: Record<string, unknown>; preview: string } {
-  const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true })
+export async function parseDrawExcel(buffer: Buffer): Promise<{ parsed: Record<string, unknown>; preview: string }> {
+  const sheets = await loadWorkbookRows(buffer)
 
   // 1) Flatten every sheet → run existing regex parser as a baseline.
   let allText = ''
-  for (const sheetName of workbook.SheetNames) {
-    allText += `\n=== ${sheetName} ===\n` + flattenSheetToText(workbook.Sheets[sheetName])
+  for (const s of sheets) {
+    allText += `\n=== ${s.name} ===\n` + flattenRowsToText(s.rows)
   }
   const textResult = parseDrawText(allText)
 
   // 2) Tabular detection (Trinity-style: section row + header row + data row).
   const tabularResult: Record<string, unknown> = {}
-  for (const sheetName of workbook.SheetNames) {
-    const partial = parseDrawExcelTabular(workbook.Sheets[sheetName])
+  for (const s of sheets) {
+    const partial = parseDrawExcelTabular(s.rows)
     for (const [k, v] of Object.entries(partial)) setField(tabularResult, k, v)
   }
 
   // 3) Cell-by-cell label/value scan — covers "Label | Value" layouts where the
   //    value sits in the adjacent right or below cell.
   const cellResult: Record<string, unknown> = {}
-  for (const sheetName of workbook.SheetNames) {
-    const sheet = workbook.Sheets[sheetName]
-    if (!sheet['!ref']) continue
-    const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, raw: true, defval: null })
+  for (const s of sheets) {
+    const rows = s.rows
 
     for (let r = 0; r < rows.length; r++) {
       const row = rows[r] || []
@@ -1103,7 +1134,7 @@ router.post('/:id/document', (req: Request, res: Response) => {
           extractionError = `Archivo no reconocido como Excel (${req.file.mimetype || 'sin mimetype'}).`
         } else {
           try {
-            const { parsed } = parseDrawExcel(req.file.buffer)
+            const { parsed } = await parseDrawExcel(req.file.buffer)
             if (typeof parsed.drawNumber === 'number') parsedDrawNumber = parsed.drawNumber
             const drawFields = [
               'montoSolicitado', 'elegibleTrinity', 'netWire', 'porcentajeFunded',
@@ -1335,7 +1366,7 @@ router.post('/:projectId/draws/parse-pdf', handleUpload, async (req: Request, re
     }
 
     if (isExcel) {
-      const { parsed, preview } = parseDrawExcel(req.file.buffer)
+      const { parsed, preview } = await parseDrawExcel(req.file.buffer)
       if (fileUrl) {
         parsed.lenderExcelUrl = fileUrl
         parsed.lenderExcelName = req.file.originalname

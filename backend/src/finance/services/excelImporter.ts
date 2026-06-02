@@ -1,6 +1,48 @@
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import { prisma } from "../lib/prisma";
 import { parseAmountFlexible } from "../../lib/parseAmount";
+
+// Helpers para leer el workbook como matriz de filas (reemplaza XLSX.read).
+// Devuelve un mapa por nombre de hoja para que el código existente pueda hacer
+// `sheets["CAPITALIZACION"]` igual que antes accedía a `wb.Sheets[name]`.
+interface SheetMap { [name: string]: any[][] }
+
+async function loadWorkbookSheets(buffer: Buffer): Promise<SheetMap> {
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(buffer as unknown as ArrayBuffer);
+  const out: SheetMap = {};
+  wb.eachSheet((sheet) => {
+    const rows: any[][] = [];
+    const lastRow = sheet.actualRowCount > 0 ? sheet.rowCount : 0;
+    const lastCol = sheet.actualColumnCount > 0 ? sheet.columnCount : 0;
+    for (let r = 1; r <= lastRow; r++) {
+      const row = sheet.getRow(r);
+      const arr: any[] = [];
+      for (let c = 1; c <= lastCol; c++) {
+        const v = row.getCell(c).value;
+        if (v && typeof v === "object" && "result" in (v as object)) {
+          arr.push((v as { result: unknown }).result ?? null);
+        } else if (v && typeof v === "object" && "richText" in (v as object)) {
+          arr.push((v as { richText: Array<{ text: string }> }).richText.map((t) => t.text).join(""));
+        } else if (v && typeof v === "object" && "text" in (v as object)) {
+          arr.push((v as { text: string }).text);
+        } else {
+          arr.push(v === undefined ? null : v);
+        }
+      }
+      rows.push(arr);
+    }
+    out[sheet.name] = rows;
+  });
+  return out;
+}
+
+function excelSerialToDate(serial: number): Date | null {
+  if (!Number.isFinite(serial) || serial < 0) return null;
+  const utcMs = (serial - 25569) * 86400 * 1000;
+  const d = new Date(utcMs);
+  return isNaN(d.getTime()) ? null : d;
+}
 
 interface ImportResult {
   movements: number;
@@ -23,8 +65,8 @@ function parseDate(v: any): Date | null {
   if (!v) return null;
   if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
   if (typeof v === "number") {
-    const d = XLSX.SSF.parse_date_code(v);
-    if (d) return new Date(Date.UTC(d.y, d.m - 1, d.d));
+    const d = excelSerialToDate(v);
+    if (d) return d;
   }
   const s = String(v).trim();
   const dt = new Date(s);
@@ -70,7 +112,7 @@ export async function importExcelFromBuffer(
   buffer: Buffer,
   opts: { wipe?: boolean } = {}
 ): Promise<ImportResult> {
-  const wb = XLSX.read(buffer, { type: "buffer" });
+  const wb = await loadWorkbookSheets(buffer);
   const result: ImportResult = {
     movements: 0,
     capitalContribs: 0,
@@ -173,12 +215,11 @@ export async function importExcelFromBuffer(
 
   // ----- MOVIMIENTOS (MOV 2025 + MOV 2026) -----
   for (const sheetName of ["MOV 2025", "MOV 2026"]) {
-    const ws = wb.Sheets[sheetName];
-    if (!ws) {
+    const rows = wb[sheetName];
+    if (!rows) {
       result.warnings.push(`hoja ${sheetName} no encontrada`);
       continue;
     }
-    const rows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: null });
     // Header en row 13 (index 12), data desde row 14 (index 13)
     let headerIdx = -1;
     for (let i = 10; i < Math.min(rows.length, 20); i++) {
@@ -285,9 +326,9 @@ export async function importExcelFromBuffer(
   }
 
   // ----- CAPITALIZACIÓN -----
-  const wsCap = wb.Sheets["CAPITALIZACION"];
+  const wsCap = wb["CAPITALIZACION"];
   if (wsCap) {
-    const rows: any[][] = XLSX.utils.sheet_to_json(wsCap, { header: 1, raw: false, defval: null });
+    const rows = wsCap;
     // Sección A1 — equity (row 10+)
     // Sección A2 — préstamos (row 32+)
     // Sección B — no bancarizado (row ~46+)
@@ -380,9 +421,9 @@ export async function importExcelFromBuffer(
   }
 
   // ----- PROYECTOS (sheet PROYECTOS) -----
-  const wsProj = wb.Sheets["PROYECTOS"];
+  const wsProj = wb["PROYECTOS"];
   if (wsProj) {
-    const rows: any[][] = XLSX.utils.sheet_to_json(wsProj, { header: 1, raw: false, defval: null });
+    const rows = wsProj;
     let headerIdx = -1;
     for (let i = 5; i < Math.min(rows.length, 15); i++) {
       const row = (rows[i] || []).map((c) => String(c || "").toUpperCase());

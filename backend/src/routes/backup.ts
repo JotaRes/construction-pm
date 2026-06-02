@@ -5,7 +5,25 @@ import path from 'path'
 import fs from 'fs'
 import multer from 'multer'
 import AdmZip from 'adm-zip'
-import * as XLSX from 'xlsx'
+import ExcelJS from 'exceljs'
+
+// Escribe un workbook desde un array de hojas [{name, rows: object[]}].
+// Mantiene la semántica de XLSX.utils.json_to_sheet: usa las keys del primer
+// objeto como cabecera, luego un fila por objeto.
+async function writeWorkbookBuffer(sheets: Array<{ name: string; rows: Record<string, unknown>[] }>): Promise<Buffer> {
+  const wb = new ExcelJS.Workbook()
+  for (const s of sheets) {
+    const ws = wb.addWorksheet(s.name.slice(0, 31))
+    const rows = s.rows.length > 0 ? s.rows : [{ '(sin datos)': '' }]
+    const keys = Object.keys(rows[0])
+    ws.addRow(keys)
+    for (const r of rows) {
+      ws.addRow(keys.map(k => r[k] ?? null))
+    }
+  }
+  const ab = await wb.xlsx.writeBuffer()
+  return Buffer.from(ab as ArrayBuffer)
+}
 
 const router = Router()
 const prisma = new PrismaClient()
@@ -184,10 +202,9 @@ router.get('/excel-tech', async (_req: Request, res: Response) => {
       },
     })
 
-    const wb = XLSX.utils.book_new()
+    const sheetsToWrite: Array<{ name: string; rows: Record<string, unknown>[] }> = []
     const addSheet = (name: string, rows: any[]) => {
-      const ws = XLSX.utils.json_to_sheet(rows.length > 0 ? rows : [{ '(sin datos)': '' }])
-      XLSX.utils.book_append_sheet(wb, ws, name.slice(0, 31))
+      sheetsToWrite.push({ name, rows })
     }
 
     addSheet('Proyectos', projects.map((p) => ({
@@ -234,7 +251,7 @@ router.get('/excel-tech', async (_req: Request, res: Response) => {
       Kind: f.kind, URL: f.url, Tamaño: f.size,
     }))))
 
-    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' })
+    const buf = await writeWorkbookBuffer(sheetsToWrite)
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     res.setHeader('Content-Disposition', `attachment; filename="tech-export-${new Date().toISOString().slice(0, 10)}.xlsx"`)
     res.send(buf)

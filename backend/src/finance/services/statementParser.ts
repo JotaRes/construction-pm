@@ -1,8 +1,88 @@
 // Parser de extractos bancarios — soporta CSV, Excel y PDF.
 // Diseñado para ser tolerante a múltiples formatos bancarios (Ocean Bank, Chase, BoA, etc.)
 
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import { parseAmountFlexible } from "../../lib/parseAmount";
+
+// Excel epoch + serial-to-date helper (reemplazo de XLSX.SSF.parse_date_code).
+// Excel cuenta días desde 1900-01-01 (con bug de 1900-02-29 que tratamos como
+// día válido para compatibilidad). Para CSV/Excel de bancos, esto cubre todos
+// los formatos de fecha que xlsx@0.18 manejaba.
+function excelSerialToDate(serial: number): Date | null {
+  if (!Number.isFinite(serial) || serial < 0) return null;
+  // Excel 1900 epoch (con el bug del año bisiesto)
+  const utcMs = (serial - 25569) * 86400 * 1000;
+  const d = new Date(utcMs);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+// Convierte buffer (Excel o CSV) a matriz de filas. Para Excel, usa exceljs;
+// para CSV, hace un parser simple compatible con extractos de Ocean Bank/Chase/etc.
+async function loadSheetRows(buffer: Buffer, filename: string): Promise<any[][]> {
+  if (filename.endsWith(".csv")) {
+    return parseCsvBuffer(buffer);
+  }
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(buffer as unknown as ArrayBuffer);
+  const sheet = wb.worksheets[0];
+  if (!sheet) return [];
+  const rows: any[][] = [];
+  const lastRow = sheet.actualRowCount > 0 ? sheet.rowCount : 0;
+  const lastCol = sheet.actualColumnCount > 0 ? sheet.columnCount : 0;
+  for (let r = 1; r <= lastRow; r++) {
+    const row = sheet.getRow(r);
+    const arr: any[] = [];
+    for (let c = 1; c <= lastCol; c++) {
+      const cell = row.getCell(c);
+      const v = cell.value;
+      // Resolver fórmulas → resultado calculado; rich text → plain
+      if (v && typeof v === "object" && "result" in (v as object)) {
+        arr.push((v as { result: unknown }).result ?? null);
+      } else if (v && typeof v === "object" && "richText" in (v as object)) {
+        arr.push((v as { richText: Array<{ text: string }> }).richText.map((t) => t.text).join(""));
+      } else if (v && typeof v === "object" && "text" in (v as object)) {
+        arr.push((v as { text: string }).text);
+      } else {
+        // exceljs entrega Dates nativos y números como tales — los pasamos directo.
+        arr.push(v === undefined ? null : v);
+      }
+    }
+    rows.push(arr);
+  }
+  return rows;
+}
+
+// Parser CSV simple — soporta comillas dobles, escapes "" dentro de comillas,
+// y tanto "," como ";" como separador. No soporta multilinea dentro de quoted
+// (poco común en extractos bancarios).
+function parseCsvBuffer(buffer: Buffer): any[][] {
+  const text = buffer.toString("utf-8").replace(/\r\n/g, "\n");
+  // Detectar separador por la primera línea no vacía
+  const firstLine = text.split("\n").find((l) => l.trim().length > 0) ?? "";
+  const sep = firstLine.includes(";") && !firstLine.includes(",") ? ";" : ",";
+  const out: any[][] = [];
+  for (const line of text.split("\n")) {
+    if (line === "") continue;
+    const row: any[] = [];
+    let cur = "";
+    let inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (inQ) {
+        if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+        else if (ch === '"') { inQ = false; }
+        else cur += ch;
+      } else {
+        if (ch === '"') inQ = true;
+        else if (ch === sep) { row.push(cur === "" ? null : cur); cur = ""; }
+        else cur += ch;
+      }
+    }
+    row.push(cur === "" ? null : cur);
+    out.push(row);
+  }
+  return out;
+}
 
 export interface ParsedLine {
   date: Date;
@@ -25,8 +105,8 @@ function tryParseDate(v: any): Date | null {
   if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
   if (typeof v === "number") {
     // Excel serial date
-    const d = XLSX.SSF.parse_date_code(v);
-    if (d) return new Date(Date.UTC(d.y, d.m - 1, d.d));
+    const d = excelSerialToDate(v);
+    if (d) return d;
   }
   const s = String(v).trim();
   if (!s) return null;
@@ -101,18 +181,13 @@ export async function parseStatementFile(buffer: Buffer, filename: string, mimet
     /sheet|csv|excel/i.test(mimetype);
 
   if (isExcelOrCsv) {
-    let wb: XLSX.WorkBook;
+    let rows: any[][];
     try {
-      wb = XLSX.read(buffer, { type: "buffer", cellDates: true, raw: false });
+      rows = await loadSheetRows(buffer, lower);
     } catch (e: any) {
       throw new Error(`No se pudo leer el archivo: ${e.message}`);
     }
-
-    const sheetName = wb.SheetNames[0];
-    if (!sheetName) throw new Error("El archivo no contiene hojas válidas");
-
-    const ws = wb.Sheets[sheetName];
-    const rows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: null });
+    if (!rows.length) throw new Error("El archivo no contiene hojas válidas");
 
     if (rows.length < 2) {
       throw new Error("El archivo está vacío o tiene menos de 2 filas (necesita header + al menos 1 movimiento)");
