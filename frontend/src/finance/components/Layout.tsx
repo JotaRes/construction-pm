@@ -3,12 +3,14 @@ import { useState, useEffect } from "react";
 import {
   LayoutDashboard, ArrowLeftRight, Users, Wallet, Banknote,
   Briefcase, ListTree, Upload, BarChart3,
-  LogOut, ShieldCheck, Home, Menu, X,
+  LogOut, Home, Menu, X, Download,
 } from "lucide-react";
 import { cls } from "../lib/format";
 import { logout as unifiedLogout } from "../../components/AuthGate";
 import ModuleSwitcher from "../../components/ModuleSwitcher";
 import CapacityBanner from "../../components/CapacityBanner";
+import { ThemeToggle } from "../../components/ThemeToggle";
+import { useTheme } from "../../hooks/useTheme";
 
 const NAV = [
   { to: "/finance/dashboard", label: "Dashboard", icon: LayoutDashboard, group: "Vista ejecutiva" },
@@ -24,70 +26,106 @@ const NAV = [
 
 const GROUPS = ["Vista ejecutiva", "Operación", "Estructura", "Inversión", "Análisis", "Administración"];
 
+// Logo SVG custom — cityscape Restrepo Acosta (conservado del diseño previo)
+function RAMark({ size = 15 }: { size?: number }) {
+  return (
+    <svg width={size} height={size * 0.93} viewBox="0 0 90 80" fill="none">
+      <polygon points="12,74 12,18 41,6 41,74" fill="rgba(255,255,255,0.9)" />
+      <polygon points="46,74 46,28 67,20 67,74" fill="rgba(255,255,255,0.7)" />
+      <path d="M 5,68 Q 42,50 82,61" stroke="rgba(255,220,160,0.9)" strokeWidth="6.5" fill="none" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+// Mapea cada grupo a la ruta activa para el topbar
+function getPageTitle(pathname: string): { title: string; sub: string } {
+  const item = NAV.find(n => pathname === n.to || pathname.startsWith(n.to + "/"));
+  if (!item) return { title: "CFO Holding", sub: "Restrepo Acosta Global Holding LLC" };
+  const subs: Record<string, string> = {
+    "Vista ejecutiva": "Lectura consolidada del negocio",
+    "Operación": "Control operativo",
+    "Estructura": "Capital & deuda",
+    "Inversión": "Portafolio de proyectos",
+    "Análisis": "Reportes & trazabilidad",
+    "Administración": "Configuración del sistema",
+  };
+  return { title: item.label, sub: subs[item.group] || "Módulo financiero" };
+}
+
 export default function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  useTheme(); // asegura que data-theme esté aplicado en esta subtree
   useEffect(() => { setMobileOpen(false); }, [location.pathname]);
 
+  const { title, sub } = getPageTitle(location.pathname);
+
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen overflow-hidden fin-app" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)' }}>
+
       {/* === MOBILE HEADER === */}
       <div
-        className="md:hidden fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 py-3 shadow-sm"
-        style={{ background: 'var(--brand-teal)', paddingTop: 'calc(env(safe-area-inset-top, 0) + 0.75rem)' }}
+        className="md:hidden fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 py-3 fin-topbar-v2"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0) + 0.75rem)', height: 'auto' }}
       >
-        <button onClick={() => setMobileOpen(true)} className="text-white p-2 -ml-2" aria-label="Abrir menú">
+        <button onClick={() => setMobileOpen(true)} style={{ color: 'var(--text-secondary)' }} className="p-2 -ml-2" aria-label="Abrir menú">
           <Menu className="w-6 h-6" />
         </button>
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(200,146,42,0.25)' }}>
-            <ShieldCheck size={16} style={{ color: '#C8922A' }} />
+        <div className="flex items-center gap-2.5">
+          <div className="fin-logo-mark" style={{ width: 28, height: 28 }}>
+            <RAMark size={14} />
           </div>
-          <div className="text-white text-sm font-semibold" style={{ fontFamily: 'Georgia, serif' }}>CFO Holding</div>
+          <div className="fin-logo-name" style={{ fontSize: 13 }}>CFO Holding</div>
         </div>
-        <div className="w-8" />
+        <ThemeToggle />
       </div>
 
       {mobileOpen && (
         <div className="md:hidden fixed inset-0 z-40 bg-black/60" onClick={() => setMobileOpen(false)} aria-hidden="true" />
       )}
 
+      {/* === SIDEBAR === */}
       <aside
-        className={`${mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} fixed md:relative inset-y-0 left-0 z-50 w-72 md:w-64 bg-bg-soft border-r border-line flex flex-col transition-transform duration-200 ease-out`}
+        className={cls(
+          mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
+          'fixed md:relative inset-y-0 left-0 z-50 w-64 flex flex-col transition-transform duration-200 ease-out fin-sidebar-v2'
+        )}
+        style={{ paddingTop: 'env(safe-area-inset-top, 0)' }}
       >
         {/* Botón cierre móvil */}
         <button
           onClick={() => setMobileOpen(false)}
-          className="md:hidden absolute top-3 right-3 p-2 text-white/70 hover:text-white"
+          className="md:hidden absolute top-3 right-3 p-2"
+          style={{ color: 'var(--text-secondary)', zIndex: 10 }}
           aria-label="Cerrar menú"
-          style={{ zIndex: 10 }}
         >
           <X className="w-5 h-5" />
         </button>
 
-        <div className="px-5 py-5 border-b border-line" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0) + 1.25rem)' }}>
-          <Link to="/" className="flex items-center gap-2 group">
-            <div className="w-9 h-9 rounded-lg bg-accent-deep flex items-center justify-center group-hover:bg-accent-soft transition-colors">
-              <ShieldCheck size={20} className="text-white" />
+        {/* Logo */}
+        <div className="px-[18px] py-[22px] flex items-center gap-[11px]" style={{ borderBottom: '1px solid var(--border)' }}>
+          <Link to="/" className="flex items-center gap-[11px] group" style={{ textDecoration: 'none' }}>
+            <div className="fin-logo-mark">
+              <RAMark size={15} />
             </div>
             <div>
-              <div className="text-sm font-semibold text-slate-100">CFO Holding</div>
-              <div className="text-[11px] text-slate-500">Restrepo Acosta</div>
+              <div className="fin-logo-name">Restrepo Acosta</div>
+              <div className="fin-logo-sub">Global Holding</div>
             </div>
           </Link>
         </div>
 
-        <Link
-          to="/"
-          className="mx-3 mt-3 flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-slate-400 hover:bg-bg-hover hover:text-slate-200 transition-colors border border-line/50"
-        >
-          <Home size={14} /> Volver al inicio
+        {/* Back to home */}
+        <Link to="/" className="fin-nav-item mt-2" style={{ fontSize: 11.5 }}>
+          <Home size={13} style={{ color: 'var(--text-muted)' }} />
+          <span>Inicio</span>
         </Link>
 
-        <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-3">
+        {/* Nav */}
+        <nav className="flex-1 overflow-y-auto py-3">
           {GROUPS.map((group) => (
             <div key={group}>
-              <div className="px-3 mb-1 text-[10px] uppercase tracking-wider text-slate-500 font-semibold">{group}</div>
+              <div className="fin-nav-grp">{group}</div>
               {NAV.filter((n) => n.group === group).map((item) => {
                 const Icon = item.icon;
                 const active = location.pathname === item.to || location.pathname.startsWith(item.to + "/");
@@ -95,15 +133,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   <NavLink
                     key={item.to}
                     to={item.to}
-                    className={cls(
-                      "flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors",
-                      active
-                        ? "bg-accent-deep/15 text-accent border border-accent/30"
-                        : "text-slate-300 hover:bg-bg-hover"
-                    )}
+                    className={cls("fin-nav-item", active && "active")}
                   >
-                    <Icon size={16} />
-                    {item.label}
+                    <Icon size={14} style={{ flexShrink: 0 }} />
+                    <span>{item.label}</span>
                   </NavLink>
                 );
               })}
@@ -111,37 +144,45 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
 
-        <div className="border-t border-line p-3">
-          <button onClick={unifiedLogout} className="btn-ghost w-full justify-between text-xs">
-            <span className="flex items-center gap-2"><LogOut size={14} /> Cerrar sesión</span>
+        {/* User footer */}
+        <div className="px-[18px] py-[14px] flex items-center gap-[10px]" style={{ borderTop: '1px solid var(--border)' }}>
+          <div className="fin-user-av">JR</div>
+          <div className="flex-1 min-w-0">
+            <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.3 }}>Dr. Restrepo</div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 7.5, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginTop: 2 }}>Managing Director</div>
+          </div>
+          <button onClick={unifiedLogout} title="Cerrar sesión" className="fin-btn-icon" style={{ width: 26, height: 26 }}>
+            <LogOut size={12} />
           </button>
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto bg-bg flex flex-col">
-        {/* Spacer móvil para header fijo */}
+      {/* === MAIN === */}
+      <main className="flex-1 flex flex-col overflow-hidden min-w-0" style={{ background: 'var(--bg-base)' }}>
+        {/* Spacer móvil */}
         <div className="md:hidden" style={{ height: 'calc(56px + env(safe-area-inset-top, 0))' }} />
 
-        {/* Top bar: switcher de módulos + backup */}
-        <div className="flex items-center justify-end gap-2 px-4 md:px-6 py-2 border-b border-line bg-bg-soft/60 backdrop-blur-sm flex-wrap" style={{ minHeight: 44 }}>
-          <ModuleSwitcher currentModule="finance" />
-          <a
-            href="/api/backup"
-            download
-            className="flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-colors text-slate-300 hover:text-white"
-            style={{ background: 'rgba(94,234,212,0.08)', border: '1px solid rgba(94,234,212,0.18)' }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(94,234,212,0.15)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(94,234,212,0.08)')}
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-            <span className="hidden sm:inline">Backup del sistema</span>
-            <span className="sm:hidden">Backup</span>
-          </a>
-        </div>
+        {/* TOPBAR */}
+        <header className="fin-topbar-v2 hidden md:flex flex-shrink-0">
+          <div>
+            <div className="fin-tb-title">{title}</div>
+            <div className="fin-tb-sub">{sub} · {new Date().toLocaleDateString("es-CO", { month: "long", year: "numeric" })}</div>
+          </div>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <ModuleSwitcher currentModule="finance" />
+            <a href="/api/backup" download className="fin-btn-icon" title="Backup del sistema">
+              <Download size={13} />
+            </a>
+          </div>
+        </header>
+
         <CapacityBanner />
-        <div className="max-w-[1600px] mx-auto p-4 md:p-6 flex-1 w-full">{children}</div>
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-[1400px] mx-auto p-5 md:p-7 page-content">
+            {children}
+          </div>
+        </div>
       </main>
     </div>
   );

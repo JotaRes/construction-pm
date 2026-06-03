@@ -10,27 +10,33 @@ export function KPI({
   tone?: "default" | "positive" | "negative" | "warn" | "accent";
   icon?: ReactNode;
 }) {
+  // Mapea tone → clase delta semántica (se aplica al hint cuando es direccional)
+  const deltaClass =
+    tone === "positive" ? "fin-delta fin-delta-up" :
+    tone === "negative" ? "fin-delta fin-delta-down" :
+    undefined;
+
+  const iconColor =
+    tone === "positive" ? "var(--ok)" :
+    tone === "negative" ? "var(--err)" :
+    tone === "warn"     ? "var(--warn)" :
+    "var(--accent)";
+
   return (
-    <div className={cls(
-      "kpi-card",
-      tone === "positive" && "kpi-card-green",
-      tone === "negative" && "kpi-card-red",
-      tone === "warn" && "kpi-card-amber",
-      tone === "accent" && "kpi-card-gold",
-    )}>
-      <div className="flex items-center justify-between mb-1">
-        <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>{label}</span>
-        {icon && <span style={{ color: 'var(--brand-gold)' }}>{icon}</span>}
+    <div className="fin-kpi-v2">
+      <div className="flex items-center justify-between" style={{ marginBottom: 10 }}>
+        <div className="fin-kpi-lbl">{label}</div>
+        {icon && <span style={{ color: iconColor, opacity: 0.85 }}>{icon}</span>}
       </div>
-      <div className={cls(
-        "text-2xl font-bold font-mono",
-        tone === "positive" && "text-emerald-600",
-        tone === "negative" && "text-red-600",
-        tone === "warn" && "text-amber-600",
-        tone === "default" && "text-stone-800",
-        tone === "accent" && "text-stone-800",
-      )} style={tone === "default" || tone === "accent" ? { color: 'var(--brand-teal)' } : {}}>{value}</div>
-      {hint && <div className="text-[11px] mt-1" style={{ color: 'var(--brand-teal2)', opacity: 0.7 }}>{hint}</div>}
+      <div className="fin-kpi-val">{value}</div>
+      {hint && (
+        <div className="fin-kpi-row">
+          {deltaClass
+            ? <span className={cls(deltaClass)}>{hint}</span>
+            : <span className="fin-kpi-hint">{hint}</span>
+          }
+        </div>
+      )}
     </div>
   );
 }

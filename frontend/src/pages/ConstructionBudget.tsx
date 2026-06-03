@@ -23,7 +23,7 @@ function Num({ value, onSave, dim = false }: { value: number; onSave: (v: number
           if (e.key === 'Enter') { onSave(parseFloat(text) || 0); setEditing(false) }
           if (e.key === 'Escape') setEditing(false)
         }}
-        className="w-full bg-white border border-[#2D4B52]/40 text-xs font-mono text-right text-slate-900 px-1.5 py-0.5 rounded focus:outline-none focus:border-[#C8922A]"
+        className="w-full bg-white border border-[#2D4B52]/40 text-xs font-mono text-right text-slate-900 px-1.5 py-0.5 rounded focus:outline-none focus:border-[var(--brand-gold)]"
         autoFocus
       />
     )
@@ -33,10 +33,10 @@ function Num({ value, onSave, dim = false }: { value: number; onSave: (v: number
       onClick={() => { setText(String(value || '')); setEditing(true) }}
       title="Clic para editar"
       className={`w-full text-right text-xs font-mono transition-colors group/n flex items-center justify-end gap-1
-        ${dim || value === 0 ? 'text-slate-400 hover:text-[#C8922A]' : 'text-slate-800 hover:text-[#2D4B52]'}`}
+        ${dim || value === 0 ? 'text-slate-400 hover:text-[var(--brand-gold)]' : 'text-slate-800 hover:text-[var(--brand-teal)]'}`}
     >
       {value > 0 ? formatUSD(value) : <span className="text-slate-400">—</span>}
-      <span className="text-[9px] opacity-0 group-hover/n:opacity-50 text-[#C8922A]">✏</span>
+      <span className="text-[9px] opacity-0 group-hover/n:opacity-50 text-[var(--brand-gold)]">✏</span>
     </button>
   )
 }
@@ -77,14 +77,14 @@ function DivSection({
           ? <ChevronDown className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
           : <ChevronRight className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />}
         <div className="flex-1 text-left">
-          <span className="text-[10px] font-mono text-[#C8922A] mr-2">{group.divCode}</span>
+          <span className="text-[10px] font-mono text-[var(--brand-gold)] mr-2">{group.divCode}</span>
           <span className="text-sm font-semibold text-slate-800">{group.divName}</span>
         </div>
         <div className="flex items-center gap-0 shrink-0 text-xs font-mono">
           <span className={`w-28 text-right ${totalIni > 0 ? 'text-slate-800 font-semibold' : 'text-slate-500'}`}>
             {totalIni > 0 ? formatUSD(totalIni) : '—'}
           </span>
-          <span className={`w-28 text-right ${totalPres > 0 ? 'text-[#2D4B52]' : 'text-slate-500'}`}>
+          <span className={`w-28 text-right ${totalPres > 0 ? 'text-[var(--brand-teal)]' : 'text-slate-500'}`}>
             {totalPres > 0 ? formatUSD(totalPres) : '—'}
           </span>
           <span className={`w-32 text-right ${totalApr > 0 ? 'text-emerald-400' : 'text-slate-500'}`}>
@@ -93,7 +93,7 @@ function DivSection({
           <div className="w-24 flex items-center gap-2 justify-end pl-4">
             <div className="w-14 h-1.5 bg-slate-200 rounded-full overflow-hidden">
               <div
-                className={`h-full rounded-full transition-all ${pct === 100 ? 'bg-emerald-500' : pct > 0 ? 'bg-[#2D4B52]' : 'bg-slate-200'}`}
+                className={`h-full rounded-full transition-all ${pct === 100 ? 'bg-emerald-500' : pct > 0 ? 'bg-[var(--brand-teal)]' : 'bg-slate-200'}`}
                 style={{ width: `${Math.min(pct, 100)}%` }}
               />
             </div>
@@ -151,7 +151,7 @@ function DivSection({
                       <div className="flex items-center gap-1.5">
                         <div className="w-10 h-1.5 bg-slate-200 rounded-full overflow-hidden flex-shrink-0">
                           <div
-                            className={`h-full rounded-full ${pctLine >= 100 ? 'bg-emerald-500' : pctLine > 0 ? 'bg-[#2D4B52]' : 'bg-slate-200'}`}
+                            className={`h-full rounded-full ${pctLine >= 100 ? 'bg-emerald-500' : pctLine > 0 ? 'bg-[var(--brand-teal)]' : 'bg-slate-200'}`}
                             style={{ width: `${Math.min(pctLine, 100)}%` }}
                           />
                         </div>
@@ -159,7 +159,7 @@ function DivSection({
                           {pctLine.toFixed(0)}%
                         </span>
                         {diff < 0 && line.valorAprobado > 0 && (
-                          <span className="text-[9px] text-[#C8922A] font-mono">{formatUSD(diff)}</span>
+                          <span className="text-[9px] text-[var(--brand-gold)] font-mono">{formatUSD(diff)}</span>
                         )}
                       </div>
                     ) : null}
@@ -281,7 +281,7 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
               Carga el PDF del lender para extraer los items con sus valores iniciales
             </div>
           </div>
-          <label className="inline-flex items-center gap-2 px-6 py-3 bg-[#C8922A] hover:bg-[#E0AD4F] text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer">
+          <label className="inline-flex items-center gap-2 px-6 py-3 bg-[var(--brand-gold)] hover:bg-[#E0AD4F] text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer">
             <Upload className="w-4 h-4" />
             {importPdfMut.isPending ? 'Importando PDF…' : 'Cargar Construction Budget (PDF)'}
             <input
@@ -311,7 +311,7 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <label className="flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg border border-[#C8922A] bg-[#C8922A] text-white hover:bg-[#E0AD4F] transition-colors cursor-pointer">
+          <label className="flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg border border-[var(--brand-gold)] bg-[var(--brand-gold)] text-white hover:bg-[#E0AD4F] transition-colors cursor-pointer">
             <FileUp className="w-3.5 h-3.5" />
             {importPdfMut.isPending ? 'Importando…' : 'Cargar PDF nuevo'}
             <input
@@ -342,7 +342,7 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
         </div>
         <div className="kpi-card kpi-card-amber">
           <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1.5">Presentado<br/><span className="text-slate-400 normal-case">Solicitado en draws</span></div>
-          <div className="text-lg font-bold font-mono text-[#2D4B52]">{formatUSD(totalPres)}</div>
+          <div className="text-lg font-bold font-mono text-[var(--brand-teal)]">{formatUSD(totalPres)}</div>
         </div>
         <div className="kpi-card kpi-card-green">
           <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1.5">Aprobado<br/><span className="text-slate-400 normal-case">Validado por Trinity</span></div>
@@ -364,7 +364,7 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
         </div>
         <div className="h-2.5 bg-slate-200 rounded-full overflow-hidden">
           <div
-            className={`h-full rounded-full transition-all ${pctGlobal >= 100 ? 'bg-emerald-500' : 'bg-[#2D4B52]'}`}
+            className={`h-full rounded-full transition-all ${pctGlobal >= 100 ? 'bg-emerald-500' : 'bg-[var(--brand-teal)]'}`}
             style={{ width: `${Math.min(pctGlobal, 100)}%` }}
           />
         </div>
@@ -412,8 +412,8 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
           <div className="flex-1 text-sm font-bold text-slate-800 uppercase tracking-wider">Total General</div>
           <div className="flex items-center shrink-0 text-sm font-mono font-bold">
             <span className="w-28 text-right text-slate-900">{formatUSD(totalIni)}</span>
-            <span className="w-28 text-right text-[#2D4B52]">{totalPres > 0 ? formatUSD(totalPres) : '—'}</span>
-            <span className="w-16 text-right text-[#C8922A]">
+            <span className="w-28 text-right text-[var(--brand-teal)]">{totalPres > 0 ? formatUSD(totalPres) : '—'}</span>
+            <span className="w-16 text-right text-[var(--brand-gold)]">
               {pctGlobal > 0 ? `${pctGlobal.toFixed(1)}%` : '—'}
             </span>
             <span className="w-28 text-right text-emerald-300">{totalApr > 0 ? formatUSD(totalApr) : '—'}</span>

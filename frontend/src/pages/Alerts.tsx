@@ -6,7 +6,7 @@ import { AlertTriangle, CheckCircle, XCircle, Info } from 'lucide-react'
 function AlertCard({ alert }: { alert: Alert }) {
   const config = {
     ok: { icon: CheckCircle, border: 'border-l-emerald-500', bg: 'bg-emerald-500/5', text: 'text-emerald-400', iconColor: 'text-emerald-400' },
-    warning: { icon: AlertTriangle, border: 'border-l-amber-500', bg: 'bg-blue-500/5', text: 'text-[#C8922A]', iconColor: 'text-[#C8922A]' },
+    warning: { icon: AlertTriangle, border: 'border-l-amber-500', bg: 'bg-blue-500/5', text: 'text-[var(--brand-gold)]', iconColor: 'text-[var(--brand-gold)]' },
     critical: { icon: XCircle, border: 'border-l-red-500', bg: 'bg-red-500/5', text: 'text-red-400', iconColor: 'text-red-400' },
   }[alert.level]
 
@@ -21,7 +21,7 @@ function AlertCard({ alert }: { alert: Alert }) {
             <span className={`text-sm font-semibold ${config.text}`}>{alert.title}</span>
             <span className={`text-[10px] uppercase px-2 py-0.5 rounded-full font-medium
               ${alert.level === 'ok' ? 'bg-emerald-500/20 text-emerald-400'
-              : alert.level === 'warning' ? 'bg-[#C8922A]/15 text-[#C8922A]'
+              : alert.level === 'warning' ? 'bg-[#C8922A]/15 text-[var(--brand-gold)]'
               : 'bg-red-500/20 text-red-400'}`}>
               {alert.level.toUpperCase()}
             </span>
@@ -57,7 +57,7 @@ export default function Alerts({ projectId }: { projectId: string }) {
         <h1 className="text-xl font-bold text-slate-900">Centro de Alertas</h1>
         <p className="text-sm text-slate-500 mt-0.5">
           {critical.length > 0 && <span className="text-red-400">{critical.length} crítica{critical.length > 1 ? 's' : ''} · </span>}
-          {warning.length > 0 && <span className="text-[#C8922A]">{warning.length} advertencia{warning.length > 1 ? 's' : ''} · </span>}
+          {warning.length > 0 && <span className="text-[var(--brand-gold)]">{warning.length} advertencia{warning.length > 1 ? 's' : ''} · </span>}
           {ok.length > 0 && <span className="text-emerald-400">{ok.length} OK</span>}
         </p>
       </div>
@@ -71,7 +71,7 @@ export default function Alerts({ projectId }: { projectId: string }) {
 
       {warning.length > 0 && (
         <div className="space-y-3">
-          <h2 className="text-xs font-semibold text-[#C8922A] uppercase tracking-wider">Advertencias</h2>
+          <h2 className="text-xs font-semibold text-[var(--brand-gold)] uppercase tracking-wider">Advertencias</h2>
           {warning.map(a => <AlertCard key={a.id} alert={a} />)}
         </div>
       )}

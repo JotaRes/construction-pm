@@ -14,7 +14,7 @@ import toast from 'react-hot-toast'
 
 const ESTADOS: { value: ItemEstado; label: string; color: string; bg: string }[] = [
   { value: 'PENDIENTE', label: 'Pendiente', color: 'text-slate-500',  bg: 'bg-slate-200/60 hover:bg-slate-100' },
-  { value: 'EN_CURSO',  label: 'En curso',  color: 'text-[#C8922A]',  bg: 'bg-[#C8922A]/15 hover:bg-blue-500/25' },
+  { value: 'EN_CURSO',  label: 'En curso',  color: 'text-[var(--brand-gold)]',  bg: 'bg-[#C8922A]/15 hover:bg-blue-500/25' },
   { value: 'DONE',      label: 'Hecho',     color: 'text-emerald-400', bg: 'bg-emerald-500/15 hover:bg-emerald-500/25' },
   { value: 'NA',        label: 'N/A',       color: 'text-slate-400',  bg: 'bg-white hover:bg-slate-100' },
 ]
@@ -149,7 +149,7 @@ function DocumentSection({ item }: { item: Item }) {
           )}
         </div>
         <button onClick={() => setShowForm(v => !v)}
-          className="text-[10px] text-[#C8922A]/70 hover:text-[#C8922A] transition-colors flex items-center gap-1">
+          className="text-[10px] text-[#C8922A]/70 hover:text-[var(--brand-gold)] transition-colors flex items-center gap-1">
           <Plus className="w-3 h-3" /> Adjuntar
         </button>
       </div>
@@ -197,7 +197,7 @@ function DocumentSection({ item }: { item: Item }) {
           <div className="flex gap-2 justify-end">
             <button onClick={() => setShowForm(false)} className="text-xs text-slate-400 hover:text-slate-700 transition-colors">Cancelar</button>
             <button onClick={handleSubmit} disabled={createDoc.isPending}
-              className="px-3 py-1 bg-[#C8922A] hover:bg-[#E0AD4F] text-white text-xs rounded-lg transition-colors disabled:opacity-50">
+              className="px-3 py-1 bg-[var(--brand-gold)] hover:bg-[#E0AD4F] text-white text-xs rounded-lg transition-colors disabled:opacity-50">
               {createDoc.isPending ? 'Guardando...' : 'Guardar'}
             </button>
           </div>
@@ -222,12 +222,12 @@ function DocumentSection({ item }: { item: Item }) {
                 <>
                   <a href={`/api/download?url=${encodeURIComponent(doc.fileUrl)}&name=${encodeURIComponent(doc.name)}&inline=1`} target="_blank" rel="noreferrer"
                     title="Ver"
-                    className="text-slate-400 hover:text-[#C8922A] transition-colors flex-shrink-0">
+                    className="text-slate-400 hover:text-[var(--brand-gold)] transition-colors flex-shrink-0">
                     <ExternalLink className="w-3.5 h-3.5" />
                   </a>
                   <a href={`/api/download?url=${encodeURIComponent(doc.fileUrl)}&name=${encodeURIComponent(doc.name)}`} download={doc.name}
                     title="Descargar"
-                    className="text-slate-400 hover:text-[#2D4B52] transition-colors flex-shrink-0">
+                    className="text-slate-400 hover:text-[var(--brand-teal)] transition-colors flex-shrink-0">
                     <Download className="w-3.5 h-3.5" />
                   </a>
                   <button onClick={() => shareViaEmail(doc)} title="Enviar por correo"
@@ -310,7 +310,7 @@ function ItemPanel({ item, onUpdate, onClose }: {
                   onBlur={e => onUpdate(item.id, { valorEjecutado: parseFloat(e.target.value) || 0 })}
                   onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
                   placeholder="0"
-                  className="w-full bg-transparent text-sm font-mono text-[#2D4B52] focus:outline-none placeholder-slate-400" />
+                  className="w-full bg-transparent text-sm font-mono text-[var(--brand-teal)] focus:outline-none placeholder-slate-400" />
               </div>
             </div>
             {item.valorPresupuestado > 0 && item.valorEjecutado > 0 && (
@@ -329,13 +329,13 @@ function ItemPanel({ item, onUpdate, onClose }: {
                 <div className="text-[10px] text-slate-400 mb-1">Inicio real</div>
                 <input type="date" defaultValue={item.fechaInicioReal?.slice(0, 10) ?? ''}
                   onChange={e => onUpdate(item.id, { fechaInicioReal: e.target.value || null })}
-                  className="w-full bg-white border border-slate-200 text-slate-700 px-2 py-1.5 rounded-lg text-xs focus:outline-none focus:border-[#C8922A]" />
+                  className="w-full bg-white border border-slate-200 text-slate-700 px-2 py-1.5 rounded-lg text-xs focus:outline-none focus:border-[var(--brand-gold)]" />
               </div>
               <div>
                 <div className="text-[10px] text-slate-400 mb-1">Fin real</div>
                 <input type="date" defaultValue={item.fechaFinReal?.slice(0, 10) ?? ''}
                   onChange={e => onUpdate(item.id, { fechaFinReal: e.target.value || null })}
-                  className="w-full bg-white border border-slate-200 text-slate-700 px-2 py-1.5 rounded-lg text-xs focus:outline-none focus:border-[#C8922A]" />
+                  className="w-full bg-white border border-slate-200 text-slate-700 px-2 py-1.5 rounded-lg text-xs focus:outline-none focus:border-[var(--brand-gold)]" />
               </div>
             </div>
           </div>
@@ -352,7 +352,7 @@ function ItemPanel({ item, onUpdate, onClose }: {
             <textarea value={obsText} onChange={e => setObsText(e.target.value)}
               onBlur={() => onUpdate(item.id, { observaciones: obsText })}
               placeholder="Agregar notas, incidencias, detalles..." rows={3}
-              className="w-full bg-white border border-slate-200 text-slate-700 px-3 py-2.5 rounded-lg text-xs resize-none focus:outline-none focus:border-[#C8922A] placeholder-slate-400" />
+              className="w-full bg-white border border-slate-200 text-slate-700 px-3 py-2.5 rounded-lg text-xs resize-none focus:outline-none focus:border-[var(--brand-gold)] placeholder-slate-400" />
           </div>
           <div className="border-t border-slate-200" />
           <DocumentSection item={item} />
@@ -448,7 +448,7 @@ function ItemRow({ item, onUpdate, onOpenPanel, onDelete }: {
             onBlur={e => onUpdate(item.id, { valorEjecutado: parseFloat(e.target.value) || 0 })}
             onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
             placeholder="—"
-            className="w-20 bg-transparent text-[11px] font-mono text-right text-[#2D4B52] focus:outline-none focus:bg-white focus:rounded focus:px-1 placeholder-slate-400 transition-all" />
+            className="w-20 bg-transparent text-[11px] font-mono text-right text-[var(--brand-teal)] focus:outline-none focus:bg-white focus:rounded focus:px-1 placeholder-slate-400 transition-all" />
         </div>
       </td>
       <td className="px-2 py-2.5 w-20 text-right" onClick={e => e.stopPropagation()}>
@@ -465,7 +465,7 @@ function ItemRow({ item, onUpdate, onOpenPanel, onDelete }: {
       </td>
       <td className="pr-3 pl-1 py-2.5 w-10 text-center" onClick={e => e.stopPropagation()}>
         <button onClick={() => onOpenPanel(item)}
-          className={`flex items-center gap-0.5 text-[9px] font-mono transition-colors ${warnDoc ? 'text-[#C8922A]' : docCount > 0 ? 'text-emerald-400/70' : 'text-slate-500 group-hover:text-slate-400'}`}
+          className={`flex items-center gap-0.5 text-[9px] font-mono transition-colors ${warnDoc ? 'text-[var(--brand-gold)]' : docCount > 0 ? 'text-emerald-400/70' : 'text-slate-500 group-hover:text-slate-400'}`}
           title={warnDoc ? 'Sin factura adjunta' : `${docCount} documento(s)`}>
           {warnDoc ? <AlertTriangle className="w-3 h-3" /> : <Paperclip className="w-3 h-3" />}
           {docCount > 0 && <span>{docCount}</span>}
@@ -496,17 +496,17 @@ function PhaseSection({ phase, defaultOpen = false, onUpdate, onOpenPanel, onCre
     <div className="mb-2.5">
       <button onClick={() => setOpen(o => !o)} className={phaseClass}>
         {open ? <ChevronDown className="w-3.5 h-3.5 text-slate-400" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-400" />}
-        <span className="text-[10px] font-mono text-[#C8922A] w-7">{phase.code}</span>
+        <span className="text-[10px] font-mono text-[var(--brand-gold)] w-7">{phase.code}</span>
         <span className="text-sm font-semibold text-slate-800 flex-1 text-left">{phase.name}</span>
         <div className="flex items-center gap-4 text-xs shrink-0">
           <span className="text-slate-400 font-mono">{doneItems.length}/{activeItems.length}</span>
           <span className="text-slate-400 font-mono hidden lg:block">{budget > 0 ? formatUSD(budget) : '—'}</span>
           {ejecutado > 0 && (
-            <span className={`font-mono text-[11px] hidden lg:block ${ejecutado > budget && budget > 0 ? 'text-red-400' : 'text-[#2D4B52]'}`}>{formatUSD(ejecutado)}</span>
+            <span className={`font-mono text-[11px] hidden lg:block ${ejecutado > budget && budget > 0 ? 'text-red-400' : 'text-[var(--brand-teal)]'}`}>{formatUSD(ejecutado)}</span>
           )}
-          <span className={`font-mono font-semibold w-9 text-right ${pct === 100 ? 'text-emerald-400' : pct > 0 ? 'text-[#C8922A]' : 'text-slate-400'}`}>{pct.toFixed(0)}%</span>
+          <span className={`font-mono font-semibold w-9 text-right ${pct === 100 ? 'text-emerald-400' : pct > 0 ? 'text-[var(--brand-gold)]' : 'text-slate-400'}`}>{pct.toFixed(0)}%</span>
           <div className="w-14 h-1.5 bg-slate-200/80 rounded-full overflow-hidden">
-            <div className={`h-full rounded-full transition-all ${pct === 100 ? 'bg-emerald-500' : pct > 0 ? 'bg-[#2D4B52]' : 'bg-slate-200'}`} style={{ width: `${pct}%` }} />
+            <div className={`h-full rounded-full transition-all ${pct === 100 ? 'bg-emerald-500' : pct > 0 ? 'bg-[var(--brand-teal)]' : 'bg-slate-200'}`} style={{ width: `${pct}%` }} />
           </div>
         </div>
       </button>
@@ -533,7 +533,7 @@ function PhaseSection({ phase, defaultOpen = false, onUpdate, onOpenPanel, onCre
             </tbody>
           </table>
           <button onClick={() => onCreate(phase.id)}
-            className="flex items-center gap-2 px-4 py-2 text-xs text-slate-500 hover:text-[#C8922A] hover:bg-[#C8922A]/5 transition-colors w-full border-t border-slate-100">
+            className="flex items-center gap-2 px-4 py-2 text-xs text-slate-500 hover:text-[var(--brand-gold)] hover:bg-[#C8922A]/5 transition-colors w-full border-t border-slate-100">
             <Plus className="w-3.5 h-3.5" />Agregar actividad imprevista a {phase.code}
           </button>
         </div>
@@ -633,7 +633,7 @@ export default function Execution({ projectId }: { projectId: string }) {
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <input type="text" placeholder="Buscar actividad..." value={search} onChange={e => setSearch(e.target.value)}
-              className="bg-white border border-slate-200 text-xs text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#C8922A] w-44 placeholder-slate-400" />
+              className="bg-white border border-slate-200 text-xs text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)] w-44 placeholder-slate-400" />
             <div className="flex gap-0.5 bg-white rounded-lg p-0.5 border border-slate-200">
               {[{ v: 'ALL', l: 'Todos' }, { v: 'PENDIENTE', l: 'Pendiente' }, { v: 'EN_CURSO', l: 'En curso' }, { v: 'DONE', l: 'Hecho' }].map(f => (
                 <button key={f.v} onClick={() => setFilter(f.v)}
@@ -645,7 +645,7 @@ export default function Execution({ projectId }: { projectId: string }) {
             {/* Expandir/Colapsar todas las fases */}
             <button
               onClick={() => { setExpandAll(!expandAll); setExpandTrigger(t => t + 1) }}
-              className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:border-[#C8922A] text-slate-700 text-xs font-semibold rounded-lg transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:border-[var(--brand-gold)] text-slate-700 text-xs font-semibold rounded-lg transition-colors"
               title={expandAll ? 'Colapsar todas las fases' : 'Expandir todas las fases'}
             >
               {expandAll ? <ChevronsUp className="w-3.5 h-3.5" /> : <ChevronsDown className="w-3.5 h-3.5" />}

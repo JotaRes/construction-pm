@@ -84,7 +84,7 @@ function NewProjectModal({ onClose, onCreated }: { onClose: () => void; onCreate
     mutation.mutate(payload)
   }
 
-  const inputCls = "w-full bg-white border border-slate-200 text-sm text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#C8922A] placeholder-slate-400"
+  const inputCls = "w-full bg-white border border-slate-200 text-sm text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)] placeholder-slate-400"
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
@@ -105,7 +105,7 @@ function NewProjectModal({ onClose, onCreated }: { onClose: () => void; onCreate
           <div className="rounded-xl border-2 border-dashed border-[#C8922A]/40 bg-[#C8922A]/5 p-4">
             <div className="flex items-start gap-3">
               <div className="w-9 h-9 rounded-lg bg-[#C8922A]/15 flex items-center justify-center flex-shrink-0">
-                <FileText className="w-4 h-4 text-[#C8922A]" />
+                <FileText className="w-4 h-4 text-[var(--brand-gold)]" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-xs font-semibold text-slate-700 mb-0.5">
@@ -132,7 +132,7 @@ function NewProjectModal({ onClose, onCreated }: { onClose: () => void; onCreate
                     type="button"
                     onClick={() => fileRef.current?.click()}
                     disabled={hudParsing}
-                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#C8922A] hover:bg-[#E0AD4F] text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
+                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-[var(--brand-gold)] hover:bg-[#E0AD4F] text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
                   >
                     {hudParsing
                       ? <><RefreshCw className="w-3 h-3 animate-spin" />Leyendo HUD…</>
@@ -234,7 +234,7 @@ function NewProjectModal({ onClose, onCreated }: { onClose: () => void; onCreate
             <button
               type="submit"
               disabled={mutation.isPending || hudParsing}
-              className="flex-1 px-4 py-2.5 rounded-lg bg-[#C8922A] hover:bg-[#E0AD4F] text-sm font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-4 py-2.5 rounded-lg bg-[var(--brand-gold)] hover:bg-[#E0AD4F] text-sm font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {mutation.isPending ? 'Creando...' : 'Crear proyecto'}
             </button>
@@ -440,7 +440,7 @@ function EditProjectModal({ projectId, onClose }: { projectId: string; onClose: 
     mutation.mutate(payload)
   }
 
-  const inputCls = "w-full bg-white border border-slate-200 text-sm text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#C8922A] placeholder-slate-400"
+  const inputCls = "w-full bg-white border border-slate-200 text-sm text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)] placeholder-slate-400"
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
@@ -508,7 +508,7 @@ function EditProjectModal({ projectId, onClose }: { projectId: string; onClose: 
               <button
                 type="submit"
                 disabled={mutation.isPending}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-[#C8922A] hover:bg-[#E0AD4F] text-sm font-semibold text-white transition-colors disabled:opacity-50"
+                className="flex-1 px-4 py-2.5 rounded-lg bg-[var(--brand-gold)] hover:bg-[#E0AD4F] text-sm font-semibold text-white transition-colors disabled:opacity-50"
               >
                 {mutation.isPending ? 'Guardando...' : 'Guardar cambios'}
               </button>
@@ -537,7 +537,7 @@ function ProjectCard({ project, isActive, onSelect, onDelete, onEdit }: {
       <div className="absolute top-3 right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all z-10">
         <button
           onClick={e => { e.stopPropagation(); onEdit() }}
-          className="p-1.5 rounded-lg text-slate-500 hover:text-[#C8922A] hover:bg-[#C8922A]/10 transition-colors"
+          className="p-1.5 rounded-lg text-slate-500 hover:text-[var(--brand-gold)] hover:bg-[#C8922A]/10 transition-colors"
           title="Editar información general del proyecto"
         >
           <Pencil className="w-3.5 h-3.5" />
@@ -555,7 +555,7 @@ function ProjectCard({ project, isActive, onSelect, onDelete, onEdit }: {
         <div className="flex items-start justify-between mb-4 pr-6">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              {isActive && <span className="text-[9px] font-bold tracking-wider text-[#C8922A] bg-[#C8922A]/15 px-2 py-0.5 rounded-full">ACTIVO</span>}
+              {isActive && <span className="text-[9px] font-bold tracking-wider text-[var(--brand-gold)] bg-[#C8922A]/15 px-2 py-0.5 rounded-full">ACTIVO</span>}
               <h3 className="text-sm font-bold text-slate-900">{project.name}</h3>
             </div>
             <div className="text-[10px] text-slate-400 font-mono">{project.spv}</div>
@@ -564,7 +564,7 @@ function ProjectCard({ project, isActive, onSelect, onDelete, onEdit }: {
               <span className="truncate">{project.address}</span>
             </div>
           </div>
-          <ChevronRight className={`w-4 h-4 text-slate-400 group-hover:text-[#C8922A] transition-colors flex-shrink-0 ${isActive ? 'text-[#C8922A]' : ''}`} />
+          <ChevronRight className={`w-4 h-4 text-slate-400 group-hover:text-[var(--brand-gold)] transition-colors flex-shrink-0 ${isActive ? 'text-[var(--brand-gold)]' : ''}`} />
         </div>
 
         <div className="grid grid-cols-3 gap-3">
@@ -577,7 +577,7 @@ function ProjectCard({ project, isActive, onSelect, onDelete, onEdit }: {
           </div>
           <div className="bg-slate-50 rounded-lg p-3">
             <div className="flex items-center gap-1.5 mb-1">
-              <DollarSign className="w-3 h-3 text-[#C8922A]" />
+              <DollarSign className="w-3 h-3 text-[var(--brand-gold)]" />
               <span className="text-[10px] text-slate-400">Budget</span>
             </div>
             <div className="text-sm font-mono font-semibold text-slate-800">{formatUSD(project.constructionBudget)}</div>
@@ -685,7 +685,7 @@ export default function Projects() {
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-[#C8922A] hover:bg-[#E0AD4F] text-sm font-semibold text-white rounded-lg transition-colors"
+          className="flex items-center gap-2 px-4 py-2.5 bg-[var(--brand-gold)] hover:bg-[#E0AD4F] text-sm font-semibold text-white rounded-lg transition-colors"
         >
           <Plus className="w-4 h-4" />
           Nuevo proyecto

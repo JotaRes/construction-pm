@@ -15,7 +15,7 @@ import {
 } from "recharts";
 import toast from "react-hot-toast";
 
-const PARTNER_COLORS = ["#2D4B52", "#C8922A", "#059669", "#3A5F68", "#E0AD4F", "#0d9488"];
+const PARTNER_COLORS = ["var(--inf)", "var(--accent)", "var(--ok)", "var(--brand-teal3)", "var(--warn)", "var(--inf)"];
 
 export default function Capital() {
   const qc = useQueryClient();
@@ -136,12 +136,12 @@ export default function Capital() {
                   "No-bancarizado": p.nonBankContrib,
                 }))}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(45,75,82,0.1)" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#2D4B52" }} />
-                  <YAxis tick={{ fontSize: 10, fill: "#3A5F68" }} tickFormatter={(v) => usd(v, { compact: true })} />
+                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: "var(--inf)" }} />
+                  <YAxis tick={{ fontSize: 10, fill: "var(--brand-teal3)" }} tickFormatter={(v) => usd(v, { compact: true })} />
                   <Tooltip contentStyle={{ background: "#fff", border: "1px solid rgba(45,75,82,0.15)", borderRadius: 8 }} formatter={(v: any) => usd(v as number)} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar dataKey="Bancarizado" stackId="a" fill="#2D4B52" />
-                  <Bar dataKey="No-bancarizado" stackId="a" fill="#C8922A" />
+                  <Bar dataKey="Bancarizado" stackId="a" fill="var(--inf)" />
+                  <Bar dataKey="No-bancarizado" stackId="a" fill="var(--accent)" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -161,8 +161,8 @@ export default function Capital() {
               <ResponsiveContainer>
                 <LineChart data={series}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(45,75,82,0.1)" />
-                  <XAxis dataKey="month" tick={{ fontSize: 10, fill: "#3A5F68" }} />
-                  <YAxis tick={{ fontSize: 10, fill: "#3A5F68" }} tickFormatter={(v) => usd(v, { compact: true })} />
+                  <XAxis dataKey="month" tick={{ fontSize: 10, fill: "var(--brand-teal3)" }} />
+                  <YAxis tick={{ fontSize: 10, fill: "var(--brand-teal3)" }} tickFormatter={(v) => usd(v, { compact: true })} />
                   <Tooltip contentStyle={{ background: "#fff", border: "1px solid rgba(45,75,82,0.15)", borderRadius: 8 }} formatter={(v: any) => usd(v as number)} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                   {partners.map((p: any, i: number) => (

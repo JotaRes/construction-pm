@@ -24,12 +24,12 @@ function ShareButtons({ url, label }: { url: string; label: string }) {
     <div className="flex items-center gap-1.5">
       <a href={url} download target="_blank" rel="noreferrer"
         title="Descargar"
-        className="text-slate-400 hover:text-[#2D4B52] p-1 rounded transition-colors">
+        className="text-slate-400 hover:text-[var(--brand-teal)] p-1 rounded transition-colors">
         <Download className="w-3.5 h-3.5" />
       </a>
       <a href={`mailto:?subject=${subject}&body=${body}`}
         title="Enviar por email"
-        className="text-slate-400 hover:text-[#C8922A] p-1 rounded transition-colors">
+        className="text-slate-400 hover:text-[var(--brand-gold)] p-1 rounded transition-colors">
         <Mail className="w-3.5 h-3.5" />
       </a>
       <a href={`https://wa.me/?text=${wa}`} target="_blank" rel="noreferrer"
@@ -151,7 +151,7 @@ function DocSlot({
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-xs">
             {isExcel ? <Table2 className="w-3 h-3 text-blue-400 flex-shrink-0" /> : <FileText className="w-3 h-3 text-slate-400 flex-shrink-0" />}
-            <a href={url} target="_blank" rel="noreferrer" className="text-slate-700 hover:text-[#C8922A] truncate">
+            <a href={url} target="_blank" rel="noreferrer" className="text-slate-700 hover:text-[var(--brand-gold)] truncate">
               {name || 'Documento'}
             </a>
           </div>
@@ -197,7 +197,7 @@ function Field({ label, value, onChange, type = 'text', mono = false }: {
         <input type={type} defaultValue={value}
           onBlur={e => onChange(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
-          className={`w-full bg-slate-200 text-slate-700 px-2 py-1 rounded border border-slate-200 text-xs focus:outline-none focus:border-[#C8922A] ${mono ? 'font-mono' : ''}`} />
+          className={`w-full bg-slate-200 text-slate-700 px-2 py-1 rounded border border-slate-200 text-xs focus:outline-none focus:border-[var(--brand-gold)] ${mono ? 'font-mono' : ''}`} />
       ) : (
         <div className={`text-xs text-slate-700 ${mono ? 'font-mono' : ''}`}>{value || '—'}</div>
       )}
@@ -252,7 +252,7 @@ function DrawCard({ draw, projectId, budgetTotal, budgetExecuted, onUpdate, onDe
       <div className="flex items-center gap-3 px-4 py-3">
         <button onClick={() => setOpen(o => !o)} className="flex-1 flex items-center gap-3 text-left">
           <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold font-mono
-            ${draw.estado === 'WIRED' ? 'bg-emerald-500/20 text-emerald-400' : draw.estado === 'PENDING' ? 'bg-[#C8922A]/15 text-[#C8922A]' : 'bg-slate-200 text-slate-400'}`}>
+            ${draw.estado === 'WIRED' ? 'bg-emerald-500/20 text-emerald-400' : draw.estado === 'PENDING' ? 'bg-[#C8922A]/15 text-[var(--brand-gold)]' : 'bg-slate-200 text-slate-400'}`}>
             {draw.drawNumber}
           </div>
           <div>
@@ -264,7 +264,7 @@ function DrawCard({ draw, projectId, budgetTotal, budgetExecuted, onUpdate, onDe
         <div className="flex items-center gap-2">
           {estadoBadge(draw.estado as DrawEstado)}
           <select value={draw.estado} onChange={e => onUpdate(draw.id, { estado: e.target.value })}
-            className="bg-slate-200 text-xs text-slate-700 border border-slate-200 rounded px-2 py-1 focus:outline-none focus:border-[#C8922A]">
+            className="bg-slate-200 text-xs text-slate-700 border border-slate-200 rounded px-2 py-1 focus:outline-none focus:border-[var(--brand-gold)]">
             {ESTADOS.map(e => <option key={e} value={e}>{e}</option>)}
           </select>
           <button
@@ -345,7 +345,7 @@ function DrawCard({ draw, projectId, budgetTotal, budgetExecuted, onUpdate, onDe
           {/* PDF original del draw (si existe) */}
           {draw.pdfUrl && (
             <div className="text-[11px] flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
-              <a href={draw.pdfUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-[#2D4B52] hover:underline">
+              <a href={draw.pdfUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-[var(--brand-teal)] hover:underline">
                 <FileText className="w-3 h-3" />Ver PDF del draw original
               </a>
               <ShareButtons url={draw.pdfUrl} label={`Draw #${draw.drawNumber} — PDF`} />
@@ -359,7 +359,7 @@ function DrawCard({ draw, projectId, budgetTotal, budgetExecuted, onUpdate, onDe
       {isEmpty && (
         <div className="px-4 pb-3 text-center">
           <button onClick={() => onUpdate(draw.id, { estado: 'PENDING' })}
-            className="text-xs text-slate-400 hover:text-[#C8922A] transition-colors">
+            className="text-xs text-slate-400 hover:text-[var(--brand-gold)] transition-colors">
             + Activar draw
           </button>
         </div>
@@ -478,7 +478,7 @@ function PdfParsePanel({ projectId, draws, onClose, onApply }: {
                 onChange={e => { setFile(e.target.files?.[0] ?? null); setParsed(null); setImageUrl(null); setIsExcelResult(false) }} />
               {file && (
                 <button onClick={handleParse} disabled={loading}
-                  className="px-4 py-2.5 bg-[#C8922A] btn-animated hover:bg-[#E0AD4F] text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50">
+                  className="px-4 py-2.5 bg-[var(--brand-gold)] btn-animated hover:bg-[#E0AD4F] text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50">
                   {loading ? 'Procesando...' : isImageFile(file) ? 'Subir imagen' : isExcelFile(file) ? 'Extraer datos del Excel' : 'Extraer datos'}
                 </button>
               )}
@@ -530,7 +530,7 @@ function PdfParsePanel({ projectId, draws, onClose, onApply }: {
                             'lenderExcelUrl':'Archivo Excel','lenderExcelName':'Nombre Excel',
                             'upbPre':'UPB Pre','upbPost':'UPB Post','saldoHoldback':'Saldo Holdback'} as Record<string,string>)[k] ?? k}
                         </span>
-                        <span className="text-xs font-mono text-[#2D4B52]">{fmtParsed(k, v)}</span>
+                        <span className="text-xs font-mono text-[var(--brand-teal)]">{fmtParsed(k, v)}</span>
                       </div>
                     ))}
                   </div>
@@ -598,7 +598,7 @@ function PdfParsePanel({ projectId, draws, onClose, onApply }: {
               <div>
                 <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-2">Aplicar al draw</div>
                 <select value={targetDraw} onChange={e => setTargetDraw(e.target.value)}
-                  className="w-full bg-white border border-slate-200 text-slate-800 text-sm px-3 py-2 rounded-xl focus:outline-none focus:border-[#C8922A]">
+                  className="w-full bg-white border border-slate-200 text-slate-800 text-sm px-3 py-2 rounded-xl focus:outline-none focus:border-[var(--brand-gold)]">
                   <option value="">— Seleccionar draw —</option>
                   {draws.map(d => (
                     <option key={d.id} value={d.id}>Draw #{d.drawNumber} ({d.estado})</option>
@@ -607,7 +607,7 @@ function PdfParsePanel({ projectId, draws, onClose, onApply }: {
               </div>
 
               <button onClick={handleApply} disabled={!targetDraw}
-                className="w-full py-2.5 bg-[#C8922A] btn-animated hover:bg-[#E0AD4F] disabled:opacity-40 text-white text-sm font-semibold rounded-xl transition-colors">
+                className="w-full py-2.5 bg-[var(--brand-gold)] btn-animated hover:bg-[#E0AD4F] disabled:opacity-40 text-white text-sm font-semibold rounded-xl transition-colors">
                 Guardar datos en Draw #{draws.find(d => d.id === targetDraw)?.drawNumber ?? '—'}
               </button>
             </>
@@ -768,7 +768,7 @@ export default function Draws({ projectId }: { projectId: string }) {
             {addDrawMutation.isPending ? 'Agregando...' : 'Agregar draw'}
           </button>
           <button onClick={() => setShowParse(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-[#C8922A] btn-animated hover:bg-[#E0AD4F] text-white text-sm font-medium rounded-xl transition-colors">
+            className="flex items-center gap-2 px-4 py-2 bg-[var(--brand-gold)] btn-animated hover:bg-[#E0AD4F] text-white text-sm font-medium rounded-xl transition-colors">
             <Upload className="w-4 h-4" />
             Cargar Draw PDF
           </button>
@@ -815,7 +815,7 @@ export default function Draws({ projectId }: { projectId: string }) {
         </div>
         <div className="kpi-card kpi-card-amber">
           <div className="text-xs text-slate-400 uppercase mb-1">Saldo holdback</div>
-          <div className={`text-xl font-bold font-mono ${lastSaldo < 50000 ? 'text-red-400' : lastSaldo < 100000 ? 'text-[#C8922A]' : 'text-slate-900'}`}>
+          <div className={`text-xl font-bold font-mono ${lastSaldo < 50000 ? 'text-red-400' : lastSaldo < 100000 ? 'text-[var(--brand-gold)]' : 'text-slate-900'}`}>
             {formatUSD(lastSaldo)}
           </div>
           <div className="text-[10px] text-slate-400 mt-1">
@@ -837,7 +837,7 @@ export default function Draws({ projectId }: { projectId: string }) {
             className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 border-b border-slate-200 hover:bg-slate-100 transition-colors"
           >
             <div className="flex items-center gap-2">
-              <TrendingDown className="w-4 h-4 text-[#2D4B52]" />
+              <TrendingDown className="w-4 h-4 text-[var(--brand-teal)]" />
               <span className="text-sm font-semibold text-slate-800">Secuencia de holdback draw a draw</span>
               <span className="text-[10px] text-slate-400 bg-slate-200 px-2 py-0.5 rounded-full">{wiredDraws.length} draws wired</span>
             </div>
@@ -874,14 +874,14 @@ export default function Draws({ projectId }: { projectId: string }) {
                           <td className="px-4 py-2.5 text-right font-mono text-slate-600">{d.montoSolicitado > 0 ? formatUSD(d.montoSolicitado) : '—'}</td>
                           <td className="px-4 py-2.5 text-right font-mono font-semibold text-emerald-600">{formatUSD(d.netWire)}</td>
                           <td className="px-4 py-2.5 text-right font-mono font-bold">
-                            <span className={saldo < 50000 ? 'text-red-500' : saldo < 100000 ? 'text-[#C8922A]' : 'text-slate-800'}>
+                            <span className={saldo < 50000 ? 'text-red-500' : saldo < 100000 ? 'text-[var(--brand-gold)]' : 'text-slate-800'}>
                               {formatUSD(saldo)}
                             </span>
                           </td>
                           <td className="px-4 py-2.5">
                             <div className="flex items-center gap-1.5 justify-center">
                               <div className="w-12 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                                <div className="h-full bg-[#2D4B52] rounded-full" style={{ width: `${Math.min(pct, 100)}%` }} />
+                                <div className="h-full bg-[var(--brand-teal)] rounded-full" style={{ width: `${Math.min(pct, 100)}%` }} />
                               </div>
                               <span className="text-[10px] font-mono text-slate-500">{pct.toFixed(0)}%</span>
                             </div>
@@ -901,7 +901,7 @@ export default function Draws({ projectId }: { projectId: string }) {
                     <td colSpan={3} className="px-4 py-2.5 text-xs font-bold text-slate-700 uppercase tracking-wider">Total</td>
                     <td className="px-4 py-2.5 text-right font-mono font-bold text-emerald-600">{formatUSD(totalWired)}</td>
                     <td className="px-4 py-2.5 text-right font-mono font-bold">
-                      <span className={lastSaldo < 50000 ? 'text-red-500' : 'text-[#C8922A]'}>{formatUSD(lastSaldo)}</span>
+                      <span className={lastSaldo < 50000 ? 'text-red-500' : 'text-[var(--brand-gold)]'}>{formatUSD(lastSaldo)}</span>
                     </td>
                     <td colSpan={2} />
                   </tr>

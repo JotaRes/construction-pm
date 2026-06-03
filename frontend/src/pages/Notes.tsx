@@ -48,7 +48,7 @@ export default function Notes({ projectId }: { projectId: string }) {
         <button
           onClick={() => content && createMut.mutate()}
           disabled={!content}
-          className="flex items-center gap-2 bg-[#C8922A] hover:bg-[#E0AD4F] disabled:opacity-40 text-white text-sm px-4 py-2 rounded-lg transition-colors"
+          className="flex items-center gap-2 bg-[var(--brand-gold)] hover:bg-[#E0AD4F] disabled:opacity-40 text-white text-sm px-4 py-2 rounded-lg transition-colors"
         >
           <Plus className="w-4 h-4" /> Guardar nota
         </button>

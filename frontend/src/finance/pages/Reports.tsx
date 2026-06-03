@@ -59,8 +59,8 @@ export default function Reports() {
                 className="px-5 py-3 text-sm font-bold transition-all inline-flex items-center gap-2"
                 style={
                   tab === t.key
-                    ? { background: '#ffffff', color: 'var(--brand-teal)', borderBottom: '2px solid var(--brand-gold)' }
-                    : { color: 'var(--brand-teal2)' }
+                    ? { background: 'var(--bg-surface-2)', color: 'var(--text-primary)', borderBottom: '2px solid var(--accent)' }
+                    : { color: 'var(--text-secondary)' }
                 }
               >
                 <Icon size={14} /> {t.label}
@@ -85,10 +85,10 @@ export default function Reports() {
                   <ResponsiveContainer>
                     <BarChart data={sources.sources.slice(0, 8)} layout="vertical" margin={{ left: 100 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(45,75,82,0.1)" />
-                      <XAxis type="number" tick={{ fontSize: 10, fill: "#3A5F68" }} tickFormatter={(v) => usd(v, { compact: true })} />
-                      <YAxis dataKey="label" type="category" tick={{ fontSize: 10, fill: "#2D4B52" }} width={150} />
+                      <XAxis type="number" tick={{ fontSize: 10, fill: "var(--brand-teal3)" }} tickFormatter={(v) => usd(v, { compact: true })} />
+                      <YAxis dataKey="label" type="category" tick={{ fontSize: 10, fill: "var(--inf)" }} width={150} />
                       <Tooltip contentStyle={{ background: "#fff", border: "1px solid rgba(45,75,82,0.15)", borderRadius: 8 }} formatter={(v: any) => usd(v)} />
-                      <Bar dataKey="amount" fill="#059669" />
+                      <Bar dataKey="amount" fill="var(--ok)" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -106,10 +106,10 @@ export default function Reports() {
                   <ResponsiveContainer>
                     <BarChart data={sources.uses.slice(0, 8)} layout="vertical" margin={{ left: 100 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(45,75,82,0.1)" />
-                      <XAxis type="number" tick={{ fontSize: 10, fill: "#3A5F68" }} tickFormatter={(v) => usd(v, { compact: true })} />
-                      <YAxis dataKey="label" type="category" tick={{ fontSize: 10, fill: "#2D4B52" }} width={150} />
+                      <XAxis type="number" tick={{ fontSize: 10, fill: "var(--brand-teal3)" }} tickFormatter={(v) => usd(v, { compact: true })} />
+                      <YAxis dataKey="label" type="category" tick={{ fontSize: 10, fill: "var(--inf)" }} width={150} />
                       <Tooltip contentStyle={{ background: "#fff", border: "1px solid rgba(45,75,82,0.15)", borderRadius: 8 }} formatter={(v: any) => usd(v)} />
-                      <Bar dataKey="amount" fill="#dc2626" />
+                      <Bar dataKey="amount" fill="var(--err)" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -130,13 +130,13 @@ export default function Reports() {
               <ResponsiveContainer>
                 <LineChart data={cashflow?.months || []}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(45,75,82,0.1)" />
-                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#2D4B52" }} tickFormatter={(m) => ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"][m - 1]} />
-                  <YAxis tick={{ fontSize: 10, fill: "#3A5F68" }} tickFormatter={(v) => usd(v, { compact: true })} />
+                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: "var(--inf)" }} tickFormatter={(m) => ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"][m - 1]} />
+                  <YAxis tick={{ fontSize: 10, fill: "var(--brand-teal3)" }} tickFormatter={(v) => usd(v, { compact: true })} />
                   <Tooltip contentStyle={{ background: "#fff", border: "1px solid rgba(45,75,82,0.15)", borderRadius: 8 }} formatter={(v: any) => usd(v)} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Line type="monotone" dataKey="ingresos" stroke="#059669" strokeWidth={2} name="Ingresos" />
-                  <Line type="monotone" dataKey="egresos" stroke="#dc2626" strokeWidth={2} name="Egresos" />
-                  <Line type="monotone" dataKey="neto" stroke="#C8922A" strokeWidth={2} name="Neto" />
+                  <Line type="monotone" dataKey="ingresos" stroke="var(--ok)" strokeWidth={2} name="Ingresos" />
+                  <Line type="monotone" dataKey="egresos" stroke="var(--err)" strokeWidth={2} name="Egresos" />
+                  <Line type="monotone" dataKey="neto" stroke="var(--accent)" strokeWidth={2} name="Neto" />
                 </LineChart>
               </ResponsiveContainer>
             </div>

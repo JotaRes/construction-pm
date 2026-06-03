@@ -16,12 +16,12 @@ import {
 import toast from "react-hot-toast";
 
 const CLASS_COLOR: Record<string, string> = {
-  competitiva: "#059669",
-  razonable: "#0d9488",
-  cara: "#d97706",
-  agresiva: "#ea580c",
-  peligrosa: "#dc2626",
-  "sin clasificar": "#94a3b8",
+  competitiva: "var(--ok)",
+  razonable: "var(--inf)",
+  cara: "var(--warn)",
+  agresiva: "var(--accent)",
+  peligrosa: "var(--err)",
+  "sin clasificar": "var(--text-muted)",
 };
 
 const CLASS_BADGE: Record<string, string> = {
@@ -143,10 +143,10 @@ export default function Debt() {
             <div className="h-56">
               <ResponsiveContainer>
                 <BarChart data={lenderData} layout="vertical" margin={{ left: 80 }}>
-                  <XAxis type="number" tick={{ fontSize: 10, fill: "#3A5F68" }} tickFormatter={(v) => usd(v, { compact: true })} />
-                  <YAxis dataKey="name" type="category" tick={{ fontSize: 10, fill: "#2D4B52" }} width={140} />
+                  <XAxis type="number" tick={{ fontSize: 10, fill: "var(--brand-teal3)" }} tickFormatter={(v) => usd(v, { compact: true })} />
+                  <YAxis dataKey="name" type="category" tick={{ fontSize: 10, fill: "var(--inf)" }} width={140} />
                   <Tooltip contentStyle={{ background: "#fff", border: "1px solid rgba(45,75,82,0.15)", borderRadius: 8 }} formatter={(v: any) => usd(v as number)} />
-                  <Bar dataKey="value" fill="#C8922A" />
+                  <Bar dataKey="value" fill="var(--accent)" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -160,7 +160,7 @@ export default function Debt() {
               <ResponsiveContainer>
                 <PieChart>
                   <Pie data={classData} dataKey="value" nameKey="name" outerRadius={80} label={(d) => usd(d.value as number, { compact: true })}>
-                    {classData.map((d, i) => <Cell key={i} fill={CLASS_COLOR[d.name] || "#94a3b8"} />)}
+                    {classData.map((d, i) => <Cell key={i} fill={CLASS_COLOR[d.name] || "var(--text-muted)"} />)}
                   </Pie>
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                   <Tooltip contentStyle={{ background: "#fff", border: "1px solid rgba(45,75,82,0.15)", borderRadius: 8 }} formatter={(v: any) => usd(v as number)} />

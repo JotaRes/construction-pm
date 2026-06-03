@@ -36,7 +36,7 @@ export default function Inspections({ projectId }: { projectId: string }) {
         </div>
       </div>
 
-      <div className="bg-[#C8922A]/10 border border-amber-500/30 rounded-lg px-4 py-3 text-xs text-[#2D4B52]">
+      <div className="bg-[#C8922A]/10 border border-amber-500/30 rounded-lg px-4 py-3 text-xs text-[var(--brand-teal)]">
         ⚠️ Re-inspección cuesta $50–100 y retrasa la obra mínimo 3–7 días hábiles. No llamar inspección sin estar 100% listos.
         Regla: No se avanza sin inspección aprobada de fase anterior.
       </div>
@@ -58,7 +58,7 @@ export default function Inspections({ projectId }: { projectId: string }) {
             {inspections.map(ins => (
               <tr key={ins.id} className="table-row-base">
                 <td className="px-4 py-3">
-                  <span className="text-xs font-mono text-[#C8922A]">{ins.wbs}</span>
+                  <span className="text-xs font-mono text-[var(--brand-gold)]">{ins.wbs}</span>
                 </td>
                 <td className="px-4 py-3">
                   <div className="text-sm text-slate-800">{ins.tipo}</div>

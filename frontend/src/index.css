@@ -849,3 +849,599 @@ html {
   border-color: var(--border-strong);
   color: var(--text-primary);
 }
+
+/* ═══════════════════════════════════════════════════════════
+   DS v2.1 — SYSTEM-WIDE CASCADE
+   Transforma TODAS las clases existentes a los nuevos tokens.
+   No elimina nada. Sólo añade especificidad por cascada.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Scrollbar global refinada ── */
+::-webkit-scrollbar { width: 3px; height: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-strong, rgba(45,75,82,0.18)); border-radius: 2px; }
+
+/* ── Body & tipografía global ── */
+body {
+  font-family: var(--font-body, 'DM Sans', 'Inter', system-ui, sans-serif);
+  font-size: 13.5px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── .card — todos los módulos ── */
+.card {
+  background: var(--bg-surface-2, #ffffff) !important;
+  border: 1px solid var(--border, rgba(45,75,82,0.09)) !important;
+  border-radius: 10px !important;
+  box-shadow: var(--shadow-sm-v2, 0 1px 4px rgba(0,0,0,0.07)) !important;
+  transition: border-color 0.2s, box-shadow 0.2s !important;
+}
+.card:has(h1), .card:has(h2), .card:has(h3) {
+  /* cards con heading — sin hover automático */
+}
+
+/* ── .section-card — módulo técnico ── */
+.section-card {
+  background: var(--bg-surface-2, #ffffff) !important;
+  border: 1px solid var(--border, rgba(45,75,82,0.09)) !important;
+  border-radius: 10px !important;
+  box-shadow: var(--shadow-sm-v2, 0 1px 4px rgba(0,0,0,0.07)) !important;
+}
+
+/* ── .kpi-card — rediseño completo con hover animado ── */
+.kpi-card {
+  background: var(--bg-surface-2, #ffffff) !important;
+  border: 1px solid var(--border, rgba(45,75,82,0.09)) !important;
+  border-radius: 10px !important;
+  box-shadow: var(--shadow-sm-v2, 0 1px 4px rgba(0,0,0,0.07)) !important;
+  position: relative !important;
+  overflow: hidden !important;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.18s !important;
+}
+.kpi-card::after {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important; left: 0 !important; right: 0 !important;
+  height: 2px !important;
+  background: var(--accent, #a05a30) !important;
+  opacity: 0 !important;
+  transition: opacity 0.2s !important;
+}
+.kpi-card:hover {
+  border-color: var(--border-strong, rgba(45,75,82,0.18)) !important;
+  box-shadow: var(--shadow-md-v2, 0 4px 20px rgba(0,0,0,0.09)) !important;
+  transform: translateY(-1px) !important;
+}
+.kpi-card:hover::after { opacity: 1 !important; }
+
+/* Tono de color en kpi-card */
+.kpi-card-green::after  { background: var(--ok,   #2e7a52) !important; }
+.kpi-card-red::after    { background: var(--err,  #a03838) !important; }
+.kpi-card-amber::after  { background: var(--warn, #9e7820) !important; }
+.kpi-card-gold::after   { background: var(--accent, #a05a30) !important; }
+
+/* ── .badge — rediseño semántico ── */
+.badge {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace) !important;
+  font-size: 8.5px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.1em !important;
+  border-radius: 3px !important;
+  padding: 2px 8px !important;
+  border: 1px solid currentColor !important;
+  white-space: nowrap !important;
+}
+
+/* ── .table-row y variantes ── */
+.table-row {
+  transition: background 0.12s !important;
+  cursor: pointer !important;
+}
+.table-row:hover {
+  background: var(--row-hover-v2, rgba(0,0,0,0.022)) !important;
+}
+.table-row-base {
+  border-color: var(--border, rgba(45,75,82,0.09)) !important;
+  transition: background 0.12s !important;
+}
+.table-row-base:hover {
+  background: var(--row-hover-v2, rgba(0,0,0,0.022)) !important;
+}
+
+/* ── .table-head th ── */
+.table-head th {
+  font-family: var(--font-mono, monospace) !important;
+  font-size: 8px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.18em !important;
+  color: var(--text-muted, rgba(45,75,82,0.35)) !important;
+  font-weight: 400 !important;
+  background: var(--thead-bg-v2, rgba(0,0,0,0.038)) !important;
+  border-color: var(--border, rgba(45,75,82,0.09)) !important;
+}
+
+/* ── .btn-brand ── */
+.btn-brand {
+  background: var(--accent, #a05a30) !important;
+  border: none !important;
+  border-radius: 6px !important;
+  color: rgba(255,255,255,0.92) !important;
+  font-family: var(--font-mono, monospace) !important;
+  font-size: 9px !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+  transition: background 0.18s, transform 0.12s !important;
+}
+.btn-brand:hover { background: var(--accent-h, #b86838) !important; }
+.btn-brand:active { transform: scale(0.97) !important; }
+
+/* ── .btn-ghost ── */
+.btn-ghost {
+  border: 1px solid var(--border, rgba(45,75,82,0.09)) !important;
+  border-radius: 6px !important;
+  background: transparent !important;
+  color: var(--text-secondary, rgba(45,75,82,0.55)) !important;
+  font-family: var(--font-mono, monospace) !important;
+  font-size: 9px !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+  transition: border-color 0.18s, color 0.18s !important;
+}
+.btn-ghost:hover {
+  border-color: var(--border-strong, rgba(45,75,82,0.18)) !important;
+  color: var(--text-primary, #0D1A1D) !important;
+}
+
+/* ── .input-base ── */
+.input-base {
+  background: var(--bg-surface-2, #ffffff) !important;
+  border: 1px solid var(--border, rgba(45,75,82,0.09)) !important;
+  border-radius: 6px !important;
+  color: var(--text-primary, #0D1A1D) !important;
+  font-family: var(--font-body, 'DM Sans', system-ui, sans-serif) !important;
+  font-size: 13px !important;
+  transition: border-color 0.18s !important;
+}
+.input-base:focus {
+  border-color: var(--border-focus, rgba(200,146,42,0.5)) !important;
+  outline: none !important;
+}
+.input-base::placeholder { color: var(--text-muted, rgba(45,75,82,0.35)) !important; }
+
+/* ── .alert-card ── */
+.alert-card {
+  background: var(--bg-surface-2, #ffffff) !important;
+  border: 1px solid var(--border, rgba(45,75,82,0.09)) !important;
+  border-radius: 10px !important;
+}
+
+/* ── Títulos de sección ── */
+.section-title, h1.section-title, h2.section-title {
+  font-family: var(--font-display, 'Fraunces', Georgia, serif) !important;
+  font-weight: 300 !important;
+  letter-spacing: -0.025em !important;
+  color: var(--text-primary, #0D1A1D) !important;
+}
+
+/* ── .page-content — fade-in al montar ── */
+.page-content {
+  animation: ds-page-in 0.28s ease both;
+}
+@keyframes ds-page-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Stagger de tarjetas en grid ── */
+.page-content > * { animation: ds-page-in 0.28s ease both; }
+.page-content > *:nth-child(1) { animation-delay: 0.04s; }
+.page-content > *:nth-child(2) { animation-delay: 0.08s; }
+.page-content > *:nth-child(3) { animation-delay: 0.12s; }
+.page-content > *:nth-child(4) { animation-delay: 0.16s; }
+.page-content > *:nth-child(5) { animation-delay: 0.20s; }
+.page-content > *:nth-child(6) { animation-delay: 0.24s; }
+
+/* ── Headings de página — módulo técnico ── */
+h1.text-2xl, h1.text-3xl {
+  font-family: var(--font-display, 'Fraunces', Georgia, serif) !important;
+  font-weight: 300 !important;
+  letter-spacing: -0.025em !important;
+  color: var(--text-primary) !important;
+}
+
+/* ── Topbar glass — módulo técnico ── */
+.topbar-glass {
+  background: rgba(253,252,250,0.88) !important;
+  border-bottom: 1px solid var(--border) !important;
+  backdrop-filter: blur(16px) !important;
+}
+
+/* ── Progress tracks existentes ── */
+.progress-track {
+  background: var(--bg-surface-3, rgba(0,0,0,0.038)) !important;
+  border-radius: 3px !important;
+}
+
+/* ── Recharts: forzar paleta DS en tooltips ── */
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: var(--bg-surface-3, #ece8e0) !important;
+  border: 1px solid var(--border, rgba(45,75,82,0.09)) !important;
+  border-radius: 8px !important;
+  font-family: var(--font-mono, monospace) !important;
+  font-size: 11px !important;
+}
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line {
+  stroke: var(--chart-grid-v2, rgba(0,0,0,0.05)) !important;
+}
+.recharts-text.recharts-cartesian-axis-tick-value {
+  fill: var(--text-secondary, rgba(45,75,82,0.55)) !important;
+  font-family: var(--font-mono, monospace) !important;
+  font-size: 10px !important;
+}
+
+/* ── Landing: módulo cards ── */
+[data-theme="dark"] .landing-card-tech {
+  background: linear-gradient(135deg, #1a2830 0%, #111e24 100%) !important;
+}
+[data-theme="dark"] .landing-card-finance {
+  background: linear-gradient(135deg, #0f1219 0%, #161b26 100%) !important;
+}
+
+/* ═══════════════════════════════════════════════════════
+   DESIGN SYSTEM v2.1 — Finance Module Component Classes
+   Añadido sobre DS v2.1. NO modifica nada previo.
+   ═══════════════════════════════════════════════════════ */
+
+/* Scrollbar refinada */
+.fin-app ::-webkit-scrollbar { width: 3px; height: 3px; }
+.fin-app ::-webkit-scrollbar-track { background: transparent; }
+.fin-app ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
+
+/* ── KPI v2.1 ── */
+.fin-kpi-v2 {
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px 22px 18px;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.18s;
+  position: relative;
+  overflow: hidden;
+}
+.fin-kpi-v2::after {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.fin-kpi-v2:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-md-v2);
+  transform: translateY(-1px);
+}
+.fin-kpi-v2:hover::after { opacity: 1; }
+
+.fin-kpi-lbl {
+  font-family: var(--font-mono);
+  font-size: 8.5px; text-transform: uppercase;
+  letter-spacing: 0.2em; color: var(--text-muted);
+  margin-bottom: 10px;
+}
+.fin-kpi-val {
+  font-family: var(--font-display);
+  font-size: 36px; font-weight: 600;
+  line-height: 1; letter-spacing: -0.03em;
+  color: var(--text-primary);
+}
+.fin-kpi-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 10px;
+}
+.fin-kpi-hint { font-size: 10.5px; color: var(--text-muted); }
+
+/* ── Badges semánticos v2.1 ── */
+.fin-badge {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-family: var(--font-mono);
+  font-size: 8.5px; text-transform: uppercase; letter-spacing: 0.1em;
+  padding: 2px 8px; border-radius: 3px; border: 1px solid;
+  white-space: nowrap;
+}
+.fin-b-ok   { color:var(--ok);   background:var(--ok-soft);   border-color:var(--ok-border); }
+.fin-b-warn { color:var(--warn); background:var(--warn-soft); border-color:var(--warn-border); }
+.fin-b-err  { color:var(--err);  background:var(--err-soft);  border-color:var(--err-border); }
+.fin-b-inf  { color:var(--inf);  background:var(--inf-soft);  border-color:var(--inf-border); }
+
+/* Delta badges en KPIs */
+.fin-delta {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-family: var(--font-mono); font-size: 10px;
+  padding: 2px 7px; border-radius: 3px;
+}
+.fin-delta-up   { color: var(--ok);  background: var(--ok-soft); }
+.fin-delta-down { color: var(--err); background: var(--err-soft); }
+
+/* ── Chart panel v2.1 ── */
+.fin-cpanel {
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: background 0.35s, border-color 0.35s;
+}
+.fin-cpanel-head {
+  padding: 15px 20px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.fin-cpanel-title {
+  font-family: var(--font-display);
+  font-size: 15px; font-weight: 300;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+.fin-cpanel-meta {
+  font-family: var(--font-mono);
+  font-size: 8px; text-transform: uppercase;
+  letter-spacing: 0.15em; color: var(--text-muted);
+  margin-top: 2px;
+}
+.fin-cpanel-body { padding: 18px 20px; }
+
+/* ── Tabla v2.1 ── */
+.fin-tbl-wrap {
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.fin-tbl-toolbar {
+  padding: 13px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.fin-tbl-title {
+  font-family: var(--font-display);
+  font-size: 15px; font-weight: 300;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+.fin-dt { width: 100%; border-collapse: collapse; }
+.fin-dt thead tr {
+  background: var(--thead-bg-v2);
+  border-bottom: 1px solid var(--border);
+}
+.fin-dt th {
+  padding: 9px 16px;
+  font-family: var(--font-mono);
+  font-size: 8px; text-transform: uppercase; letter-spacing: 0.18em;
+  color: var(--text-muted); font-weight: 400;
+  text-align: left; white-space: nowrap;
+}
+.fin-dt td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+.fin-dt tbody tr:last-child td { border-bottom: none; }
+.fin-dt tbody tr { transition: background 0.12s; cursor: pointer; }
+.fin-dt tbody tr:hover td { background: var(--row-hover-v2); }
+
+/* Tipografía tabla */
+.fin-cn { font-size: 13px; font-weight: 500; color: var(--text-primary); }
+.fin-cm { font-family: var(--font-mono); font-size: 8.5px; color: var(--text-muted); margin-top: 2px; }
+.fin-mono { font-family: var(--font-mono); font-size: 12.5px; color: var(--text-primary); }
+.fin-mono-dim { font-family: var(--font-mono); font-size: 12.5px; color: var(--text-secondary); }
+
+/* ── Sidebar v2.1 ── */
+.fin-sidebar-v2 {
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border);
+}
+.fin-nav-grp {
+  padding: 14px 18px 4px;
+  font-family: var(--font-mono);
+  font-size: 7.5px; text-transform: uppercase;
+  letter-spacing: 0.22em; color: var(--text-muted);
+}
+.fin-nav-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 8px 18px;
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  letter-spacing: 0.01em;
+  border-right: 2px solid transparent;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  text-decoration: none;
+}
+.fin-nav-item:hover { background: var(--row-hover-v2); color: var(--text-primary); }
+.fin-nav-item.active {
+  background: var(--accent-soft);
+  color: var(--text-primary);
+  border-right-color: var(--accent);
+}
+.fin-nav-item.active svg { color: var(--accent); }
+
+/* ── Logo mark v2.1 ── */
+.fin-logo-mark {
+  width: 30px; height: 30px;
+  border-radius: 6px;
+  background: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.35s;
+}
+.fin-logo-name {
+  font-family: var(--font-display);
+  font-size: 14px; font-weight: 400;
+  letter-spacing: -0.025em;
+  color: var(--text-primary);
+  line-height: 1.25;
+}
+.fin-logo-sub {
+  font-family: var(--font-mono);
+  font-size: 7.5px; text-transform: uppercase;
+  letter-spacing: 0.18em; color: var(--text-muted);
+  margin-top: 3px;
+}
+
+/* ── User avatar v2.1 ── */
+.fin-user-av {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display);
+  font-size: 11px; font-weight: 600; color: white;
+  flex-shrink: 0;
+}
+
+/* ── Topbar v2.1 ── */
+.fin-topbar-v2 {
+  height: 54px; flex-shrink: 0;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 28px;
+  display: flex; align-items: center; justify-content: space-between;
+  transition: background 0.35s, border-color 0.35s;
+}
+.fin-tb-title {
+  font-family: var(--font-display);
+  font-size: 19px; font-weight: 300;
+  letter-spacing: -0.025em;
+  color: var(--text-primary);
+  line-height: 1;
+}
+.fin-tb-sub {
+  font-family: var(--font-mono);
+  font-size: 8px; text-transform: uppercase;
+  letter-spacing: 0.14em; color: var(--text-muted);
+  margin-top: 3px;
+}
+
+/* ── Btn icon v2.1 ── */
+.fin-btn-icon {
+  width: 32px; height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.18s;
+  text-decoration: none;
+}
+.fin-btn-icon:hover { border-color: var(--border-strong); color: var(--text-primary); }
+
+/* ── Btn CTA v2.1 ── */
+.fin-btn-cta {
+  display: flex; align-items: center; gap: 5px;
+  padding: 7px 15px;
+  background: var(--accent);
+  border: none; border-radius: 6px;
+  color: rgba(255,255,255,0.92);
+  font-family: var(--font-mono);
+  font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.18s, transform 0.12s;
+}
+.fin-btn-cta:hover { background: var(--accent-h); }
+.fin-btn-cta:active { transform: scale(0.97); }
+
+/* ── Tab pills v2.1 ── */
+.fin-tabs {
+  display: flex; align-items: center; gap: 2px;
+  border-bottom: 1px solid var(--border);
+}
+.fin-tab {
+  padding: 8px 16px 10px;
+  font-family: var(--font-mono);
+  font-size: 9px; text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.18s, border-color 0.18s;
+}
+.fin-tab:hover { color: var(--text-secondary); }
+.fin-tab.active { color: var(--text-primary); border-bottom-color: var(--accent); }
+
+/* ── Page title v2.1 ── */
+.fin-page-title {
+  font-family: var(--font-display);
+  font-size: 26px; font-weight: 300;
+  letter-spacing: -0.025em;
+  color: var(--text-primary);
+  line-height: 1.1;
+}
+.fin-page-sub {
+  font-family: var(--font-mono);
+  font-size: 9px; text-transform: uppercase;
+  letter-spacing: 0.14em; color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* ── Splash (solo arranca una vez) ── */
+@keyframes fin-splash-out { to { opacity: 0; pointer-events: none; } }
+@keyframes fin-s-pulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(176,104,64,0.4); }
+  50%      { box-shadow: 0 0 0 14px rgba(176,104,64,0); }
+}
+@keyframes fin-s-load { 0%{width:0} 65%{width:72%} 100%{width:100%} }
+@keyframes fin-fade-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fin-section { animation: fin-fade-up 0.22s ease; }
+
+/* ── Neutraliza overrides legacy del sidebar (.fin-app aside) para que
+   .fin-sidebar-v2 sea theme-aware. Más específico que las reglas legacy
+   con !important (líneas ~445 y ~778), no borra nada de lo previo. ── */
+.fin-app aside.fin-sidebar-v2,
+[data-theme="dark"] .fin-app aside.fin-sidebar-v2 {
+  background: var(--bg-surface) !important;
+  background-image: none !important;
+  border-right: 1px solid var(--border) !important;
+  box-shadow: none !important;
+}
+
+/* ═══════════════════════════════════════════════════════
+   DS v2.1 — APLICACIÓN SYSTEM-WIDE EN MÓDULO FINANCE
+   Cubre las 13 páginas restantes sin editarlas una por una.
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Títulos: fuerza Fraunces en todos los h1/h2/h3 de finance Y tech,
+   neutralizando los `fontFamily: 'Georgia, serif'` inline legacy (el cascade sólo cubría h1.text-2xl) ── */
+:is(.fin-app, .tech-app) :is(h1, h2, h3) {
+  font-family: var(--font-display) !important;
+  letter-spacing: -0.02em;
+}
+
+/* ── Remap de utilidades semánticas Tailwind → tokens DS v2.1 (en finance Y tech).
+   Hace badges, alertas y montos theme-aware (claro Y oscuro) en todas las páginas.
+   :is(.fin-app,.tech-app) .x (0,2,0) + !important gana sobre la utilidad Tailwind. ── */
+:is(.fin-app, .tech-app) .bg-red-50      { background-color: var(--err-soft)   !important; }
+:is(.fin-app, .tech-app) .bg-amber-50    { background-color: var(--warn-soft)  !important; }
+:is(.fin-app, .tech-app) .bg-blue-50     { background-color: var(--inf-soft)   !important; }
+:is(.fin-app, .tech-app) .bg-emerald-50,
+:is(.fin-app, .tech-app) .bg-green-50    { background-color: var(--ok-soft)    !important; }
+:is(.fin-app, .tech-app) .bg-stone-50    { background-color: var(--bg-surface-3) !important; }
+
+:is(.fin-app, .tech-app) .border-red-200     { border-color: var(--err-border)  !important; }
+:is(.fin-app, .tech-app) .border-amber-200   { border-color: var(--warn-border) !important; }
+:is(.fin-app, .tech-app) .border-blue-200    { border-color: var(--inf-border)  !important; }
+:is(.fin-app, .tech-app) .border-emerald-200,
+:is(.fin-app, .tech-app) .border-green-200   { border-color: var(--ok-border)   !important; }
+:is(.fin-app, .tech-app) .border-stone-200   { border-color: var(--border)      !important; }
+
+:is(.fin-app, .tech-app) .text-red-600,    :is(.fin-app, .tech-app) .text-red-700,    :is(.fin-app, .tech-app) .text-red-800    { color: var(--err)  !important; }
+:is(.fin-app, .tech-app) .text-amber-600,  :is(.fin-app, .tech-app) .text-amber-700,  :is(.fin-app, .tech-app) .text-amber-800  { color: var(--warn) !important; }
+:is(.fin-app, .tech-app) .text-blue-600,   :is(.fin-app, .tech-app) .text-blue-700,   :is(.fin-app, .tech-app) .text-blue-800   { color: var(--inf)  !important; }
+:is(.fin-app, .tech-app) .text-emerald-600,:is(.fin-app, .tech-app) .text-emerald-700,:is(.fin-app, .tech-app) .text-emerald-800,
+:is(.fin-app, .tech-app) .text-green-600,  :is(.fin-app, .tech-app) .text-green-700   { color: var(--ok)   !important; }
+:is(.fin-app, .tech-app) .text-stone-600,  :is(.fin-app, .tech-app) .text-stone-700   { color: var(--text-secondary) !important; }

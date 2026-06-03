@@ -31,9 +31,9 @@ function NumCell({ value, onSave, className = '' }: { value: number; onSave: (v:
     <button
       onClick={() => { setText(String(value || '')); setEditing(true) }}
       title="Clic para editar"
-      className={`w-full text-right text-sm font-mono hover:text-[#2D4B52] transition-colors group/n flex items-center justify-end gap-1 ${className}`}
+      className={`w-full text-right text-sm font-mono hover:text-[var(--brand-teal)] transition-colors group/n flex items-center justify-end gap-1 ${className}`}
     >
-      <span className="text-[9px] text-slate-500 group-hover/n:text-[#C8922A] transition-colors">✏</span>
+      <span className="text-[9px] text-slate-500 group-hover/n:text-[var(--brand-gold)] transition-colors">✏</span>
       {value > 0 ? formatUSD(value) : <span className="text-slate-500">—</span>}
     </button>
   )
@@ -112,7 +112,7 @@ function BudgetItemRow({ item, onUpdate, onDelete, isCustom }: {
         />
       </td>
       <td className="px-2 py-2 w-28 text-right">
-        <span className={`text-sm font-mono ${item.valorEjecutado > 0 ? 'text-[#2D4B52]' : 'text-slate-500'}`}>
+        <span className={`text-sm font-mono ${item.valorEjecutado > 0 ? 'text-[var(--brand-teal)]' : 'text-slate-500'}`}>
           {item.valorEjecutado > 0 ? formatUSD(item.valorEjecutado) : '—'}
         </span>
       </td>
@@ -131,7 +131,7 @@ function BudgetItemRow({ item, onUpdate, onDelete, isCustom }: {
             <div className="flex-1 h-1.5 bg-slate-200/80 rounded-full overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all ${
-                  pctEjec > 100 ? 'bg-red-500' : pctEjec > 0 ? 'bg-[#2D4B52]' : 'bg-slate-200'
+                  pctEjec > 100 ? 'bg-red-500' : pctEjec > 0 ? 'bg-[var(--brand-teal)]' : 'bg-slate-200'
                 }`}
                 style={{ width: `${Math.min(pctEjec, 100)}%` }}
               />
@@ -185,7 +185,7 @@ function PhaseSection({ phase, onUpdate, onCreate, onDelete }: {
         {open
           ? <ChevronDown className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
           : <ChevronRight className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />}
-        <span className="text-[10px] font-mono text-[#C8922A] w-7 flex-shrink-0">{phase.code}</span>
+        <span className="text-[10px] font-mono text-[var(--brand-gold)] w-7 flex-shrink-0">{phase.code}</span>
         <span className="text-sm font-medium text-slate-800 flex-1 text-left">{phase.name}</span>
 
         {/* Phase stats bar */}
@@ -193,7 +193,7 @@ function PhaseSection({ phase, onUpdate, onCreate, onDelete }: {
           {hasBudget ? (
             <>
               <span className="font-mono font-semibold text-slate-900 w-28 text-right">{formatUSD(budget)}</span>
-              <span className={`font-mono w-28 text-right ${ejec > 0 ? 'text-[#2D4B52]' : 'text-slate-400'}`}>{ejec > 0 ? formatUSD(ejec) : '—'}</span>
+              <span className={`font-mono w-28 text-right ${ejec > 0 ? 'text-[var(--brand-teal)]' : 'text-slate-400'}`}>{ejec > 0 ? formatUSD(ejec) : '—'}</span>
               <span className={`font-mono w-20 text-right text-[11px] font-semibold ${
                 desv > 0 ? 'text-red-400' : desv < 0 ? 'text-emerald-400' : 'text-slate-400'
               }`}>
@@ -201,7 +201,7 @@ function PhaseSection({ phase, onUpdate, onCreate, onDelete }: {
               </span>
               <div className="flex items-center gap-1.5 w-20">
                 <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                  <div className={`h-full rounded-full ${pct > 100 ? 'bg-red-500' : pct > 0 ? 'bg-[#2D4B52]' : 'bg-slate-200'}`}
+                  <div className={`h-full rounded-full ${pct > 100 ? 'bg-red-500' : pct > 0 ? 'bg-[var(--brand-teal)]' : 'bg-slate-200'}`}
                     style={{ width: `${Math.min(pct, 100)}%` }} />
                 </div>
                 <span className="text-[10px] font-mono text-slate-400 w-6 text-right">{pct.toFixed(0)}%</span>
@@ -243,7 +243,7 @@ function PhaseSection({ phase, onUpdate, onCreate, onDelete }: {
           {/* Add activity button */}
           <button
             onClick={() => onCreate(phase.id)}
-            className="flex items-center gap-2 px-5 py-2 text-xs text-slate-400 hover:text-[#C8922A] hover:bg-[#C8922A]/5 transition-colors w-full border-t border-slate-200/50"
+            className="flex items-center gap-2 px-5 py-2 text-xs text-slate-400 hover:text-[var(--brand-gold)] hover:bg-[#C8922A]/5 transition-colors w-full border-t border-slate-200/50"
           >
             <Plus className="w-3.5 h-3.5" />
             Agregar actividad imprevista
@@ -345,7 +345,7 @@ export default function Budget({ projectId }: { projectId: string }) {
         </div>
         <div className="kpi-card kpi-card-green">
           <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1.5">Total ejecutado</div>
-          <div className="text-xl font-bold font-mono text-[#2D4B52]">{formatUSD(totalEjec)}</div>
+          <div className="text-xl font-bold font-mono text-[var(--brand-teal)]">{formatUSD(totalEjec)}</div>
           <div className="text-[10px] text-slate-400 mt-1 font-mono">{pctEjec.toFixed(1)}% del presupuesto</div>
         </div>
         <div className={`kpi-card ${totalDesv > 0 ? 'kpi-card-red' : 'kpi-card-green'}`}>
@@ -373,7 +373,7 @@ export default function Budget({ projectId }: { projectId: string }) {
           <div className="text-xs text-slate-500 leading-relaxed">
             <span className="text-violet-300 font-semibold">Draws wired ({formatUSD(totalDrawn)})</span>
             {' '}= dinero desembolsado por el lender a tu cuenta.{' '}
-            <span className="text-[#2D4B52] font-semibold">Ejecutado ({formatUSD(totalEjec)})</span>
+            <span className="text-[var(--brand-teal)] font-semibold">Ejecutado ({formatUSD(totalEjec)})</span>
             {' '}= costo real registrado por ítem de obra.
             Son dos vistas distintas del mismo flujo — los draws financian, los ítems controlan.
           </div>
@@ -418,13 +418,13 @@ export default function Budget({ projectId }: { projectId: string }) {
           <div className="flex-1 text-xs font-bold text-slate-700 uppercase tracking-wider">Total general</div>
           <div className="flex items-center gap-4 shrink-0">
             <span className="font-mono font-bold text-base text-slate-900 w-28 text-right">{formatUSD(totalBudget)}</span>
-            <span className={`font-mono text-base w-28 text-right font-semibold ${totalEjec > 0 ? 'text-[#2D4B52]' : 'text-slate-400'}`}>
+            <span className={`font-mono text-base w-28 text-right font-semibold ${totalEjec > 0 ? 'text-[var(--brand-teal)]' : 'text-slate-400'}`}>
               {totalEjec > 0 ? formatUSD(totalEjec) : '—'}
             </span>
             <span className={`font-mono text-sm w-20 text-right font-bold ${totalDesv > 0 ? 'text-red-400' : totalDesv < 0 ? 'text-emerald-400' : 'text-slate-400'}`}>
               {totalEjec > 0 ? (totalDesv > 0 ? '+' : '') + formatUSD(totalDesv) : '—'}
             </span>
-            <span className={`font-mono text-sm w-20 text-right ${pctEjec > 100 ? 'text-red-400' : pctEjec > 0 ? 'text-[#2D4B52]' : 'text-slate-400'}`}>
+            <span className={`font-mono text-sm w-20 text-right ${pctEjec > 100 ? 'text-red-400' : pctEjec > 0 ? 'text-[var(--brand-teal)]' : 'text-slate-400'}`}>
               {totalBudget > 0 ? pctEjec.toFixed(1) + '%' : '—'}
             </span>
           </div>

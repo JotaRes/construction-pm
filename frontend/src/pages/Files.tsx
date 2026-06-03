@@ -292,7 +292,7 @@ export default function Files({ projectId }: { projectId: string }) {
       {/* ── Smart PDF Upload ─────────────────────────────────── */}
       <div className="bg-white rounded-xl border border-[#C8922A]/40 shadow-sm overflow-hidden">
         <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2">
-          <Upload className="w-4 h-4 text-[#C8922A]" />
+          <Upload className="w-4 h-4 text-[var(--brand-gold)]" />
           <span className="text-sm font-semibold text-slate-800">Cargar documento y extraer datos</span>
         </div>
         <div className="p-5 space-y-4">
@@ -300,13 +300,13 @@ export default function Files({ projectId }: { projectId: string }) {
             <div>
               <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Tipo de documento</label>
               <select value={docType} onChange={e => { setDocType(e.target.value); setExtractResult(null); setApplyStatus(null) }}
-                className="w-full bg-slate-50 border border-slate-200 text-sm text-slate-700 px-3 py-2 rounded-lg focus:outline-none focus:border-[#C8922A]">
+                className="w-full bg-slate-50 border border-slate-200 text-sm text-slate-700 px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)]">
                 {DOC_TYPES.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Archivo</label>
-              <label className="flex items-center gap-2 w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 cursor-pointer hover:border-[#C8922A] transition-colors">
+              <label className="flex items-center gap-2 w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 cursor-pointer hover:border-[var(--brand-gold)] transition-colors">
                 <FileText className="w-4 h-4 text-slate-400 flex-shrink-0" />
                 <span className="text-sm truncate text-slate-600">{uploadFile ? uploadFile.name : 'Seleccionar PDF...'}</span>
                 <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" className="hidden"
@@ -316,7 +316,7 @@ export default function Files({ projectId }: { projectId: string }) {
           </div>
 
           <button onClick={handleExtract} disabled={!uploadFile || extracting}
-            className="flex items-center gap-2 bg-[#C8922A] hover:bg-[#E0AD4F] disabled:opacity-40 text-white text-sm font-semibold px-5 py-2 rounded-lg transition-colors">
+            className="flex items-center gap-2 bg-[var(--brand-gold)] hover:bg-[#E0AD4F] disabled:opacity-40 text-white text-sm font-semibold px-5 py-2 rounded-lg transition-colors">
             {extracting ? (
               <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Extrayendo datos...</>
             ) : (
@@ -380,7 +380,7 @@ export default function Files({ projectId }: { projectId: string }) {
                     </span>
                   )}
                   <button onClick={handleApply} disabled={applying}
-                    className="flex items-center gap-2 bg-[#2D4B52] hover:bg-[#3A5F68] disabled:opacity-40 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors">
+                    className="flex items-center gap-2 bg-[var(--brand-teal)] hover:bg-[#3A5F68] disabled:opacity-40 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors">
                     {applying ? 'Aplicando...' : '↺ Re-aplicar'}
                   </button>
                 </div>
@@ -395,16 +395,16 @@ export default function Files({ projectId }: { projectId: string }) {
         <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-3">Agregar referencia manual (URL)</div>
         <div className="grid grid-cols-3 gap-3 mb-3">
           <input placeholder="Nombre del documento *" value={name} onChange={e => setName(e.target.value)}
-            className="bg-slate-50 text-slate-800 text-sm px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-[#C8922A]" />
+            className="bg-slate-50 text-slate-800 text-sm px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-[var(--brand-gold)]" />
           <input placeholder="URL o path del archivo *" value={url} onChange={e => setUrl(e.target.value)}
-            className="bg-slate-50 text-slate-800 text-sm px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-[#C8922A]" />
+            className="bg-slate-50 text-slate-800 text-sm px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-[var(--brand-gold)]" />
           <select value={category} onChange={e => setCategory(e.target.value)}
-            className="bg-slate-50 text-slate-800 text-sm px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-[#C8922A]">
+            className="bg-slate-50 text-slate-800 text-sm px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-[var(--brand-gold)]">
             {CATEGORIES.map(c => <option key={c}>{c}</option>)}
           </select>
         </div>
         <button onClick={() => name && url && createMut.mutate()} disabled={!name || !url}
-          className="flex items-center gap-2 bg-[#2D4B52] hover:bg-[#3A5F68] disabled:opacity-40 text-white text-sm px-4 py-2 rounded-lg transition-colors">
+          className="flex items-center gap-2 bg-[var(--brand-teal)] hover:bg-[#3A5F68] disabled:opacity-40 text-white text-sm px-4 py-2 rounded-lg transition-colors">
           <Plus className="w-4 h-4" /> Agregar referencia
         </button>
       </div>
@@ -414,7 +414,7 @@ export default function Files({ projectId }: { projectId: string }) {
         {['ALL', ...CATEGORIES].map(c => (
           <button key={c} onClick={() => setFilterCat(c)}
             className={`px-3 py-1 rounded-full text-xs font-medium transition-colors
-              ${filterCat === c ? 'bg-[#2D4B52] text-white' : 'bg-white text-slate-500 hover:text-slate-800 border border-slate-200'}`}>
+              ${filterCat === c ? 'bg-[var(--brand-teal)] text-white' : 'bg-white text-slate-500 hover:text-slate-800 border border-slate-200'}`}>
             {c === 'ALL' ? 'Todos' : c}
           </button>
         ))}
@@ -452,13 +452,13 @@ export default function Files({ projectId }: { projectId: string }) {
                         <a href={`/api/download?url=${encodeURIComponent(file.url)}&inline=1`}
                           target="_blank" rel="noopener noreferrer"
                           title="Ver documento"
-                          className="text-slate-300 hover:text-[#C8922A] transition-colors">
+                          className="text-slate-300 hover:text-[var(--brand-gold)] transition-colors">
                           <ExternalLink className="w-4 h-4" />
                         </a>
                         <a href={`/api/download?url=${encodeURIComponent(file.url)}`}
                           download
                           title="Descargar"
-                          className="text-slate-300 hover:text-[#2D4B52] transition-colors">
+                          className="text-slate-300 hover:text-[var(--brand-teal)] transition-colors">
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
                           </svg>

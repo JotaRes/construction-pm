@@ -4,7 +4,7 @@ import {
   LayoutDashboard, CheckSquare, DollarSign, TrendingUp,
   AlertTriangle, Users, FileText, Folder, Search, BarChart3, Building2,
   ChevronDown, FolderKanban, ListChecks, FileSpreadsheet, Tag, LogOut,
-  Archive, Menu, X,
+  Archive, Menu, X, Download,
 } from 'lucide-react'
 import { alertsApi, projectsApi } from '../../lib/api'
 import { logout } from '../AuthGate'
@@ -16,23 +16,46 @@ import type { Alert, Task } from '../../lib/types'
 import { tasksApi } from '../../lib/api'
 import { useState, useRef, useEffect } from 'react'
 
-const navItems = [
-  { to: '/tech/projects',   icon: FolderKanban,    label: 'Proyectos' },
-  { to: '/tech/dashboard',  icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/tech/execution',  icon: CheckSquare,     label: 'Ejecución' },
-  { to: '/tech/budget',     icon: DollarSign,      label: 'Presupuesto' },
-  { to: '/tech/construction-budget', icon: FileSpreadsheet, label: 'Const. Budget' },
-  { to: '/tech/draws',      icon: TrendingUp,      label: 'Draws' },
-  { to: '/tech/inspections',icon: Search,          label: 'Inspecciones' },
-  { to: '/tech/financial',  icon: BarChart3,       label: 'Financiero' },
-  { to: '/tech/alerts',     icon: AlertTriangle,   label: 'Alertas' },
-  { to: '/tech/tasks',      icon: ListChecks,      label: 'Tareas' },
-  { to: '/tech/providers',  icon: Users,           label: 'Proveedores' },
-  { to: '/tech/notes',      icon: FileText,        label: 'Notas' },
-  { to: '/tech/files',      icon: Folder,          label: 'Archivos' },
-  { to: '/tech/price-refs', icon: Tag,             label: 'Precios Ref.' },
-  { to: '/tech/import',     icon: Archive,         label: 'Importar / Backup' },
+const navGroups = [
+  {
+    label: 'Portafolio',
+    items: [
+      { to: '/tech/projects',   icon: FolderKanban,    label: 'Proyectos' },
+      { to: '/tech/dashboard',  icon: LayoutDashboard, label: 'Dashboard' },
+    ],
+  },
+  {
+    label: 'Ejecución',
+    items: [
+      { to: '/tech/execution',  icon: CheckSquare,     label: 'Ejecución' },
+      { to: '/tech/budget',     icon: DollarSign,      label: 'Presupuesto' },
+      { to: '/tech/construction-budget', icon: FileSpreadsheet, label: 'Const. Budget' },
+      { to: '/tech/draws',      icon: TrendingUp,      label: 'Draws' },
+      { to: '/tech/inspections',icon: Search,          label: 'Inspecciones' },
+    ],
+  },
+  {
+    label: 'Análisis',
+    items: [
+      { to: '/tech/financial',  icon: BarChart3,       label: 'Financiero' },
+      { to: '/tech/alerts',     icon: AlertTriangle,   label: 'Alertas' },
+      { to: '/tech/tasks',      icon: ListChecks,      label: 'Tareas' },
+    ],
+  },
+  {
+    label: 'Operaciones',
+    items: [
+      { to: '/tech/providers',  icon: Users,           label: 'Proveedores' },
+      { to: '/tech/notes',      icon: FileText,        label: 'Notas' },
+      { to: '/tech/files',      icon: Folder,          label: 'Archivos' },
+      { to: '/tech/price-refs', icon: Tag,             label: 'Precios Ref.' },
+      { to: '/tech/import',     icon: Archive,         label: 'Importar / Backup' },
+    ],
+  },
 ]
+
+// Flat list for backwards compat
+const navItems = navGroups.flatMap(g => g.items)
 
 interface Props {
   projectId: string
@@ -68,60 +91,74 @@ function ProjectSwitcher({ projectId }: { projectId: string }) {
   }
 
   return (
-    <div ref={ref} className="relative px-3 py-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-      <div className="text-[9px] font-mono uppercase tracking-wider mb-1.5 px-1" style={{ color: 'rgba(255,255,255,0.35)' }}>
+    <div ref={ref} className="relative" style={{ padding: '12px 16px', borderTop: '1px solid var(--border)' }}>
+      <div style={{
+        fontFamily: 'var(--font-mono)',
+        fontSize: 7.5, textTransform: 'uppercase',
+        letterSpacing: '0.22em', color: 'var(--text-muted)',
+        marginBottom: 6, paddingLeft: 2,
+      }}>
         Proyecto activo
       </div>
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center gap-2 px-2 py-2 rounded-lg transition-colors group"
-        style={{ ':hover': {} } as React.CSSProperties}
-        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.07)')}
-        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+        className="w-full flex items-center gap-2.5 px-2 py-2 rounded-lg transition-colors"
+        style={{ background: open ? 'var(--accent-soft)' : 'transparent' }}
+        onMouseEnter={e => { if (!open) (e.currentTarget as HTMLButtonElement).style.background = 'var(--row-hover-v2)' }}
+        onMouseLeave={e => { if (!open) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
       >
-        <div className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0"
-          style={{ background: 'rgba(200,146,42,0.25)' }}>
-          <Building2 className="w-3.5 h-3.5" style={{ color: '#C8922A' }} />
+        <div style={{
+          width: 24, height: 24, borderRadius: 5,
+          background: 'var(--accent-soft)', border: '1px solid var(--accent-border)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+        }}>
+          <Building2 size={12} style={{ color: 'var(--accent)' }} />
         </div>
         <div className="flex-1 min-w-0 text-left">
-          <div className="text-xs font-semibold truncate leading-tight text-white">
+          <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {current?.name ?? '—'}
           </div>
-          <div className="text-[10px] font-mono truncate leading-tight" style={{ color: 'rgba(255,255,255,0.45)' }}>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {current?.spv ?? ''}
           </div>
         </div>
-        <ChevronDown className={`w-3.5 h-3.5 flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
-          style={{ color: 'rgba(255,255,255,0.35)' }} />
+        <ChevronDown size={12} style={{ color: 'var(--text-muted)', flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
       </button>
 
       {open && (
-        <div className="absolute bottom-full left-3 right-3 mb-1 rounded-xl shadow-2xl overflow-hidden z-50"
-          style={{ background: '#1E3338', border: '1px solid rgba(255,255,255,0.1)' }}>
+        <div style={{
+          position: 'absolute', bottom: '100%', left: 16, right: 16, marginBottom: 4,
+          borderRadius: 10, overflow: 'hidden', zIndex: 50,
+          background: 'var(--bg-surface-3)',
+          border: '1px solid var(--border-strong)',
+          boxShadow: 'var(--shadow-lg-v2)',
+        }}>
           {projects.map(p => (
             <button
               key={p.id}
               onClick={() => handleSelect(p.id)}
               className="w-full px-3 py-2.5 text-left transition-colors flex items-center gap-2"
-              style={{ background: p.id === projectId ? 'rgba(200,146,42,0.15)' : 'transparent' }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.07)')}
-              onMouseLeave={e => (e.currentTarget.style.background = p.id === projectId ? 'rgba(200,146,42,0.15)' : 'transparent')}
+              style={{ background: p.id === projectId ? 'var(--accent-soft)' : 'transparent' }}
+              onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'var(--row-hover-v2)'}
+              onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = p.id === projectId ? 'var(--accent-soft)' : 'transparent'}
             >
-              <div className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                style={{ background: p.id === projectId ? '#C8922A' : 'rgba(255,255,255,0.2)' }} />
+              <div style={{
+                width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
+                background: p.id === projectId ? 'var(--accent)' : 'var(--border-strong)',
+              }} />
               <div className="min-w-0">
-                <div className="text-xs font-medium text-white truncate">{p.name}</div>
-                <div className="text-[10px] font-mono truncate" style={{ color: 'rgba(255,255,255,0.4)' }}>{p.spv}</div>
+                <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.spv}</div>
               </div>
             </button>
           ))}
-          <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+          <div style={{ borderTop: '1px solid var(--border)' }}>
             <button
               onClick={() => { setOpen(false); navigate('/tech/projects') }}
-              className="w-full px-3 py-2 text-left text-[11px] transition-colors"
-              style={{ color: '#C8922A' }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.07)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              className="w-full px-3 py-2 text-left transition-colors"
+              style={{ fontSize: 11, color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}
+              onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'var(--row-hover-v2)'}
+              onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'transparent'}
             >
               + Nuevo proyecto
             </button>
@@ -132,11 +169,32 @@ function ProjectSwitcher({ projectId }: { projectId: string }) {
   )
 }
 
+function getPageTitle(pathname: string): { title: string; sub: string } {
+  const flat = navItems.find(n => pathname === n.to || pathname.startsWith(n.to + '/'))
+  if (!flat) return { title: 'Módulo Técnico', sub: 'Gestión de obra residencial' }
+  const subs: Record<string, string> = {
+    '/tech/projects': 'Portafolio de proyectos',
+    '/tech/dashboard': 'Vista general del proyecto activo',
+    '/tech/execution': 'Control de ejecución en campo',
+    '/tech/budget': 'Presupuesto y control de costos',
+    '/tech/construction-budget': 'Presupuesto de construcción detallado',
+    '/tech/draws': 'Solicitudes de desembolso',
+    '/tech/inspections': 'Registro de inspecciones',
+    '/tech/financial': 'Análisis financiero del proyecto',
+    '/tech/alerts': 'Alertas y notificaciones activas',
+    '/tech/tasks': 'Gestión de tareas y pendientes',
+    '/tech/providers': 'Registro de proveedores',
+    '/tech/notes': 'Notas y bitácora',
+    '/tech/files': 'Archivos y documentación',
+    '/tech/price-refs': 'Precios de referencia',
+    '/tech/import': 'Importar datos / Backup',
+  }
+  return { title: flat.label, sub: subs[flat.to] ?? 'Módulo técnico' }
+}
+
 export default function Layout({ projectId, children }: Props) {
   const location = useLocation()
   const [mobileOpen, setMobileOpen] = useState(false)
-
-  // Cerrar sidebar al navegar (en móvil)
   useEffect(() => { setMobileOpen(false) }, [location.pathname])
 
   const { data: alerts = [] } = useQuery<Alert[]>({
@@ -144,7 +202,6 @@ export default function Layout({ projectId, children }: Props) {
     queryFn: () => alertsApi.list(projectId),
     refetchInterval: 60000,
   })
-
   const { data: tasks = [] } = useQuery<Task[]>({
     queryKey: ['tasks', projectId],
     queryFn: () => tasksApi.list(projectId),
@@ -152,202 +209,290 @@ export default function Layout({ projectId, children }: Props) {
   })
 
   const criticalCount = alerts.filter(a => a.level === 'critical').length
-  const warningCount = alerts.filter(a => a.level === 'warning').length
-  const urgentTasks = tasks.filter(t => !t.done && t.priority === 'URGENT').length
-  const pendingTasks = tasks.filter(t => !t.done).length
+  const warningCount  = alerts.filter(a => a.level === 'warning').length
+  const urgentTasks   = tasks.filter(t => !t.done && t.priority === 'URGENT').length
+  const pendingTasks  = tasks.filter(t => !t.done).length
+
+  const { title, sub } = getPageTitle(location.pathname)
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: 'var(--brand-cream)' }}>
-      {/* === MOBILE HEADER (visible solo en pantallas chicas) === */}
+    <div className="flex h-screen overflow-hidden tech-app" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)' }}>
+
+      {/* === MOBILE HEADER === */}
       <div
-        className="md:hidden fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 py-3 shadow-sm"
-        style={{ background: 'var(--brand-teal)', paddingTop: 'calc(env(safe-area-inset-top, 0) + 0.75rem)' }}
+        className="md:hidden fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4"
+        style={{
+          background: 'var(--bg-surface)',
+          borderBottom: '1px solid var(--border)',
+          height: 'calc(56px + env(safe-area-inset-top, 0))',
+          paddingTop: 'env(safe-area-inset-top, 0)',
+        }}
       >
-        <button
-          onClick={() => setMobileOpen(true)}
-          className="text-white p-2 -ml-2"
-          aria-label="Abrir menú"
-        >
-          <Menu className="w-6 h-6" />
+        <button onClick={() => setMobileOpen(true)} style={{ color: 'var(--text-secondary)', padding: '8px', marginLeft: -8 }} aria-label="Abrir menú">
+          <Menu className="w-5 h-5" />
         </button>
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg, #C8922A 0%, #E0AD4F 100%)' }}>
-            <span style={{ color: 'white', fontWeight: 900, fontSize: 13, fontFamily: 'Georgia, serif' }}>RA</span>
+        <div className="flex items-center gap-2.5">
+          <div style={{
+            width: 28, height: 28, borderRadius: 6,
+            background: 'var(--accent)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+          }}>
+            <svg width="14" height="13" viewBox="0 0 90 80" fill="none">
+              <polygon points="12,74 12,18 41,6 41,74" fill="rgba(255,255,255,0.9)"/>
+              <polygon points="46,74 46,28 67,20 67,74" fill="rgba(255,255,255,0.7)"/>
+              <path d="M 5,68 Q 42,50 82,61" stroke="rgba(255,220,160,0.9)" strokeWidth="6" fill="none" strokeLinecap="round"/>
+            </svg>
           </div>
-          <div className="text-white text-sm font-semibold" style={{ fontFamily: 'Georgia, serif' }}>Restrepo Acosta</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 400, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
+            Restrepo Acosta
+          </div>
         </div>
-        <div className="w-8" />
+        <ThemeToggle />
       </div>
 
-      {/* === Overlay para cerrar sidebar al tocar afuera (móvil) === */}
       {mobileOpen && (
-        <div
-          className="md:hidden fixed inset-0 z-40 bg-black/60"
-          onClick={() => setMobileOpen(false)}
-          aria-hidden="true"
-        />
+        <div className="md:hidden fixed inset-0 z-40 bg-black/60" onClick={() => setMobileOpen(false)} aria-hidden="true" />
       )}
 
-      {/* === Sidebar — brand teal === */}
+      {/* === SIDEBAR === */}
       <aside
-        className={`${mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} fixed md:relative inset-y-0 left-0 z-50 w-64 md:w-56 flex-shrink-0 flex flex-col shadow-xl transition-transform duration-200 ease-out`}
-        style={{ background: 'var(--brand-teal)', borderRight: '1px solid rgba(255,255,255,0.07)' }}
+        className={`${mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} fixed md:relative inset-y-0 left-0 z-50 flex flex-col transition-transform duration-200 ease-out`}
+        style={{
+          width: 216, flexShrink: 0,
+          background: 'var(--bg-surface)',
+          borderRight: '1px solid var(--border)',
+          paddingTop: 'env(safe-area-inset-top, 0)',
+        }}
       >
-
-        {/* Botón cierre en móvil */}
+        {/* Cierre móvil */}
         <button
           onClick={() => setMobileOpen(false)}
-          className="md:hidden absolute top-3 right-3 p-2 text-white/70 hover:text-white"
+          className="md:hidden absolute top-3 right-3 p-2"
+          style={{ color: 'var(--text-secondary)', zIndex: 10 }}
           aria-label="Cerrar menú"
         >
           <X className="w-5 h-5" />
         </button>
 
         {/* Logo */}
-        <div className="px-4 py-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', paddingTop: 'calc(env(safe-area-inset-top, 0) + 1.25rem)' }}>
-          {/* RA badge */}
-          <div className="flex items-center justify-center mb-3">
-            {/* Logo mark — torres teal + arco gold sobre fondo cream */}
-            <div
-              className="flex items-center justify-center flex-shrink-0"
-              style={{
-                width: 42, height: 42, borderRadius: 10,
-                background: '#FDFCFA',
-                boxShadow: '0 2px 10px rgba(0,0,0,0.22), 0 1px 0 rgba(255,255,255,0.15) inset',
-                border: '1px solid rgba(255,255,255,0.10)',
-                cursor: 'pointer',
-                transition: 'transform 0.2s cubic-bezier(0.175,0.885,0.32,1.275), box-shadow 0.2s',
-              }}
-              onMouseEnter={e => {
-                (e.currentTarget as HTMLDivElement).style.transform = 'scale(1.06)'
-                ;(e.currentTarget as HTMLDivElement).style.boxShadow = '0 4px 16px rgba(0,0,0,0.28), 0 0 0 1px rgba(200,146,42,0.25)'
-              }}
-              onMouseLeave={e => {
-                (e.currentTarget as HTMLDivElement).style.transform = 'scale(1)'
-                ;(e.currentTarget as HTMLDivElement).style.boxShadow = '0 2px 10px rgba(0,0,0,0.22), 0 1px 0 rgba(255,255,255,0.15) inset'
-              }}
-            >
-              <svg width="30" height="26" viewBox="0 0 90 80" fill="none">
-                <polygon points="12,74 12,18 41,6 41,74" fill="#2D4B52"/>
-                <polygon points="46,74 46,28 67,20 67,74" fill="#3A5F68"/>
-                <path d="M 5,68 Q 42,50 82,61" stroke="#C8922A" strokeWidth="6.5" fill="none" strokeLinecap="round"/>
+        <div style={{ padding: '22px 18px 18px', borderBottom: '1px solid var(--border)' }}>
+          <div className="flex items-center gap-[11px]">
+            <div style={{
+              width: 30, height: 30, borderRadius: 6,
+              background: 'var(--accent)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              transition: 'background 0.35s',
+            }}>
+              <svg width="15" height="14" viewBox="0 0 90 80" fill="none">
+                <polygon points="12,74 12,18 41,6 41,74" fill="rgba(255,255,255,0.9)"/>
+                <polygon points="46,74 46,28 67,20 67,74" fill="rgba(255,255,255,0.7)"/>
+                <path d="M 5,68 Q 42,50 82,61" stroke="rgba(255,220,160,0.9)" strokeWidth="6.5" fill="none" strokeLinecap="round"/>
               </svg>
             </div>
-          </div>
-          <div className="text-center">
-            <div className="text-sm font-bold text-white leading-tight tracking-wide">Restrepo Acosta</div>
-            <div className="text-[11px] font-semibold leading-tight mt-0.5" style={{ color: '#C8922A' }}>
-              Global Holding LLC
-            </div>
-            <div className="text-[9px] mt-1 uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.3)' }}>
-              Construction PM
+            <div>
+              <div style={{
+                fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 400,
+                letterSpacing: '-0.025em', color: 'var(--text-primary)', lineHeight: 1.25,
+              }}>
+                Restrepo Acosta
+              </div>
+              <div style={{
+                fontFamily: 'var(--font-mono)', fontSize: 7.5,
+                textTransform: 'uppercase', letterSpacing: '0.18em',
+                color: 'var(--text-muted)', marginTop: 3,
+              }}>
+                Construction PM
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 py-2 overflow-y-auto">
-          {navItems.map(({ to, icon: Icon, label }) => {
-            const isAlerts = to === '/alerts'
-            return (
-              <NavLink
-                key={to}
-                to={to}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-2.5 text-xs font-medium transition-all relative
-                  ${isActive ? 'text-white' : ''}`
-                }
-                style={({ isActive }) => isActive
-                  ? { background: 'rgba(200,146,42,0.18)', borderRight: '2px solid #C8922A', color: 'white' }
-                  : { color: 'rgba(255,255,255,0.55)' }
-                }
-                onMouseEnter={e => {
-                  const el = e.currentTarget
-                  if (!el.getAttribute('aria-current')) el.style.background = 'rgba(255,255,255,0.07)'
-                  el.style.color = 'white'
-                }}
-                onMouseLeave={e => {
-                  const el = e.currentTarget
-                  if (!el.getAttribute('aria-current')) {
-                    el.style.background = 'transparent'
-                    el.style.color = 'rgba(255,255,255,0.55)'
-                  }
-                }}
-              >
-                <Icon className="w-4 h-4 flex-shrink-0" />
-                <span>{label}</span>
-                {isAlerts && (criticalCount > 0 || warningCount > 0) && (
-                  <span className={`ml-auto text-[10px] font-mono px-1.5 py-0.5 rounded-full badge-urgent
-                    ${criticalCount > 0 ? 'bg-red-500/30 text-red-300' : 'bg-amber-500/30 text-amber-300'}`}>
-                    {criticalCount > 0 ? criticalCount : warningCount}
-                  </span>
-                )}
-                {to === '/tasks' && pendingTasks > 0 && (
-                  <span className={`ml-auto text-[10px] font-mono px-1.5 py-0.5 rounded-full
-                    ${urgentTasks > 0 ? 'bg-red-500/30 text-red-300' : 'bg-white/10 text-white/50'}`}>
-                    {pendingTasks}
-                  </span>
-                )}
-              </NavLink>
-            )
-          })}
+        {/* Nav groups */}
+        <nav className="flex-1 overflow-y-auto py-2">
+          {navGroups.map(group => (
+            <div key={group.label}>
+              <div style={{
+                padding: '14px 18px 4px',
+                fontFamily: 'var(--font-mono)', fontSize: 7.5,
+                textTransform: 'uppercase', letterSpacing: '0.22em',
+                color: 'var(--text-muted)',
+              }}>
+                {group.label}
+              </div>
+              {group.items.map(({ to, icon: Icon, label }) => {
+                const isActive = location.pathname === to || location.pathname.startsWith(to + '/')
+                const alertTo   = to === '/tech/alerts'
+                const tasksTo   = to === '/tech/tasks'
+                return (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 9,
+                      padding: '8px 18px',
+                      fontSize: 12.5, letterSpacing: '0.01em',
+                      borderRight: '2px solid transparent',
+                      transition: 'background 0.15s, color 0.15s, border-color 0.15s',
+                      textDecoration: 'none',
+                      ...(isActive
+                        ? {
+                            background: 'var(--accent-soft)',
+                            color: 'var(--text-primary)',
+                            borderRightColor: 'var(--accent)',
+                          }
+                        : { color: 'var(--text-secondary)' }
+                      ),
+                    }}
+                    onMouseEnter={e => {
+                      if (!isActive) {
+                        (e.currentTarget as HTMLAnchorElement).style.background = 'var(--row-hover-v2)'
+                        ;(e.currentTarget as HTMLAnchorElement).style.color = 'var(--text-primary)'
+                      }
+                    }}
+                    onMouseLeave={e => {
+                      if (!isActive) {
+                        (e.currentTarget as HTMLAnchorElement).style.background = 'transparent'
+                        ;(e.currentTarget as HTMLAnchorElement).style.color = 'var(--text-secondary)'
+                      }
+                    }}
+                  >
+                    <Icon size={14} style={{ flexShrink: 0, color: isActive ? 'var(--accent)' : 'inherit' }} />
+                    <span style={{ flex: 1 }}>{label}</span>
+                    {alertTo && (criticalCount > 0 || warningCount > 0) && (
+                      <span style={{
+                        fontFamily: 'var(--font-mono)', fontSize: 9,
+                        padding: '1px 6px', borderRadius: 3,
+                        background: criticalCount > 0 ? 'var(--err-soft)' : 'var(--warn-soft)',
+                        color: criticalCount > 0 ? 'var(--err)' : 'var(--warn)',
+                        border: `1px solid ${criticalCount > 0 ? 'var(--err-border)' : 'var(--warn-border)'}`,
+                      }}>
+                        {criticalCount > 0 ? criticalCount : warningCount}
+                      </span>
+                    )}
+                    {tasksTo && pendingTasks > 0 && (
+                      <span style={{
+                        fontFamily: 'var(--font-mono)', fontSize: 9,
+                        padding: '1px 6px', borderRadius: 3,
+                        background: urgentTasks > 0 ? 'var(--err-soft)' : 'var(--bg-surface-3)',
+                        color: urgentTasks > 0 ? 'var(--err)' : 'var(--text-muted)',
+                        border: '1px solid var(--border)',
+                      }}>
+                        {pendingTasks}
+                      </span>
+                    )}
+                  </NavLink>
+                )
+              })}
+            </div>
+          ))}
         </nav>
 
         {/* Project switcher */}
         <ProjectSwitcher projectId={projectId} />
 
-        {/* Logout */}
-        <button
-          onClick={logout}
-          className="flex items-center gap-2 px-4 py-2.5 w-full text-xs font-medium transition-all"
-          style={{ borderTop: '1px solid rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.35)' }}
-          onMouseEnter={e => {
-            e.currentTarget.style.background = 'rgba(239,68,68,0.12)'
-            e.currentTarget.style.color = '#fca5a5'
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.background = 'transparent'
-            e.currentTarget.style.color = 'rgba(255,255,255,0.35)'
-          }}
-        >
-          <LogOut className="w-3.5 h-3.5" />
-          <span>Cerrar sesión</span>
-        </button>
+        {/* User + logout */}
+        <div style={{ padding: '14px 18px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{
+            width: 28, height: 28, borderRadius: '50%',
+            background: 'var(--accent)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontFamily: 'var(--font-display)', fontSize: 11, fontWeight: 600,
+            color: 'white', flexShrink: 0,
+          }}>
+            JR
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.3 }}>Dr. Restrepo</div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 7.5, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginTop: 2 }}>Construction PM</div>
+          </div>
+          <button
+            onClick={logout}
+            title="Cerrar sesión"
+            style={{
+              width: 26, height: 26,
+              border: '1px solid var(--border)', borderRadius: 6,
+              background: 'transparent', color: 'var(--text-secondary)',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'all 0.18s',
+            }}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--err-border)'
+              ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--err)'
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)'
+              ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)'
+            }}
+          >
+            <LogOut size={11} />
+          </button>
+        </div>
       </aside>
 
-      <main
-        className="flex-1 overflow-y-auto flex flex-col"
-        style={{ background: 'var(--brand-cream)', paddingTop: 'env(safe-area-inset-top, 0)' }}
-      >
-        {/* Spacer móvil para el header fijo (h ~56px + safe area) */}
+      {/* === MAIN === */}
+      <main className="flex-1 flex flex-col overflow-hidden min-w-0" style={{ background: 'var(--bg-base)' }}>
+        {/* Spacer móvil */}
         <div className="md:hidden" style={{ height: 'calc(56px + env(safe-area-inset-top, 0))' }} />
 
-        {/* Top bar: module switcher + backup */}
-        <div
-          className="flex items-center justify-end gap-2 px-4 md:px-6 py-2 border-b bg-white/60 flex-wrap"
-          style={{ borderColor: 'rgba(0,0,0,0.07)', backdropFilter: 'blur(4px)', minHeight: 44 }}
+        {/* TOPBAR */}
+        <header
+          className="hidden md:flex items-center justify-between flex-shrink-0"
+          style={{
+            height: 54,
+            background: 'var(--bg-surface)',
+            borderBottom: '1px solid var(--border)',
+            padding: '0 28px',
+            transition: 'background 0.35s, border-color 0.35s',
+          }}
         >
-          <ThemeToggle />
-          <ModuleSwitcher currentModule="tech" />
-          <a
-            href="/api/backup"
-            download
-            className="flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-colors"
-            style={{ background: 'rgba(45,75,82,0.08)', color: '#2D4B52' }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(45,75,82,0.15)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(45,75,82,0.08)')}
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-            <span className="hidden sm:inline">Backup del sistema</span>
-            <span className="sm:hidden">Backup</span>
-          </a>
-        </div>
+          <div>
+            <div style={{
+              fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 300,
+              letterSpacing: '-0.025em', color: 'var(--text-primary)', lineHeight: 1,
+            }}>
+              {title}
+            </div>
+            <div style={{
+              fontFamily: 'var(--font-mono)', fontSize: 8,
+              textTransform: 'uppercase', letterSpacing: '0.14em',
+              color: 'var(--text-muted)', marginTop: 3,
+            }}>
+              {sub}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <ModuleSwitcher currentModule="tech" />
+            <a
+              href="/api/backup"
+              download
+              title="Backup del sistema"
+              style={{
+                width: 32, height: 32,
+                border: '1px solid var(--border)', borderRadius: 6,
+                background: 'transparent', color: 'var(--text-secondary)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'all 0.18s', textDecoration: 'none',
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLAnchorElement).style.borderColor = 'var(--border-strong)'
+                ;(e.currentTarget as HTMLAnchorElement).style.color = 'var(--text-primary)'
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLAnchorElement).style.borderColor = 'var(--border)'
+                ;(e.currentTarget as HTMLAnchorElement).style.color = 'var(--text-secondary)'
+              }}
+            >
+              <Download size={13} />
+            </a>
+          </div>
+        </header>
+
         <CapacityBanner />
-        <div className="p-4 md:p-6 page-content flex-1">
-          {children}
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-5 md:p-7 page-content">
+            {children}
+          </div>
         </div>
       </main>
     </div>

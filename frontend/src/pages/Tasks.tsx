@@ -7,8 +7,8 @@ import { useConfirm } from '../components/ConfirmDialog'
 
 const PRIORITIES: { value: TaskPriority; label: string; color: string; dot: string; bg: string }[] = [
   { value: 'LOW',    label: 'Baja',    color: 'text-slate-400',  dot: 'bg-slate-300',  bg: 'bg-slate-100' },
-  { value: 'NORMAL', label: 'Normal',  color: 'text-[#2D4B52]',  dot: 'bg-[#2D4B52]', bg: 'bg-teal-50' },
-  { value: 'HIGH',   label: 'Alta',    color: 'text-[#C8922A]',  dot: 'bg-[#C8922A]', bg: 'bg-amber-50' },
+  { value: 'NORMAL', label: 'Normal',  color: 'text-[var(--brand-teal)]',  dot: 'bg-[var(--brand-teal)]', bg: 'bg-teal-50' },
+  { value: 'HIGH',   label: 'Alta',    color: 'text-[var(--brand-gold)]',  dot: 'bg-[var(--brand-gold)]', bg: 'bg-amber-50' },
   { value: 'URGENT', label: 'Urgente', color: 'text-red-500',    dot: 'bg-red-500',   bg: 'bg-red-50' },
 ]
 
@@ -54,7 +54,7 @@ function TaskRow({ task, onUpdate, onDelete }: {
                   onChange={e => setTitleText(e.target.value)}
                   onBlur={() => { onUpdate(task.id, { title: titleText }); setEditTitle(false) }}
                   onKeyDown={e => { if (e.key === 'Enter') { onUpdate(task.id, { title: titleText }); setEditTitle(false) } if (e.key === 'Escape') setEditTitle(false) }}
-                  className="w-full bg-white text-sm text-slate-800 px-2 py-0.5 rounded border border-[#C8922A] focus:outline-none"
+                  className="w-full bg-white text-sm text-slate-800 px-2 py-0.5 rounded border border-[var(--brand-gold)] focus:outline-none"
                   autoFocus />
               ) : (
                 <button onClick={() => setEditTitle(true)}
@@ -119,19 +119,19 @@ function TaskRow({ task, onUpdate, onDelete }: {
               <input type="text" defaultValue={task.responsable ?? ''}
                 onBlur={e => onUpdate(task.id, { responsable: e.target.value || null })}
                 placeholder="Nombre o cargo"
-                className="w-full bg-white border border-slate-200 text-xs text-slate-700 px-2 py-1.5 rounded-lg focus:outline-none focus:border-[#C8922A]" />
+                className="w-full bg-white border border-slate-200 text-xs text-slate-700 px-2 py-1.5 rounded-lg focus:outline-none focus:border-[var(--brand-gold)]" />
             </div>
             <div>
               <div className="text-[10px] text-slate-400 uppercase mb-1 flex items-center gap-1"><Mail className="w-2.5 h-2.5" /> Email</div>
               <input type="email" defaultValue={(task as any).responsableEmail ?? ''}
                 onBlur={e => onUpdate(task.id, { responsableEmail: e.target.value || null })}
                 placeholder="email@ejemplo.com"
-                className="w-full bg-white border border-slate-200 text-xs text-slate-700 px-2 py-1.5 rounded-lg focus:outline-none focus:border-[#C8922A]" />
+                className="w-full bg-white border border-slate-200 text-xs text-slate-700 px-2 py-1.5 rounded-lg focus:outline-none focus:border-[var(--brand-gold)]" />
             </div>
             <div>
               <div className="text-[10px] text-slate-400 uppercase mb-1 flex items-center gap-1"><Flag className="w-2.5 h-2.5" /> Prioridad</div>
               <select value={task.priority} onChange={e => onUpdate(task.id, { priority: e.target.value })}
-                className="w-full bg-white border border-slate-200 text-xs text-slate-700 px-2 py-1.5 rounded-lg focus:outline-none focus:border-[#C8922A]">
+                className="w-full bg-white border border-slate-200 text-xs text-slate-700 px-2 py-1.5 rounded-lg focus:outline-none focus:border-[var(--brand-gold)]">
                 {PRIORITIES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
               </select>
             </div>
@@ -139,7 +139,7 @@ function TaskRow({ task, onUpdate, onDelete }: {
               <div className="text-[10px] text-slate-400 uppercase mb-1 flex items-center gap-1"><Calendar className="w-2.5 h-2.5" /> Fecha límite</div>
               <input type="date" defaultValue={task.dueDate?.slice(0, 10) ?? ''}
                 onChange={e => onUpdate(task.id, { dueDate: e.target.value || null })}
-                className="w-full bg-white border border-slate-200 text-xs text-slate-700 px-2 py-1.5 rounded-lg focus:outline-none focus:border-[#C8922A]" />
+                className="w-full bg-white border border-slate-200 text-xs text-slate-700 px-2 py-1.5 rounded-lg focus:outline-none focus:border-[var(--brand-gold)]" />
             </div>
           </div>
           <div>
@@ -147,7 +147,7 @@ function TaskRow({ task, onUpdate, onDelete }: {
             <textarea value={notesText} onChange={e => setNotesText(e.target.value)}
               onBlur={() => onUpdate(task.id, { notes: notesText || null })}
               placeholder="Detalles, instrucciones, contexto..." rows={3}
-              className="w-full bg-white border border-slate-200 text-xs text-slate-700 px-2 py-1.5 rounded-lg focus:outline-none focus:border-[#C8922A] resize-none placeholder-slate-400" />
+              className="w-full bg-white border border-slate-200 text-xs text-slate-700 px-2 py-1.5 rounded-lg focus:outline-none focus:border-[var(--brand-gold)] resize-none placeholder-slate-400" />
           </div>
         </div>
       )}
@@ -240,7 +240,7 @@ export default function Tasks({ projectId }: { projectId: string }) {
           {(['all','pending','done'] as const).map((v, i) => (
             <button key={v} onClick={() => setFilterDone(v)}
               className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors
-                ${filterDone === v ? 'bg-[#2D4B52] text-white' : 'text-slate-500 hover:text-slate-800'}`}>
+                ${filterDone === v ? 'bg-[var(--brand-teal)] text-white' : 'text-slate-500 hover:text-slate-800'}`}>
               {['Todas','Pendientes','Completadas'][i]}
             </button>
           ))}
@@ -276,12 +276,12 @@ export default function Tasks({ projectId }: { projectId: string }) {
           <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Concepto (descripción de la tarea) *</label>
           <input type="text" value={newTitle} onChange={e => setNewTitle(e.target.value)}
             placeholder="Ej. Llamar al inspector para coordinar visita..."
-            className="w-full bg-slate-50 border border-slate-200 text-sm text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#C8922A] placeholder-slate-400" />
+            className="w-full bg-slate-50 border border-slate-200 text-sm text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)] placeholder-slate-400" />
         </div>
         <button
           type="button"
           onClick={() => setShowFullForm(s => !s)}
-          className="text-xs text-[#C8922A] hover:underline font-semibold"
+          className="text-xs text-[var(--brand-gold)] hover:underline font-semibold"
         >
           {showFullForm ? '▼ Ocultar campos avanzados' : '▶ Mostrar más campos (responsable, email, prioridad, fecha)'}
         </button>
@@ -292,27 +292,27 @@ export default function Tasks({ projectId }: { projectId: string }) {
                 <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1"><User className="w-2.5 h-2.5 inline mr-1" />Responsable</label>
                 <input type="text" value={newResponsable} onChange={e => setNewResponsable(e.target.value)}
                   placeholder="Nombre del responsable"
-                  className="w-full bg-slate-50 border border-slate-200 text-xs text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#C8922A] placeholder-slate-400" />
+                  className="w-full bg-slate-50 border border-slate-200 text-xs text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)] placeholder-slate-400" />
               </div>
               <div>
                 <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1"><Mail className="w-2.5 h-2.5 inline mr-1" />Correo del responsable</label>
                 <input type="email" value={newResponsableEmail} onChange={e => setNewResponsableEmail(e.target.value)}
                   placeholder="email@ejemplo.com"
-                  className="w-full bg-slate-50 border border-slate-200 text-xs text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[#C8922A] placeholder-slate-400" />
+                  className="w-full bg-slate-50 border border-slate-200 text-xs text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)] placeholder-slate-400" />
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               <div>
                 <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1"><Flag className="w-2.5 h-2.5 inline mr-1" />Prioridad</label>
                 <select value={newPriority} onChange={e => setNewPriority(e.target.value as TaskPriority)}
-                  className="w-full bg-slate-50 border border-slate-200 text-xs text-slate-700 px-3 py-2 rounded-lg focus:outline-none focus:border-[#C8922A]">
+                  className="w-full bg-slate-50 border border-slate-200 text-xs text-slate-700 px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)]">
                   {PRIORITIES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
                 </select>
               </div>
               <div>
                 <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1"><Calendar className="w-2.5 h-2.5 inline mr-1" />Fecha en que se debe realizar</label>
                 <input type="date" value={newDueDate} onChange={e => setNewDueDate(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 text-xs text-slate-700 px-3 py-2 rounded-lg focus:outline-none focus:border-[#C8922A]" />
+                  className="w-full bg-slate-50 border border-slate-200 text-xs text-slate-700 px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)]" />
               </div>
             </div>
             <div>
@@ -320,12 +320,12 @@ export default function Tasks({ projectId }: { projectId: string }) {
               <textarea value={newNotes} onChange={e => setNewNotes(e.target.value)}
                 rows={2}
                 placeholder="Contexto, instrucciones, dependencias..."
-                className="w-full bg-slate-50 border border-slate-200 text-xs text-slate-700 px-3 py-2 rounded-lg focus:outline-none focus:border-[#C8922A] resize-none" />
+                className="w-full bg-slate-50 border border-slate-200 text-xs text-slate-700 px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)] resize-none" />
             </div>
           </div>
         )}
         <button type="submit" disabled={!newTitle.trim() || createMut.isPending}
-          className="flex items-center gap-2 px-4 py-2 bg-[#C8922A] hover:bg-[#E0AD4F] text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-40">
+          className="flex items-center gap-2 px-4 py-2 bg-[var(--brand-gold)] hover:bg-[#E0AD4F] text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-40">
           <Plus className="w-4 h-4" />Agregar tarea
         </button>
       </form>

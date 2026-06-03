@@ -29,7 +29,7 @@ const CATEGORIES = [
 const CATEGORY_COLORS: Record<string, string> = {
   'Sitework & Demo': 'bg-slate-200 text-slate-700',
   'Concrete & Masonry': 'bg-orange-500/25 text-orange-300',
-  'Framing & Structural': 'bg-blue-500/25 text-[#2D4B52]',
+  'Framing & Structural': 'bg-blue-500/25 text-[var(--brand-teal)]',
   'Roofing': 'bg-red-500/20 text-red-300',
   'Exterior Finishes': 'bg-yellow-500/20 text-yellow-300',
   'Windows & Doors': 'bg-sky-500/20 text-sky-300',
@@ -43,7 +43,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   'Fixtures & Hardware': 'bg-violet-500/20 text-violet-300',
   'Painting': 'bg-purple-500/20 text-purple-300',
   'Landscaping': 'bg-green-500/20 text-green-300',
-  'General Conditions': 'bg-[#C8922A]/10 text-[#C8922A]',
+  'General Conditions': 'bg-[#C8922A]/10 text-[var(--brand-gold)]',
   'Otro': 'bg-slate-200 text-slate-500',
 }
 
@@ -74,7 +74,7 @@ function Num({ value, onSave }: { value: number; onSave: (v: number) => void }) 
   return (
     <button
       onClick={() => { setText(String(value || '')); setEditing(true) }}
-      className="w-full text-right text-xs font-mono text-slate-700 hover:text-[#2D4B52] transition-colors"
+      className="w-full text-right text-xs font-mono text-slate-700 hover:text-[var(--brand-teal)] transition-colors"
     >
       {value > 0 ? formatUSD(value) : <span className="text-slate-500">—</span>}
     </button>
@@ -103,7 +103,7 @@ function Txt({ value, onSave, placeholder }: { value: string | null; onSave: (v:
   return (
     <button
       onClick={() => { setText(value ?? ''); setEditing(true) }}
-      className="w-full text-left text-xs text-slate-700 hover:text-[#2D4B52] transition-colors truncate"
+      className="w-full text-left text-xs text-slate-700 hover:text-[var(--brand-teal)] transition-colors truncate"
     >
       {value || <span className="text-slate-500">{placeholder ?? '—'}</span>}
     </button>
@@ -293,7 +293,7 @@ function AddPriceForm({ onSave, onClose }: { onSave: (data: Record<string, unkno
             })
             onClose()
           }}
-          className="px-4 py-1.5 bg-[#C8922A] hover:bg-[#E0AD4F] text-white text-xs font-medium rounded-lg transition-colors"
+          className="px-4 py-1.5 bg-[var(--brand-gold)] hover:bg-[#E0AD4F] text-white text-xs font-medium rounded-lg transition-colors"
         >
           Guardar
         </button>
@@ -367,14 +367,14 @@ export default function PriceReference() {
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-2 mb-0.5">
-            <Tag className="w-5 h-5 text-[#C8922A]" />
+            <Tag className="w-5 h-5 text-[var(--brand-gold)]" />
             <h1 className="text-xl font-bold text-slate-900">Precios de Referencia</h1>
           </div>
           <p className="text-xs text-slate-400">Catálogo de precios de mercado para comparación y presupuesto</p>
         </div>
         <button
           onClick={() => setShowAdd(v => !v)}
-          className="flex items-center gap-2 px-4 py-2 bg-[#C8922A] hover:bg-[#E0AD4F] text-white text-sm font-medium rounded-xl transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-[var(--brand-gold)] hover:bg-[#E0AD4F] text-white text-sm font-medium rounded-xl transition-colors"
         >
           <Plus className="w-4 h-4" />
           Agregar precio
@@ -393,7 +393,7 @@ export default function PriceReference() {
         </div>
         <div className="kpi-card kpi-card-amber">
           <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">Con precio</div>
-          <div className="text-2xl font-bold font-mono text-[#C8922A]">{stats.withPrices}</div>
+          <div className="text-2xl font-bold font-mono text-[var(--brand-gold)]">{stats.withPrices}</div>
           <div className="text-xs text-slate-400 mt-1">{stats.total > 0 ? Math.round(stats.withPrices / stats.total * 100) : 0}% del catálogo</div>
         </div>
       </div>
@@ -422,7 +422,7 @@ export default function PriceReference() {
           <button
             onClick={() => setFilterCat('ALL')}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
-              ${filterCat === 'ALL' ? 'bg-[#C8922A]/10 text-[#2D4B52] border border-amber-500/40' : 'text-slate-500 hover:text-slate-800 bg-white/50'}`}
+              ${filterCat === 'ALL' ? 'bg-[#C8922A]/10 text-[var(--brand-teal)] border border-amber-500/40' : 'text-slate-500 hover:text-slate-800 bg-white/50'}`}
           >
             Todas
           </button>
@@ -431,7 +431,7 @@ export default function PriceReference() {
               key={c}
               onClick={() => setFilterCat(filterCat === c ? 'ALL' : c)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
-                ${filterCat === c ? 'bg-[#C8922A]/10 text-[#2D4B52] border border-amber-500/40' : 'text-slate-500 hover:text-slate-800 bg-white/50'}`}
+                ${filterCat === c ? 'bg-[#C8922A]/10 text-[var(--brand-teal)] border border-amber-500/40' : 'text-slate-500 hover:text-slate-800 bg-white/50'}`}
             >
               {c}
             </button>
@@ -447,7 +447,7 @@ export default function PriceReference() {
           <p className="text-xs mt-1">Agrega cotizaciones, valores de mercado o referencias de RS Means.</p>
           <button
             onClick={() => setShowAdd(true)}
-            className="mt-4 px-4 py-2 bg-[#C8922A]/10 text-[#C8922A] border border-amber-500/30 rounded-xl text-sm hover:bg-blue-600/30 transition-colors"
+            className="mt-4 px-4 py-2 bg-[#C8922A]/10 text-[var(--brand-gold)] border border-amber-500/30 rounded-xl text-sm hover:bg-blue-600/30 transition-colors"
           >
             + Agregar primer precio
           </button>

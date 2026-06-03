@@ -43,11 +43,11 @@ function ShareButtons({ url, label }: { url: string; label: string }) {
   return (
     <div className="flex items-center gap-1">
       <a href={url} download target="_blank" rel="noreferrer" title="Descargar"
-        className="text-slate-400 hover:text-[#2D4B52] p-1 rounded transition-colors">
+        className="text-slate-400 hover:text-[var(--brand-teal)] p-1 rounded transition-colors">
         <Download className="w-3.5 h-3.5" />
       </a>
       <a href={`mailto:?subject=${subject}&body=${body}`} title="Enviar por email"
-        className="text-slate-400 hover:text-[#C8922A] p-1 rounded transition-colors">
+        className="text-slate-400 hover:text-[var(--brand-gold)] p-1 rounded transition-colors">
         <Mail className="w-3.5 h-3.5" />
       </a>
       <a href={`https://wa.me/?text=${wa}`} target="_blank" rel="noreferrer" title="Compartir WhatsApp"
@@ -210,7 +210,7 @@ function ParsePanel({ projectId, cfg, onClose, onApply }: {
               onChange={e => { setFile(e.target.files?.[0] ?? null); setParsed(null) }} />
             {file && (
               <button onClick={handleParse} disabled={loading}
-                className="px-4 py-2.5 bg-[#C8922A] hover:bg-[#E0AD4F] text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50">
+                className="px-4 py-2.5 bg-[var(--brand-gold)] hover:bg-[#E0AD4F] text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50">
                 {loading ? 'Procesando...' : cfg.docType === 'OTROS' ? 'Subir archivo' : 'Extraer datos'}
               </button>
             )}
@@ -233,7 +233,7 @@ function ParsePanel({ projectId, cfg, onClose, onApply }: {
                 {applyable.map(([k, v]) => (
                   <div key={k} className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2">
                     <span className="text-[10px] text-slate-500 uppercase">{cfg.labels[k] ?? k}</span>
-                    <span className="text-xs font-mono text-[#2D4B52] font-semibold">{fmtValue(k, v)}</span>
+                    <span className="text-xs font-mono text-[var(--brand-teal)] font-semibold">{fmtValue(k, v)}</span>
                   </div>
                 ))}
               </div>
@@ -242,7 +242,7 @@ function ParsePanel({ projectId, cfg, onClose, onApply }: {
 
           {parsed && hasFile && (
             <button onClick={handleApply}
-              className="w-full py-2.5 bg-[#2D4B52] hover:bg-[#3A5F68] text-white text-sm font-semibold rounded-xl transition-colors">
+              className="w-full py-2.5 bg-[var(--brand-teal)] hover:bg-[#3A5F68] text-white text-sm font-semibold rounded-xl transition-colors">
               Guardar en el proyecto {applyable.length > 0 ? `(${applyable.length} datos + archivo)` : '(solo archivo)'}
             </button>
           )}
@@ -281,12 +281,12 @@ function DocStatus({ label, icon: Icon, url, name, onUpload }: {
       </div>
       {url ? (
         <div className="space-y-1.5">
-          <a href={url} target="_blank" rel="noreferrer" className="text-xs text-slate-700 hover:text-[#C8922A] truncate block">
+          <a href={url} target="_blank" rel="noreferrer" className="text-xs text-slate-700 hover:text-[var(--brand-gold)] truncate block">
             {name || 'Documento cargado'}
           </a>
           <div className="flex items-center justify-between">
             <ShareButtons url={url} label={label} />
-            <button onClick={onUpload} className="text-[10px] text-slate-400 hover:text-[#C8922A]">Reemplazar</button>
+            <button onClick={onUpload} className="text-[10px] text-slate-400 hover:text-[var(--brand-gold)]">Reemplazar</button>
           </div>
         </div>
       ) : (
@@ -555,7 +555,7 @@ function SalesProjections({ project, upb, dailyRate, interestSoFar, projectId, b
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-[#C8922A]" />
+            <TrendingUp className="w-4 h-4 text-[var(--brand-gold)]" />
             Proyecciones de Venta — Escenarios de salida
           </h2>
           <p className="text-[11px] text-slate-500 mt-0.5 max-w-2xl">
@@ -617,7 +617,7 @@ function SalesProjections({ project, upb, dailyRate, interestSoFar, projectId, b
             </div>
             <div>
               <div className="text-slate-500 uppercase text-[9px]">Costo de esperar a venta proyectada</div>
-              <div className="font-mono font-bold text-sm text-[#C8922A]">−{formatUSD(scenarios[1].interestFuture)}</div>
+              <div className="font-mono font-bold text-sm text-[var(--brand-gold)]">−{formatUSD(scenarios[1].interestFuture)}</div>
             </div>
             <div>
               <div className="text-slate-500 uppercase text-[9px]">Net en escenario base</div>
@@ -649,13 +649,13 @@ function SalesProjections({ project, upb, dailyRate, interestSoFar, projectId, b
             </div>
             <div>
               <div className="text-slate-400 uppercase">Breakeven $/sqft</div>
-              <div className="font-mono font-bold text-[#C8922A]">${breakeven.toFixed(0)}</div>
+              <div className="font-mono font-bold text-[var(--brand-gold)]">${breakeven.toFixed(0)}</div>
             </div>
           </div>
 
           {/* Director-level read */}
           <div className="bg-[#2D4B52]/5 border border-[#2D4B52]/15 rounded-lg p-3 text-[11px] text-slate-700">
-            <strong className="text-[#2D4B52]">Lectura del director: </strong>
+            <strong className="text-[var(--brand-teal)]">Lectura del director: </strong>
             {scenarios[0].netProfit > 0 ? (
               <>Incluso en el pesimista (${scenarios[0].pricePerSqft.toFixed(0)}/sqft) el proyecto deja {formatUSD(scenarios[0].netProfit)} —
               la decisión es de timing y velocidad, no de viabilidad.</>
@@ -812,9 +812,9 @@ export default function Financial({ projectId }: { projectId: string }) {
       </div>
 
       {/* ── CFO DASHBOARD ─ Timing & Rate Decision Analysis ──────────────────────── */}
-      <div className="bg-gradient-to-br from-[#2D4B52] via-[#234048] to-[#1B3036] rounded-2xl p-5 text-white">
+      <div className="bg-gradient-to-br from-[var(--brand-teal)] via-[#234048] to-[#1B3036] rounded-2xl p-5 text-white">
         <div className="flex items-center gap-2 mb-4">
-          <Activity className="w-4 h-4 text-[#C8922A]" />
+          <Activity className="w-4 h-4 text-[var(--brand-gold)]" />
           <h2 className="text-sm font-bold uppercase tracking-wider">CFO Dashboard — Análisis para toma de decisión</h2>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-white/90">
@@ -858,7 +858,7 @@ export default function Financial({ projectId }: { projectId: string }) {
         <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
           <div className="bg-white/5 border border-white/10 rounded-xl p-3">
             <div className="flex items-center gap-2 mb-1">
-              <DollarSign className="w-3.5 h-3.5 text-[#C8922A]" />
+              <DollarSign className="w-3.5 h-3.5 text-[var(--brand-gold)]" />
               <div className="text-[10px] uppercase opacity-60">Costo total de espera (estimado a expiración)</div>
             </div>
             <div className="text-lg font-bold font-mono text-[#E0AD4F]">{formatUSD(dailyBurn * diasRestantes)}</div>
@@ -876,7 +876,7 @@ export default function Financial({ projectId }: { projectId: string }) {
           </div>
           <div className="bg-white/5 border border-white/10 rounded-xl p-3">
             <div className="flex items-center gap-2 mb-1">
-              <Calendar className="w-3.5 h-3.5 text-[#C8922A]" />
+              <Calendar className="w-3.5 h-3.5 text-[var(--brand-gold)]" />
               <div className="text-[10px] uppercase opacity-60">LOI activo</div>
             </div>
             {project.loiSalePrice ? (
@@ -940,7 +940,7 @@ export default function Financial({ projectId }: { projectId: string }) {
         {(project.loiSalePrice || project.loiOfferDate) && (
           <div className="bg-white rounded-xl border border-slate-200 p-5">
             <h2 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
-              <FileSignature className="w-4 h-4 text-[#C8922A]" />Letter of Intent (LOI)
+              <FileSignature className="w-4 h-4 text-[var(--brand-gold)]" />Letter of Intent (LOI)
             </h2>
             <Row label="Precio ofertado" value={project.loiSalePrice ? formatUSD(project.loiSalePrice) : '—'} highlight />
             <Row label="vs ARV" value={loiVsArv != null ? `${loiVsArv >= 0 ? '+' : ''}${formatUSD(loiVsArv)}` : '—'} />

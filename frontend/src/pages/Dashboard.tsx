@@ -15,7 +15,7 @@ function DonutGauge({ pct, color, size = 80 }: { pct: number; color: string; siz
   const dash = (pct / 100) * circ
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#e2e8f0" strokeWidth={10} />
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--bg-surface-3)" strokeWidth={10} />
       <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={10}
         strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
         transform={`rotate(-90 ${size/2} ${size/2})`}
@@ -81,14 +81,14 @@ export default function Dashboard({ projectId }: Props) {
   }))
 
   const holdbackPieData = [
-    { name: 'Desembolsado', value: kpis.totalDrawn, color: '#2D4B52' },
-    { name: 'Saldo Holdback', value: kpis.saldoHoldback, color: '#C8922A' },
+    { name: 'Desembolsado', value: kpis.totalDrawn, color: 'var(--brand-teal)' },
+    { name: 'Saldo Holdback', value: kpis.saldoHoldback, color: 'var(--brand-gold)' },
   ]
 
   const progressByGroup = [
     { name: 'Pre-Obra', value: phases.filter(p => p.groupName === 'PRE-OBRA').reduce((s, p) => s + p.avancePct, 0) / Math.max(phases.filter(p => p.groupName === 'PRE-OBRA').length, 1), fill: '#64748b' },
-    { name: 'Obra', value: phases.filter(p => p.groupName === 'OBRA').reduce((s, p) => s + p.avancePct, 0) / Math.max(phases.filter(p => p.groupName === 'OBRA').length, 1), fill: '#2D4B52' },
-    { name: 'Cierre', value: phases.filter(p => p.groupName === 'CIERRE').reduce((s, p) => s + p.avancePct, 0) / Math.max(phases.filter(p => p.groupName === 'CIERRE').length, 1), fill: '#C8922A' },
+    { name: 'Obra', value: phases.filter(p => p.groupName === 'OBRA').reduce((s, p) => s + p.avancePct, 0) / Math.max(phases.filter(p => p.groupName === 'OBRA').length, 1), fill: 'var(--brand-teal)' },
+    { name: 'Cierre', value: phases.filter(p => p.groupName === 'CIERRE').reduce((s, p) => s + p.avancePct, 0) / Math.max(phases.filter(p => p.groupName === 'CIERRE').length, 1), fill: 'var(--brand-gold)' },
   ]
 
   return (
@@ -114,7 +114,7 @@ export default function Dashboard({ projectId }: Props) {
         {/* Main donut */}
         <div className="kpi-card col-span-1 flex flex-col items-center justify-center gap-2 cursor-pointer hover:scale-[1.02] transition-transform"
           onClick={() => navigate('/tech/execution')}>
-          <DonutGauge pct={kpis.avanceGeneral} color="#2D4B52" size={90} />
+          <DonutGauge pct={kpis.avanceGeneral} color="var(--brand-teal)" size={90} />
           <div className="text-center">
             <div className="text-xs text-slate-400 uppercase tracking-wide">Avance General</div>
             <div className="text-[10px] text-slate-400 mt-0.5">{formatPct(kpis.tiempoTranscurrido)} tiempo</div>
@@ -123,17 +123,17 @@ export default function Dashboard({ projectId }: Props) {
 
         <div className="kpi-card cursor-pointer hover:scale-[1.02] transition-transform" onClick={() => navigate('/tech/draws')}>
           <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">Total Desembolsado</div>
-          <div className="text-2xl font-bold font-mono text-[#2D4B52]">{formatUSD(kpis.totalDrawn)}</div>
+          <div className="text-2xl font-bold font-mono text-[var(--brand-teal)]">{formatUSD(kpis.totalDrawn)}</div>
           <div className="text-xs text-slate-400 mt-1">Saldo: {formatUSD(kpis.saldoHoldback)}</div>
           <div className="mt-2 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-            <div className="h-full bg-[#2D4B52] rounded-full" style={{ width: `${Math.min(100, (kpis.totalDrawn / (kpis.totalDrawn + kpis.saldoHoldback)) * 100)}%` }} />
+            <div className="h-full bg-[var(--brand-teal)] rounded-full" style={{ width: `${Math.min(100, (kpis.totalDrawn / (kpis.totalDrawn + kpis.saldoHoldback)) * 100)}%` }} />
           </div>
         </div>
 
         <div className={`kpi-card cursor-pointer hover:scale-[1.02] transition-transform ${holdbackLevel === 'critical' ? 'border-red-300 bg-red-50/60' : ''}`}
           onClick={() => navigate('/tech/financial')}>
           <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">Saldo Holdback</div>
-          <div className={`text-2xl font-bold font-mono ${holdbackLevel === 'critical' ? 'text-red-500' : holdbackLevel === 'warning' ? 'text-[#C8922A]' : 'text-slate-900'}`}>
+          <div className={`text-2xl font-bold font-mono ${holdbackLevel === 'critical' ? 'text-red-500' : holdbackLevel === 'warning' ? 'text-[var(--brand-gold)]' : 'text-slate-900'}`}>
             {formatUSD(kpis.saldoHoldback)}
           </div>
           <div className="text-xs text-slate-400 mt-1">{data.draws.filter(d => d.estado === 'WIRED').length} / 8 draws wired</div>
@@ -144,7 +144,7 @@ export default function Dashboard({ projectId }: Props) {
           <div className="text-2xl font-bold font-mono text-slate-900">{formatUSD(kpis.totalBudget)}</div>
           <div className="text-xs text-slate-400 mt-1">Ejec: {formatUSD(kpis.totalEjecutado)}</div>
           <div className="mt-2 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-            <div className="h-full bg-[#C8922A] rounded-full" style={{ width: `${Math.min(100, kpis.totalBudget > 0 ? (kpis.totalEjecutado / kpis.totalBudget) * 100 : 0)}%` }} />
+            <div className="h-full bg-[var(--brand-gold)] rounded-full" style={{ width: `${Math.min(100, kpis.totalBudget > 0 ? (kpis.totalEjecutado / kpis.totalBudget) * 100 : 0)}%` }} />
           </div>
         </div>
       </div>
@@ -181,7 +181,7 @@ export default function Dashboard({ projectId }: Props) {
                 </div>
                 {target > 0 && (
                   <div className="h-1 bg-slate-100 rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full ${over ? 'bg-red-400' : 'bg-[#2D4B52]'}`} style={{ width: `${Math.min(100, (val / (target * 1.3)) * 100)}%` }} />
+                    <div className={`h-full rounded-full ${over ? 'bg-red-400' : 'bg-[var(--brand-teal)]'}`} style={{ width: `${Math.min(100, (val / (target * 1.3)) * 100)}%` }} />
                   </div>
                 )}
               </div>
@@ -215,13 +215,13 @@ export default function Dashboard({ projectId }: Props) {
               <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false}
                 tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
               <Tooltip content={(p) => <MoneyTooltip {...p} />} />
-              <Bar dataKey="Budget" fill="#e2e8f0" radius={[3,3,0,0]} />
-              <Bar dataKey="Ejecutado" fill="#2D4B52" radius={[3,3,0,0]} />
+              <Bar dataKey="Budget" fill="var(--bg-surface-3)" radius={[3,3,0,0]} />
+              <Bar dataKey="Ejecutado" fill="var(--brand-teal)" radius={[3,3,0,0]} />
             </BarChart>
           </ResponsiveContainer>
           <div className="flex gap-4 mt-2 text-[10px] text-slate-400">
             <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded bg-slate-200 inline-block"/>Budget</span>
-            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded bg-[#2D4B52] inline-block"/>Ejecutado</span>
+            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded bg-[var(--brand-teal)] inline-block"/>Ejecutado</span>
           </div>
         </div>
       )}
@@ -237,8 +237,8 @@ export default function Dashboard({ projectId }: Props) {
                 <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
                 <Tooltip formatter={(val: number) => [formatUSD(val), '']} />
-                <Bar dataKey="elegible" name="Elegible" fill="#C8922A" radius={[3,3,0,0]} />
-                <Bar dataKey="amount" name="Net Wire" fill="#2D4B52" radius={[3,3,0,0]} />
+                <Bar dataKey="elegible" name="Elegible" fill="var(--brand-gold)" radius={[3,3,0,0]} />
+                <Bar dataKey="amount" name="Net Wire" fill="var(--brand-teal)" radius={[3,3,0,0]} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -264,7 +264,7 @@ export default function Dashboard({ projectId }: Props) {
             {[
               { label: 'Aprobadas', count: data.inspections.filter(i => i.estado === 'APROBADA').length, color: 'text-emerald-500 bg-emerald-50' },
               { label: 'Pendientes', count: data.inspections.filter(i => i.estado === 'PENDIENTE').length, color: 'text-slate-500 bg-slate-50' },
-              { label: 'Programadas', count: data.inspections.filter(i => i.estado === 'PROGRAMADA').length, color: 'text-[#C8922A] bg-amber-50' },
+              { label: 'Programadas', count: data.inspections.filter(i => i.estado === 'PROGRAMADA').length, color: 'text-[var(--brand-gold)] bg-amber-50' },
             ].map(s => (
               <div key={s.label} className={`rounded-lg p-2 text-center ${s.color}`}>
                 <div className="text-lg font-bold font-mono">{s.count}</div>
@@ -280,7 +280,7 @@ export default function Dashboard({ projectId }: Props) {
                   <div className="text-[10px] text-slate-400">{ins.fase ?? ins.wbs}</div>
                 </div>
                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium
-                  ${ins.estado === 'PROGRAMADA' ? 'bg-[#C8922A]/15 text-[#C8922A]' : 'bg-slate-100 text-slate-500'}`}>
+                  ${ins.estado === 'PROGRAMADA' ? 'bg-[#C8922A]/15 text-[var(--brand-gold)]' : 'bg-slate-100 text-slate-500'}`}>
                   {ins.estado}
                 </span>
               </div>

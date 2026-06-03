@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import AuthGate from './components/AuthGate'
+import Splash from './components/Splash'
 import { ConfirmProvider } from './components/ConfirmDialog'
 import ModuleGate from './components/ModuleGate'
 import { useQuery } from '@tanstack/react-query'
@@ -40,13 +41,7 @@ function TechModule() {
     }
   }, [projects, activeProjectId, setActiveProjectId])
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen" style={{ background: 'var(--brand-cream)' }}>
-        <div className="text-sm font-mono animate-pulse" style={{ color: 'var(--brand-teal)' }}>Cargando sistema...</div>
-      </div>
-    )
-  }
+  if (isLoading) return <Splash />
 
   if (!activeProjectId) {
     return (
@@ -89,7 +84,9 @@ function TechModule() {
 export default function App() {
   useTheme() // inicializa data-theme en <html> desde localStorage
   return (
-    <AuthGate>
+    <>
+      <Splash />
+      <AuthGate>
       <ConfirmProvider>
         <BrowserRouter>
           <Routes>
@@ -108,5 +105,6 @@ export default function App() {
         </BrowserRouter>
       </ConfirmProvider>
     </AuthGate>
+    </>
   )
 }

@@ -13,8 +13,11 @@ import {
 } from "recharts";
 import { Link } from "react-router-dom";
 
-// Paleta de gráficos: tonos teal/gold + secundarios verde/rojo
-const COLORS = ["#2D4B52", "#C8922A", "#059669", "#3A5F68", "#E0AD4F", "#dc2626", "#8b5cf6", "#3b82f6"];
+// Paleta DS v2.1 — usa CSS vars como fills => las gráficas reaccionan a dark/light en vivo
+const COLORS = [
+  "var(--inf)", "var(--accent)", "var(--ok)", "var(--brand-teal3)",
+  "var(--warn)", "var(--err)", "#8b5cf6", "#3b82f6",
+];
 
 export default function Dashboard() {
   const { data, isLoading } = useQuery({
@@ -50,10 +53,10 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 page-content">
-      <div className="flex items-end justify-between flex-wrap gap-3">
+      <div className="fin-section flex items-end justify-between flex-wrap gap-3 mb-2">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>Dashboard ejecutivo</h1>
-          <p className="text-sm" style={{ color: 'var(--brand-teal2)' }}>Lectura consolidada del negocio · {new Date().toLocaleDateString("es-CO", { year: "numeric", month: "long", day: "numeric" })}</p>
+          <div className="fin-page-title">Dashboard ejecutivo</div>
+          <div className="fin-page-sub">Lectura consolidada · {new Date().toLocaleDateString("es-CO", { year: "numeric", month: "long", day: "numeric" })}</div>
         </div>
       </div>
 
@@ -69,16 +72,16 @@ export default function Dashboard() {
       {/* === SALDOS EN CUENTAS Y TOTALES === */}
       <div className="card p-5">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>
-            <Landmark size={18} style={{ color: 'var(--brand-gold)' }} /> Saldos en cuentas
+          <h2 className="flex items-center gap-2" style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 300, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
+            <Landmark size={18} style={{ color: 'var(--accent)' }} /> Saldos en cuentas
           </h2>
-          <Link to="/finance/accounts" className="text-xs font-semibold flex items-center gap-1 hover:underline" style={{ color: 'var(--brand-gold)' }}>
+          <Link to="/finance/accounts" className="text-xs font-semibold flex items-center gap-1 hover:underline" style={{ color: 'var(--accent)' }}>
             Ver todas <ArrowRight size={12} />
           </Link>
         </div>
         {accountsDetail.length === 0 ? (
           <p className="text-sm py-6 text-center" style={{ color: 'var(--brand-teal2)' }}>
-            Sin cuentas registradas. Ve a <Link to="/finance/accounts" className="font-semibold hover:underline" style={{ color: 'var(--brand-gold)' }}>Cuentas bancarias</Link> para crear la primera.
+            Sin cuentas registradas. Ve a <Link to="/finance/accounts" className="font-semibold hover:underline" style={{ color: 'var(--accent)' }}>Cuentas bancarias</Link> para crear la primera.
           </p>
         ) : (
           <>
@@ -100,7 +103,7 @@ export default function Dashboard() {
                     </div>
                     <span className="badge" style={{
                       background: 'rgba(200,146,42,0.12)',
-                      color: 'var(--brand-gold)',
+                      color: 'var(--accent)',
                       border: '1px solid rgba(200,146,42,0.3)',
                     }}>{a.type}</span>
                   </div>
@@ -140,16 +143,16 @@ export default function Dashboard() {
       {forecast && forecast.forecast90Days && forecast.forecast90Days.length > 0 && (
         <div className="card p-5">
           <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-            <h2 className="text-base font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>
-              <Calendar size={16} style={{ color: 'var(--brand-gold)' }} /> Cashflow forecast (90 días)
+            <h2 className="flex items-center gap-2" style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 300, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
+              <Calendar size={16} style={{ color: 'var(--accent)' }} /> Cashflow forecast (90 días)
             </h2>
             <div className="flex items-center gap-4 text-xs flex-wrap">
               {forecast.runwayDays != null && (
                 <div className="flex items-center gap-1.5">
                   <span style={{ color: 'var(--brand-teal2)' }}>Runway:</span>
                   <span className="font-mono font-bold" style={{
-                    color: forecast.runwayDays > 180 ? '#059669' :
-                           forecast.runwayDays > 90 ? '#d97706' : '#dc2626'
+                    color: forecast.runwayDays > 180 ? 'var(--ok)' :
+                           forecast.runwayDays > 90 ? 'var(--warn)' : 'var(--err)'
                   }}>
                     {forecast.runwayDays} días
                   </span>
@@ -166,8 +169,8 @@ export default function Dashboard() {
               <AreaChart data={forecast.forecast90Days}>
                 <defs>
                   <linearGradient id="balanceFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#C8922A" stopOpacity={0.4} />
-                    <stop offset="100%" stopColor="#C8922A" stopOpacity={0.02} />
+                    <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.4} />
+                    <stop offset="100%" stopColor="var(--accent)" stopOpacity={0.02} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(45,75,82,0.1)" />
@@ -178,14 +181,14 @@ export default function Dashboard() {
                   formatter={(v: any) => usd(v as number)}
                   labelFormatter={(d) => `📅 ${d}`}
                 />
-                <Area type="monotone" dataKey="balance" stroke="#2D4B52" strokeWidth={2} fill="url(#balanceFill)" name="Saldo proyectado" />
+                <Area type="monotone" dataKey="balance" stroke="var(--inf)" strokeWidth={2} fill="url(#balanceFill)" name="Saldo proyectado" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
           {forecast.upcomingMaturity && forecast.upcomingMaturity.length > 0 && (
-            <div className="mt-3 p-3 rounded-lg bg-amber-50 border border-amber-200">
-              <div className="text-xs font-bold text-amber-700 mb-1">⚠ Vencimientos de préstamo próximos (90 días)</div>
-              <ul className="text-xs space-y-0.5 text-amber-700">
+            <div className="mt-3 p-3" style={{ background: 'var(--warn-soft)', border: '1px solid var(--warn-border)', borderRadius: 8 }}>
+              <div className="text-xs font-bold mb-1" style={{ color: 'var(--warn)' }}>⚠ Vencimientos de préstamo próximos (90 días)</div>
+              <ul className="text-xs space-y-0.5" style={{ color: 'var(--warn)' }}>
                 {forecast.upcomingMaturity.slice(0, 5).map((m: any) => (
                   <li key={m.loanId}>
                     · {m.date?.slice(0, 10)}: <span className="font-mono font-semibold">{usd(m.amount)}</span>
@@ -201,49 +204,42 @@ export default function Dashboard() {
       {insights && insights.total > 0 && (
         <div className="card p-5">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-base font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>
-              <ShieldAlert size={16} style={{ color: 'var(--brand-gold)' }} /> Insights ejecutivos
+            <h2 className="flex items-center gap-2" style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 300, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
+              <ShieldAlert size={16} style={{ color: 'var(--accent)' }} /> Insights ejecutivos
             </h2>
             <div className="flex items-center gap-2 text-xs">
               {insights.bySeverity.red > 0 && (
-                <span className="badge bg-red-50 text-red-700 border border-red-200 text-[10px]">
-                  {insights.bySeverity.red} críticas
-                </span>
+                <span className="fin-badge fin-b-err">{insights.bySeverity.red} críticas</span>
               )}
               {insights.bySeverity.warn > 0 && (
-                <span className="badge bg-amber-50 text-amber-700 border border-amber-200 text-[10px]">
-                  {insights.bySeverity.warn} advertencias
-                </span>
+                <span className="fin-badge fin-b-warn">{insights.bySeverity.warn} advertencias</span>
               )}
               {insights.bySeverity.info > 0 && (
-                <span className="badge bg-blue-50 text-blue-700 border border-blue-200 text-[10px]">
-                  {insights.bySeverity.info} info
-                </span>
+                <span className="fin-badge fin-b-inf">{insights.bySeverity.info} info</span>
               )}
             </div>
           </div>
           <ul className="space-y-1.5">
-            {insights.insights.slice(0, 10).map((ins: any, i: number) => (
-              <li key={i} className={cls(
-                "flex items-start gap-2 p-2.5 rounded-lg text-sm",
-                ins.severity === "red" && "bg-red-50 border border-red-200",
-                ins.severity === "warn" && "bg-amber-50 border border-amber-200",
-                ins.severity === "info" && "bg-blue-50 border border-blue-200",
-              )}>
-                {ins.severity === "red" && <ShieldAlert size={14} className="text-red-600 flex-shrink-0 mt-0.5" />}
-                {ins.severity === "warn" && <AlertTriangle size={14} className="text-amber-600 flex-shrink-0 mt-0.5" />}
-                {ins.severity === "info" && <Info size={14} className="text-blue-600 flex-shrink-0 mt-0.5" />}
-                <div className={cls(
-                  "flex-1",
-                  ins.severity === "red" && "text-red-800",
-                  ins.severity === "warn" && "text-amber-800",
-                  ins.severity === "info" && "text-blue-800",
-                )}>
+            {insights.insights.slice(0, 10).map((ins: any, i: number) => {
+              const sevColor = ins.severity === "red" ? 'var(--err)' : ins.severity === "warn" ? 'var(--warn)' : 'var(--inf)';
+              return (
+              <li key={i} className="flex items-start gap-2 p-2.5 text-sm" style={{
+                background: ins.severity === "red"  ? 'var(--err-soft)' :
+                            ins.severity === "warn" ? 'var(--warn-soft)' : 'var(--inf-soft)',
+                borderColor: ins.severity === "red"  ? 'var(--err-border)' :
+                             ins.severity === "warn" ? 'var(--warn-border)' : 'var(--inf-border)',
+                borderWidth: 1, borderStyle: 'solid', borderRadius: 8,
+              }}>
+                {ins.severity === "red" && <ShieldAlert size={14} className="flex-shrink-0 mt-0.5" style={{ color: sevColor }} />}
+                {ins.severity === "warn" && <AlertTriangle size={14} className="flex-shrink-0 mt-0.5" style={{ color: sevColor }} />}
+                {ins.severity === "info" && <Info size={14} className="flex-shrink-0 mt-0.5" style={{ color: sevColor }} />}
+                <div className="flex-1" style={{ color: sevColor }}>
                   <span className="text-[10px] uppercase tracking-wider font-bold opacity-70 mr-2">{ins.category}</span>
                   {ins.message}
                 </div>
               </li>
-            ))}
+              );
+            })}
           </ul>
         </div>
       )}
@@ -252,17 +248,17 @@ export default function Dashboard() {
       {data.alerts.length > 0 && (
         <div className="card p-4">
           <div className="flex items-center gap-2 mb-3">
-            <AlertOctagon size={16} style={{ color: '#d97706' }} />
-            <h2 className="text-sm font-bold" style={{ color: 'var(--brand-teal)' }}>Alertas activas</h2>
+            <AlertOctagon size={16} style={{ color: 'var(--warn)' }} />
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 300, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>Alertas activas</h2>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-2">
             {data.alerts.map((a: any) => (
-              <div key={a.code} className={cls(
-                "flex items-center gap-3 px-3 py-2 rounded-lg",
-                a.severity === "red" ? "bg-red-50 border border-red-200 text-red-700" :
-                a.severity === "warn" ? "bg-amber-50 border border-amber-200 text-amber-700" :
-                "bg-stone-50 border border-stone-200 text-stone-700"
-              )}>
+              <div key={a.code} className="flex items-center gap-3" style={{
+                background: a.severity === "red" ? 'var(--err-soft)' : a.severity === "warn" ? 'var(--warn-soft)' : 'var(--bg-surface-3)',
+                border: `1px solid ${a.severity === "red" ? 'var(--err-border)' : a.severity === "warn" ? 'var(--warn-border)' : 'var(--border)'}`,
+                color: a.severity === "red" ? 'var(--err)' : a.severity === "warn" ? 'var(--warn)' : 'var(--text-secondary)',
+                borderRadius: 8, padding: '8px 12px',
+              }}>
                 <AlertTriangle size={14} />
                 <div className="flex-1">
                   <div className="text-xs font-medium">{a.message}</div>
@@ -280,28 +276,28 @@ export default function Dashboard() {
       <div className="grid lg:grid-cols-3 gap-4">
         <div className="card p-4 lg:col-span-2">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}><Building2 size={14} style={{ color: 'var(--brand-gold)' }} /> Portafolio por proyecto</h2>
-            <Link to="/finance/projects" className="text-xs hover:underline font-semibold" style={{ color: 'var(--brand-gold)' }}>Ver todos →</Link>
+            <h2 className="text-sm font-bold flex items-center gap-2" style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 300, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}><Building2 size={14} style={{ color: 'var(--accent)' }} /> Portafolio por proyecto</h2>
+            <Link to="/finance/projects" className="text-xs hover:underline font-semibold" style={{ color: 'var(--accent)' }}>Ver todos →</Link>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="fin-dt">
               <thead>
-                <tr className="text-left text-xs" style={{ color: 'var(--brand-teal2)', borderBottom: '1px solid rgba(45,75,82,0.1)' }}>
-                  <th className="py-2 px-2 font-semibold">Código</th>
-                  <th className="py-2 px-2 font-semibold">Proyecto</th>
-                  <th className="py-2 px-2 font-semibold">Línea</th>
-                  <th className="py-2 px-2 font-semibold">Estado</th>
-                  <th className="py-2 px-2 text-right font-semibold">Ingresos</th>
-                  <th className="py-2 px-2 text-right font-semibold">Egresos</th>
-                  <th className="py-2 px-2 text-right font-semibold">Neto</th>
-                  <th className="py-2 px-2 text-right font-semibold">ROI est.</th>
+                <tr>
+                  <th>Código</th>
+                  <th>Proyecto</th>
+                  <th>Línea</th>
+                  <th>Estado</th>
+                  <th style={{ textAlign: 'right' }}>Ingresos</th>
+                  <th style={{ textAlign: 'right' }}>Egresos</th>
+                  <th style={{ textAlign: 'right' }}>Neto</th>
+                  <th style={{ textAlign: 'right' }}>ROI est.</th>
                 </tr>
               </thead>
               <tbody>
                 {data.byProject.length === 0 ? (
                   <tr><td colSpan={8} className="py-6 text-center" style={{ color: 'var(--brand-teal2)' }}>Sin proyectos registrados.</td></tr>
                 ) : data.byProject.map((p: any) => (
-                  <tr key={p.id} className="table-row" style={{ borderBottom: '1px solid rgba(45,75,82,0.06)' }}>
+                  <tr key={p.id}>
                     <td className="py-2 px-2 font-mono text-xs" style={{ color: 'var(--brand-teal2)' }}>{p.code}</td>
                     <td className="py-2 px-2">
                       <Link to={`/finance/projects/${p.id}`} className="font-medium hover:underline" style={{ color: 'var(--brand-teal)' }}>{p.name}</Link>
@@ -320,7 +316,7 @@ export default function Dashboard() {
         </div>
 
         <div className="card p-4">
-          <h2 className="text-sm font-bold mb-3 flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}><Users size={14} style={{ color: 'var(--brand-gold)' }} /> Capital por socio</h2>
+          <h2 className="text-sm font-bold mb-3 flex items-center gap-2" style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 300, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}><Users size={14} style={{ color: 'var(--accent)' }} /> Capital por socio</h2>
           {data.equityByPartner.length === 0 ? (
             <p className="text-sm py-4 text-center" style={{ color: 'var(--brand-teal2)' }}>Sin aportes registrados.</p>
           ) : (
@@ -342,7 +338,7 @@ export default function Dashboard() {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie data={equityVsDebt} dataKey="value" nameKey="name" outerRadius={60} innerRadius={40} label={(d) => usd(d.value as number, { compact: true })}>
-                      {equityVsDebt.map((_, i) => <Cell key={i} fill={i === 0 ? "#059669" : "#dc2626"} />)}
+                      {equityVsDebt.map((_, i) => <Cell key={i} fill={i === 0 ? "var(--ok)" : "var(--err)"} />)}
                     </Pie>
                     <Legend wrapperStyle={{ fontSize: 11 }} />
                     <Tooltip contentStyle={{ background: "#fff", border: "1px solid rgba(45,75,82,0.15)", borderRadius: 8 }} formatter={(v: any) => usd(v as number)} />
@@ -357,7 +353,7 @@ export default function Dashboard() {
       {/* Distribuciones */}
       <div className="grid lg:grid-cols-2 gap-4">
         <div className="card p-4">
-          <h2 className="text-sm font-bold mb-3 flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}><PieIcon size={14} style={{ color: 'var(--brand-gold)' }} /> Gasto: proyecto vs corporativo</h2>
+          <h2 className="text-sm font-bold mb-3 flex items-center gap-2" style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 300, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}><PieIcon size={14} style={{ color: 'var(--accent)' }} /> Gasto: proyecto vs corporativo</h2>
           <div className="h-56">
             <ResponsiveContainer>
               <PieChart>
@@ -372,14 +368,14 @@ export default function Dashboard() {
         </div>
 
         <div className="card p-4">
-          <h2 className="text-sm font-bold mb-3 flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}><TrendingDown size={14} style={{ color: 'var(--brand-gold)' }} /> Top categorías de gasto</h2>
+          <h2 className="text-sm font-bold mb-3 flex items-center gap-2" style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 300, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}><TrendingDown size={14} style={{ color: 'var(--accent)' }} /> Top categorías de gasto</h2>
           <div className="h-56">
             <ResponsiveContainer>
               <BarChart data={data.topCategories.slice(0, 8)} layout="vertical" margin={{ left: 80 }}>
                 <XAxis type="number" tick={{ fontSize: 10, fill: "#3A5F68" }} tickFormatter={(v) => usd(v, { compact: true })} />
-                <YAxis dataKey="name" type="category" tick={{ fontSize: 10, fill: "#2D4B52" }} width={140} />
+                <YAxis dataKey="name" type="category" tick={{ fontSize: 10, fill: "var(--inf)" }} width={140} />
                 <Tooltip contentStyle={{ background: "#fff", border: "1px solid rgba(45,75,82,0.15)", borderRadius: 8 }} formatter={(v: any) => usd(v as number)} />
-                <Bar dataKey="amount" fill="#C8922A" />
+                <Bar dataKey="amount" fill="var(--accent)" />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -388,17 +384,17 @@ export default function Dashboard() {
 
       {/* Por línea */}
       <div className="card p-4">
-        <h2 className="text-sm font-bold mb-3 flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}><TrendingUp size={14} style={{ color: 'var(--brand-gold)' }} /> Performance por línea de negocio</h2>
+        <h2 className="text-sm font-bold mb-3 flex items-center gap-2" style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 300, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}><TrendingUp size={14} style={{ color: 'var(--accent)' }} /> Performance por línea de negocio</h2>
         <div className="h-64">
           <ResponsiveContainer>
             <BarChart data={data.byLine}>
-              <XAxis dataKey="line" tick={{ fontSize: 11, fill: "#2D4B52" }} />
+              <XAxis dataKey="line" tick={{ fontSize: 11, fill: "var(--inf)" }} />
               <YAxis tick={{ fontSize: 10, fill: "#3A5F68" }} tickFormatter={(v) => usd(v, { compact: true })} />
               <Tooltip contentStyle={{ background: "#fff", border: "1px solid rgba(45,75,82,0.15)", borderRadius: 8 }} formatter={(v: any) => usd(v as number)} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Bar dataKey="ingresos" fill="#059669" name="Ingresos" />
-              <Bar dataKey="egresos" fill="#dc2626" name="Egresos" />
-              <Bar dataKey="neto" fill="#C8922A" name="Neto" />
+              <Bar dataKey="ingresos" fill="var(--ok)" name="Ingresos" />
+              <Bar dataKey="egresos" fill="var(--err)" name="Egresos" />
+              <Bar dataKey="neto" fill="var(--accent)" name="Neto" />
             </BarChart>
           </ResponsiveContainer>
         </div>
