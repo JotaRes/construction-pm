@@ -34,20 +34,23 @@ router.get('/:projectId/alerts', async (req: Request, res: Response) => {
       })
     }
 
-    // 2. BUDGET DEVIATION
+    // 2. BUDGET DEVIATION — solo si existe presupuesto o ejecución cargada.
+    // Sin datos (usuario borró los ítems/budget) no tiene sentido mostrar "$0 de $0".
     const totalBudget = project.phases.reduce((s, p) => s + p.items.reduce((ss, i) => ss + i.valorPresupuestado, 0), 0)
     const totalEjecutado = project.phases.reduce((s, p) => s + p.items.reduce((ss, i) => ss + i.valorEjecutado, 0), 0)
-    let budgetLevel = 'ok'
-    if (totalBudget > 0 && totalEjecutado > totalBudget) budgetLevel = 'critical'
-    else if (totalBudget > 0 && totalEjecutado > totalBudget * 0.95) budgetLevel = 'warning'
-    alerts.push({
-      id: 'budget-deviation',
-      level: budgetLevel,
-      title: 'Desviación Presupuestal',
-      message: `Ejecutado $${totalEjecutado.toLocaleString('en-US', { maximumFractionDigits: 0 })} de $${totalBudget.toLocaleString('en-US', { maximumFractionDigits: 0 })} budget`,
-      action: 'Revisar PROYECCIONES para identificar partida inflada. Evaluar change order.',
-      source: 'PRESUPUESTO MAESTRO',
-    })
+    if (totalBudget > 0 || totalEjecutado > 0) {
+      let budgetLevel = 'ok'
+      if (totalBudget > 0 && totalEjecutado > totalBudget) budgetLevel = 'critical'
+      else if (totalBudget > 0 && totalEjecutado > totalBudget * 0.95) budgetLevel = 'warning'
+      alerts.push({
+        id: 'budget-deviation',
+        level: budgetLevel,
+        title: 'Desviación Presupuestal',
+        message: `Ejecutado $${totalEjecutado.toLocaleString('en-US', { maximumFractionDigits: 0 })} de $${totalBudget.toLocaleString('en-US', { maximumFractionDigits: 0 })} budget`,
+        action: 'Revisar PROYECCIONES para identificar partida inflada. Evaluar change order.',
+        source: 'PRESUPUESTO MAESTRO',
+      })
+    }
 
     // 3. PHYSICAL VS TIME
     const wiredDraws = project.draws.filter(d => d.estado === 'WIRED')
@@ -65,47 +68,56 @@ router.get('/:projectId/alerts', async (req: Request, res: Response) => {
         : ((today.getTime() - startDate.getTime()) / (targetDate.getTime() - startDate.getTime())) * 100
       desfase = avanceFisico - tiempoTranscurrido
     }
-    let desfaseLevel = 'ok'
-    if (desfase < -10) desfaseLevel = 'critical'
-    else if (desfase < -5) desfaseLevel = 'warning'
-    alerts.push({
-      id: 'physical-vs-time',
-      level: desfaseLevel,
-      title: 'Desfase Físico vs Tiempo',
-      message: `${avanceFisico.toFixed(1)}% físico • ${desfase >= 0 ? '+' : ''}${desfase.toFixed(1)}% desfase`,
-      action: 'Identificar fase bloqueante en EJECUCIÓN, notificar a GC AMA LLC.',
-      source: 'EJECUCIÓN + CONFIG target date',
-    })
+    // Solo si hay ítems activos cargados; sin ítems no hay avance que medir.
+    if (activeItems.length > 0) {
+      let desfaseLevel = 'ok'
+      if (desfase < -10) desfaseLevel = 'critical'
+      else if (desfase < -5) desfaseLevel = 'warning'
+      alerts.push({
+        id: 'physical-vs-time',
+        level: desfaseLevel,
+        title: 'Desfase Físico vs Tiempo',
+        message: `${avanceFisico.toFixed(1)}% físico • ${desfase >= 0 ? '+' : ''}${desfase.toFixed(1)}% desfase`,
+        action: 'Identificar fase bloqueante en EJECUCIÓN, notificar a GC AMA LLC.',
+        source: 'EJECUCIÓN + CONFIG target date',
+      })
+    }
 
-    // 4. HOLDBACK BALANCE
+    // 4. HOLDBACK BALANCE — solo si el HUD/contrato fue cargado (holdback > 0) o hay draws.
+    // Tras reset-draws-section holdback queda en 0 y no hay draws: no debe persistir la alerta.
     const saldoHoldback = project.holdback - totalDrawn
-    let holdbackLevel = 'ok'
-    if (saldoHoldback < 50000) holdbackLevel = 'critical'
-    else if (saldoHoldback < 100000) holdbackLevel = 'warning'
-    alerts.push({
-      id: 'holdback-balance',
-      level: holdbackLevel,
-      title: 'Saldo Holdback Disponible',
-      message: `$${saldoHoldback.toLocaleString('en-US', { maximumFractionDigits: 0 })} disponible (Hera Holdings)`,
-      action: 'Planificar próximo draw con anticipación.',
-      source: 'DRAW TRACKER',
-    })
+    if (project.holdback > 0 || totalDrawn > 0) {
+      let holdbackLevel = 'ok'
+      if (saldoHoldback < 50000) holdbackLevel = 'critical'
+      else if (saldoHoldback < 100000) holdbackLevel = 'warning'
+      alerts.push({
+        id: 'holdback-balance',
+        level: holdbackLevel,
+        title: 'Saldo Holdback Disponible',
+        message: `$${saldoHoldback.toLocaleString('en-US', { maximumFractionDigits: 0 })} disponible (Hera Holdings)`,
+        action: 'Planificar próximo draw con anticipación.',
+        source: 'DRAW TRACKER',
+      })
+    }
 
-    // 5. COSTO/SF
+    // 5. COSTO/SF — requiere SF cargados y presupuesto/ejecución. Sin presupuesto el
+    // costo proyectado es $0/SF y no aporta nada (dato fantasma tras borrar el budget).
     const sfHeated = project.sfHeated
     const costoSFProyectado = sfHeated > 0 ? (totalEjecutado + (totalBudget - totalEjecutado)) / sfHeated : 0
     const benchmark = project.benchmarkSfTarget
-    let sfLevel = 'ok'
-    if (costoSFProyectado > benchmark) sfLevel = 'critical'
-    else if (costoSFProyectado > 185) sfLevel = 'warning'
-    alerts.push({
-      id: 'cost-per-sf',
-      level: sfLevel,
-      title: 'Costo/SF Proyectado',
-      message: `$${costoSFProyectado.toFixed(0)}/SF proyectado vs benchmark $${benchmark}/SF`,
-      action: 'Revisar PROYECCIONES. Costo alto comprime margen de utilidad.',
-      source: 'PRESUPUESTO MAESTRO + CONFIG',
-    })
+    if (sfHeated > 0 && (totalBudget > 0 || totalEjecutado > 0)) {
+      let sfLevel = 'ok'
+      if (costoSFProyectado > benchmark) sfLevel = 'critical'
+      else if (costoSFProyectado > 185) sfLevel = 'warning'
+      alerts.push({
+        id: 'cost-per-sf',
+        level: sfLevel,
+        title: 'Costo/SF Proyectado',
+        message: `$${costoSFProyectado.toFixed(0)}/SF proyectado vs benchmark $${benchmark}/SF`,
+        action: 'Revisar PROYECCIONES. Costo alto comprime margen de utilidad.',
+        source: 'PRESUPUESTO MAESTRO + CONFIG',
+      })
+    }
 
     res.json({ data: alerts, error: null })
   } catch (e) {
