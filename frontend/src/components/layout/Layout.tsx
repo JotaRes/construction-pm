@@ -6,7 +6,7 @@ import {
   ChevronDown, FolderKanban, ListChecks, FileSpreadsheet, Tag, LogOut,
   Archive, Menu, X, Download,
 } from 'lucide-react'
-import { alertsApi, projectsApi } from '../../lib/api'
+import { alertsApi, projectsApi, downloadAuthed } from '../../lib/api'
 import { logout } from '../AuthGate'
 import ModuleSwitcher from '../ModuleSwitcher'
 import CapacityBanner from '../CapacityBanner'
@@ -467,6 +467,11 @@ export default function Layout({ projectId, children }: Props) {
               href="/api/backup"
               download
               title="Backup del sistema"
+              onClick={e => {
+                e.preventDefault()
+                downloadAuthed('/api/backup', `restrepoacosta-backup-${new Date().toISOString().slice(0, 10)}.zip`)
+                  .catch(() => window.alert('Error al descargar el backup. Verifica tu sesión e intenta de nuevo.'))
+              }}
               style={{
                 width: 32, height: 32,
                 border: '1px solid var(--border)', borderRadius: 6,

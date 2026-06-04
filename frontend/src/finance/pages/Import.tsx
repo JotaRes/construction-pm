@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useRef } from "react";
 import { API } from "../lib/api";
+import { downloadAuthed } from "../../lib/api";
 import { Modal } from "../components/Modal";
 import {
   Upload, Database, Download, AlertTriangle, FileSpreadsheet,
@@ -52,12 +53,7 @@ export default function Import() {
   });
 
   const downloadFile = (url: string, filename: string) => {
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    downloadAuthed(url, filename).catch(() => toast.error("Error al descargar el archivo"));
   };
 
   return (

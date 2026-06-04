@@ -2,6 +2,47 @@ import axios from 'axios'
 
 const api = axios.create({ baseURL: '/api' })
 
+// Token unificado: misma clave que el módulo financiero (pm_auth_token).
+// Sin este interceptor, todas las rutas /api/* del módulo técnico darían 401
+// ahora que el backend exige autenticación global.
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('pm_auth_token')
+  if (token) config.headers.Authorization = `Bearer ${token}`
+  return config
+})
+
+// Si el token expira o es inválido, limpiar sesión y volver a la landing/login.
+api.interceptors.response.use(
+  (r) => r,
+  (err) => {
+    if (err.response?.status === 401) {
+      localStorage.removeItem('pm_auth_token')
+      window.location.href = '/'
+    }
+    return Promise.reject(err)
+  }
+)
+
+// Descarga autenticada vía blob: para endpoints protegidos (/api/backup,
+// /api/backup/excel-tech, etc.) que NO pueden viajar por <a href> porque el
+// navegador no adjunta el header Authorization en una navegación normal.
+export async function downloadAuthed(url: string, filename: string): Promise<void> {
+  const token = localStorage.getItem('pm_auth_token')
+  const res = await fetch(url, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  const blob = await res.blob()
+  const objUrl = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = objUrl
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(objUrl)
+}
+
 export const projectsApi = {
   list: () => api.get('/projects').then(r => r.data.data),
   get: (id: string) => api.get(`/projects/${id}`).then(r => r.data.data),

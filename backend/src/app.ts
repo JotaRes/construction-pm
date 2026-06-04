@@ -37,6 +37,7 @@ import finStatements from './finance/routes/statements'
 import finImports from './finance/routes/imports'
 import finBackup from './finance/routes/backup'
 import finReports from './finance/routes/reports'
+import { requireAuth } from './finance/lib/auth'
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -103,6 +104,24 @@ app.use(
 )
 
 app.use(express.json())
+
+// ── AUTENTICACIÓN GLOBAL — protege todos los endpoints /api/* ─────────────
+// Rutas públicas:
+//   - /api/health        → healthcheck de Render
+//   - /api/auth/*         → login y verify (necesarias para obtener el token)
+//   - /api/download       → proxy de archivos para compartir con terceros
+//                           (contratistas/bancos sin sesión). El control de
+//                           acceso aquí es la URL impredecible + allowlist de
+//                           hosts Cloudinary, NO el token. Protegerla rompería
+//                           el compartir por WhatsApp/email.
+app.use('/api', (req, res, next) => {
+  if (
+    req.path === '/health' ||
+    req.path.startsWith('/auth/') ||
+    req.path.startsWith('/download')
+  ) return next()
+  return requireAuth(req, res, next)
+})
 
 // ── 3. RATE LIMITING — auth endpoints ────────────────────────────────────────
 const authLimiter = rateLimit({

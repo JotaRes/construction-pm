@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState, useRef } from 'react'
-import { techBackupApi } from '../lib/api'
+import { techBackupApi, downloadAuthed } from '../lib/api'
 import {
   Upload, Download, AlertTriangle, FileSpreadsheet,
   Archive, RotateCcw, Lock, CheckCircle2, ShieldAlert, RefreshCw, X,
@@ -38,12 +38,9 @@ export default function TechImport() {
   })
 
   const downloadFile = (url: string, filename: string) => {
-    const a = document.createElement('a')
-    a.href = url
-    a.download = filename
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
+    downloadAuthed(url, filename).catch(() =>
+      window.alert('Error al descargar el archivo. Verifica tu sesión e intenta de nuevo.')
+    )
   }
 
   return (

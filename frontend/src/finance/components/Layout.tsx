@@ -11,6 +11,7 @@ import ModuleSwitcher from "../../components/ModuleSwitcher";
 import CapacityBanner from "../../components/CapacityBanner";
 import { ThemeToggle } from "../../components/ThemeToggle";
 import { useTheme } from "../../hooks/useTheme";
+import { downloadAuthed } from "../../lib/api";
 
 const NAV = [
   { to: "/finance/dashboard", label: "Dashboard", icon: LayoutDashboard, group: "Vista ejecutiva" },
@@ -171,7 +172,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-2">
             <ThemeToggle />
             <ModuleSwitcher currentModule="finance" />
-            <a href="/api/backup" download className="fin-btn-icon" title="Backup del sistema">
+            <a
+              href="/api/backup"
+              download
+              className="fin-btn-icon"
+              title="Backup del sistema"
+              onClick={e => {
+                e.preventDefault();
+                downloadAuthed("/api/backup", `restrepoacosta-backup-${new Date().toISOString().slice(0, 10)}.zip`)
+                  .catch(() => window.alert("Error al descargar el backup. Verifica tu sesión e intenta de nuevo."));
+              }}
+            >
               <Download size={13} />
             </a>
           </div>
