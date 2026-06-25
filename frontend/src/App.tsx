@@ -23,6 +23,10 @@ import Tasks from './pages/Tasks'
 import ConstructionBudget from './pages/ConstructionBudget'
 import PriceReference from './pages/PriceReference'
 import TechImport from './pages/TechImport'
+import PhasesDashboard from './pages/PhasesDashboard'
+import GanttView from './pages/GanttView'
+import PhotoGallery from './pages/PhotoGallery'
+import Subcontracts from './pages/Subcontracts'
 import Landing from './Landing'
 import FinanceApp from './finance/FinanceApp'
 import { useTheme } from './hooks/useTheme'
@@ -64,6 +68,10 @@ function TechModule() {
         <Route path="projects" element={<Projects />} />
         <Route path="dashboard" element={<Dashboard projectId={activeProjectId} />} />
         <Route path="execution" element={<Execution projectId={activeProjectId} />} />
+        <Route path="phases" element={<PhasesDashboard projectId={activeProjectId} />} />
+        <Route path="gantt" element={<GanttView projectId={activeProjectId} />} />
+        <Route path="gallery" element={<PhotoGallery projectId={activeProjectId} />} />
+        <Route path="subcontracts" element={<Subcontracts projectId={activeProjectId} />} />
         <Route path="budget" element={<Budget projectId={activeProjectId} />} />
         <Route path="draws" element={<Draws projectId={activeProjectId} />} />
         <Route path="inspections" element={<Inspections projectId={activeProjectId} />} />

@@ -1,7 +1,60 @@
 import { useQuery } from '@tanstack/react-query'
-import { alertsApi } from '../lib/api'
+import { alertsApi, type UpcomingAlert } from '../lib/api'
 import type { Alert } from '../lib/types'
-import { AlertTriangle, CheckCircle, XCircle, Info } from 'lucide-react'
+import { AlertTriangle, CheckCircle, XCircle, Info, CalendarClock, Search, FileWarning, ListChecks } from 'lucide-react'
+
+const UPCOMING_SEVERITY: Record<UpcomingAlert['severity'], { dot: string; badge: string }> = {
+  CRITICAL: { dot: 'bg-red-500', badge: 'bg-red-500/15 text-red-500' },
+  HIGH: { dot: 'bg-[var(--brand-gold)]', badge: 'bg-[#C8922A]/15 text-[var(--brand-gold)]' },
+  MEDIUM: { dot: 'bg-slate-400', badge: 'bg-slate-100 text-slate-500' },
+}
+
+function UpcomingPanel({ projectId }: { projectId: string }) {
+  const { data: items = [] } = useQuery<UpcomingAlert[]>({
+    queryKey: ['upcoming', projectId],
+    queryFn: () => alertsApi.upcoming(projectId),
+    refetchInterval: 60000,
+  })
+
+  if (items.length === 0) return null
+
+  const iconFor = (t: UpcomingAlert['type']) =>
+    t === 'INSPECCION' ? Search : t === 'PERMISO' ? FileWarning : ListChecks
+
+  return (
+    <div className="space-y-3">
+      <h2 className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+        <CalendarClock className="w-3.5 h-3.5" /> Hitos próximos (30 días)
+      </h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        {items.map((a, i) => {
+          const sev = UPCOMING_SEVERITY[a.severity]
+          const Icon = iconFor(a.type)
+          return (
+            <div key={i} className="bg-white border border-slate-200 rounded-xl p-3.5 flex items-start gap-3">
+              <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${sev.dot}`} />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <Icon className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                  <span className="text-sm font-semibold text-slate-800">{a.title}</span>
+                </div>
+                <div className="text-xs text-slate-500 truncate">{a.description}</div>
+                <div className="mt-1.5 flex items-center gap-2">
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${sev.badge}`}>{a.severity}</span>
+                  {a.date && (
+                    <span className="text-[11px] text-slate-400">
+                      {new Date(a.date).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
 
 function AlertCard({ alert }: { alert: Alert }) {
   const config = {
@@ -61,6 +114,8 @@ export default function Alerts({ projectId }: { projectId: string }) {
           {ok.length > 0 && <span className="text-emerald-400">{ok.length} OK</span>}
         </p>
       </div>
+
+      <UpcomingPanel projectId={projectId} />
 
       {critical.length > 0 && (
         <div className="space-y-3">

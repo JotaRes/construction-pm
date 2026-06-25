@@ -3,6 +3,7 @@ generator client {
 }
 
 datasource db {
+  // PRODUCCIÓN (Render): postgresql. Para correr en LOCAL cambiar a "sqlite" (dev.db).
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
@@ -97,6 +98,7 @@ model Project {
   inspections   Inspection[]
   tasks         Task[]
   budgetLines   BudgetLine[]
+  subcontracts  SubcontractorContract[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -209,6 +211,7 @@ model Provider {
   items        Item[]
   quotes       ProviderQuote[]
   documents    ProviderDocument[]
+  contracts    SubcontractorContract[]
 }
 
 model ProviderDocument {
@@ -337,6 +340,39 @@ model PriceRef {
   notes       String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+// Subcontratistas: contrato firmado + alcance + calendario de pagos por hito.
+model SubcontractorContract {
+  id              String                 @id @default(cuid())
+  providerId      String
+  provider        Provider               @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  projectId       String
+  project         Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  contractValue   Float                  @default(0)
+  scopeDetails    String?
+  startDate       DateTime?
+  endDate         DateTime?
+  status          String                 @default("ACTIVO") // ACTIVO | COMPLETADO | CANCELADO
+  contractUrl     String?
+  contractName    String?
+  notes           String?
+  paymentSchedule SubcontractorPayment[]
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+}
+
+model SubcontractorPayment {
+  id            String                @id @default(cuid())
+  contractId    String
+  contract      SubcontractorContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  milestoneDesc String
+  amount        Float                 @default(0)
+  dueDate       DateTime?
+  paidDate      DateTime?
+  status        String                @default("PENDIENTE") // PENDIENTE | PAGADO | RETENIDO
+  notes         String?
+  createdAt     DateTime              @default(now())
 }
 
 

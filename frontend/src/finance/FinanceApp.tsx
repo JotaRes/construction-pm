@@ -14,6 +14,9 @@ import Statements from "./pages/Statements";
 import StatementDetail from "./pages/StatementDetail";
 import Import from "./pages/Import";
 import Reports from "./pages/Reports";
+import CashflowDashboard from "./pages/CashflowDashboard";
+import LiquidityProjection from "./pages/LiquidityProjection";
+import ProjectReturns from "./pages/ProjectReturns";
 
 export default function FinanceApp() {
   return (
@@ -35,6 +38,9 @@ export default function FinanceApp() {
         <Route path="statements/:id" element={<StatementDetail />} />
         <Route path="import" element={<Import />} />
         <Route path="reports" element={<Reports />} />
+        <Route path="cashflow" element={<CashflowDashboard />} />
+        <Route path="liquidity" element={<LiquidityProjection />} />
+        <Route path="returns" element={<ProjectReturns />} />
         <Route path="*" element={<Navigate to="dashboard" replace />} />
         </Routes>
       </Layout>

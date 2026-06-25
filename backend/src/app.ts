@@ -23,6 +23,9 @@ import { seedDatabase } from './seed'
 import backupRoutes from './routes/backup'
 import downloadRoutes from './routes/download'
 import capacityRoutes from './routes/capacity'
+import subcontractsRoutes from './routes/subcontracts'
+import executiveRoutes from './routes/executive'
+import portfolioRoutes from './routes/portfolio'
 
 // === FINANCE MODULE ROUTES ===
 import finCatalogs from './finance/routes/catalogs'
@@ -37,6 +40,9 @@ import finStatements from './finance/routes/statements'
 import finImports from './finance/routes/imports'
 import finBackup from './finance/routes/backup'
 import finReports from './finance/routes/reports'
+import finCashflow from './finance/routes/cashflow'
+import finProjectReturns from './finance/routes/projectReturns'
+import finLiquidity from './finance/routes/liquidity'
 import { requireAuth } from './finance/lib/auth'
 
 const app = express()
@@ -150,6 +156,9 @@ app.use('/api/price-refs', priceRefRoutes)
 app.use('/api/items', itemDocumentRoutes)
 app.use('/api/items', itemRoutes)
 app.use('/api/draws', drawRoutes)
+app.use('/api/subcontracts', subcontractsRoutes)
+app.use('/api/projects', executiveRoutes)
+app.use('/api/portfolio', portfolioRoutes)
 
 app.use('/api/backup', backupRoutes)
 app.use('/api/download', downloadRoutes)
@@ -169,6 +178,9 @@ app.use('/api/finance/statements', finStatements)
 app.use('/api/finance/imports', finImports)
 app.use('/api/finance/backup', finBackup)
 app.use('/api/finance/reports', finReports)
+app.use('/api/finance/cashflow', finCashflow)
+app.use('/api/finance/project-returns', finProjectReturns)
+app.use('/api/finance/liquidity-projection', finLiquidity)
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), version: 'v2-with-module-gate' })

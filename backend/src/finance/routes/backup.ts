@@ -1,36 +1,14 @@
 import { Router } from "express";
 import archiver from "archiver";
-import ExcelJS from "exceljs";
-
-// Helper: convierte un array de objetos en hoja exceljs (semántica de
-// XLSX.utils.json_to_sheet). Las keys del primer objeto son la cabecera.
-async function writeWorkbookBuffer(
-  sheets: Array<{ name: string; rows: Record<string, unknown>[] }>
-): Promise<Buffer> {
-  const wb = new ExcelJS.Workbook();
-  for (const s of sheets) {
-    const ws = wb.addWorksheet(s.name.slice(0, 31));
-    if (s.rows.length === 0) {
-      ws.addRow(["(sin datos)"]);
-      continue;
-    }
-    const keys = Object.keys(s.rows[0]);
-    ws.addRow(keys);
-    for (const r of s.rows) {
-      ws.addRow(keys.map((k) => r[k] ?? null));
-    }
-  }
-  const ab = await wb.xlsx.writeBuffer();
-  return Buffer.from(ab as ArrayBuffer);
-}
 import { prisma } from "../lib/prisma";
 import { fail, ok } from "../lib/respond";
 import { logActivity } from "../services/auditLog";
+import { buildFinanceExcel } from "../../lib/excelReports";
 
 const router = Router();
 
 // === Snapshot completo de todos los datos del módulo finance ===
-async function buildSnapshot() {
+export async function buildSnapshot() {
   const [
     spvs, accounts, partners, lenders, providers, categories, origins, projects,
     movements, capital, loans, nonBank, statements, lines, movDocs, projDocs,
@@ -77,6 +55,14 @@ router.get("/", async (_req, res) => {
     archive.pipe(res);
     archive.append(JSON.stringify(snapshot, null, 2), { name: "finance-data.json" });
 
+    // Excel dashboard profesional (plan B de control)
+    try {
+      const xlsx = await buildFinanceExcel(snapshot as any);
+      archive.append(xlsx, { name: "finance-dashboard.xlsx" });
+    } catch (e) {
+      console.error("[backup] finance excel failed:", e);
+    }
+
     // README explicativo
     const readme = `# Backup del módulo financiero — Restrepo Acosta Global Holding
 Generado: ${snapshot.exportedAt}
@@ -101,86 +87,13 @@ ${Object.entries(snapshot).filter(([_, v]) => Array.isArray(v)).map(([k, v]) => 
   }
 });
 
-// === GET /api/finance/backup/excel — Export en formato Excel multi-hoja ===
+// === GET /api/finance/backup/excel — Dashboard Excel profesional ===
 router.get("/excel", async (_req, res) => {
   try {
     const snap = await buildSnapshot();
-
-    const sheetsToWrite: Array<{ name: string; rows: Record<string, unknown>[] }> = [];
-    const addSheet = (name: string, rows: any[], pick?: (r: any) => any) => {
-      if (rows.length === 0) {
-        sheetsToWrite.push({ name, rows: [] });
-        return;
-      }
-      const flat: Record<string, unknown>[] = rows.map((r) => {
-        const o = pick ? pick(r) : r;
-        const result: Record<string, unknown> = {};
-        for (const [k, v] of Object.entries(o)) {
-          if (v instanceof Date) result[k] = v.toISOString().slice(0, 10);
-          else if (v && typeof v === "object" && !Array.isArray(v)) result[k] = (v as any).name || (v as any).code || JSON.stringify(v);
-          else result[k] = v;
-        }
-        return result;
-      });
-      sheetsToWrite.push({ name, rows: flat });
-    };
-
-    addSheet("SPVs", snap.spvs);
-    addSheet("Cuentas bancarias", snap.accounts, (a: any) => ({
-      Código: a.code, Nombre: a.name, Banco: a.bank, Tipo: a.type,
-      "# Cuenta": a.accountNumber, "Routing": a.routingNumber,
-      "Dirección": a.address, "SPV": a.spv?.name,
-      "Saldo inicial": a.initialBalance, "Saldo actual (manual)": a.currentBalance,
-    }));
-    addSheet("Socios", snap.partners);
-    addSheet("Lenders", snap.lenders);
-    addSheet("Proveedores", snap.providers);
-    addSheet("Categorías gasto", snap.categories);
-    addSheet("Orígenes ingreso", snap.origins);
-    addSheet("Proyectos", snap.projects, (p: any) => ({
-      Código: p.code, Nombre: p.name, SPV: p.spv?.name,
-      Línea: p.line, Modelo: p.model, Estado: p.status,
-      Dirección: p.address,
-      "Precio compra": p.purchasePrice, ARV: p.arv,
-      "Costo esperado": p.expectedCost, "Cash In": p.cashIn,
-    }));
-    addSheet("Movimientos", snap.movements, (m: any) => ({
-      Fecha: m.date instanceof Date ? m.date.toISOString().slice(0, 10) : m.date,
-      Tipo: m.type, Monto: m.amount, Concepto: m.concept,
-      Cuenta: m.account?.name, "Cuenta destino": m.destAccount?.name,
-      Categoría: m.category?.name, Origen: m.origin?.name,
-      Proveedor: m.provider?.name, Socio: m.partner?.fullName,
-      Lender: m.lender?.name, Proyecto: m.project?.name,
-      "Es intercompany": m.isIntercompany,
-      "Es equity": m.isEquity, "Es préstamo": m.isLoan,
-      Notas: m.notes,
-    }));
-    addSheet("Capital aportado", snap.capital, (c: any) => ({
-      Fecha: c.date instanceof Date ? c.date.toISOString().slice(0, 10) : c.date,
-      Socio: c.partner?.fullName, Proyecto: c.project?.name,
-      Monto: c.amount, Concepto: c.concept, Origen: c.origin,
-    }));
-    addSheet("Préstamos", snap.loans, (l: any) => ({
-      Fecha: l.date instanceof Date ? l.date.toISOString().slice(0, 10) : l.date,
-      Lender: l.lender?.name, Proyecto: l.project?.name,
-      Monto: l.amount, "Tasa %": l.interestRate, "Plazo meses": l.termMonths,
-      Estado: l.status, "Total pagado": l.totalRepaid, Notas: l.notes,
-    }));
-    addSheet("Extractos", snap.statements, (s: any) => ({
-      Archivo: s.filename, Cuenta: s.account?.name,
-      "Período inicio": s.periodStart instanceof Date ? s.periodStart.toISOString().slice(0, 10) : s.periodStart,
-      "Período fin": s.periodEnd instanceof Date ? s.periodEnd.toISOString().slice(0, 10) : s.periodEnd,
-      "Saldo inicial": s.openingBalance, "Saldo final": s.closingBalance,
-    }));
-    addSheet("Líneas extractos", snap.lines, (l: any) => ({
-      Fecha: l.date instanceof Date ? l.date.toISOString().slice(0, 10) : l.date,
-      Descripción: l.description, Monto: l.amount, Tipo: l.type,
-      Estado: l.matchStatus, "ID statement": l.statementId,
-    }));
-
-    const buf = await writeWorkbookBuffer(sheetsToWrite);
+    const buf = await buildFinanceExcel(snap as any);
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-    res.setHeader("Content-Disposition", `attachment; filename="finance-export-${new Date().toISOString().slice(0, 10)}.xlsx"`);
+    res.setHeader("Content-Disposition", `attachment; filename="finance-dashboard-${new Date().toISOString().slice(0, 10)}.xlsx"`);
     res.send(buf);
   } catch (e) {
     fail(res, e);

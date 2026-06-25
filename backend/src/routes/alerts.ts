@@ -125,4 +125,69 @@ router.get('/:projectId/alerts', async (req: Request, res: Response) => {
   }
 })
 
+// Hitos próximos (≤30 días) del proyecto activo: inspecciones, permiso y tareas.
+// Guardas: solo emite ítems que realmente existen (sin fantasmas tras borrar datos).
+router.get('/:projectId/upcoming', async (req: Request, res: Response) => {
+  const { projectId } = req.params
+  try {
+    const today = new Date()
+    const in30 = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000)
+    const in7 = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
+
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      select: { id: true, name: true, permitExpires: true, permitNumber: true },
+    })
+    if (!project) return res.status(404).json({ data: null, error: 'Project not found' })
+
+    const inspecciones = await prisma.inspection.findMany({
+      where: { projectId, fechaSolicitada: { gte: today, lte: in30 }, resultado: null },
+      orderBy: { fechaSolicitada: 'asc' },
+    })
+
+    const tareas = await prisma.task.findMany({
+      where: { projectId, done: false, dueDate: { lte: in30 } },
+      orderBy: { dueDate: 'asc' },
+    })
+
+    const items: any[] = []
+
+    for (const i of inspecciones) {
+      items.push({
+        type: 'INSPECCION',
+        severity: i.fechaSolicitada! < in7 ? 'HIGH' : 'MEDIUM',
+        title: 'Inspección próxima',
+        description: `${i.tipo}${i.wbs ? ` — WBS ${i.wbs}` : ''}`,
+        date: i.fechaSolicitada,
+      })
+    }
+
+    if (project.permitExpires && project.permitExpires >= today && project.permitExpires <= in30) {
+      items.push({
+        type: 'PERMISO',
+        severity: project.permitExpires < in7 ? 'CRITICAL' : 'HIGH',
+        title: 'Permiso por vencer',
+        description: `Permiso #${project.permitNumber ?? ''} vence`,
+        date: project.permitExpires,
+      })
+    }
+
+    for (const t of tareas) {
+      items.push({
+        type: 'TAREA',
+        severity: t.dueDate && t.dueDate < today ? 'CRITICAL' : 'MEDIUM',
+        title: t.dueDate && t.dueDate < today ? 'Tarea vencida' : 'Tarea próxima',
+        description: t.title,
+        date: t.dueDate,
+      })
+    }
+
+    items.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+
+    res.json({ data: items, error: null })
+  } catch (e) {
+    res.status(500).json({ data: null, error: String(e) })
+  }
+})
+
 export default router

@@ -4,7 +4,7 @@ import {
   LayoutDashboard, CheckSquare, DollarSign, TrendingUp,
   AlertTriangle, Users, FileText, Folder, Search, BarChart3, Building2,
   ChevronDown, FolderKanban, ListChecks, FileSpreadsheet, Tag, LogOut,
-  Archive, Menu, X, Download,
+  Archive, Menu, X, Download, Layers, GanttChart, Image, HardHat,
 } from 'lucide-react'
 import { alertsApi, projectsApi, downloadAuthed } from '../../lib/api'
 import { logout } from '../AuthGate'
@@ -28,6 +28,8 @@ const navGroups = [
     label: 'Ejecución',
     items: [
       { to: '/tech/execution',  icon: CheckSquare,     label: 'Ejecución' },
+      { to: '/tech/phases',     icon: Layers,          label: 'Fases' },
+      { to: '/tech/gantt',      icon: GanttChart,      label: 'Gantt' },
       { to: '/tech/budget',     icon: DollarSign,      label: 'Presupuesto' },
       { to: '/tech/construction-budget', icon: FileSpreadsheet, label: 'Const. Budget' },
       { to: '/tech/draws',      icon: TrendingUp,      label: 'Draws' },
@@ -46,6 +48,8 @@ const navGroups = [
     label: 'Operaciones',
     items: [
       { to: '/tech/providers',  icon: Users,           label: 'Proveedores' },
+      { to: '/tech/subcontracts', icon: HardHat,       label: 'Subcontratos' },
+      { to: '/tech/gallery',    icon: Image,           label: 'Galería' },
       { to: '/tech/notes',      icon: FileText,        label: 'Notas' },
       { to: '/tech/files',      icon: Folder,          label: 'Archivos' },
       { to: '/tech/price-refs', icon: Tag,             label: 'Precios Ref.' },

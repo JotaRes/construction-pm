@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import {
   LayoutDashboard, ArrowLeftRight, Users, Wallet, Banknote,
   Briefcase, ListTree, Upload, BarChart3,
-  LogOut, Home, Menu, X, Download,
+  LogOut, Home, Menu, X, Download, Activity, Droplets, Percent,
 } from "lucide-react";
 import { cls } from "../lib/format";
 import { logout as unifiedLogout } from "../../components/AuthGate";
@@ -20,6 +20,9 @@ const NAV = [
   { to: "/finance/capital", label: "Capital aportado", icon: Users, group: "Estructura" },
   { to: "/finance/debt", label: "Deuda y préstamos", icon: Banknote, group: "Estructura" },
   { to: "/finance/projects", label: "Proyectos", icon: Briefcase, group: "Inversión" },
+  { to: "/finance/returns", label: "Retorno por proyecto", icon: Percent, group: "Inversión" },
+  { to: "/finance/cashflow", label: "Flujo de caja", icon: Activity, group: "Análisis" },
+  { to: "/finance/liquidity", label: "Liquidez 90 días", icon: Droplets, group: "Análisis" },
   { to: "/finance/reports", label: "Reportes & Trazabilidad", icon: BarChart3, group: "Análisis" },
   { to: "/finance/catalogs", label: "Catálogos", icon: ListTree, group: "Administración" },
   { to: "/finance/import", label: "Importar / Backup", icon: Upload, group: "Administración" },

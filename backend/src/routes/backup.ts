@@ -5,25 +5,9 @@ import path from 'path'
 import fs from 'fs'
 import multer from 'multer'
 import AdmZip from 'adm-zip'
-import ExcelJS from 'exceljs'
-
-// Escribe un workbook desde un array de hojas [{name, rows: object[]}].
-// Mantiene la semántica de XLSX.utils.json_to_sheet: usa las keys del primer
-// objeto como cabecera, luego un fila por objeto.
-async function writeWorkbookBuffer(sheets: Array<{ name: string; rows: Record<string, unknown>[] }>): Promise<Buffer> {
-  const wb = new ExcelJS.Workbook()
-  for (const s of sheets) {
-    const ws = wb.addWorksheet(s.name.slice(0, 31))
-    const rows = s.rows.length > 0 ? s.rows : [{ '(sin datos)': '' }]
-    const keys = Object.keys(rows[0])
-    ws.addRow(keys)
-    for (const r of rows) {
-      ws.addRow(keys.map(k => r[k] ?? null))
-    }
-  }
-  const ab = await wb.xlsx.writeBuffer()
-  return Buffer.from(ab as ArrayBuffer)
-}
+import { buildTechExcel, buildFinanceExcel } from '../lib/excelReports'
+import { buildSnapshot as buildFinanceSnapshot } from '../finance/routes/backup'
+import { collectTechTargets, collectFinanceTargets, appendBinaries, manifestToCsv } from '../lib/backupBinaries'
 
 const router = Router()
 const prisma = new PrismaClient()
@@ -70,7 +54,7 @@ router.get('/', async (req: Request, res: Response) => {
         phases: { include: { items: true } },
         draws: true,
         partners: true,
-        providers: { include: { quotes: true } },
+        providers: { include: { quotes: true, documents: true } },
         notes: true,
         files: true,
         inspections: true,
@@ -78,9 +62,11 @@ router.get('/', async (req: Request, res: Response) => {
         budgetLines: true,
       },
     })
-    const [priceRefs, itemDocuments] = await Promise.all([
+    const [priceRefs, itemDocuments, subcontractorContracts, drawLineContributions] = await Promise.all([
       prisma.priceRef.findMany(),
       prisma.itemDocument.findMany(),
+      prisma.subcontractorContract.findMany({ include: { paymentSchedule: true } }),
+      prisma.drawLineContribution.findMany(),
     ])
 
     const techSnapshot = JSON.stringify(
@@ -88,14 +74,24 @@ router.get('/', async (req: Request, res: Response) => {
         projects,
         priceRefs,
         itemDocuments,
+        subcontractorContracts,
+        drawLineContributions,
         exportedAt: new Date().toISOString(),
-        version: '1.1',
+        version: '1.3',
       },
       null,
       2
     )
 
     archive.append(techSnapshot, { name: 'data/tech-database.json' })
+
+    // === DASHBOARDS EXCEL (plan B de control, legible para cualquiera) ===
+    try {
+      const techXlsx = await buildTechExcel({ projects, priceRefs, drawLineContributions, subcontractorContracts })
+      archive.append(techXlsx, { name: 'excel/reporte-tecnico.xlsx' })
+    } catch (err) {
+      console.error('Backup tech excel failed:', err)
+    }
 
     // === MÓDULO FINANCIERO ===
     const [
@@ -150,6 +146,43 @@ router.get('/', async (req: Request, res: Response) => {
 
     archive.append(finSnapshot, { name: 'data/finance-database.json' })
 
+    // Excel financiero (snapshot con relaciones expandidas para nombres legibles)
+    let finFull: any = null
+    try {
+      finFull = await buildFinanceSnapshot()
+      const finXlsx = await buildFinanceExcel(finFull as any)
+      archive.append(finXlsx, { name: 'excel/reporte-financiero.xlsx' })
+    } catch (err) {
+      console.error('Backup finance excel failed:', err)
+    }
+
+    // README explicativo del backup
+    const readme = [
+      '# Backup completo — Sistema Restrepo Acosta',
+      `Generado: ${new Date().toISOString()}`,
+      '',
+      '## Contenido',
+      '- data/tech-database.json     → datos del módulo TÉCNICO (v1.3, re-importable)',
+      '- data/finance-database.json  → datos del módulo FINANCIERO (re-importable)',
+      '- excel/reporte-tecnico.xlsx  → dashboard técnico legible (plan B de control)',
+      '- excel/reporte-financiero.xlsx → dashboard financiero legible (plan B de control)',
+      '- files/                      → binarios (PDFs/fotos) descargados de Cloudinary',
+      '- files/INDICE-ARCHIVOS.csv   → mapa de cada binario a su registro de origen',
+      '- code/                       → código fuente completo (backend + frontend)',
+      '',
+      '## Cómo restaurar los datos',
+      'Módulo técnico:    POST /api/backup/restore-tech   (subir este .zip o tech-database.json)',
+      'Módulo financiero: POST /api/finance/imports/restore (subir este .zip o finance-data.json)',
+      'Ambos requieren la contraseña de restauración en el header X-Restore-Password.',
+      '',
+      'NOTA: los binarios en files/ son una copia descargada de Cloudinary al momento',
+      'del backup. Restaurar los datos NO re-sube estos binarios a Cloudinary; las URLs',
+      'guardadas seguirán apuntando a Cloudinary. files/ es tu copia física de respaldo.',
+      'Para omitir la descarga de binarios usa /api/backup?nofiles=1.',
+      '',
+    ].join('\n')
+    archive.append(readme, { name: 'LEEME.txt' })
+
     // Source code (best-effort: only included when files are present in the deploy)
     const backendDir = path.join(__dirname, '../..')
     const repoRoot = path.join(backendDir, '..')
@@ -174,6 +207,23 @@ router.get('/', async (req: Request, res: Response) => {
     addFileIfExists(path.join(repoRoot, 'frontend/tailwind.config.js'), 'code/frontend/tailwind.config.js')
     addFileIfExists(path.join(repoRoot, 'frontend/index.html'), 'code/frontend/index.html')
 
+    // === BINARIOS (PDFs/fotos) — descarga de Cloudinary e inclusión física ===
+    // Best-effort: cada archivo fallido queda registrado en el índice y el backup sigue.
+    // Se puede omitir con ?nofiles=1 (útil si hay muchísimos archivos pesados).
+    if (req.query.nofiles !== '1' && !aborted) {
+      try {
+        const techTargets = collectTechTargets(projects, itemDocuments, subcontractorContracts)
+        const finTargets = finFull ? collectFinanceTargets(finFull) : []
+        const targets = [...techTargets, ...finTargets]
+        const manifest = await appendBinaries(archive, targets)
+        const okCount = manifest.filter((m) => m.Estado.startsWith('OK')).length
+        archive.append(manifestToCsv(manifest), { name: 'files/INDICE-ARCHIVOS.csv' })
+        console.log(`Backup binarios: ${okCount}/${targets.length} descargados`)
+      } catch (err) {
+        console.error('Backup binaries step failed:', err)
+      }
+    }
+
     try {
       await archive.finalize()
     } catch (err: any) {
@@ -185,7 +235,7 @@ router.get('/', async (req: Request, res: Response) => {
 })
 
 // === GET /api/backup/excel-tech ===
-// Exporta los datos del módulo TÉCNICO a Excel multi-hoja (re-importable manualmente).
+// Dashboard Excel profesional del módulo TÉCNICO (plan B de control).
 router.get('/excel-tech', async (_req: Request, res: Response) => {
   try {
     const projects = await prisma.project.findMany({
@@ -193,7 +243,7 @@ router.get('/excel-tech', async (_req: Request, res: Response) => {
         phases: { include: { items: true } },
         draws: true,
         partners: true,
-        providers: { include: { quotes: true } },
+        providers: { include: { quotes: true, documents: true } },
         notes: true,
         files: true,
         inspections: true,
@@ -201,59 +251,15 @@ router.get('/excel-tech', async (_req: Request, res: Response) => {
         budgetLines: true,
       },
     })
+    const [priceRefs, drawLineContributions, subcontractorContracts] = await Promise.all([
+      prisma.priceRef.findMany(),
+      prisma.drawLineContribution.findMany(),
+      prisma.subcontractorContract.findMany({ include: { paymentSchedule: true } }),
+    ])
 
-    const sheetsToWrite: Array<{ name: string; rows: Record<string, unknown>[] }> = []
-    const addSheet = (name: string, rows: any[]) => {
-      sheetsToWrite.push({ name, rows })
-    }
-
-    addSheet('Proyectos', projects.map((p) => ({
-      ID: p.id, Nombre: p.name, SPV: p.spv, Holding: p.holding,
-      Dirección: p.address, Condado: p.county, HOA: p.hoa,
-      'SF Heated': p.sfHeated, 'SF Garage': p.sfGarage, 'SF Porches': p.sfPorches,
-      Lender: p.lender, 'Loan #': p.loanNumber, 'Loan Amount': p.loanAmount,
-      'Tasa anual': p.interestRate, 'Plazo meses': p.loanTermMonths,
-      ARV: p.arv, 'Construction Budget': p.constructionBudget,
-      'Settlement': p.settlementDate?.toISOString?.()?.slice(0, 10),
-      'Permit #': p.permitNumber,
-      'Permit emit': p.permitIssued?.toISOString?.()?.slice(0, 10),
-      'Permit vence': p.permitExpires?.toISOString?.()?.slice(0, 10),
-    })))
-
-    addSheet('Items', projects.flatMap((p) => p.phases.flatMap((ph) =>
-      ph.items.map((i) => ({
-        Proyecto: p.name, 'Fase Code': ph.code, 'Fase Name': ph.name,
-        'Item Code': i.itemCode, Actividad: i.activity, Estado: i.estado,
-        Responsable: i.responsable, 'Valor Presupuestado': i.valorPresupuestado,
-        'Valor Ejecutado': i.valorEjecutado,
-        'Inicio real': i.fechaInicioReal?.toISOString?.()?.slice(0, 10),
-        'Fin real': i.fechaFinReal?.toISOString?.()?.slice(0, 10),
-        Completado: i.completado, 'Es NA': i.esNA,
-        Observaciones: i.observaciones,
-      }))
-    )))
-
-    addSheet('Draws', projects.flatMap((p) => p.draws.map((d) => ({
-      Proyecto: p.name, '# Draw': d.drawNumber, Estado: d.estado,
-      'Fecha solicitud': d.fechaSolicitud?.toISOString?.()?.slice(0, 10),
-      'Fecha wire': d.fechaWire?.toISOString?.()?.slice(0, 10),
-      'Monto solicitado': d.montoSolicitado, 'Net Wire': d.netWire,
-      'UPB post': d.upbPost, 'Saldo holdback': d.saldoHoldback,
-    }))))
-
-    addSheet('Providers', projects.flatMap((p) => p.providers.map((pr) => ({
-      Proyecto: p.name, Nombre: pr.name, Tipo: pr.type,
-      Telefono: pr.phone, Email: pr.email, Licencia: pr.license, Notas: pr.notes,
-    }))))
-
-    addSheet('Files', projects.flatMap((p) => p.files.map((f) => ({
-      Proyecto: p.name, Nombre: f.name, Categoría: f.category,
-      Kind: f.kind, URL: f.url, Tamaño: f.size,
-    }))))
-
-    const buf = await writeWorkbookBuffer(sheetsToWrite)
+    const buf = await buildTechExcel({ projects, priceRefs, drawLineContributions, subcontractorContracts })
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    res.setHeader('Content-Disposition', `attachment; filename="tech-export-${new Date().toISOString().slice(0, 10)}.xlsx"`)
+    res.setHeader('Content-Disposition', `attachment; filename="reporte-tecnico-${new Date().toISOString().slice(0, 10)}.xlsx"`)
     res.send(buf)
   } catch (e: any) {
     res.status(500).json({ data: null, error: String(e) })
@@ -297,14 +303,18 @@ router.post('/restore-tech', upload.single('file'), async (req: Request, res: Re
       return res.status(400).json({ data: null, error: 'El snapshot no contiene proyectos del módulo técnico' })
     }
 
-    // Wipe técnico
+    // Wipe técnico — orden hijo→padre para respetar las foreign keys
     await prisma.itemDocument.deleteMany({})
+    await prisma.subcontractorPayment.deleteMany({}).catch(() => {})
+    await prisma.subcontractorContract.deleteMany({}).catch(() => {})
+    await prisma.drawLineContribution.deleteMany({}).catch(() => {})
     await prisma.budgetLine.deleteMany({})
     await prisma.task.deleteMany({})
     await prisma.inspection.deleteMany({})
     await prisma.projectFile.deleteMany({})
     await prisma.note.deleteMany({})
     await prisma.providerQuote.deleteMany({}).catch(() => {})
+    await prisma.providerDocument.deleteMany({}).catch(() => {})
     await prisma.provider.deleteMany({})
     await prisma.partner.deleteMany({})
     await prisma.draw.deleteMany({})
@@ -313,7 +323,7 @@ router.post('/restore-tech', upload.single('file'), async (req: Request, res: Re
     await prisma.project.deleteMany({})
     await prisma.priceRef.deleteMany({})
 
-    const counts: any = { projects: 0, phases: 0, items: 0, draws: 0, partners: 0, providers: 0, notes: 0, files: 0, inspections: 0, tasks: 0, budgetLines: 0, priceRefs: 0, itemDocuments: 0 }
+    const counts: any = { projects: 0, phases: 0, items: 0, draws: 0, partners: 0, providers: 0, providerQuotes: 0, providerDocuments: 0, notes: 0, files: 0, inspections: 0, tasks: 0, budgetLines: 0, priceRefs: 0, itemDocuments: 0, drawLineContributions: 0, subcontractorContracts: 0, subcontractorPayments: 0 }
 
     const datesFields = ['settlementDate', 'permitIssued', 'permitExpires', 'targetCompletionDate', 'startDate', 'createdAt', 'updatedAt', 'fechaInicioReal', 'fechaFinReal', 'fechaSolicitud', 'fechaInspeccion', 'fechaWire']
     const normDates = (o: any) => {
@@ -340,9 +350,11 @@ router.post('/restore-tech', upload.single('file'), async (req: Request, res: Re
       for (const d of draws || []) { await prisma.draw.create({ data: normDates(d) }); counts.draws++ }
       for (const pa of partners || []) { await prisma.partner.create({ data: normDates(pa) }); counts.partners++ }
       for (const pr of providers || []) {
-        const { quotes, ...prRest } = pr
+        const { quotes, documents, ...prRest } = pr
         await prisma.provider.create({ data: normDates(prRest) })
         counts.providers++
+        for (const q of quotes || []) { await prisma.providerQuote.create({ data: normDates(q) }).catch(() => {}); counts.providerQuotes++ }
+        for (const doc of documents || []) { await prisma.providerDocument.create({ data: normDates(doc) }).catch(() => {}); counts.providerDocuments++ }
       }
       for (const n of notes || []) { await prisma.note.create({ data: normDates(n) }); counts.notes++ }
       for (const f of files || []) { await prisma.projectFile.create({ data: normDates(f) }); counts.files++ }
@@ -353,6 +365,23 @@ router.post('/restore-tech', upload.single('file'), async (req: Request, res: Re
 
     for (const pr of snapshot.priceRefs || []) { await prisma.priceRef.create({ data: normDates(pr) }); counts.priceRefs++ }
     for (const idoc of snapshot.itemDocuments || []) { await prisma.itemDocument.create({ data: normDates(idoc) }); counts.itemDocuments++ }
+
+    // DrawLineContribution: depende de draws + budgetLines (ya creados arriba)
+    for (const c of snapshot.drawLineContributions || []) {
+      await prisma.drawLineContribution.create({ data: normDates(c) }).catch(() => {})
+      counts.drawLineContributions++
+    }
+
+    // Subcontratos + calendario de pagos: dependen de provider + project (ya creados)
+    for (const c of snapshot.subcontractorContracts || []) {
+      const { paymentSchedule, ...cRest } = c
+      await prisma.subcontractorContract.create({ data: normDates(cRest) }).catch(() => {})
+      counts.subcontractorContracts++
+      for (const pay of paymentSchedule || []) {
+        await prisma.subcontractorPayment.create({ data: normDates(pay) }).catch(() => {})
+        counts.subcontractorPayments++
+      }
+    }
 
     res.json({ data: { restored: true, counts, version: snapshot.version }, error: null })
   } catch (e: any) {
@@ -370,12 +399,16 @@ router.delete('/wipe-tech', async (req: Request, res: Response) => {
       return res.status(403).json({ data: null, error: 'Contraseña incorrecta. El reseteo fue bloqueado por seguridad.' })
     }
     await prisma.itemDocument.deleteMany({})
+    await prisma.subcontractorPayment.deleteMany({}).catch(() => {})
+    await prisma.subcontractorContract.deleteMany({}).catch(() => {})
+    await prisma.drawLineContribution.deleteMany({}).catch(() => {})
     await prisma.budgetLine.deleteMany({})
     await prisma.task.deleteMany({})
     await prisma.inspection.deleteMany({})
     await prisma.projectFile.deleteMany({})
     await prisma.note.deleteMany({})
     await prisma.providerQuote.deleteMany({}).catch(() => {})
+    await prisma.providerDocument.deleteMany({}).catch(() => {})
     await prisma.provider.deleteMany({})
     await prisma.partner.deleteMany({})
     await prisma.draw.deleteMany({})

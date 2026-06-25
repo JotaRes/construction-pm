@@ -158,6 +158,12 @@ export const API = {
   getAuditLog: (limit?: number) => unwrap<any[]>(api.get("/reports/audit-log", { params: { limit } })),
   getTraceability: (movementId: number) => unwrap<any>(api.get(`/reports/traceability/${movementId}`)),
 
+  // Análisis V2 (cashflow consolidado, liquidez 90d, retornos por proyecto)
+  getCashflowV2: (groupBy: "week" | "month" = "month", months = 12) =>
+    unwrap<any[]>(api.get("/cashflow", { params: { groupBy, months } })),
+  getLiquidityProjection: () => unwrap<any>(api.get("/liquidity-projection")),
+  getProjectReturns: () => unwrap<any[]>(api.get("/project-returns")),
+
   // Backup
   backupUrl: () => `/api/finance/backup`,
   excelExportUrl: () => `/api/finance/backup/excel`,

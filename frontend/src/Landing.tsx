@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { Building2, Wallet, ArrowRight, Download, Loader2 } from 'lucide-react'
 import { useState } from 'react'
 import { logout } from './components/AuthGate'
+import HomeExecutiveDashboard from './components/HomeExecutiveDashboard'
 
 const TOKEN_KEY = 'pm_auth_token'
 
@@ -99,35 +100,41 @@ export default function Landing() {
         </button>
       </header>
 
-      {/* Hero */}
-      <main className="flex-1 flex flex-col items-center justify-center px-6 py-8">
-        <div className="max-w-5xl w-full">
-          {/* Logo hero */}
-          <div className="text-center mb-10">
-            <div className="flex justify-center mb-5">
-              <RALogoMark width={160} height={120} />
+      {/* Contenido */}
+      <main className="flex-1 flex flex-col items-center px-6 py-6">
+        <div className="max-w-6xl w-full">
+          {/* Hero compacto */}
+          <div className="text-center mb-8">
+            <div className="flex justify-center mb-3">
+              <RALogoMark width={96} height={72} />
             </div>
             <h1
-              className="text-3xl md:text-4xl font-bold mb-1 leading-tight"
+              className="text-2xl md:text-3xl font-bold mb-1 leading-tight"
               style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif', letterSpacing: '0.04em' }}
             >
               Restrepo Acosta
             </h1>
             <div
-              className="text-xs md:text-sm uppercase tracking-[0.25em] mb-5 font-semibold"
+              className="text-[11px] uppercase tracking-[0.25em] font-semibold"
               style={{ color: 'var(--brand-gold)' }}
             >
               Global Holdings LLC
             </div>
+          </div>
+
+          {/* === DASHBOARD EJECUTIVO (primero, cruce técnico + financiero) === */}
+          <section className="mb-10">
+            <HomeExecutiveDashboard />
+          </section>
+
+          {/* === MÓDULOS (debajo del dashboard) === */}
+          <div className="text-center mb-4">
             <div
-              className="inline-block text-[11px] uppercase tracking-[0.18em] px-4 py-1 rounded-full mb-2"
+              className="inline-block text-[11px] uppercase tracking-[0.18em] px-4 py-1 rounded-full"
               style={{ background: 'rgba(45,75,82,0.07)', color: 'var(--brand-teal2)' }}
             >
-              Ecosistema operativo
+              Entrar a los módulos
             </div>
-            <p className="text-sm max-w-lg mx-auto mt-3" style={{ color: 'var(--brand-teal2)' }}>
-              Selecciona el módulo con el que deseas trabajar. Ambos comparten el mismo acceso seguro.
-            </p>
           </div>
 
           {/* Module cards */}
@@ -224,7 +231,7 @@ export default function Landing() {
                   Respaldo completo del sistema
                 </div>
                 <div className="text-xs" style={{ color: 'var(--brand-teal2)' }}>
-                  Datos de ambos módulos · código fuente · configuración · ZIP único
+                  Datos de ambos módulos · 2 dashboards Excel · código fuente · ZIP único
                 </div>
                 {downloadError && (
                   <div className="text-xs mt-1 text-red-500">Error: {downloadError}</div>

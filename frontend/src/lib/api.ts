@@ -62,6 +62,26 @@ export const projectsApi = {
 
 export const phasesApi = {
   list: (projectId: string) => api.get(`/projects/${projectId}/phases`).then(r => r.data.data),
+  summary: (projectId: string): Promise<PhaseSummary[]> =>
+    api.get(`/projects/${projectId}/phases-summary`).then(r => r.data.data),
+}
+
+export interface PhaseSummary {
+  id: string
+  code: string
+  name: string
+  groupName: string
+  order: number
+  totalItems: number
+  completedItems: number
+  progressPct: number
+  budgetTotal: number
+  approvedTotal: number
+  paidTotal: number
+  variancePct: number
+  startDateReal: string | null
+  endDateReal: string | null
+  status: 'COMPLETA' | 'EN_CURSO' | 'PENDIENTE'
 }
 
 export const itemsApi = {
@@ -177,6 +197,138 @@ export const constructionBudgetApi = {
 
 export const alertsApi = {
   list: (projectId: string) => api.get(`/projects/${projectId}/alerts`).then(r => r.data.data),
+  upcoming: (projectId: string): Promise<UpcomingAlert[]> =>
+    api.get(`/projects/${projectId}/upcoming`).then(r => r.data.data),
+}
+
+export interface UpcomingAlert {
+  type: 'INSPECCION' | 'PERMISO' | 'TAREA'
+  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM'
+  title: string
+  description: string
+  date: string | null
+}
+
+// === Subcontratistas: contratos + calendario de pagos por hito ===
+export interface SubPayment {
+  id: string
+  contractId: string
+  milestoneDesc: string
+  amount: number
+  dueDate: string | null
+  paidDate: string | null
+  status: 'PENDIENTE' | 'PAGADO' | 'RETENIDO'
+  notes: string | null
+}
+
+export interface SubContract {
+  id: string
+  providerId: string
+  projectId: string
+  contractValue: number
+  scopeDetails: string | null
+  startDate: string | null
+  endDate: string | null
+  status: 'ACTIVO' | 'COMPLETADO' | 'CANCELADO'
+  contractUrl: string | null
+  contractName: string | null
+  notes: string | null
+  provider: { id: string; name: string; type: string | null; phone: string | null }
+  paymentSchedule: SubPayment[]
+  createdAt: string
+}
+
+export const subcontractsApi = {
+  list: (projectId: string): Promise<SubContract[]> =>
+    api.get(`/subcontracts/project/${projectId}`).then(r => r.data.data),
+  create: (data: Record<string, unknown>) =>
+    api.post('/subcontracts', data).then(r => r.data.data),
+  update: (id: string, data: Record<string, unknown>) =>
+    api.put(`/subcontracts/${id}`, data).then(r => r.data.data),
+  remove: (id: string) =>
+    api.delete(`/subcontracts/${id}`).then(r => r.data.data),
+  addPayment: (contractId: string, data: Record<string, unknown>) =>
+    api.post(`/subcontracts/${contractId}/payments`, data).then(r => r.data.data),
+  pay: (paymentId: string) =>
+    api.patch(`/subcontracts/payments/${paymentId}/pay`).then(r => r.data.data),
+  removePayment: (paymentId: string) =>
+    api.delete(`/subcontracts/payments/${paymentId}`).then(r => r.data.data),
+}
+
+export interface ExecutiveSummary {
+  project: { name: string; address: string | null; lender: string | null; spv: string | null }
+  tech: {
+    globalProgress: number
+    activePhase: { code: string; name: string } | null
+    totalBudget: number
+    totalPaid: number
+    budgetVariancePct: number
+    draws: { total: number; totalFunded: number; latest: { number: number; status: string; amount: number } | null }
+    loanAmount: number
+    upbPost: number
+    remainingLoanBalance: number
+    pendingInspections: number
+    overdueTasks: number
+  }
+  finance: {
+    consolidatedCash: number
+    totalIngresos: number
+    totalEgresos: number
+    netFlow: number
+    accounts: Array<{ name: string; code: string; balance: number }>
+  }
+}
+
+export const executiveApi = {
+  summary: (projectId: string): Promise<ExecutiveSummary> =>
+    api.get(`/projects/${projectId}/executive-summary`).then(r => r.data.data),
+}
+
+export interface PortfolioProject {
+  id: string
+  name: string
+  address: string | null
+  spv: string | null
+  lender: string | null
+  progress: number
+  activePhase: { code: string; name: string } | null
+  totalBudget: number
+  totalPaid: number
+  totalItems: number
+  loanAmount: number
+  totalFunded: number
+  remainingLoan: number
+  latestDraw: { number: number; status: string } | null
+  pendingInspections: number
+  overdueTasks: number
+}
+
+export interface PortfolioSummary {
+  portfolio: {
+    projectCount: number
+    weightedProgress: number
+    totalBudget: number
+    totalPaid: number
+    totalLoan: number
+    totalFunded: number
+    totalRemainingLoan: number
+    pendingInspections: number
+    overdueTasks: number
+    budgetVariancePct: number
+    projects: PortfolioProject[]
+  }
+  finance: {
+    consolidatedCash: number
+    totalIngresos: number
+    totalEgresos: number
+    netFlow: number
+    accounts: Array<{ name: string; code: string; balance: number }>
+  }
+}
+
+export const portfolioApi = {
+  executive: (): Promise<PortfolioSummary> =>
+    api.get('/portfolio/executive-summary').then(r => r.data.data),
 }
 
 export const tasksApi = {
