@@ -1,6 +1,5 @@
 import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import axios from 'axios'
 import { constructionBudgetApi, projectsApi } from '../lib/api'
 import { formatUSD } from '../lib/calculations'
 import type { BudgetLine } from '../lib/types'
@@ -213,14 +212,7 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
   }
 
   const importPdfMut = useMutation({
-    mutationFn: async (file: File) => {
-      const fd = new FormData()
-      fd.append('pdf', file)
-      const res = await axios.post(`/api/projects/${projectId}/construction-budget/import-from-pdf`, fd, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      })
-      return res.data.data
-    },
+    mutationFn: (file: File) => constructionBudgetApi.importFromPdf(projectId, file),
     onSuccess: (r: any) => {
       queryClient.invalidateQueries({ queryKey: ['construction-budget', projectId] })
       toast.success(r?.message || 'PDF importado', { duration: 7000 })

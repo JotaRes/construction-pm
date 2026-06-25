@@ -193,6 +193,14 @@ export const constructionBudgetApi = {
   list: (projectId: string) => api.get(`/projects/${projectId}/construction-budget`).then(r => r.data.data),
   patch: (projectId: string, id: string, data: Record<string, unknown>) =>
     api.patch(`/projects/${projectId}/construction-budget/${id}`, data).then(r => r.data.data),
+  // Importa el construction budget extrayendo items reales del PDF.
+  // Usa el cliente `api` (con interceptor de token) — NO axios crudo, que daba 401
+  // ahora que /api/* exige autenticación global.
+  importFromPdf: (projectId: string, file: File) => {
+    const fd = new FormData()
+    fd.append('pdf', file)
+    return api.post(`/projects/${projectId}/construction-budget/import-from-pdf`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data.data)
+  },
 }
 
 export const alertsApi = {

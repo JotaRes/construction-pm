@@ -8,6 +8,12 @@ import axios from 'axios'
 import DocumentChecklist from '../components/DocumentChecklist'
 
 const api = axios.create({ baseURL: '/api' })
+// Inyecta el token JWT en cada request — sin esto, /api/* da 401 con la auth global.
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('pm_auth_token')
+  if (token) config.headers.Authorization = `Bearer ${token}`
+  return config
+})
 
 const CATEGORIES = ['Contrato', 'Permiso', 'Plano', 'Seguro', 'Draw', 'HOA', 'Legal', 'Inspección', 'Otro']
 
