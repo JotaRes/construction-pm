@@ -303,6 +303,10 @@ export async function applyDrawApprovalsToBudget(
   const touched = new Set<string>(touchedFromPrior)
   const usedLineIds = new Set<string>()
 
+  // drawNumber de este draw — para restar lo ya acumulado por los draws anteriores.
+  const thisDraw = await prisma.draw.findUnique({ where: { id: drawId }, select: { drawNumber: true } })
+  const thisNum = thisDraw?.drawNumber ?? Number.MAX_SAFE_INTEGER
+
   for (const a of approvals) {
     // 1) Match por itemCode si viene en el PDF (formato A legacy)
     let line = a.itemCode ? byCode.get(a.itemCode) : undefined
@@ -315,18 +319,24 @@ export async function applyDrawApprovalsToBudget(
     if (!line) { unmatched.push(a.itemCode || a.description); continue }
     usedLineIds.add(line.id)
     matched++
-    if (a.deltaThisDraw <= 0.005) continue
+    // Trinity reporta el ACUMULADO por ítem en cada draw. El aporte de ESTE draw
+    // = acumulado reportado − lo ya acumulado por los draws anteriores de esta línea.
+    // Así nunca se cuenta dos veces (antes se guardaba el acumulado como si fuera delta).
+    const reportedCum = (a.currentAmountAvailable && a.currentAmountAvailable > 0)
+      ? a.currentAmountAvailable
+      : (a.priorAmount || 0) + (a.deltaThisDraw || 0)
+    const priorAgg = await prisma.drawLineContribution.aggregate({
+      where: { budgetLineId: line.id, draw: { drawNumber: { lt: thisNum } } },
+      _sum: { deltaAmount: true },
+    })
+    const delta = Math.max(0, reportedCum - (priorAgg._sum.deltaAmount ?? 0))
+    if (delta <= 0.005) continue
     await prisma.drawLineContribution.create({
-      data: {
-        drawId,
-        budgetLineId: line.id,
-        itemCode: line.itemCode,
-        deltaAmount: a.deltaThisDraw,
-      },
+      data: { drawId, budgetLineId: line.id, itemCode: line.itemCode, deltaAmount: delta },
     })
     touched.add(line.id)
     newlyApprovedItems++
-    newlyApprovedAmount += a.deltaThisDraw
+    newlyApprovedAmount += delta
   }
 
   await recomputeBudgetLinesFromContributions(Array.from(touched))
@@ -1593,8 +1603,11 @@ async function computeDrawsValidation(projectId: string, excel?: Record<string, 
   const lines = await prisma.budgetLine.findMany({ where: { projectId }, select: { valorInicial: true, valorAprobado: true } })
 
   const holdback = project?.holdback ?? 0
+  // netWire es por-draw; se suma. elegibleTrinity de Trinity es ACUMULADO por draw,
+  // así que el total elegible = el ÚLTIMO acumulado (el mayor), NO la suma de todos.
+  const activeDraws = draws.filter(d => d.estado !== 'EMPTY')
   const totalWired = draws.reduce((s, d) => s + d.netWire, 0)
-  const totalElegible = draws.reduce((s, d) => s + d.elegibleTrinity, 0)
+  const totalElegible = activeDraws.reduce((m, d) => Math.max(m, d.elegibleTrinity), 0)
   const budgetTotal = lines.reduce((s, l) => s + l.valorInicial, 0)
   const totalApproved = lines.reduce((s, l) => s + l.valorAprobado, 0)
   const saldoHoldback = Math.max(0, holdback - totalWired)
@@ -1701,6 +1714,49 @@ router.delete('/:projectId/draws/lender-excel', async (req: Request, res: Respon
     })
     const v = await computeDrawsValidation(req.params.projectId, null)
     res.json({ data: v, error: null })
+  } catch (e) {
+    res.status(500).json({ data: null, error: String(e) })
+  }
+})
+
+// ── POST reparar contribuciones ACUMULADAS → DELTAS ─────────────────────────
+// Arregla el histórico donde cada contribución guardó el ACUMULADO del ítem en
+// vez del delta. Por cada línea, ordena sus contribuciones por drawNumber y
+// convierte: delta(N) = acumulado(N) − acumulado(N-1). Tras esto,
+// valorAprobado = SUM(deltas) = acumulado final (correcto). ES DE UNA SOLA VEZ:
+// re-ejecutarlo sobre datos ya-delta los volvería a diferenciar (mal), por eso
+// es una acción explícita de administrador.
+router.post('/:projectId/draws/repair-cumulative', async (req: Request, res: Response) => {
+  try {
+    const projectId = req.params.projectId
+    const lines = await prisma.budgetLine.findMany({ where: { projectId }, select: { id: true } })
+    let linesFixed = 0
+    let contribsFixed = 0
+    for (const line of lines) {
+      const contribs = await prisma.drawLineContribution.findMany({
+        where: { budgetLineId: line.id },
+        include: { draw: { select: { drawNumber: true } } },
+        orderBy: { draw: { drawNumber: 'asc' } },
+      })
+      if (contribs.length === 0) continue
+      let prevCum = 0
+      let changed = false
+      for (const c of contribs) {
+        const cum = c.deltaAmount // hoy = acumulado del ítem en ese draw
+        const delta = Math.max(0, cum - prevCum)
+        prevCum = cum
+        if (Math.abs(delta - c.deltaAmount) > 0.005) {
+          await prisma.drawLineContribution.update({ where: { id: c.id }, data: { deltaAmount: delta } })
+          contribsFixed++
+          changed = true
+        }
+      }
+      if (changed) linesFixed++
+    }
+    await recomputeProjectBudgetFromContributions(projectId)
+    const total = (await prisma.budgetLine.findMany({ where: { projectId }, select: { valorAprobado: true } }))
+      .reduce((s, l) => s + l.valorAprobado, 0)
+    res.json({ data: { linesFixed, contribsFixed, totalAprobado: total }, error: null })
   } catch (e) {
     res.status(500).json({ data: null, error: String(e) })
   }

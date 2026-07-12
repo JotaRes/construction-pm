@@ -123,6 +123,9 @@ export const drawsApi = {
   },
   deleteLenderExcel: (projectId: string) =>
     api.delete(`/projects/${projectId}/draws/lender-excel`).then(r => r.data.data as DrawsValidation),
+  // Reparación one-time: convierte contribuciones ACUMULADAS por ítem a DELTAS reales.
+  repairCumulative: (projectId: string) =>
+    api.post(`/projects/${projectId}/draws/repair-cumulative`).then(r => r.data.data as { linesFixed: number; contribsFixed: number; totalAprobado: number }),
 }
 
 export interface DrawsValidation {

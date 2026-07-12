@@ -205,11 +205,12 @@ function Field({ label, value, onChange, type = 'text', mono = false }: {
   )
 }
 
-function DrawCard({ draw, projectId, budgetTotal, budgetExecuted, onUpdate, onDelete }: {
+function DrawCard({ draw, projectId, budgetTotal, budgetExecuted, newAmount, onUpdate, onDelete }: {
   draw: Draw
   projectId: string
   budgetTotal: number
   budgetExecuted: number
+  newAmount: number
   onUpdate: (id: string, data: Record<string, unknown>) => void
   onDelete: (id: string) => void
 }) {
@@ -257,6 +258,11 @@ function DrawCard({ draw, projectId, budgetTotal, budgetExecuted, onUpdate, onDe
           </div>
           <div>
             <div className="text-xs font-semibold text-slate-800">Draw #{draw.drawNumber}</div>
+            {newAmount > 0 && (
+              <div className="text-[10px] font-mono text-emerald-600 font-semibold">
+                +{formatUSD(newAmount)} nuevo{draw.elegibleTrinity > 0 ? ` · acum. ${formatUSD(draw.elegibleTrinity)}` : ''}
+              </div>
+            )}
             {draw.netWire > 0 && <div className="text-[10px] font-mono text-emerald-400">{formatUSD(draw.netWire)} wired</div>}
             {draw.fechaWire && <div className="text-[10px] text-slate-400">{formatDate(draw.fechaWire)}</div>}
           </div>
@@ -751,6 +757,20 @@ export default function Draws({ projectId }: { projectId: string }) {
   const budgetTotalV = validation?.system.budgetTotal || budgetTotal
   const aprobadoOverflow = budgetTotalV > 0 && totalAprobado > budgetTotalV + 1
 
+  // Monto NUEVO de cada draw = acumulado de este − acumulado del draw anterior.
+  // (elegibleTrinity de Trinity es acumulado por draw; así se ve lo real de cada uno.)
+  const newAmountByDraw = (() => {
+    const m = new Map<string, number>()
+    const active = [...draws].filter(d => d.estado !== 'EMPTY').sort((a, b) => a.drawNumber - b.drawNumber)
+    let prevCum = 0
+    for (const d of active) {
+      const cum = d.elegibleTrinity || 0
+      m.set(d.id, Math.max(0, cum - prevCum))
+      prevCum = cum
+    }
+    return m
+  })()
+
   const mutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => drawsApi.patch(id, data),
     onSuccess: () => {
@@ -860,6 +880,30 @@ export default function Draws({ projectId }: { projectId: string }) {
             className="flex items-center gap-2 px-3 py-2 border border-blue-200 text-blue-700 hover:bg-blue-50 text-xs font-medium rounded-xl transition-colors">
             <RefreshCw className="w-3.5 h-3.5" />
             Reparar budget
+          </button>
+          <button onClick={async () => {
+              const ok = await confirm({
+                title: 'Corregir valores acumulados',
+                message: 'Los reportes del lender son ACUMULADOS (cada draw ya incluye los anteriores). Esto convierte el aporte de cada ítem a su valor NUEVO real (delta), corrigiendo el total aprobado inflado.',
+                detail: 'Úsalo UNA sola vez si el total aprobado quedó inflado por sumar acumulados. Es seguro: recalcula desde tus contribuciones existentes, sin borrar draws.',
+                confirmText: 'Corregir acumulados',
+              })
+              if (!ok) return
+              try {
+                const r = await drawsApi.repairCumulative(projectId)
+                toast.success(`Corregido: ${r.contribsFixed} aporte(s) en ${r.linesFixed} línea(s). Total aprobado ahora: ${formatUSD(r.totalAprobado)}`, { duration: 9000 })
+                queryClient.invalidateQueries({ queryKey: ['draws', projectId] })
+                queryClient.invalidateQueries({ queryKey: ['construction-budget', projectId] })
+                queryClient.invalidateQueries({ queryKey: ['project', projectId] })
+                queryClient.invalidateQueries({ queryKey: ['draws-validation', projectId] })
+              } catch (e: any) {
+                toast.error(e?.response?.data?.error || 'Error al corregir')
+              }
+            }}
+            title="Convierte contribuciones acumuladas por ítem a deltas reales (una sola vez)"
+            className="flex items-center gap-2 px-3 py-2 border border-amber-200 text-amber-700 hover:bg-amber-50 text-xs font-medium rounded-xl transition-colors">
+            <TrendingDown className="w-3.5 h-3.5" />
+            Corregir acumulados
           </button>
           <button onClick={() => addDrawMutation.mutate()}
             disabled={addDrawMutation.isPending}
@@ -1027,6 +1071,7 @@ export default function Draws({ projectId }: { projectId: string }) {
         {draws.map(draw => (
           <DrawCard key={draw.id} draw={draw} projectId={projectId}
             budgetTotal={budgetTotal} budgetExecuted={budgetExecuted}
+            newAmount={newAmountByDraw.get(draw.id) ?? 0}
             onUpdate={(id, data) => mutation.mutate({ id, data })}
             onDelete={(id) => deleteMutation.mutate(id)} />
         ))}
