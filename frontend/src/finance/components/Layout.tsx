@@ -9,7 +9,6 @@ import { cls } from "../lib/format";
 import { logout as unifiedLogout } from "../../components/AuthGate";
 import ModuleSwitcher from "../../components/ModuleSwitcher";
 import CapacityBanner from "../../components/CapacityBanner";
-import { ThemeToggle } from "../../components/ThemeToggle";
 import { useTheme } from "../../hooks/useTheme";
 import { downloadAuthed } from "../../lib/api";
 
@@ -81,7 +80,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
           <div className="fin-logo-name" style={{ fontSize: 13 }}>CFO Holding</div>
         </div>
-        <ThemeToggle />
       </div>
 
       {mobileOpen && (
@@ -173,7 +171,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <div className="fin-tb-sub">{sub} · {new Date().toLocaleDateString("es-CO", { month: "long", year: "numeric" })}</div>
           </div>
           <div className="flex items-center gap-2">
-            <ThemeToggle />
             <ModuleSwitcher currentModule="finance" />
             <a
               href="/api/backup"

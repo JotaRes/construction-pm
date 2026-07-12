@@ -83,6 +83,7 @@ export interface Item {
   unit: string | null
   esNA: boolean
   completado: boolean
+  quantity?: number | null
   valorPresupuestado: number
   valorEjecutado: number
   providerId: string | null
@@ -295,6 +296,7 @@ export interface BudgetLine {
   itemCode: string
   description: string
   unit: string
+  quantity?: number | null
   vendor: string | null
   valorInicial: number
   valorPresentado: number
@@ -323,6 +325,7 @@ export type TaskPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT'
 export interface Task {
   id: string
   projectId: string
+  tipo?: 'TAREA' | 'NOTA'
   title: string
   responsable: string | null
   done: boolean

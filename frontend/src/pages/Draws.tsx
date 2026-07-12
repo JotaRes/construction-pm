@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { drawsApi, drawParseApi, constructionBudgetApi, projectsApi, type DrawLineApproval } from '../lib/api'
+import { drawsApi, drawParseApi, constructionBudgetApi, projectsApi, type DrawLineApproval, type DrawsValidation } from '../lib/api'
 import { formatUSD, formatDate } from '../lib/calculations'
 import type { Draw, DrawEstado } from '../lib/types'
 import { Upload, FileText, CheckCircle, X, AlertTriangle, Receipt, ShieldCheck, Share2, Mail, MessageCircle, Download, Trash2, Table2, TrendingDown, ChevronDown, RefreshCw } from 'lucide-react'
@@ -335,10 +335,9 @@ function DrawCard({ draw, projectId, budgetTotal, budgetExecuted, onUpdate, onDe
             <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
               <Share2 className="w-3 h-3" />Documentos del Draw
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               <DocSlot draw={draw} kind="INVOICE"  label="Nuestra factura al lender"  icon={Receipt}    projectId={projectId} />
               <DocSlot draw={draw} kind="APPROVAL" label="Aprobación del lender"       icon={ShieldCheck} projectId={projectId} />
-              <DocSlot draw={draw} kind="EXCEL"    label="Tabla Excel del lender"      icon={Table2}     projectId={projectId} />
             </div>
           </div>
 
@@ -627,6 +626,98 @@ function PdfParsePanel({ projectId, draws, onClose, onApply }: {
   )
 }
 
+// Excel general del lender (nivel proyecto): complementa y valida los PDF por draw.
+function LenderExcelPanel({ projectId }: { projectId: string }) {
+  const queryClient = useQueryClient()
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  const { data: validation } = useQuery<DrawsValidation>({
+    queryKey: ['draws-validation', projectId],
+    queryFn: () => drawsApi.validation(projectId),
+  })
+
+  const uploadMut = useMutation({
+    mutationFn: (f: File) => drawsApi.uploadLenderExcel(projectId, f),
+    onSuccess: (res) => {
+      const err = (res as any)?.extractionError as string | null | undefined
+      if (err) {
+        toast.error(`Excel subido, pero la lectura automática falló: ${err}`, { duration: 8000 })
+      } else {
+        const w = res?.data?.warnings?.length ?? 0
+        toast.success(w > 0 ? `Excel cargado — ${w} diferencia(s) detectada(s), revísalas abajo` : 'Excel cargado y validado — los totales cuadran')
+      }
+      queryClient.invalidateQueries({ queryKey: ['draws-validation', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['project', projectId] })
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.error || 'Error al subir el Excel'),
+  })
+
+  const delMut = useMutation({
+    mutationFn: () => drawsApi.deleteLenderExcel(projectId),
+    onSuccess: () => {
+      toast.success('Excel general eliminado')
+      queryClient.invalidateQueries({ queryKey: ['draws-validation', projectId] })
+    },
+  })
+
+  const file = validation?.file
+  const warnings = validation?.warnings ?? []
+  const comparison = validation?.comparison ?? {}
+
+  return (
+    <div className="section-card p-4">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Table2 className="w-4 h-4 text-blue-600" />
+          <div>
+            <div className="text-sm font-semibold text-slate-800">Excel general del lender</div>
+            <div className="text-[11px] text-slate-500">Un solo archivo con los totales del lender. Complementa y valida los PDF de cada draw (no altera las aprobaciones).</div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {file?.url && (
+            <>
+              <a href={file.url} target="_blank" rel="noreferrer" className="text-xs text-blue-700 hover:underline flex items-center gap-1">
+                <FileText className="w-3 h-3" />{file.name || 'Excel'}
+              </a>
+              <button onClick={() => delMut.mutate()} disabled={delMut.isPending} className="text-[11px] text-slate-400 hover:text-red-500 disabled:opacity-40">Eliminar</button>
+            </>
+          )}
+          <button onClick={() => fileRef.current?.click()} disabled={uploadMut.isPending}
+            className="flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-xl transition-colors disabled:opacity-50">
+            <Upload className="w-3.5 h-3.5" />{uploadMut.isPending ? 'Subiendo...' : file?.url ? 'Reemplazar Excel' : 'Cargar Excel del lender'}
+          </button>
+          <input ref={fileRef} type="file"
+            accept=".xlsx,.xls,.csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
+            className="hidden"
+            onChange={e => { const f = e.target.files?.[0]; if (f) { uploadMut.mutate(f); e.target.value = '' } }} />
+        </div>
+      </div>
+
+      {validation && (warnings.length > 0 || Object.keys(comparison).length > 0) && (
+        <div className="mt-3 space-y-2">
+          {warnings.map((w, i) => (
+            <div key={i} className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-[11px] text-amber-800">
+              <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />{w}
+            </div>
+          ))}
+          {Object.entries(comparison).map(([k, c]) => (
+            <div key={k} className={`text-[11px] rounded-lg px-3 py-2 border flex items-center justify-between ${c.difiere ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-emerald-50 border-emerald-200 text-emerald-700'}`}>
+              <span className="font-semibold uppercase">{k}</span>
+              <span className="font-mono">Excel {formatUSD(c.excel)} · Sistema {formatUSD(c.sistema)} {c.difiere ? '⚠' : '✓'}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {validation && warnings.length === 0 && file?.url && (
+        <div className="mt-3 text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 flex items-center gap-2">
+          <CheckCircle className="w-3.5 h-3.5" />Los totales del sistema cuadran con el Excel del lender.
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Draws({ projectId }: { projectId: string }) {
   const queryClient = useQueryClient()
   const confirm = useConfirm()
@@ -652,6 +743,14 @@ export default function Draws({ projectId }: { projectId: string }) {
   const budgetExecuted = budgetLines.reduce((s, b) => s + (b.valorEjecutado || 0), 0)
   const initialHoldback: number = project?.holdback ?? 0
 
+  const { data: validation } = useQuery<DrawsValidation>({
+    queryKey: ['draws-validation', projectId],
+    queryFn: () => drawsApi.validation(projectId),
+  })
+  const totalAprobado = validation?.system.totalApproved ?? 0
+  const budgetTotalV = validation?.system.budgetTotal || budgetTotal
+  const aprobadoOverflow = budgetTotalV > 0 && totalAprobado > budgetTotalV + 1
+
   const mutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => drawsApi.patch(id, data),
     onSuccess: () => {
@@ -661,6 +760,7 @@ export default function Draws({ projectId }: { projectId: string }) {
       queryClient.invalidateQueries({ queryKey: ['draws', projectId] })
       queryClient.invalidateQueries({ queryKey: ['project', projectId] })
       queryClient.invalidateQueries({ queryKey: ['construction-budget', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['draws-validation', projectId] })
     },
   })
 
@@ -671,6 +771,7 @@ export default function Draws({ projectId }: { projectId: string }) {
       queryClient.invalidateQueries({ queryKey: ['draws', projectId] })
       queryClient.invalidateQueries({ queryKey: ['construction-budget', projectId] })
       queryClient.invalidateQueries({ queryKey: ['project', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['draws-validation', projectId] })
     },
     onError: (e: any) => toast.error(e?.response?.data?.error || 'Error al eliminar draw'),
   })
@@ -775,6 +876,9 @@ export default function Draws({ projectId }: { projectId: string }) {
         </div>
       </div>
 
+      {/* Excel general del lender — carga y validación (parte superior) */}
+      <LenderExcelPanel projectId={projectId} />
+
       {/* Alerta global de documentos faltantes */}
       {drawsConFalta.length > 0 && (
         <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
@@ -802,28 +906,35 @@ export default function Draws({ projectId }: { projectId: string }) {
       )}
 
       {/* ── KPI row ── */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <div className="kpi-card">
           <div className="text-xs text-slate-400 uppercase mb-1">Holdback inicial</div>
           <div className="text-xl font-bold font-mono text-slate-800">{formatUSD(initialHoldback)}</div>
           <div className="text-[10px] text-slate-400 mt-1">Según HUD de cierre</div>
         </div>
+        <div className="kpi-card">
+          <div className="text-xs text-slate-400 uppercase mb-1">Total aprobado</div>
+          <div className={`text-xl font-bold font-mono ${aprobadoOverflow ? 'text-red-500' : 'text-slate-800'}`}>{formatUSD(totalAprobado)}</div>
+          <div className={`text-[10px] mt-1 ${aprobadoOverflow ? 'text-red-500 font-semibold' : 'text-slate-400'}`}>
+            {aprobadoOverflow ? '⚠ supera el budget' : `de ${formatUSD(budgetTotalV)} budget`}
+          </div>
+        </div>
         <div className="kpi-card kpi-card-green">
           <div className="text-xs text-slate-400 uppercase mb-1">Total desembolsado</div>
-          <div className="text-xl font-bold font-mono text-emerald-400">{formatUSD(totalWired)}</div>
+          <div className="text-xl font-bold font-mono text-emerald-500">{formatUSD(totalWired)}</div>
           <div className="text-xs text-slate-400 mt-1">{wiredDraws.length} draw(s) wired</div>
         </div>
         <div className="kpi-card kpi-card-amber">
-          <div className="text-xs text-slate-400 uppercase mb-1">Saldo holdback</div>
-          <div className={`text-xl font-bold font-mono ${lastSaldo < 50000 ? 'text-red-400' : lastSaldo < 100000 ? 'text-[var(--brand-gold)]' : 'text-slate-900'}`}>
+          <div className="text-xs text-slate-400 uppercase mb-1">Saldo pendiente por girar</div>
+          <div className={`text-xl font-bold font-mono ${lastSaldo < 50000 ? 'text-red-500' : lastSaldo < 100000 ? 'text-[var(--brand-gold)]' : 'text-slate-900'}`}>
             {formatUSD(lastSaldo)}
           </div>
           <div className="text-[10px] text-slate-400 mt-1">
-            {initialHoldback > 0 ? `${((totalWired / initialHoldback) * 100).toFixed(1)}% consumido` : '—'}
+            {initialHoldback > 0 ? `${((totalWired / initialHoldback) * 100).toFixed(1)}% consumido` : 'holdback − desembolsado'}
           </div>
         </div>
         <div className="kpi-card">
-          <div className="text-xs text-slate-400 uppercase mb-1">Draws ejecutados</div>
+          <div className="text-xs text-slate-400 uppercase mb-1">Draws</div>
           <div className="text-xl font-bold font-mono text-slate-900">{wiredDraws.length} / {draws.filter(d => d.estado !== 'EMPTY').length}</div>
           <div className="text-[10px] text-slate-400 mt-1">{draws.filter(d => d.estado === 'EMPTY').length} disponibles</div>
         </div>

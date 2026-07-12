@@ -685,170 +685,6 @@ input[type=number] { -moz-appearance: textfield; }
   --chart-grid-v2: rgba(0,0,0,0.05);
 }
 
-/* ── DARK MODE ── */
-/* Se activa añadiendo data-theme="dark" en <html>.
-   TODOS los tokens --brand-* se remapean automáticamente.
-   Los componentes existentes que usan var(--brand-*) reciben dark mode SIN modificación. */
-[data-theme="dark"] {
-  /* Fondos — en capas oscuras */
-  --brand-cream:   #0a0c10;
-  --brand-cream2:  #0f1219;
-  --brand-cream3:  #161b26;
-  --brand-teal-xl: #1e2535;
-
-  /* Texto — invertido */
-  --brand-dark:    rgba(240,236,228,0.94);
-
-  /* Teal → versión oscura */
-  --brand-teal:    #6fa8b8;
-  --brand-teal2:   #8fc0cc;
-  --brand-teal3:   #4a8898;
-
-  /* Gold → versión oscura */
-  --brand-gold:    #c49a38;
-  --brand-gold2:   #d4aa50;
-  --brand-gold3:   #e0c070;
-
-  /* Shadows → oscuras */
-  --shadow-card:       0 1px 0 rgba(255,255,255,0.04) inset, 0 2px 8px rgba(0,0,0,0.40), 0 12px 28px rgba(0,0,0,0.30);
-  --shadow-card-hover: 0 1px 0 rgba(255,255,255,0.06) inset, 0 4px 16px rgba(0,0,0,0.50), 0 24px 52px rgba(0,0,0,0.38);
-  --shadow-gold:       0 2px 6px rgba(196,154,56,0.18), 0 8px 28px rgba(196,154,56,0.28), 0 1px 0 rgba(255,255,255,0.08) inset;
-  --shadow-teal:       0 2px 6px rgba(111,168,184,0.15), 0 8px 24px rgba(111,168,184,0.20);
-  --shadow-sidebar:    6px 0 40px rgba(0,0,0,0.60);
-  --shadow-modal:      0 8px 40px rgba(0,0,0,0.60), 0 2px 8px rgba(0,0,0,0.40);
-
-  /* Tokens semánticos dark */
-  --bg-base:       #0a0c10;
-  --bg-surface:    #0f1219;
-  --bg-surface-2:  #161b26;
-  --bg-surface-3:  #1e2535;
-
-  --border:        rgba(255,255,255,0.055);
-  --border-strong: rgba(255,255,255,0.11);
-  --border-focus:  rgba(176,104,60,0.5);
-
-  --text-primary:   rgba(240,236,228,0.95);
-  --text-secondary: rgba(240,236,228,0.45);
-  --text-muted:     rgba(240,236,228,0.22);
-  --text-disabled:  rgba(240,236,228,0.12);
-
-  --accent:        #b06840;
-  --accent-h:      #c4784e;
-  --accent-soft:   rgba(176,104,64,0.12);
-  --accent-border: rgba(176,104,64,0.28);
-
-  --ok:            #4a9e72;
-  --ok-soft:       rgba(74,158,114,0.10);
-  --ok-border:     rgba(74,158,114,0.24);
-  --warn:          #c49a38;
-  --warn-soft:     rgba(196,154,56,0.10);
-  --warn-border:   rgba(196,154,56,0.24);
-  --err:           #b85050;
-  --err-soft:      rgba(184,80,80,0.10);
-  --err-border:    rgba(184,80,80,0.24);
-  --inf:           #4880b0;
-  --inf-soft:      rgba(72,128,176,0.10);
-  --inf-border:    rgba(72,128,176,0.24);
-
-  --shadow-sm-v2: 0 1px 4px rgba(0,0,0,0.5);
-  --shadow-md-v2: 0 4px 20px rgba(0,0,0,0.55);
-  --shadow-lg-v2: 0 12px 40px rgba(0,0,0,0.65);
-
-  --row-hover-v2:  rgba(255,255,255,0.022);
-  --thead-bg-v2:   rgba(0,0,0,0.18);
-  --chart-grid-v2: rgba(255,255,255,0.042);
-}
-
-/* ── Transición global de tema ── */
-html {
-  transition: background-color 0.35s ease, color 0.35s ease;
-}
-
-/* ── Dark mode: body background ── */
-[data-theme="dark"] body {
-  background-color: var(--brand-cream2);
-  background-image:
-    radial-gradient(ellipse 110% 55% at 50% -8%, rgba(111,168,184,.05) 0%, transparent 60%),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='250' height='250'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)' opacity='.02'/%3E%3C/svg%3E");
-  color: var(--brand-dark);
-}
-
-/* ── Dark mode: sidebar ── */
-[data-theme="dark"] .sidebar-ra,
-[data-theme="dark"] .fin-app aside {
-  background:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.68' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)' opacity='.04'/%3E%3C/svg%3E"),
-    linear-gradient(168deg, #1a2830 0%, #111e24 38%, #090e12 100%) !important;
-}
-
-/* ── Dark mode: topbar glass ── */
-[data-theme="dark"] .topbar-glass {
-  background: rgba(15,18,25,0.88) !important;
-  border-bottom: 1px solid rgba(255,255,255,0.06) !important;
-  box-shadow: 0 1px 0 rgba(255,255,255,0.04), 0 2px 8px rgba(0,0,0,0.40) !important;
-}
-
-/* ── Dark mode: section-card y kpi-card ── */
-[data-theme="dark"] .section-card,
-[data-theme="dark"] .kpi-card {
-  background: linear-gradient(158deg, #1e2535 0%, #161b26 100%) !important;
-  border-color: rgba(255,255,255,0.06) !important;
-}
-
-/* ── Dark mode: inputs ── */
-[data-theme="dark"] .input-base {
-  background: #1e2535 !important;
-  border-color: rgba(255,255,255,0.09) !important;
-  color: var(--brand-dark) !important;
-}
-[data-theme="dark"] .input-base::placeholder { color: rgba(240,236,228,0.28) !important; }
-[data-theme="dark"] .input-base:focus { border-color: var(--brand-gold) !important; }
-
-/* ── Dark mode: tablas ── */
-[data-theme="dark"] .table-head th {
-  background: rgba(0,0,0,0.25) !important;
-  color: rgba(240,236,228,0.42) !important;
-  border-color: rgba(255,255,255,0.06) !important;
-}
-[data-theme="dark"] .table-row-base { border-color: rgba(255,255,255,0.055) !important; }
-[data-theme="dark"] .table-row-base:hover { background: rgba(255,255,255,0.025) !important; }
-
-/* ── Dark mode: alert cards ── */
-[data-theme="dark"] .alert-card {
-  background: linear-gradient(158deg, #1e2535 0%, #161b26 100%) !important;
-  border-color: rgba(255,255,255,0.06) !important;
-}
-
-/* ── Dark mode: fin-app remapping ── */
-[data-theme="dark"] .fin-app { background: #0a0c10 !important; color: var(--brand-dark) !important; }
-[data-theme="dark"] .fin-app .card {
-  background: linear-gradient(158deg, #1e2535 0%, #161b26 100%) !important;
-  border-color: rgba(255,255,255,0.06) !important;
-}
-[data-theme="dark"] .fin-app .table-row:hover { background: rgba(255,255,255,0.025) !important; }
-/* Nota: .fin-app .kpi-card ya queda cubierto por la regla [data-theme="dark"] .kpi-card de arriba.
-   Se evita agruparlo con .fin-kpi aquí porque .fin-kpi usa @apply kpi-card (causaría dependencia circular en Tailwind). */
-[data-theme="dark"] .fin-app .fin-kpi {
-  background: linear-gradient(158deg, #1e2535 0%, #161b26 100%) !important;
-}
-
-/* ── ThemeToggle component class (para usar en topbar) ── */
-.theme-toggle-btn {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 6px 12px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: transparent;
-  color: var(--text-secondary);
-  font-family: var(--font-mono);
-  font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
-  cursor: pointer;
-  transition: all 0.18s;
-}
-.theme-toggle-btn:hover {
-  border-color: var(--border-strong);
-  color: var(--text-primary);
-}
 
 /* ═══════════════════════════════════════════════════════════
    DS v2.1 — SYSTEM-WIDE CASCADE
@@ -1080,13 +916,6 @@ h1.text-2xl, h1.text-3xl {
   font-size: 10px !important;
 }
 
-/* ── Landing: módulo cards ── */
-[data-theme="dark"] .landing-card-tech {
-  background: linear-gradient(135deg, #1a2830 0%, #111e24 100%) !important;
-}
-[data-theme="dark"] .landing-card-finance {
-  background: linear-gradient(135deg, #0f1219 0%, #161b26 100%) !important;
-}
 
 /* ═══════════════════════════════════════════════════════
    DESIGN SYSTEM v2.1 — Finance Module Component Classes
@@ -1402,8 +1231,7 @@ h1.text-2xl, h1.text-3xl {
 /* ── Neutraliza overrides legacy del sidebar (.fin-app aside) para que
    .fin-sidebar-v2 sea theme-aware. Más específico que las reglas legacy
    con !important (líneas ~445 y ~778), no borra nada de lo previo. ── */
-.fin-app aside.fin-sidebar-v2,
-[data-theme="dark"] .fin-app aside.fin-sidebar-v2 {
+.fin-app aside.fin-sidebar-v2 {
   background: var(--bg-surface) !important;
   background-image: none !important;
   border-right: 1px solid var(--border) !important;

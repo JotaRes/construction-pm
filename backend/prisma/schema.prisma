@@ -83,6 +83,11 @@ model Project {
   hudName            String?
   otrosFinancieroUrl  String?          // "Otros" - genérico (puede ser cualquier doc adicional)
   otrosFinancieroName String?
+  // Excel general del lender para la sección DRAWS. Complementa y VALIDA los PDF
+  // de cada draw (lleva los totales del lender). NO crea aprobaciones de budget:
+  // esas siguen viniendo solo del PDF de aprobación de cada draw (delta correcto).
+  drawsExcelUrl       String?
+  drawsExcelName      String?
   // Datos extraídos del LOI (para CFO dashboard)
   loiSalePrice       Float?
   loiOfferDate       DateTime?
@@ -126,6 +131,7 @@ model Item {
   unit               String?
   esNA               Boolean        @default(false)
   completado         Boolean        @default(false)
+  quantity           Float?         // cantidad en la unidad (para precios de referencia por unidad)
   valorPresupuestado Float          @default(0)
   valorEjecutado     Float          @default(0)
   providerId         String?
@@ -288,6 +294,7 @@ model BudgetLine {
   itemCode        String
   description     String
   unit            String  @default("LS")
+  quantity        Float?  // cantidad en la unidad (para precios de referencia por unidad)
   vendor          String?
   valorInicial    Float   @default(0)
   valorPresentado Float   @default(0)
@@ -301,6 +308,7 @@ model Task {
   id            String    @id @default(cuid())
   projectId     String
   project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tipo          String    @default("TAREA")   // TAREA | NOTA (Notas fusionadas en Tareas)
   title         String
   responsable   String?
   responsableEmail String?

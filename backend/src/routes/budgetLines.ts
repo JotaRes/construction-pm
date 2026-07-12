@@ -37,7 +37,7 @@ router.get('/:id/construction-budget', async (req: Request, res: Response) => {
 // (suma de aportes por draw vivo). Editarlo manualmente rompe la trazabilidad
 // y el siguiente recompute lo sobrescribiría.
 const BUDGET_LINE_EDITABLE_FIELDS = new Set([
-  'description', 'unit', 'vendor',
+  'description', 'unit', 'vendor', 'quantity',
   'valorInicial', 'valorPresentado', 'pagadoSubs',
 ])
 
@@ -52,7 +52,9 @@ router.patch('/:projectId/construction-budget/:id', async (req: Request, res: Re
     }
     const data: Record<string, unknown> = {}
     for (const [k, v] of Object.entries(req.body || {})) {
-      if (BUDGET_LINE_EDITABLE_FIELDS.has(k)) data[k] = v
+      if (!BUDGET_LINE_EDITABLE_FIELDS.has(k)) continue
+      if (k === 'quantity') data[k] = (v === null || v === '') ? null : Number(v)
+      else data[k] = v
     }
     if (Object.keys(data).length === 0) {
       return res.status(400).json({ data: null, error: 'No hay campos editables en el payload' })

@@ -22,6 +22,7 @@ router.post('/:id/tasks', async (req: Request, res: Response) => {
     const task = await prisma.task.create({
       data: {
         projectId: req.params.id,
+        tipo: req.body.tipo === 'NOTA' ? 'NOTA' : 'TAREA',
         title: req.body.title ?? 'Nueva tarea',
         responsable: req.body.responsable ?? null,
         responsableEmail: req.body.responsableEmail ?? null,

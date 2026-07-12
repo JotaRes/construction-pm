@@ -464,7 +464,38 @@ export function parseDrawText(text: string): Record<string, unknown> {
 // Esto coincide con el shape que xlsx devolvía en `sheet_to_json({header:1})`.
 interface SheetRows { name: string; rows: unknown[][] }
 
+// Parser CSV simple que respeta comillas y comas dentro de campos entrecomillados.
+function parseCsvText(text: string): unknown[][] {
+  const rows: unknown[][] = []
+  const lines = text.split(/\r\n|\n|\r/)
+  for (const line of lines) {
+    if (line === '') { rows.push([]); continue }
+    const cells: string[] = []
+    let cur = ''
+    let inQ = false
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i]
+      if (inQ) {
+        if (ch === '"') { if (line[i + 1] === '"') { cur += '"'; i++ } else inQ = false }
+        else cur += ch
+      } else {
+        if (ch === '"') inQ = true
+        else if (ch === ',') { cells.push(cur); cur = '' }
+        else cur += ch
+      }
+    }
+    cells.push(cur)
+    rows.push(cells.map(c => c.trim()))
+  }
+  return rows
+}
+
 async function loadWorkbookRows(buffer: Buffer): Promise<SheetRows[]> {
+  // xlsx/ods son ZIP (magic "PK"). Si no empieza con PK, es CSV/texto plano.
+  const isZip = buffer.length > 1 && buffer[0] === 0x50 && buffer[1] === 0x4b
+  if (!isZip) {
+    return [{ name: 'CSV', rows: parseCsvText(buffer.toString('utf8')) }]
+  }
   const wb = new ExcelJS.Workbook()
   await wb.xlsx.load(buffer as unknown as ArrayBuffer)
   const out: SheetRows[] = []
@@ -1541,6 +1572,135 @@ router.post('/:projectId/docs/parse-pdf', handleUpload, async (req: Request, res
       data: { parsed, preview: pdfData.text.slice(0, 1500), isImage: false, imageUrl: null },
       error: null,
     })
+  } catch (e) {
+    res.status(500).json({ data: null, error: String(e) })
+  }
+})
+
+// ── Validación de la sección Draws ──────────────────────────────────────────
+// Calcula los totales del sistema (una sola vez, sin doble conteo) y, si se pasa
+// lo extraído del Excel general del lender, lo compara para marcar diferencias.
+//   totalWired    = Σ netWire de todos los draws (dinero realmente desembolsado)
+//   totalApproved = Σ valorAprobado del budget (suma de deltas por línea — nunca duplica)
+//   totalElegible = Σ elegibleTrinity de los draws (aprobado por Trinity)
+//   pendientePorGirar = holdback − totalWired (reserva que aún se puede girar)
+async function computeDrawsValidation(projectId: string, excel?: Record<string, unknown> | null) {
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { holdback: true, drawsExcelUrl: true, drawsExcelName: true },
+  })
+  const draws = await prisma.draw.findMany({ where: { projectId }, select: { netWire: true, elegibleTrinity: true, estado: true } })
+  const lines = await prisma.budgetLine.findMany({ where: { projectId }, select: { valorInicial: true, valorAprobado: true } })
+
+  const holdback = project?.holdback ?? 0
+  const totalWired = draws.reduce((s, d) => s + d.netWire, 0)
+  const totalElegible = draws.reduce((s, d) => s + d.elegibleTrinity, 0)
+  const budgetTotal = lines.reduce((s, l) => s + l.valorInicial, 0)
+  const totalApproved = lines.reduce((s, l) => s + l.valorAprobado, 0)
+  const saldoHoldback = Math.max(0, holdback - totalWired)
+  const pendientePorGirar = saldoHoldback
+
+  const warnings: string[] = []
+  // Guarda anti-doble-conteo: el aprobado nunca debería superar el budget total.
+  if (budgetTotal > 0 && totalApproved > budgetTotal + 1) {
+    warnings.push(`El total aprobado (${totalApproved.toFixed(0)}) supera el budget total (${budgetTotal.toFixed(0)}). Revisa si algún draw se contó dos veces.`)
+  }
+  // Guarda: lo desembolsado no debería superar el holdback disponible.
+  if (holdback > 0 && totalWired > holdback + 1) {
+    warnings.push(`El total desembolsado (${totalWired.toFixed(0)}) supera el holdback inicial (${holdback.toFixed(0)}).`)
+  }
+
+  // Comparación con el Excel general del lender (si se aportó/está cargado).
+  const cmp: Record<string, { excel: number; sistema: number; difiere: boolean }> = {}
+  if (excel) {
+    const eHold = typeof excel.projectHoldback === 'number' ? excel.projectHoldback : null
+    const eNet = typeof excel.netWire === 'number' ? excel.netWire : null
+    if (eHold !== null) {
+      const difiere = Math.abs(eHold - holdback) > 1
+      cmp.holdback = { excel: eHold, sistema: holdback, difiere }
+      if (difiere) warnings.push(`El holdback del Excel (${eHold.toFixed(0)}) difiere del sistema (${holdback.toFixed(0)}).`)
+    }
+    if (eNet !== null) {
+      const difiere = Math.abs(eNet - totalWired) > 1
+      cmp.netWire = { excel: eNet, sistema: totalWired, difiere }
+    }
+  }
+
+  return {
+    file: { url: project?.drawsExcelUrl ?? null, name: project?.drawsExcelName ?? null },
+    system: { holdback, totalWired, totalElegible, budgetTotal, totalApproved, saldoHoldback, pendientePorGirar },
+    excel: excel ?? null,
+    comparison: cmp,
+    warnings,
+  }
+}
+
+// GET validación + estado del Excel general
+router.get('/:projectId/draws/validation', async (req: Request, res: Response) => {
+  try {
+    const v = await computeDrawsValidation(req.params.projectId, null)
+    res.json({ data: v, error: null })
+  } catch (e) {
+    res.status(500).json({ data: null, error: String(e) })
+  }
+})
+
+// POST Excel general del lender — complementa y valida los PDF por draw.
+// NO crea aprobaciones de budget (esas vienen solo del PDF de cada draw).
+router.post('/:projectId/draws/lender-excel', (req: Request, res: Response) => {
+  upload.single('file')(req, res, async (err) => {
+    if (err) return res.status(400).json({ data: null, error: String(err) })
+    try {
+      if (!req.file) return res.status(400).json({ data: null, error: 'No se subió ningún archivo' })
+      if (!isExcelFile(req.file.mimetype, req.file.originalname)) {
+        return res.status(400).json({ data: null, error: `Archivo no reconocido como Excel (${req.file.mimetype || 'sin mimetype'}). Usa .xlsx/.xls/.csv.` })
+      }
+      const project = await prisma.project.findUnique({ where: { id: req.params.projectId }, select: { id: true } })
+      if (!project) return res.status(404).json({ data: null, error: 'Proyecto no encontrado' })
+
+      const fileUrl = await tryCloudinaryUpload(req.file.buffer, 'construction-pm/draw-documents', req.file.mimetype)
+      if (!fileUrl) return res.status(500).json({ data: null, error: 'Cloudinary no configurado' })
+
+      let parsed: Record<string, unknown> = {}
+      let extractionError: string | null = null
+      try {
+        const r = await parseDrawExcel(req.file.buffer)
+        parsed = r.parsed
+      } catch (e) {
+        extractionError = `Error al parsear Excel: ${e instanceof Error ? e.message : String(e)}`
+      }
+
+      // Si el Excel trae el holdback del proyecto (Refurb Loan Amount) y el proyecto
+      // aún no lo tiene, lo persistimos — nunca sobrescribe un holdback ya configurado.
+      if (typeof parsed.projectHoldback === 'number' && parsed.projectHoldback > 0) {
+        const existing = await prisma.project.findUnique({ where: { id: req.params.projectId }, select: { holdback: true } })
+        if (existing && (!existing.holdback || existing.holdback === 0)) {
+          await prisma.project.update({ where: { id: req.params.projectId }, data: { holdback: parsed.projectHoldback } })
+        }
+      }
+
+      await prisma.project.update({
+        where: { id: req.params.projectId },
+        data: { drawsExcelUrl: fileUrl, drawsExcelName: req.file.originalname },
+      })
+
+      const validation = await computeDrawsValidation(req.params.projectId, parsed)
+      res.json({ data: validation, extractionError, error: null })
+    } catch (e) {
+      res.status(500).json({ data: null, error: String(e) })
+    }
+  })
+})
+
+// DELETE Excel general del lender
+router.delete('/:projectId/draws/lender-excel', async (req: Request, res: Response) => {
+  try {
+    await prisma.project.update({
+      where: { id: req.params.projectId },
+      data: { drawsExcelUrl: null, drawsExcelName: null },
+    })
+    const v = await computeDrawsValidation(req.params.projectId, null)
+    res.json({ data: v, error: null })
   } catch (e) {
     res.status(500).json({ data: null, error: String(e) })
   }

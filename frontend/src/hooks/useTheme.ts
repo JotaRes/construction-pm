@@ -1,30 +1,18 @@
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 
-export type Theme = 'light' | 'dark'
+export type Theme = 'light'
 
-const STORAGE_KEY = 'ra-theme'
-
+// Modo oscuro ELIMINADO: el sistema opera SIEMPRE en modo claro.
+// Este hook se conserva (neutralizado) para no romper los llamados existentes:
+// fuerza data-theme="light" en <html>, limpia cualquier preferencia guardada y
+// no permite alternar tema. `toggle` es un no-op e `isDark` siempre es false.
 export function useTheme() {
-  const [theme, setTheme] = useState<Theme>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY) as Theme | null
-      if (stored === 'dark' || stored === 'light') return stored
-    } catch {}
-    // Respetar preferencia del sistema operativo
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-  })
-
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme)
-    try { localStorage.setItem(STORAGE_KEY, theme) } catch {}
-    // Actualizar meta theme-color según el modo
+    document.documentElement.setAttribute('data-theme', 'light')
+    try { localStorage.removeItem('ra-theme') } catch {}
     const metaTheme = document.querySelector('meta[name="theme-color"]')
-    if (metaTheme) {
-      metaTheme.setAttribute('content', theme === 'dark' ? '#0f1219' : '#2D4B52')
-    }
-  }, [theme])
+    if (metaTheme) metaTheme.setAttribute('content', '#2D4B52')
+  }, [])
 
-  const toggle = () => setTheme(t => t === 'dark' ? 'light' : 'dark')
-
-  return { theme, toggle, isDark: theme === 'dark' }
+  return { theme: 'light' as Theme, toggle: () => {}, isDark: false }
 }

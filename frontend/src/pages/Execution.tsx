@@ -5,7 +5,7 @@ import { formatUSD } from '../lib/calculations'
 import type { Phase, Item, ItemEstado, ItemDocument } from '../lib/types'
 import {
   ChevronDown, ChevronRight, X, Calendar, User, FileText,
-  DollarSign, Plus, Trash2, Paperclip, Upload, AlertTriangle,
+  Plus, Trash2, Paperclip, Upload, AlertTriangle,
   ExternalLink, Download, Mail, MessageCircle, Eraser, EyeOff, Eye,
   ChevronsDown, ChevronsUp,
 } from 'lucide-react'
@@ -319,6 +319,23 @@ function ItemPanel({ item, onUpdate, onClose }: {
                 {formatUSD(Math.abs(item.valorEjecutado - item.valorPresupuestado))}
               </div>
             )}
+            {/* Unidad + cantidad → alimentan Precios de Referencia por unidad ($/pie², $/yarda³...) */}
+            <div className="grid grid-cols-2 gap-3 mt-2">
+              <div className="bg-white rounded-lg p-3">
+                <div className="text-[10px] text-slate-400 mb-1">Unidad</div>
+                <input type="text" defaultValue={item.unit ?? ''}
+                  onBlur={e => onUpdate(item.id, { unit: e.target.value || null })}
+                  placeholder="SF / LF / CY / EA"
+                  className="w-full bg-slate-50 border border-slate-200 text-sm text-slate-800 px-2 py-1 rounded focus:outline-none focus:border-[var(--brand-gold)] placeholder-slate-400" />
+              </div>
+              <div className="bg-white rounded-lg p-3">
+                <div className="text-[10px] text-slate-400 mb-1">Cantidad</div>
+                <input type="number" defaultValue={item.quantity ?? ''}
+                  onBlur={e => onUpdate(item.id, { quantity: e.target.value === '' ? null : parseFloat(e.target.value) })}
+                  placeholder="0"
+                  className="w-full bg-slate-50 border border-slate-200 text-sm font-mono text-slate-800 px-2 py-1 rounded focus:outline-none focus:border-[var(--brand-gold)] placeholder-slate-400" />
+              </div>
+            </div>
           </div>
           <div>
             <div className="flex items-center gap-1.5 text-[10px] text-slate-400 uppercase tracking-wider mb-2">
@@ -438,22 +455,19 @@ function ItemRow({ item, onUpdate, onOpenPanel, onDelete }: {
       <td className="px-2 py-2.5 w-24" onClick={e => e.stopPropagation()}>
         <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium ${st.color} ${st.bg}`}>{st.label}</span>
       </td>
-      <td className="px-2 py-2.5 w-24 text-right">
-        <span className="text-[11px] font-mono text-slate-400">{formatUSD(item.valorPresupuestado)}</span>
+      <td className="px-2 py-2.5 w-24 text-right border-l border-slate-100">
+        <span className="text-[11px] font-mono text-slate-600">{formatUSD(item.valorPresupuestado)}</span>
       </td>
-      <td className="px-2 py-2.5 w-24 text-right" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-end gap-1 group/val">
-          <DollarSign className="w-3 h-3 text-slate-400 opacity-0 group-hover/val:opacity-100 transition-opacity" />
-          <input type="number" defaultValue={item.valorEjecutado || ''}
-            onBlur={e => onUpdate(item.id, { valorEjecutado: parseFloat(e.target.value) || 0 })}
-            onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
-            placeholder="—"
-            className="w-20 bg-transparent text-[11px] font-mono text-right text-[var(--brand-teal)] focus:outline-none focus:bg-white focus:rounded focus:px-1 placeholder-slate-400 transition-all" />
-        </div>
+      <td className="px-2 py-2.5 w-24 text-right border-l border-slate-100" onClick={e => e.stopPropagation()}>
+        <input type="number" defaultValue={item.valorEjecutado || ''}
+          onBlur={e => onUpdate(item.id, { valorEjecutado: parseFloat(e.target.value) || 0 })}
+          onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+          placeholder="—"
+          className="w-full bg-white border border-slate-200 text-[11px] font-mono font-semibold text-right text-slate-900 rounded px-1.5 py-1 focus:outline-none focus:border-[var(--brand-gold)] focus:ring-2 focus:ring-[var(--brand-gold)]/20 placeholder-slate-300" />
       </td>
-      <td className="px-2 py-2.5 w-20 text-right" onClick={e => e.stopPropagation()}>
+      <td className="px-2 py-2.5 w-20 text-right border-l border-slate-100" onClick={e => e.stopPropagation()}>
         {item.valorPresupuestado > 0 && item.valorEjecutado > 0 ? (
-          <span className={`text-[10px] font-mono ${desviacion > 0 ? 'text-red-400' : 'text-emerald-400/70'}`}>
+          <span className={`text-[10px] font-mono font-semibold ${desviacion > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
             {desviacion > 0 ? '+' : ''}{formatUSD(desviacion)}
           </span>
         ) : onDelete ? (
@@ -463,11 +477,11 @@ function ItemRow({ item, onUpdate, onOpenPanel, onDelete }: {
           </button>
         ) : null}
       </td>
-      <td className="pr-3 pl-1 py-2.5 w-10 text-center" onClick={e => e.stopPropagation()}>
+      <td className="pr-3 pl-1 py-2.5 w-12 text-center border-l border-slate-100" onClick={e => e.stopPropagation()}>
         <button onClick={() => onOpenPanel(item)}
-          className={`flex items-center gap-0.5 text-[9px] font-mono transition-colors ${warnDoc ? 'text-[var(--brand-gold)]' : docCount > 0 ? 'text-emerald-400/70' : 'text-slate-500 group-hover:text-slate-400'}`}
-          title={warnDoc ? 'Sin factura adjunta' : `${docCount} documento(s)`}>
-          {warnDoc ? <AlertTriangle className="w-3 h-3" /> : <Paperclip className="w-3 h-3" />}
+          className={`inline-flex items-center justify-center gap-0.5 text-[10px] font-mono font-semibold transition-colors ${warnDoc ? 'text-[var(--brand-gold)]' : docCount > 0 ? 'text-emerald-600' : 'text-slate-400 hover:text-slate-600'}`}
+          title={warnDoc ? '⚠ Sin factura adjunta — súbela en el panel del ítem' : docCount > 0 ? `${docCount} documento(s) adjunto(s)` : 'Adjuntar documento / factura'}>
+          {warnDoc ? <AlertTriangle className="w-3.5 h-3.5" /> : <Paperclip className="w-3.5 h-3.5" />}
           {docCount > 0 && <span>{docCount}</span>}
         </button>
       </td>
@@ -514,15 +528,15 @@ function PhaseSection({ phase, defaultOpen = false, onUpdate, onOpenPanel, onCre
         <div className="mt-0.5 bg-slate-50/60 rounded-b-xl border border-slate-200/30 border-t-0 overflow-hidden">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50">
-                <th className="pl-4 pr-2 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider w-16">St.</th>
-                <th className="px-2 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider w-16">Cód.</th>
-                <th className="px-2 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider">Actividad</th>
-                <th className="px-2 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider w-24">Estado</th>
-                <th className="px-2 py-1.5 text-right text-[9px] text-slate-400 uppercase tracking-wider w-24">Budget</th>
-                <th className="px-2 py-1.5 text-right text-[9px] text-[#C8922A]/60 uppercase tracking-wider w-24">Ejecutado</th>
-                <th className="px-2 py-1.5 text-right text-[9px] text-slate-400 uppercase tracking-wider w-20">Desv.</th>
-                <th className="pr-3 pl-1 py-1.5 text-center text-[9px] text-slate-400 w-10"><Paperclip className="w-3 h-3 inline" /></th>
+              <tr className="border-b-2 border-slate-300 bg-slate-100">
+                <th className="pl-4 pr-2 py-2 text-left text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-16">St.</th>
+                <th className="px-2 py-2 text-left text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-16">Cód.</th>
+                <th className="px-2 py-2 text-left text-[10px] font-semibold text-slate-600 uppercase tracking-wider">Actividad</th>
+                <th className="px-2 py-2 text-left text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-24">Estado</th>
+                <th className="px-2 py-2 text-right text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-24">Budget</th>
+                <th className="px-2 py-2 text-right text-[10px] font-semibold text-[var(--brand-gold)] uppercase tracking-wider w-24">Ejecutado</th>
+                <th className="px-2 py-2 text-right text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-20">Desv.</th>
+                <th className="pr-3 pl-1 py-2 text-center text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-12">Doc</th>
               </tr>
             </thead>
             <tbody>

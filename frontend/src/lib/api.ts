@@ -112,6 +112,28 @@ export const drawsApi = {
     api.delete(`/draws/${drawId}/document/${kind}`).then(r => r.data.data),
   deleteDraw: (drawId: string) =>
     api.delete(`/draws/${drawId}`).then(r => r.data.data),
+  // Excel general del lender (nivel proyecto) — complementa y valida los PDF por draw.
+  validation: (projectId: string) =>
+    api.get(`/projects/${projectId}/draws/validation`).then(r => r.data.data as DrawsValidation),
+  uploadLenderExcel: (projectId: string, file: File) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    return api.post(`/projects/${projectId}/draws/lender-excel`, fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+      .then(r => r.data as { data: DrawsValidation; extractionError?: string | null; error: string | null })
+  },
+  deleteLenderExcel: (projectId: string) =>
+    api.delete(`/projects/${projectId}/draws/lender-excel`).then(r => r.data.data as DrawsValidation),
+}
+
+export interface DrawsValidation {
+  file: { url: string | null; name: string | null }
+  system: {
+    holdback: number; totalWired: number; totalElegible: number
+    budgetTotal: number; totalApproved: number; saldoHoldback: number; pendientePorGirar: number
+  }
+  excel: Record<string, unknown> | null
+  comparison: Record<string, { excel: number; sistema: number; difiere: boolean }>
+  warnings: string[]
 }
 
 export const providersApi = {
@@ -352,9 +374,21 @@ export const projectsDeleteApi = {
 
 export const priceRefsApi = {
   list: () => api.get('/price-refs').then(r => r.data.data),
+  computed: () => api.get('/price-refs/computed').then(r => r.data.data as ComputedPriceRefs),
   create: (data: Record<string, unknown>) => api.post('/price-refs', data).then(r => r.data.data),
   patch: (id: string, data: Record<string, unknown>) => api.patch(`/price-refs/${id}`, data).then(r => r.data.data),
   delete: (id: string) => api.delete(`/price-refs/${id}`).then(r => r.data.data),
+}
+
+export interface ComputedPriceActivity {
+  unit: string; category: string; activity: string; count: number
+  avgCost: number; minCost: number; maxCost: number
+  qtyCount: number; avgUnitPrice: number | null; minUnitPrice: number | null; maxUnitPrice: number | null
+}
+export interface ComputedPriceRefs {
+  byActivity: ComputedPriceActivity[]
+  byUnit: { unit: string; count: number; avgCost: number; avgUnitPrice: number | null }[]
+  totalRecords: number
 }
 
 export const itemDocumentsApi = {

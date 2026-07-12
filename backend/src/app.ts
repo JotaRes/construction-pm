@@ -45,6 +45,17 @@ import finProjectReturns from './finance/routes/projectReturns'
 import finLiquidity from './finance/routes/liquidity'
 import { requireAuth } from './finance/lib/auth'
 
+// Red de seguridad: un archivo corrupto (p.ej. imagen dañada en OCR) puede hacer
+// abortar el módulo WASM de tesseract con un error ASÍNCRONO no atrapable por
+// try/catch. Estos guards registran el fallo y MANTIENEN el servidor vivo en vez
+// de que el proceso muera. No enmascaran datos: el endpoint responde su error.
+process.on('uncaughtException', (err) => {
+  console.error('[uncaughtException] servidor sobrevive:', err instanceof Error ? err.message : err)
+})
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandledRejection] servidor sobrevive:', reason instanceof Error ? reason.message : reason)
+})
+
 const app = express()
 const PORT = process.env.PORT || 3001
 

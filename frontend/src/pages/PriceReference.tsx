@@ -1,9 +1,95 @@
 import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { priceRefsApi } from '../lib/api'
+import { priceRefsApi, type ComputedPriceRefs, type ComputedPriceActivity } from '../lib/api'
 import { formatUSD } from '../lib/calculations'
 import type { PriceRef } from '../lib/types'
-import { Plus, Trash2, Tag, Search, ChevronDown, ChevronRight } from 'lucide-react'
+import { Plus, Trash2, Tag, Search, ChevronDown, ChevronRight, Calculator, Sparkles } from 'lucide-react'
+
+const UNIT_LABELS: Record<string, string> = {
+  SF: 'pie²', LF: 'lineal', CY: 'yarda³', AC: 'acre', EA: 'unidad', MO: 'mes', LS: 'global', HR: 'hora', SY: 'yarda²',
+}
+function unitLabel(u: string) { return UNIT_LABELS[u] ? `${u} · ${UNIT_LABELS[u]}` : u }
+
+/* ── Referencias AUTO-CALCULADAS desde presupuesto + ejecución ── */
+function ComputedSection() {
+  const { data, isLoading } = useQuery<ComputedPriceRefs>({
+    queryKey: ['price-refs-computed'],
+    queryFn: priceRefsApi.computed,
+  })
+  const [openUnits, setOpenUnits] = useState<Record<string, boolean>>({})
+
+  if (isLoading) return <div className="text-slate-400 text-sm animate-pulse">Calculando promedios...</div>
+  if (!data || data.totalRecords === 0) {
+    return (
+      <div className="section-card p-6 text-center text-slate-400 text-sm">
+        Aún no hay presupuestos ni ejecución cargados para calcular promedios. Carga un Construction Budget o registra ejecución de obra y aquí aparecerán solos.
+      </div>
+    )
+  }
+
+  const byUnitMap = new Map<string, ComputedPriceActivity[]>()
+  data.byActivity.forEach(a => { if (!byUnitMap.has(a.unit)) byUnitMap.set(a.unit, []); byUnitMap.get(a.unit)!.push(a) })
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {data.byUnit.map(u => (
+          <div key={u.unit} className="kpi-card">
+            <div className="text-xs text-slate-400 uppercase mb-1">{unitLabel(u.unit)}</div>
+            <div className="text-lg font-bold font-mono text-slate-800">
+              {u.avgUnitPrice != null ? `${formatUSD(u.avgUnitPrice)}/${u.unit}` : formatUSD(u.avgCost)}
+            </div>
+            <div className="text-[10px] text-slate-400 mt-1">{u.count} muestra(s){u.avgUnitPrice == null ? ' · costo prom.' : ' · $/unidad'}</div>
+          </div>
+        ))}
+      </div>
+
+      {[...byUnitMap.entries()].map(([unit, acts]) => {
+        const open = openUnits[unit] ?? true
+        return (
+          <div key={unit} className="section-card overflow-hidden">
+            <button onClick={() => setOpenUnits(s => ({ ...s, [unit]: !open }))}
+              className="w-full flex items-center gap-2 px-4 py-2.5 bg-slate-50 border-b border-slate-200 hover:bg-slate-100 transition-colors">
+              {open ? <ChevronDown className="w-3.5 h-3.5 text-slate-400" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-400" />}
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-700">{unitLabel(unit)}</span>
+              <span className="text-[10px] text-slate-400">({acts.length} actividad(es))</span>
+            </button>
+            {open && (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200">
+                      <th className="px-4 py-2 text-left text-[10px] font-semibold text-slate-600 uppercase tracking-wider">Actividad</th>
+                      <th className="px-3 py-2 text-left text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-40">Categoría</th>
+                      <th className="px-3 py-2 text-right text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-16">Muestras</th>
+                      <th className="px-3 py-2 text-right text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-28 border-l border-slate-100">Costo prom.</th>
+                      <th className="px-3 py-2 text-right text-[10px] font-semibold text-[var(--brand-gold)] uppercase tracking-wider w-32 border-l border-slate-100">Precio / {unit}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {acts.map((a, i) => (
+                      <tr key={i} className="border-b border-slate-100 hover:bg-slate-50/60">
+                        <td className="px-4 py-2 text-xs text-slate-800">{a.activity}</td>
+                        <td className="px-3 py-2 text-[11px] text-slate-500 truncate max-w-[160px]">{a.category}</td>
+                        <td className="px-3 py-2 text-right text-xs font-mono text-slate-600">{a.count}</td>
+                        <td className="px-3 py-2 text-right text-xs font-mono text-slate-700 border-l border-slate-100">{formatUSD(a.avgCost)}</td>
+                        <td className="px-3 py-2 text-right text-xs font-mono font-semibold border-l border-slate-100">
+                          {a.avgUnitPrice != null
+                            ? <span className="text-[var(--brand-gold)]" title={`Rango ${formatUSD(a.minUnitPrice ?? 0)} – ${formatUSD(a.maxUnitPrice ?? 0)} · ${a.qtyCount} con cantidad`}>{formatUSD(a.avgUnitPrice)}</span>
+                            : <span className="text-slate-300" title="Carga la cantidad en el presupuesto/ejecución para calcular el precio por unidad">—</span>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
 const CATEGORIES = [
   'Sitework & Demo',
@@ -308,6 +394,7 @@ export default function PriceReference() {
   const [search, setSearch] = useState('')
   const [filterCat, setFilterCat] = useState('ALL')
   const [showAdd, setShowAdd] = useState(false)
+  const [view, setView] = useState<'auto' | 'manual'>('auto')
 
   const { data: refs = [], isLoading } = useQuery<PriceRef[]>({
     queryKey: ['price-refs'],
@@ -364,23 +451,46 @@ export default function PriceReference() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <div className="flex items-center gap-2 mb-0.5">
             <Tag className="w-5 h-5 text-[var(--brand-gold)]" />
             <h1 className="text-xl font-bold text-slate-900">Precios de Referencia</h1>
           </div>
-          <p className="text-xs text-slate-400">Catálogo de precios de mercado para comparación y presupuesto</p>
+          <p className="text-xs text-slate-400">Promedios automáticos de tus presupuestos y ejecución (general al módulo técnico), más un catálogo manual opcional.</p>
         </div>
-        <button
-          onClick={() => setShowAdd(v => !v)}
-          className="flex items-center gap-2 px-4 py-2 bg-[var(--brand-gold)] hover:bg-[#E0AD4F] text-white text-sm font-medium rounded-xl transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Agregar precio
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="flex gap-0.5 bg-white rounded-lg p-0.5 border border-slate-200">
+            <button onClick={() => setView('auto')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${view === 'auto' ? 'bg-[var(--brand-gold)] text-white' : 'text-slate-500 hover:text-slate-800'}`}>
+              <Sparkles className="w-3.5 h-3.5" />Automáticos
+            </button>
+            <button onClick={() => setView('manual')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${view === 'manual' ? 'bg-[var(--brand-teal)] text-white' : 'text-slate-500 hover:text-slate-800'}`}>
+              <Tag className="w-3.5 h-3.5" />Catálogo manual
+            </button>
+          </div>
+          {view === 'manual' && (
+            <button
+              onClick={() => setShowAdd(v => !v)}
+              className="flex items-center gap-2 px-4 py-2 bg-[var(--brand-gold)] hover:bg-[#E0AD4F] text-white text-sm font-medium rounded-xl transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Agregar precio
+            </button>
+          )}
+        </div>
       </div>
 
+      {view === 'auto' && (
+        <div className="section-card p-3 flex items-start gap-2" style={{ background: 'rgba(200,146,42,0.05)' }}>
+          <Calculator className="w-4 h-4 text-[var(--brand-gold)] flex-shrink-0 mt-0.5" />
+          <p className="text-[11px] text-slate-600">Calculado en vivo desde tus presupuestos y ejecución de todos los proyectos: costo promedio por actividad y precio por unidad ($/pie², $/yarda³, $/lineal...) donde hayas cargado la cantidad. Se actualiza solo.</p>
+        </div>
+      )}
+      {view === 'auto' && <ComputedSection />}
+
+      {view === 'manual' && (<>
       {/* KPI cards */}
       <div className="grid grid-cols-3 gap-4">
         <div className="kpi-card">
@@ -465,6 +575,7 @@ export default function PriceReference() {
           ))}
         </div>
       )}
+      </>)}
     </div>
   )
 }

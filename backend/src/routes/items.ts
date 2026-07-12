@@ -41,7 +41,7 @@ router.patch('/:id', async (req: Request, res: Response) => {
     const {
       activity, description, responsable, unit, esNA, completado,
       valorPresupuestado, valorEjecutado, providerId, estado,
-      fechaInicioReal, fechaFinReal, observaciones, order,
+      fechaInicioReal, fechaFinReal, observaciones, order, quantity,
     } = req.body
     const data: Record<string, unknown> = {}
     if (activity !== undefined) data.activity = activity
@@ -50,6 +50,7 @@ router.patch('/:id', async (req: Request, res: Response) => {
     if (unit !== undefined) data.unit = unit || null
     if (esNA !== undefined) data.esNA = esNA
     if (completado !== undefined) data.completado = completado
+    if (quantity !== undefined) data.quantity = (quantity === null || quantity === '') ? null : Number(quantity)
     if (valorPresupuestado !== undefined) data.valorPresupuestado = Number(valorPresupuestado)
     if (valorEjecutado !== undefined) data.valorEjecutado = Number(valorEjecutado)
     if (providerId !== undefined) data.providerId = providerId || null

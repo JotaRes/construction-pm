@@ -48,6 +48,9 @@ function TaskRow({ task, onUpdate, onDelete }: {
         <div className="flex-1 min-w-0">
           {/* Title row */}
           <div className="flex items-start gap-2">
+            {task.tipo === 'NOTA' && (
+              <span className="text-[8px] font-bold uppercase tracking-wider text-amber-700 bg-amber-100 border border-amber-200 rounded px-1 py-0.5 flex-shrink-0 mt-0.5">Nota</span>
+            )}
             <div className="flex-1 min-w-0">
               {editTitle ? (
                 <input type="text" value={titleText}
@@ -166,6 +169,8 @@ export default function Tasks({ projectId }: { projectId: string }) {
   const [newNotes, setNewNotes] = useState('')
   const [showFullForm, setShowFullForm] = useState(false)
   const [filterDone, setFilterDone] = useState<'all' | 'pending' | 'done'>('all')
+  const [filterTipo, setFilterTipo] = useState<'all' | 'TAREA' | 'NOTA'>('all')
+  const [newTipo, setNewTipo] = useState<'TAREA' | 'NOTA'>('TAREA')
 
   const { data: tasks = [], isLoading } = useQuery<Task[]>({
     queryKey: ['tasks', projectId],
@@ -204,6 +209,7 @@ export default function Tasks({ projectId }: { projectId: string }) {
     e.preventDefault()
     if (!newTitle.trim()) return
     createMut.mutate({
+      tipo: newTipo,
       title: newTitle.trim(),
       responsable: newResponsable || null,
       responsableEmail: newResponsableEmail || null,
@@ -219,6 +225,9 @@ export default function Tasks({ projectId }: { projectId: string }) {
     return true
   })
 
+  // Filtro por tipo (Tareas / Notas) aplicado a las listas visibles.
+  const visibleTasks = tasks.filter(t => filterTipo === 'all' || (t.tipo ?? 'TAREA') === filterTipo)
+
   const pendingCount = tasks.filter(t => !t.done).length
   const urgentCount  = tasks.filter(t => !t.done && t.priority === 'URGENT').length
   const overdueCount = tasks.filter(t => isOverdue(t)).length
@@ -229,21 +238,32 @@ export default function Tasks({ projectId }: { projectId: string }) {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Tareas</h1>
+          <h1 className="text-xl font-bold text-slate-900">Tareas y Notas</h1>
           <p className="text-sm text-slate-500 mt-0.5">
             {pendingCount} pendientes
             {urgentCount > 0 && <span className="text-red-500 font-medium"> · {urgentCount} urgentes</span>}
             {overdueCount > 0 && <span className="text-red-500 font-medium"> · {overdueCount} vencidas</span>}
           </p>
         </div>
-        <div className="flex gap-0.5 bg-white rounded-lg p-0.5 border border-slate-200">
-          {(['all','pending','done'] as const).map((v, i) => (
-            <button key={v} onClick={() => setFilterDone(v)}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors
-                ${filterDone === v ? 'bg-[var(--brand-teal)] text-white' : 'text-slate-500 hover:text-slate-800'}`}>
-              {['Todas','Pendientes','Completadas'][i]}
-            </button>
-          ))}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex gap-0.5 bg-white rounded-lg p-0.5 border border-slate-200">
+            {([['all','Todo'],['TAREA','Tareas'],['NOTA','Notas']] as const).map(([v, l]) => (
+              <button key={v} onClick={() => setFilterTipo(v)}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors
+                  ${filterTipo === v ? 'bg-[var(--brand-gold)] text-white' : 'text-slate-500 hover:text-slate-800'}`}>
+                {l}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-0.5 bg-white rounded-lg p-0.5 border border-slate-200">
+            {(['all','pending','done'] as const).map((v, i) => (
+              <button key={v} onClick={() => setFilterDone(v)}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors
+                  ${filterDone === v ? 'bg-[var(--brand-teal)] text-white' : 'text-slate-500 hover:text-slate-800'}`}>
+                {['Todas','Pendientes','Completadas'][i]}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -272,10 +292,19 @@ export default function Tasks({ projectId }: { projectId: string }) {
 
       {/* === Create form profesional === */}
       <form onSubmit={handleCreate} className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+        <div className="flex gap-0.5 bg-slate-100 rounded-lg p-0.5 w-fit">
+          {([['TAREA','Tarea'],['NOTA','Nota']] as const).map(([v, l]) => (
+            <button key={v} type="button" onClick={() => setNewTipo(v)}
+              className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-colors
+                ${newTipo === v ? 'bg-[var(--brand-gold)] text-white' : 'text-slate-500 hover:text-slate-800'}`}>
+              {l}
+            </button>
+          ))}
+        </div>
         <div>
-          <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Concepto (descripción de la tarea) *</label>
+          <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">{newTipo === 'NOTA' ? 'Título de la nota' : 'Concepto (descripción de la tarea)'} *</label>
           <input type="text" value={newTitle} onChange={e => setNewTitle(e.target.value)}
-            placeholder="Ej. Llamar al inspector para coordinar visita..."
+            placeholder={newTipo === 'NOTA' ? 'Ej. Recordatorio: el HOA aprueba planos solo los martes...' : 'Ej. Llamar al inspector para coordinar visita...'}
             className="w-full bg-slate-50 border border-slate-200 text-sm text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)] placeholder-slate-400" />
         </div>
         <button
@@ -326,7 +355,7 @@ export default function Tasks({ projectId }: { projectId: string }) {
         )}
         <button type="submit" disabled={!newTitle.trim() || createMut.isPending}
           className="flex items-center gap-2 px-4 py-2 bg-[var(--brand-gold)] hover:bg-[#E0AD4F] text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-40">
-          <Plus className="w-4 h-4" />Agregar tarea
+          <Plus className="w-4 h-4" />Agregar {newTipo === 'NOTA' ? 'nota' : 'tarea'}
         </button>
       </form>
 
@@ -336,15 +365,15 @@ export default function Tasks({ projectId }: { projectId: string }) {
           <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50 flex items-center gap-2">
             <Square className="w-3.5 h-3.5 text-slate-500" />
             <span className="text-xs font-bold uppercase tracking-wider text-slate-600">Pendientes</span>
-            <span className="text-[10px] text-slate-400 font-mono">({tasks.filter(t => !t.done).length})</span>
+            <span className="text-[10px] text-slate-400 font-mono">({visibleTasks.filter(t => !t.done).length})</span>
           </div>
-          {tasks.filter(t => !t.done).length === 0 ? (
+          {visibleTasks.filter(t => !t.done).length === 0 ? (
             <div className="text-center py-8">
               <Flag className="w-7 h-7 text-slate-300 mx-auto mb-2" />
-              <div className="text-slate-400 text-sm">Sin tareas pendientes</div>
+              <div className="text-slate-400 text-sm">Sin pendientes</div>
             </div>
           ) : (
-            tasks.filter(t => !t.done).map(task => (
+            visibleTasks.filter(t => !t.done).map(task => (
               <TaskRow key={task.id} task={task}
                 onUpdate={(id, data) => updateMut.mutate({ id, data })}
                 onDelete={id => handleDelete(id, task.title)} />
@@ -353,14 +382,14 @@ export default function Tasks({ projectId }: { projectId: string }) {
         </div>
       )}
 
-      {(filterDone === 'all' || filterDone === 'done') && tasks.filter(t => t.done).length > 0 && (
+      {(filterDone === 'all' || filterDone === 'done') && visibleTasks.filter(t => t.done).length > 0 && (
         <div className="bg-white rounded-xl border border-emerald-200 overflow-hidden">
           <div className="px-4 py-2.5 border-b border-emerald-100 bg-emerald-50 flex items-center gap-2">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
             <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">Cumplidas (histórico)</span>
-            <span className="text-[10px] text-emerald-600 font-mono">({tasks.filter(t => t.done).length})</span>
+            <span className="text-[10px] text-emerald-600 font-mono">({visibleTasks.filter(t => t.done).length})</span>
           </div>
-          {tasks.filter(t => t.done).map(task => (
+          {visibleTasks.filter(t => t.done).map(task => (
             <TaskRow key={task.id} task={task}
               onUpdate={(id, data) => updateMut.mutate({ id, data })}
               onDelete={id => handleDelete(id, task.title)} />
@@ -369,16 +398,16 @@ export default function Tasks({ projectId }: { projectId: string }) {
       )}
 
       {/* Si filterDone es algo específico, mantener mensaje de empty si no hay nada */}
-      {filterDone === 'done' && tasks.filter(t => t.done).length === 0 && (
+      {filterDone === 'done' && visibleTasks.filter(t => t.done).length === 0 && (
         <div className="bg-white rounded-xl border border-slate-200 text-center py-12">
           <CheckCircle2 className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-          <div className="text-slate-400 text-sm">Ninguna tarea completada todavía</div>
+          <div className="text-slate-400 text-sm">Ninguna completada todavía</div>
         </div>
       )}
-      {filterDone === 'pending' && tasks.filter(t => !t.done).length === 0 && (
+      {filterDone === 'pending' && visibleTasks.filter(t => !t.done).length === 0 && (
         <div className="bg-white rounded-xl border border-slate-200 text-center py-12">
           <Flag className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-          <div className="text-slate-400 text-sm">Sin tareas pendientes — ¡todo al día!</div>
+          <div className="text-slate-400 text-sm">Sin pendientes — ¡todo al día!</div>
         </div>
       )}
 

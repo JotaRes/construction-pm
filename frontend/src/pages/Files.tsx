@@ -314,8 +314,8 @@ export default function Files({ projectId }: { projectId: string }) {
               <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Archivo</label>
               <label className="flex items-center gap-2 w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 cursor-pointer hover:border-[var(--brand-gold)] transition-colors">
                 <FileText className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                <span className="text-sm truncate text-slate-600">{uploadFile ? uploadFile.name : 'Seleccionar PDF...'}</span>
-                <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" className="hidden"
+                <span className="text-sm truncate text-slate-600">{uploadFile ? uploadFile.name : 'Seleccionar archivo (PDF, Word, Excel, imagen)...'}</span>
+                <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.tiff,.tif,.bmp,.gif,.doc,.docx,.xlsx,.xls,.csv" className="hidden"
                   onChange={e => { setUploadFile(e.target.files?.[0] ?? null); setExtractResult(null); setApplyStatus(null) }} />
               </label>
             </div>

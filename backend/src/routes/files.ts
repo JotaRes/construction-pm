@@ -3,7 +3,7 @@ import { PrismaClient } from '@prisma/client'
 import multer from 'multer'
 import { uploadToCloudinary, resourceTypeFor } from '../lib/cloudinary'
 import { PROJECT_DOC_CHECKLIST, DOC_KEYS, GROUP_LABELS } from '../lib/projectDocChecklist'
-import { extractPdfText } from '../lib/pdfOcr'
+import { extractTextFromFile } from '../lib/fileExtract'
 import {
   parseHUDText, parseLoanText, parseSurveyText, parsePlansText,
   parsePermitText, parseAppraisalText, parseLOIText,
@@ -222,20 +222,26 @@ router.post('/:projectId/files/upload', upload.single('file'), async (req: Reque
       },
     })
 
-    // Auto-extracción para PDFs cuyo kind tiene parser configurado.
+    // Auto-extracción UNIVERSAL: si el kind tiene parser, se extrae texto del
+    // archivo sin importar el formato (PDF, imagen con OCR, Word .docx, Excel) y
+    // se autocompletan las casillas vacías del proyecto.
     let extracted: Record<string, unknown> = {}
     let applied: string[] = []
     let extractionError: string | null = null
     let ocrUsed = false
     const parserCfg = kind ? KIND_PARSER_MAP[kind] : undefined
-    const isPdf = req.file.mimetype === 'application/pdf' || (req.file.originalname || '').toLowerCase().endsWith('.pdf')
 
-    if (parserCfg && isPdf) {
+    if (parserCfg) {
       try {
-        const pdfData = await extractPdfText(req.file.buffer)
-        ocrUsed = pdfData.ocrUsed
-        extracted = parserCfg.parser(pdfData.text)
-        applied = await applyExtractedToProject(req.params.projectId, extracted, parserCfg.fields)
+        const ex = await extractTextFromFile(req.file.buffer, req.file.mimetype, req.file.originalname)
+        ocrUsed = ex.ocrUsed
+        const meaningful = (ex.text || '').replace(/\s/g, '').length
+        if (meaningful < 10) {
+          extractionError = 'No se pudo leer texto del archivo (imagen de baja calidad o formato no soportado). Puedes completar los datos manualmente.'
+        } else {
+          extracted = parserCfg.parser(ex.text)
+          applied = await applyExtractedToProject(req.params.projectId, extracted, parserCfg.fields)
+        }
       } catch (e) {
         extractionError = e instanceof Error ? e.message : String(e)
         console.warn('[files/upload] auto-extract failed for kind', kind, e)

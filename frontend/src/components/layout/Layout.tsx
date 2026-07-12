@@ -2,7 +2,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
   LayoutDashboard, CheckSquare, DollarSign, TrendingUp,
-  AlertTriangle, Users, FileText, Folder, Search, BarChart3, Building2,
+  AlertTriangle, Users, Folder, Search, BarChart3, Building2,
   ChevronDown, FolderKanban, ListChecks, FileSpreadsheet, Tag, LogOut,
   Archive, Menu, X, Download, Layers, GanttChart, Image, HardHat,
 } from 'lucide-react'
@@ -10,7 +10,6 @@ import { alertsApi, projectsApi, downloadAuthed } from '../../lib/api'
 import { logout } from '../AuthGate'
 import ModuleSwitcher from '../ModuleSwitcher'
 import CapacityBanner from '../CapacityBanner'
-import { ThemeToggle } from '../ThemeToggle'
 import { useProjectStore } from '../../store/projectStore'
 import type { Alert, Task } from '../../lib/types'
 import { tasksApi } from '../../lib/api'
@@ -27,13 +26,13 @@ const navGroups = [
   {
     label: 'Ejecución',
     items: [
+      { to: '/tech/budget',     icon: DollarSign,      label: 'Presupuesto' },
       { to: '/tech/execution',  icon: CheckSquare,     label: 'Ejecución' },
       { to: '/tech/phases',     icon: Layers,          label: 'Fases' },
-      { to: '/tech/gantt',      icon: GanttChart,      label: 'Gantt' },
-      { to: '/tech/budget',     icon: DollarSign,      label: 'Presupuesto' },
       { to: '/tech/construction-budget', icon: FileSpreadsheet, label: 'Const. Budget' },
       { to: '/tech/draws',      icon: TrendingUp,      label: 'Draws' },
       { to: '/tech/inspections',icon: Search,          label: 'Inspecciones' },
+      { to: '/tech/gantt',      icon: GanttChart,      label: 'Gantt' },
     ],
   },
   {
@@ -50,7 +49,6 @@ const navGroups = [
       { to: '/tech/providers',  icon: Users,           label: 'Proveedores' },
       { to: '/tech/subcontracts', icon: HardHat,       label: 'Subcontratos' },
       { to: '/tech/gallery',    icon: Image,           label: 'Galería' },
-      { to: '/tech/notes',      icon: FileText,        label: 'Notas' },
       { to: '/tech/files',      icon: Folder,          label: 'Archivos' },
       { to: '/tech/price-refs', icon: Tag,             label: 'Precios Ref.' },
       { to: '/tech/import',     icon: Archive,         label: 'Importar / Backup' },
@@ -251,7 +249,6 @@ export default function Layout({ projectId, children }: Props) {
             Restrepo Acosta
           </div>
         </div>
-        <ThemeToggle />
       </div>
 
       {mobileOpen && (
@@ -465,7 +462,6 @@ export default function Layout({ projectId, children }: Props) {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <ThemeToggle />
             <ModuleSwitcher currentModule="tech" />
             <a
               href="/api/backup"

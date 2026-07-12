@@ -30,6 +30,8 @@ services:
       npx prisma generate
       echo "=== Prisma DB push ==="
       npx prisma db push --accept-data-loss
+      echo "=== Migrar Notas a Tareas (one-time, idempotente, best-effort) ==="
+      npx tsx scripts/migrate-notes-to-tasks.ts || echo "migracion notas: sin cambios o ya aplicada"
       echo "=== Starting app ==="
       exec npx tsx src/app.ts
     envVars:

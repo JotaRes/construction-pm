@@ -8,7 +8,7 @@ import { ChevronDown, ChevronRight, Upload, FileText, Eraser, FileUp } from 'luc
 import toast from 'react-hot-toast'
 
 /* ── Inline editable number ─────────────────────── */
-function Num({ value, onSave, dim = false }: { value: number; onSave: (v: number) => void; dim?: boolean }) {
+function Num({ value, onSave, dim = false, plain = false }: { value: number; onSave: (v: number) => void; dim?: boolean; plain?: boolean }) {
   const [editing, setEditing] = useState(false)
   const [text, setText] = useState('')
   if (editing) {
@@ -34,7 +34,7 @@ function Num({ value, onSave, dim = false }: { value: number; onSave: (v: number
       className={`w-full text-right text-xs font-mono transition-colors group/n flex items-center justify-end gap-1
         ${dim || value === 0 ? 'text-slate-400 hover:text-[var(--brand-gold)]' : 'text-slate-800 hover:text-[var(--brand-teal)]'}`}
     >
-      {value > 0 ? formatUSD(value) : <span className="text-slate-400">—</span>}
+      {value > 0 ? (plain ? value.toLocaleString('en-US') : formatUSD(value)) : <span className="text-slate-400">—</span>}
       <span className="text-[9px] opacity-0 group-hover/n:opacity-50 text-[var(--brand-gold)]">✏</span>
     </button>
   )
@@ -108,6 +108,7 @@ function DivSection({
               <th className="pl-8 pr-2 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider w-16">Cód.</th>
               <th className="px-2 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider">Descripción</th>
               <th className="px-2 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider w-10">Ud.</th>
+              <th className="px-2 py-1.5 text-right text-[9px] text-slate-400 uppercase tracking-wider w-20">Cant. ✏</th>
               <th className="px-2 py-1.5 text-right text-[9px] text-slate-400 uppercase tracking-wider w-28">Inicial ✏</th>
               <th className="px-2 py-1.5 text-right text-[9px] text-slate-400 uppercase tracking-wider w-28">Presentado ✏</th>
               <th className="px-2 py-1.5 text-right text-[9px] text-emerald-600/70 uppercase tracking-wider w-32">Aprobado (auto desde Draws)</th>
@@ -136,6 +137,9 @@ function DivSection({
                     {line.vendor && <div className="text-[9px] text-slate-400 mt-0.5">{line.vendor}</div>}
                   </td>
                   <td className="px-2 py-2 text-[10px] text-slate-400 text-center">{line.unit}</td>
+                  <td className="px-2 py-2">
+                    <Num value={line.quantity ?? 0} onSave={v => onUpdate(line.id, { quantity: v })} dim={!line.quantity} plain />
+                  </td>
                   <td className="px-2 py-2">
                     <Num value={line.valorInicial} onSave={v => onUpdate(line.id, { valorInicial: v })} />
                   </td>

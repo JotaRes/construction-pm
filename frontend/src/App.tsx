@@ -4,6 +4,7 @@ import AuthGate from './components/AuthGate'
 import Splash from './components/Splash'
 import { ConfirmProvider } from './components/ConfirmDialog'
 import ModuleGate from './components/ModuleGate'
+import AssistantButton from './components/AssistantButton'
 import { useQuery } from '@tanstack/react-query'
 import { useProjectStore } from './store/projectStore'
 import { projectsApi } from './lib/api'
@@ -16,7 +17,6 @@ import Inspections from './pages/Inspections'
 import Alerts from './pages/Alerts'
 import Providers from './pages/Providers'
 import Financial from './pages/Financial'
-import Notes from './pages/Notes'
 import Files from './pages/Files'
 import Projects from './pages/Projects'
 import Tasks from './pages/Tasks'
@@ -78,7 +78,6 @@ function TechModule() {
         <Route path="alerts" element={<Alerts projectId={activeProjectId} />} />
         <Route path="providers" element={<Providers projectId={activeProjectId} />} />
         <Route path="financial" element={<Financial projectId={activeProjectId} />} />
-        <Route path="notes" element={<Notes projectId={activeProjectId} />} />
         <Route path="files" element={<Files projectId={activeProjectId} />} />
         <Route path="tasks" element={<Tasks projectId={activeProjectId} />} />
         <Route path="construction-budget" element={<ConstructionBudget projectId={activeProjectId} />} />
@@ -110,6 +109,7 @@ export default function App() {
               </ModuleGate>
             } />
           </Routes>
+          <AssistantButton />
         </BrowserRouter>
       </ConfirmProvider>
     </AuthGate>

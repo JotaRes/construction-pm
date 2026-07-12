@@ -10,7 +10,7 @@ router.get('/:projectId/alerts', async (req: Request, res: Response) => {
       where: { id: req.params.projectId },
       include: {
         draws: true,
-        phases: { include: { items: true } },
+        phases: { include: { items: { include: { documents: true } } } },
       },
     })
     if (!project) return res.status(404).json({ data: null, error: 'Project not found' })
@@ -119,6 +119,22 @@ router.get('/:projectId/alerts', async (req: Request, res: Response) => {
       })
     }
 
+    // 6. FACTURAS FALTANTES — actividades ejecutadas/completadas sin factura adjunta.
+    const itemsSinFactura = project.phases
+      .flatMap(p => p.items)
+      .filter(i => !i.esNA && (i.valorEjecutado > 0 || i.completado) &&
+        !(i.documents ?? []).some(d => d.type === 'FACTURA'))
+    if (itemsSinFactura.length > 0) {
+      alerts.push({
+        id: 'missing-invoices',
+        level: 'warning',
+        title: 'Facturas faltantes',
+        message: `${itemsSinFactura.length} actividad(es) ejecutada(s) sin factura adjunta`,
+        action: 'Adjuntar la factura en cada actividad (columna Doc en EJECUCIÓN).',
+        source: 'EJECUCIÓN — soportes',
+      })
+    }
+
     res.json({ data: alerts, error: null })
   } catch (e) {
     res.status(500).json({ data: null, error: String(e) })
@@ -150,6 +166,18 @@ router.get('/:projectId/upcoming', async (req: Request, res: Response) => {
       orderBy: { dueDate: 'asc' },
     })
 
+    // Actividades de ejecución con fecha fin (cronograma): vencidas o próximas ≤30 días.
+    // Estas fechas son las mismas que alimentan el Gantt (Item.fechaFinReal).
+    const actividades = await prisma.item.findMany({
+      where: {
+        phase: { projectId },
+        esNA: false,
+        completado: false,
+        fechaFinReal: { not: null, lte: in30 },
+      },
+      orderBy: { fechaFinReal: 'asc' },
+    })
+
     const items: any[] = []
 
     for (const i of inspecciones) {
@@ -173,12 +201,25 @@ router.get('/:projectId/upcoming', async (req: Request, res: Response) => {
     }
 
     for (const t of tareas) {
+      const esNota = t.tipo === 'NOTA'
+      const vencida = !!(t.dueDate && t.dueDate < today)
       items.push({
-        type: 'TAREA',
-        severity: t.dueDate && t.dueDate < today ? 'CRITICAL' : 'MEDIUM',
-        title: t.dueDate && t.dueDate < today ? 'Tarea vencida' : 'Tarea próxima',
+        type: esNota ? 'NOTA' : 'TAREA',
+        severity: vencida ? 'CRITICAL' : 'MEDIUM',
+        title: vencida ? (esNota ? 'Nota vencida' : 'Tarea vencida') : (esNota ? 'Nota próxima' : 'Tarea próxima'),
         description: t.title,
         date: t.dueDate,
+      })
+    }
+
+    for (const a of actividades) {
+      const overdue = a.fechaFinReal! < today
+      items.push({
+        type: 'ACTIVIDAD',
+        severity: overdue ? 'CRITICAL' : (a.fechaFinReal! < in7 ? 'HIGH' : 'MEDIUM'),
+        title: overdue ? 'Actividad vencida' : 'Actividad próxima a vencer',
+        description: `${a.itemCode} — ${a.activity}`,
+        date: a.fechaFinReal,
       })
     }
 
