@@ -1,24 +1,24 @@
 import crypto from "crypto";
 import { Request, Response, NextFunction } from "express";
+import { env } from "../../lib/env";
 
-// Los fallbacks DEBEN coincidir con los de routes/auth.ts (login técnico).
-// El token global = HMAC-SHA256(JWT_SECRET, APP_PASSWORD). Si estos valores de
-// respaldo divergieran y faltara alguna env var, el login emitiría un token que
-// requireAuth rechazaría → 401 en TODO el sistema. Mantenerlos idénticos lo evita.
-const SECRET = process.env.JWT_SECRET || "pm-secret";
+// SIN FALLBACKS: JWT_SECRET y APP_PASSWORD son obligatorios y se validan al
+// arranque (lib/env.ts). El token global = HMAC-SHA256(JWT_SECRET, APP_PASSWORD)
+// y debe generarse idéntico aquí y en routes/auth.ts (login técnico).
 
 export function makeToken(password: string): string {
-  return crypto.createHmac("sha256", SECRET).update(password).digest("hex");
+  return crypto.createHmac("sha256", env.JWT_SECRET).update(password).digest("hex");
 }
 
 export function verifyPassword(password: string): boolean {
-  const expected = process.env.APP_PASSWORD || "construction2024";
-  return password === expected;
+  const expected = Buffer.from(env.APP_PASSWORD);
+  const given = Buffer.from(password);
+  return expected.length === given.length && crypto.timingSafeEqual(expected, given);
 }
 
 export function verifyToken(token: string): boolean {
   if (!token) return false;
-  const expected = makeToken(process.env.APP_PASSWORD || "construction2024");
+  const expected = makeToken(env.APP_PASSWORD);
   try {
     return crypto.timingSafeEqual(Buffer.from(token), Buffer.from(expected));
   } catch {

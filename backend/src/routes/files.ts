@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '../lib/prisma'
 import multer from 'multer'
 import { uploadToCloudinary, resourceTypeFor } from '../lib/cloudinary'
 import { PROJECT_DOC_CHECKLIST, DOC_KEYS, GROUP_LABELS } from '../lib/projectDocChecklist'
@@ -10,7 +10,6 @@ import {
 } from './draws'
 
 const router = Router()
-const prisma = new PrismaClient()
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } })
 
 // Mapeo de `kind` del checklist documental a parser + campos que se aplican al proyecto.

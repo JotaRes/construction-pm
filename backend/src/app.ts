@@ -20,6 +20,8 @@ import budgetLineRoutes from './routes/budgetLines'
 import priceRefRoutes from './routes/priceRefs'
 import itemDocumentRoutes from './routes/itemDocuments'
 import { seedDatabase } from './seed'
+import { validateEnv } from './lib/env'
+import { prisma } from './lib/prisma'
 import backupRoutes from './routes/backup'
 import downloadRoutes from './routes/download'
 import capacityRoutes from './routes/capacity'
@@ -55,6 +57,11 @@ process.on('uncaughtException', (err) => {
 process.on('unhandledRejection', (reason) => {
   console.error('[unhandledRejection] servidor sobrevive:', reason instanceof Error ? reason.message : reason)
 })
+
+// FAIL FAST: si falta una env var obligatoria (JWT_SECRET, APP_PASSWORD, etc.)
+// el proceso aborta aquí con un mensaje claro, en vez de arrancar con
+// credenciales de fallback conocidas públicamente.
+validateEnv()
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -208,14 +215,10 @@ if (fs.existsSync(frontendPath)) {
 }
 
 ;(async () => {
-  const { PrismaClient } = await import('@prisma/client')
-  const prisma = new PrismaClient()
   try {
     await seedDatabase(prisma)
   } catch (e) {
     console.error('❌ Seed failed:', e)
-  } finally {
-    await prisma.$disconnect()
   }
   app.listen(PORT, () => {
     console.log(`Construction PM API running on http://localhost:${PORT}`)

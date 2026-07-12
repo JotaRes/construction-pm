@@ -3,7 +3,8 @@ generator client {
 }
 
 datasource db {
-  // PRODUCCIÓN (Render): postgresql. Para correr en LOCAL cambiar a "sqlite" (dev.db).
+  // PostgreSQL SIEMPRE — local y producción. NO cambiar a "sqlite" y commitear:
+  // el hook pre-commit y el CI bloquean cualquier commit con provider sqlite.
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }

@@ -5,10 +5,9 @@ services:
     rootDir: backend
     autoDeploy: yes
     # Build phase — desde rootDir (backend/)
-    #   1) Instala deps backend (incluye devDeps de TS) — trigger v2
+    #   1) Instala deps backend (incluye devDeps de TS)
     #   2) Instala deps frontend FORZANDO devDeps (Vite, Tailwind, PostCSS)
     #   3) Compila el frontend y copia el bundle a backend/public/
-    #   4) Switches provider Prisma a postgresql para producción
     buildCommand: |
       set -e
       echo "=== [1/3] Backend deps ==="
@@ -24,12 +23,17 @@ services:
       cp -R ../frontend/dist/. public/
       ls -la public/
       echo "=== Build complete ==="
+    # Start phase — MIGRACIONES VERSIONADAS (nunca db push en producción).
+    # Primera vez sobre la BD existente: migrate deploy falla con P3005 (BD no
+    # vacía sin historial) → se marca la baseline como aplicada (resolve) sin
+    # tocar ni un dato, y deploy queda en no-op. Deploys futuros solo aplican
+    # migraciones nuevas. PROHIBIDO reintroducir --accept-data-loss.
     startCommand: |
       set -e
       echo "=== Prisma generate ==="
       npx prisma generate
-      echo "=== Prisma DB push ==="
-      npx prisma db push --accept-data-loss
+      echo "=== Prisma migrate deploy ==="
+      npx prisma migrate deploy || (echo "Baseline: BD existente sin historial — resolviendo" && npx prisma migrate resolve --applied 20260712000000_baseline && npx prisma migrate deploy)
       echo "=== Migrar Notas a Tareas (one-time, idempotente, best-effort) ==="
       npx tsx scripts/migrate-notes-to-tasks.ts || echo "migracion notas: sin cambios o ya aplicada"
       echo "=== Starting app ==="
@@ -39,10 +43,13 @@ services:
         sync: false
       - key: PORT
         value: 3000
+      # SECRETOS: valores solo en el dashboard de Render (Environment), nunca en el repo.
       - key: JWT_SECRET
-        value: construction-pm-secret-2026
+        sync: false
       - key: APP_PASSWORD
-        value: 18418598
+        sync: false
+      - key: WIPE_PASSWORD
+        sync: false
       - key: NODE_ENV
         value: production
       - key: NPM_CONFIG_PRODUCTION

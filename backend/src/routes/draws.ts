@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '../lib/prisma'
 import multer from 'multer'
 import ExcelJS from 'exceljs'
 import { uploadToCloudinary, resourceTypeFor } from '../lib/cloudinary'
@@ -10,7 +10,6 @@ import { extractPdfText } from '../lib/pdfOcr'
 const pdfParse = require('pdf-parse') as (buffer: Buffer) => Promise<{ text: string; numpages: number }>
 
 const router  = Router()
-const prisma  = new PrismaClient()
 
 const EXCEL_MIMES = new Set([
   'application/vnd.ms-excel',

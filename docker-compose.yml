@@ -1,0 +1,18 @@
+# Postgres local IDÉNTICO a producción — elimina el baile sqlite/postgresql.
+# Requiere Docker Desktop (https://docker.com/products/docker-desktop).
+# Uso:  docker compose up -d     (arrancar)
+#       docker compose down      (detener; los datos persisten en el volumen)
+services:
+  db:
+    image: postgres:16
+    container_name: restrepoacosta-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: restrepoacosta
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+volumes:
+  pgdata:

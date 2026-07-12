@@ -6,7 +6,7 @@ Sistema web full-stack que integra dos módulos bajo una sola URL, una sola clav
 - **Módulo Financiero** — CFO digital (movimientos, capital, deuda, conciliación bancaria, reportes)
 
 **Producción:** https://restrepoacosta.onrender.com
-**Clave de acceso:** `18418598` (válida para acceder al sistema y a ambos módulos)
+**Clave de acceso:** configurada en Render → Environment (`APP_PASSWORD`). Nunca se escribe en el repo.
 
 ---
 
@@ -86,8 +86,8 @@ npm install
 cat > .env <<EOF
 DATABASE_URL="file:./dev.db"
 PORT=8000
-JWT_SECRET="construction-pm-secret-2026"
-APP_PASSWORD="18418598"
+JWT_SECRET="[SECRET-ROTADO]"
+APP_PASSWORD="<valor-en-Render-dashboard>"
 CLOUDINARY_CLOUD_NAME=""
 CLOUDINARY_API_KEY=""
 CLOUDINARY_API_SECRET=""
@@ -112,7 +112,7 @@ npm run dev
 
 ### 4. Acceso
 - Entra a http://localhost:5173
-- Clave: `18418598`
+- Clave: la configurada en `APP_PASSWORD` (Render → Environment)
 - Verás el Landing con los 2 módulos + opción de backup
 
 ---

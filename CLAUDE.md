@@ -9,7 +9,7 @@ Monorepo con **dos módulos integrados** bajo un solo deploy en Render:
 - **Módulo técnico** (`construction-pm` legacy) — control de obra residencial
 - **Módulo financiero** — CFO digital para Restrepo Acosta Global Holding LLC
 
-Producción: https://restrepoacosta.onrender.com · clave `18418598`.
+Producción: https://restrepoacosta.onrender.com · clave: env var `APP_PASSWORD` en Render (nunca en el repo).
 
 ## Arquitectura crítica que NO debes romper
 
@@ -36,15 +36,30 @@ Producción: https://restrepoacosta.onrender.com · clave `18418598`.
 
 ### Render.yaml
 - `autoDeploy: yes` — push a main dispara deploy automático
-- El `sed` para `provider sqlite→postgresql` corre en `startCommand`, no en `buildCommand` (Render resetea source files entre fases, solo persisten artifacts).
+- `startCommand` usa **`prisma migrate deploy`** con fallback de baseline (`migrate resolve --applied 20260712000000_baseline`). **PROHIBIDO reintroducir `db push --accept-data-loss`** — eso puede borrar columnas y datos de producción sin aviso.
 - `tsx src/app.ts` en runtime — no compilamos a `dist/`.
+- Los secretos (`JWT_SECRET`, `APP_PASSWORD`, `WIPE_PASSWORD`) son `sync: false` — valores SOLO en el dashboard de Render, nunca en el repo.
 
-## DB local vs producción
+## DB local vs producción (desde julio 2026)
 
 | Entorno | Provider | DATABASE_URL |
 |---|---|---|
-| Local | `sqlite` | `file:./dev.db` (un solo archivo con todas las tablas) |
-| Render | `postgresql` | Postgres URL provista por Render (sed cambia provider en startup) |
+| Local | `postgresql` | `postgresql://postgres:postgres@localhost:5432/restrepoacosta` (Docker: `docker compose up -d`) |
+| Render | `postgresql` | Postgres URL provista por Render |
+
+**El provider es postgresql FIJO en ambos entornos.** El hook pre-commit y el job `guard-schema` del CI bloquean cualquier commit/push con provider sqlite. El viejo `dev.db` de SQLite quedó obsoleto.
+
+### Cambios de schema (flujo obligatorio)
+1. Editar `schema.prisma`
+2. `./scripts/new-migration.sh nombre_del_cambio` (desde `backend/`)
+3. **Revisar el SQL generado** — si contiene `DROP`, confirmar que es intencional
+4. Commit de schema + migración juntos. Render aplica con `migrate deploy` en el próximo deploy.
+
+## Automatización activa (GitHub Actions)
+
+- `.github/workflows/ci.yml` — cada push: guard de schema/secretos + typecheck backend + build frontend
+- `.github/workflows/backup.yml` — backup diario 06:00 UTC como artifact (90 días retención). Requiere secret `APP_PASSWORD` en GitHub.
+- `.git/hooks/pre-commit` (local) — bloquea commits con provider sqlite o credenciales conocidas
 
 ## Pendientes conocidos / Ideas
 
@@ -55,6 +70,9 @@ Producción: https://restrepoacosta.onrender.com · clave `18418598`.
 ## Reglas de oro
 
 1. **Antes de tocar el schema Prisma**, verifica que no estás re-separando los modelos finance.
-2. **Antes de hacer `prisma db push --accept-data-loss` localmente**, asegúrate que las tablas tech existen.
-3. **Antes de pushear a main**, verifica `npx tsc --noEmit` limpio en backend y frontend.
+2. **NUNCA usar `prisma db push` contra producción.** Los cambios de schema van SIEMPRE por migración versionada (ver flujo arriba). `--accept-data-loss` está prohibido en cualquier entorno con datos reales.
+3. **Antes de pushear a main**, verifica `npx tsc --noEmit` limpio en backend y frontend (el CI también lo verifica, pero Render deploya en paralelo — no esperes al CI para enterarte).
 4. **Cuando agregues un modelo nuevo al módulo financiero**: prefijo `Fin`, `@@map("fin_xxx")`, y actualizar `routes/backup.ts` para incluirlo en el ZIP.
+5. **NUNCA instanciar `new PrismaClient()` en rutas o servicios.** Importar el singleton: `import { prisma } from '../lib/prisma'`. Múltiples clientes agotan las conexiones del Postgres de Render.
+6. **NUNCA escribir contraseñas o secretos en código, docs o render.yaml.** Local: `backend/.env` (gitignored). Producción: Render → Environment. El pre-commit hook y el CI lo bloquean.
+7. **Endpoints de escritura nuevos llevan validación Zod** (ver `finance/lib/validate.ts` como patrón).

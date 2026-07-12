@@ -1,8 +1,7 @@
 import { Router, Request, Response } from 'express'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '../lib/prisma'
 
 const router = Router()
-const prisma = new PrismaClient()
 
 // Dashboard Ejecutivo del HOLDING (página principal): consolida TODOS los
 // proyectos técnicos + la posición de caja del módulo financiero en una sola

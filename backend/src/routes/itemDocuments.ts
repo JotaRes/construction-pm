@@ -1,10 +1,9 @@
 import { Router, Request, Response } from 'express'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '../lib/prisma'
 import multer from 'multer'
 import { uploadToCloudinary, deleteFromCloudinary, extractPublicId, resourceTypeFor } from '../lib/cloudinary'
 
 const router = Router()
-const prisma = new PrismaClient()
 
 const ALLOWED_MIME = [
   'application/pdf',

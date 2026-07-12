@@ -103,7 +103,7 @@ router.get("/excel", async (_req, res) => {
 // === DELETE /api/finance/backup/wipe-all — Borra todos los datos finance ===
 // Solo borra tablas Fin*, NO toca el módulo técnico.
 // PROTEGIDO: requiere header X-Wipe-Password con la contraseña configurada.
-const WIPE_PASSWORD = process.env.WIPE_PASSWORD || "18418598";
+const WIPE_PASSWORD = process.env.WIPE_PASSWORD;
 
 router.delete("/wipe-all", async (req, res) => {
   try {

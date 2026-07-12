@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '../lib/prisma'
 import archiver from 'archiver'
 import path from 'path'
 import fs from 'fs'
@@ -10,9 +10,8 @@ import { buildSnapshot as buildFinanceSnapshot } from '../finance/routes/backup'
 import { collectTechTargets, collectFinanceTargets, appendBinaries, manifestToCsv } from '../lib/backupBinaries'
 
 const router = Router()
-const prisma = new PrismaClient()
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } })
-const RESTORE_PASSWORD = process.env.WIPE_PASSWORD || '18418598'
+const RESTORE_PASSWORD = process.env.WIPE_PASSWORD
 
 router.get('/', async (req: Request, res: Response) => {
   res.setTimeout(0)

@@ -75,7 +75,7 @@
 ### ✅ Restore protegido con password
 - `POST /api/finance/imports/restore` (financiero, JSON o ZIP)
 - `POST /api/backup/restore-tech` (técnico, JSON o ZIP)
-- Ambos requieren `X-Restore-Password: 18418598`
+- Ambos requieren `X-Restore-Password: [CLAVE-ROTADA]`
 
 ### ⚠️ Recomendación
 - Configurar **backup automático diario** a Google Drive / S3 vía cron externo

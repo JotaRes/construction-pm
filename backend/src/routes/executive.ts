@@ -1,8 +1,7 @@
 import { Router, Request, Response } from 'express'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '../lib/prisma'
 
 const router = Router()
-const prisma = new PrismaClient()
 
 // Dashboard Ejecutivo Cruzado: estado técnico de UN proyecto de obra +
 // posición de caja consolidada del holding (módulo financiero).

@@ -1,8 +1,7 @@
 import { Router, Request, Response } from 'express'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '../lib/prisma'
 
 const router = Router()
-const prisma = new PrismaClient()
 
 // Límite de capacidad documental (Cloudinary free tier = 25 GB) — override con env CAPACITY_LIMIT_GB
 const CAPACITY_LIMIT_BYTES = (() => {

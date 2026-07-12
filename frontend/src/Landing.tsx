@@ -264,7 +264,7 @@ export default function Landing() {
 
           {/* Footer info */}
           <div className="text-center mt-8 text-xs font-mono" style={{ color: 'var(--brand-teal2)' }}>
-            Acceso seguro · sesión única para ambos módulos · clave 18418598
+            Acceso seguro · sesión única para ambos módulos
           </div>
         </div>
       </main>

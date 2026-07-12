@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '../lib/prisma'
 import multer from 'multer'
 import { BUDGET_LINES_TEMPLATE } from '../data/budgetLinesTemplate'
 import { parseAmountFlexible } from '../lib/parseAmount'
@@ -7,7 +7,6 @@ import { parseAmountFlexible } from '../lib/parseAmount'
 const pdfParse = require('pdf-parse') as (buffer: Buffer) => Promise<{ text: string }>
 
 const router = Router()
-const prisma = new PrismaClient()
 
 
 const upload = multer({

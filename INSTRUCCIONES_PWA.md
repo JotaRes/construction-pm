@@ -84,7 +84,7 @@ Cuando vuelvas a tener internet, la app sincroniza automáticamente.
 
 ## 🔐 SEGURIDAD EN MÓVIL
 
-- La app usa el mismo password que la versión web (`18418598`)
+- La app usa el mismo password que la versión web (`[CLAVE-ROTADA]`)
 - En iPhone puedes habilitar **Face ID / Touch ID** para abrir Safari/Chrome — eso protege el acceso
 - El service worker NO cachea datos sensibles (solo HTML/CSS/JS del shell)
 - Todas las llamadas API van directas al servidor (no se cachean)

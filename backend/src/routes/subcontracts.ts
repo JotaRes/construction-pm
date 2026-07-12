@@ -1,8 +1,7 @@
 import { Router, Request, Response } from 'express'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '../lib/prisma'
 
 const router = Router()
-const prisma = new PrismaClient()
 
 // Listar contratos de subcontratistas por proyecto (con proveedor + calendario de pagos)
 router.get('/project/:projectId', async (req: Request, res: Response) => {

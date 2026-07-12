@@ -1,11 +1,10 @@
 import { Router, Request, Response } from 'express'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '../lib/prisma'
 import multer from 'multer'
 import { PHASES_TEMPLATE, INSPECTIONS_TEMPLATE } from '../data/phasesTemplate'
 import { parseAmountFlexible } from '../lib/parseAmount'
 
 const router = Router()
-const prisma = new PrismaClient()
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } })
 

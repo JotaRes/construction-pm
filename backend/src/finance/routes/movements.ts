@@ -4,6 +4,7 @@ import { ok, fail } from "../lib/respond";
 import { upsertCapitalFromMovement, removeCapitalForMovement } from "../services/capitalSync";
 import { upsertLoanFromMovement, removeLoanForMovement, recalculateLoanRepayments } from "../services/loanSync";
 import { logActivity } from "../services/auditLog";
+import { movementCreateSchema, movementUpdateSchema, parseOrError } from "../lib/validate";
 
 const router = Router();
 
@@ -110,8 +111,11 @@ async function detectIsLoanRepayment(categoryId?: number | null): Promise<boolea
 
 router.post("/", async (req, res) => {
   try {
-    const data = { ...req.body };
-    if (data.date) data.date = new Date(data.date);
+    // Validación Zod: rechaza montos no numéricos/negativos, tipos inventados,
+    // IDs no enteros y descarta campos desconocidos ANTES de tocar la BD.
+    const parsed = parseOrError(movementCreateSchema, req.body);
+    if (parsed.error) return fail(res, parsed.error, 400);
+    const data: any = { ...parsed.data };
 
     // === Validación + normalización para transferencias interbancarias ===
     if (data.type === "Interbancario") {
@@ -158,21 +162,11 @@ router.post("/", async (req, res) => {
 
 router.patch("/:id", async (req, res) => {
   try {
-    const data = { ...req.body };
-    if (data.date) data.date = new Date(data.date);
-    delete data.id;
-    delete data.account;
-    delete data.destAccount;
-    delete data.category;
-    delete data.origin;
-    delete data.provider;
-    delete data.partner;
-    delete data.lender;
-    delete data.project;
-    delete data.documents;
-    delete data.linkedMovement;
-    delete data.linkedFrom;
-    delete data.loan;
+    // Validación Zod parcial: solo campos presentes; los objetos de relación
+    // (account, category, etc.) y campos desconocidos se descartan automáticamente.
+    const parsed = parseOrError(movementUpdateSchema, req.body);
+    if (parsed.error) return fail(res, parsed.error, 400);
+    const data: any = { ...parsed.data };
 
     // Defense in depth: detectar isEquity/isLoan/isLoanRepayment del origen/categoría
     // si vienen en el patch (o usar el valor existente)

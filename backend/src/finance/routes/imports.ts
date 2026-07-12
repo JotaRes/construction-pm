@@ -56,7 +56,7 @@ router.delete("/clear-all", async (req, res) => {
 router.post("/restore", upload.single("file"), async (req, res) => {
   try {
     const pwd = (req.headers["x-restore-password"] as string) || (req.body && req.body.password) || "";
-    if (pwd !== (process.env.WIPE_PASSWORD || "18418598")) {
+    if (pwd !== (process.env.WIPE_PASSWORD)) {
       return fail(res, "Contraseña incorrecta. El restore fue bloqueado por seguridad.", 403);
     }
 

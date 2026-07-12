@@ -30,3 +30,9 @@ Thumbs.db
 npm-debug.log*
 eng.traineddata
 .gstack/
+
+# Archivos temporales de Office
+~$*
+
+# Backups locales de base de datos
+*.db.bak*

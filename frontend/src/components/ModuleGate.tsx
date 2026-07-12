@@ -5,22 +5,14 @@
  * propia contraseña. El estado se guarda en sessionStorage para que
  * persista durante la sesión del navegador, pero se borre al cerrarlo.
  *
- * Ambos módulos comparten la misma contraseña por defecto: 18418598.
- * El backend valida la contraseña vía POST /api/auth/login (no hay endpoint
- * separado por módulo, lo verificamos client-side contra el password compartido).
+ * La contraseña se valida ÚNICAMENTE contra el backend (POST /api/auth/login).
+ * NUNCA hardcodear contraseñas en el frontend: el bundle JS es público y
+ * cualquiera puede leerlas con "ver código fuente".
  */
 import { useState, useEffect, ReactNode } from 'react'
 import { Lock, ArrowLeft, ShieldCheck } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import axios from 'axios'
-
-// Contraseña compartida por ambos módulos (en producción se valida vía /api/auth/login)
-// Mantenemos esta clave local sólo para validar antes de mostrar el módulo;
-// la verificación real de seguridad pasa por el JWT del AuthGate.
-const MODULE_PASSWORDS: Record<string, string> = {
-  tech: '18418598',
-  finance: '18418598',
-}
 
 const STORAGE_KEY = (m: string) => `ra_module_unlocked_${m}`
 
@@ -47,17 +39,12 @@ export default function ModuleGate({ moduleName, moduleLabel, children }: Props)
     setError('')
     setLoading(true)
     try {
-      // Validamos contra el endpoint real del backend (defense in depth)
+      // Validación EXCLUSIVAMENTE contra el backend — sin comparación local
       const res = await axios.post('/api/auth/login', { password })
       if (res.data?.token) {
-        // Comparación cliente: la contraseña debe coincidir con la del módulo
-        if (password === MODULE_PASSWORDS[moduleName]) {
-          sessionStorage.setItem(STORAGE_KEY(moduleName), '1')
-          setUnlocked(true)
-          setPassword('')
-        } else {
-          setError('Contraseña incorrecta para este módulo')
-        }
+        sessionStorage.setItem(STORAGE_KEY(moduleName), '1')
+        setUnlocked(true)
+        setPassword('')
       } else {
         setError('Contraseña incorrecta')
       }
