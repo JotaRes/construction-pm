@@ -1,0 +1,43 @@
+# ============================================================
+# BACKUP AUTOMÁTICO DIARIO — 06:00 UTC (~1-2am hora Carolina del Sur)
+# Descarga el ZIP completo del sistema (datos tech + finance + binarios)
+# y lo guarda como artifact de GitHub con 90 días de retención.
+# Requiere el secret APP_PASSWORD en GitHub → Settings → Secrets → Actions.
+# También se puede disparar manualmente: Actions → Backup diario → Run workflow.
+# ============================================================
+name: Backup diario
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Login y descarga del backup
+        run: |
+          set -e
+          echo "Obteniendo token..."
+          TOKEN=$(curl -sf -X POST https://restrepoacosta.onrender.com/api/auth/login \
+            -H "Content-Type: application/json" \
+            -d "{\"password\":\"${{ secrets.APP_PASSWORD }}\"}" | python3 -c "import sys,json;print(json.load(sys.stdin)['token'])")
+          echo "Descargando backup completo (puede tardar)..."
+          curl -sf -o backup-$(date +%Y%m%d).zip \
+            -H "Authorization: Bearer $TOKEN" \
+            --max-time 900 \
+            https://restrepoacosta.onrender.com/api/backup
+          ls -lh backup-*.zip
+          # Verificación mínima: el ZIP no puede estar vacío ni ser un error JSON
+          SIZE=$(stat -c%s backup-*.zip)
+          if [ "$SIZE" -lt 10000 ]; then
+            echo "::error::El backup pesa menos de 10KB — probablemente falló. Revisar."
+            exit 1
+          fi
+      - name: Guardar como artifact (90 días de retención)
+        uses: actions/upload-artifact@v4
+        with:
+          name: backup-${{ github.run_id }}
+          path: backup-*.zip
+          retention-days: 90
