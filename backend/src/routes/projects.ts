@@ -354,6 +354,8 @@ const PROJECT_EDITABLE_FIELDS = new Set([
   'listingCommission', 'buyerCommission', 'targetListingPrice', 'expectedPricePerSqft',
   // Benchmarks
   'contingencyPct', 'targetMarginPct', 'benchmarkSfTarget',
+  // Draws: modo de reporte del lender (ACUMULADO | INCREMENTAL)
+  'drawValuesMode',
   // Documentos financieros (URLs)
   'loiUrl', 'loiName', 'approvalLetterUrl', 'approvalLetterName',
   'hudUrl', 'hudName', 'otrosFinancieroUrl', 'otrosFinancieroName',

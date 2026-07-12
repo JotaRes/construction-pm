@@ -666,6 +666,16 @@ function LenderExcelPanel({ projectId }: { projectId: string }) {
     },
   })
 
+  const modeMut = useMutation({
+    mutationFn: (m: 'ACUMULADO' | 'INCREMENTAL') => projectsApi.patch(projectId, { drawValuesMode: m }),
+    onSuccess: () => {
+      toast.success('Modo del lender actualizado')
+      queryClient.invalidateQueries({ queryKey: ['draws-validation', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['project', projectId] })
+    },
+  })
+
+  const mode = validation?.mode ?? 'ACUMULADO'
   const file = validation?.file
   const warnings = validation?.warnings ?? []
   const comparison = validation?.comparison ?? {}
@@ -698,6 +708,22 @@ function LenderExcelPanel({ projectId }: { projectId: string }) {
             className="hidden"
             onChange={e => { const f = e.target.files?.[0]; if (f) { uploadMut.mutate(f); e.target.value = '' } }} />
         </div>
+      </div>
+
+      {/* Modo de reporte del lender — se adapta a cada lender/formato */}
+      <div className="mt-3 flex items-center gap-2 flex-wrap border-t border-slate-100 pt-3">
+        <span className="text-[11px] font-medium text-slate-600">Los reportes de este lender son:</span>
+        <div className="flex gap-0.5 bg-slate-100 rounded-lg p-0.5">
+          {([['ACUMULADO', 'Acumulados'], ['INCREMENTAL', 'Solo de este draw']] as const).map(([v, l]) => (
+            <button key={v} onClick={() => modeMut.mutate(v)} disabled={modeMut.isPending}
+              className={`px-3 py-1 rounded-md text-[11px] font-medium transition-colors ${mode === v ? 'bg-[var(--brand-teal)] text-white' : 'text-slate-500 hover:text-slate-800'}`}>
+              {l}
+            </button>
+          ))}
+        </div>
+        <span className="text-[10px] text-slate-400">
+          {mode === 'ACUMULADO' ? 'Cada draw incluye los anteriores (ej. Trinity) — el sistema resta lo previo.' : 'Cada draw trae solo su monto nuevo — el sistema lo suma directo.'}
+        </span>
       </div>
 
       {validation && (warnings.length > 0 || Object.keys(comparison).length > 0) && (
@@ -757,19 +783,9 @@ export default function Draws({ projectId }: { projectId: string }) {
   const budgetTotalV = validation?.system.budgetTotal || budgetTotal
   const aprobadoOverflow = budgetTotalV > 0 && totalAprobado > budgetTotalV + 1
 
-  // Monto NUEVO de cada draw = acumulado de este − acumulado del draw anterior.
-  // (elegibleTrinity de Trinity es acumulado por draw; así se ve lo real de cada uno.)
-  const newAmountByDraw = (() => {
-    const m = new Map<string, number>()
-    const active = [...draws].filter(d => d.estado !== 'EMPTY').sort((a, b) => a.drawNumber - b.drawNumber)
-    let prevCum = 0
-    for (const d of active) {
-      const cum = d.elegibleTrinity || 0
-      m.set(d.id, Math.max(0, cum - prevCum))
-      prevCum = cum
-    }
-    return m
-  })()
+  // Monto NUEVO de cada draw — calculado por el backend según el modo del lender
+  // (ACUMULADO: resta el draw anterior · INCREMENTAL: ya es lo de este draw).
+  const newAmountByDraw = validation?.perDraw ?? {}
 
   const mutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => drawsApi.patch(id, data),
@@ -1071,7 +1087,7 @@ export default function Draws({ projectId }: { projectId: string }) {
         {draws.map(draw => (
           <DrawCard key={draw.id} draw={draw} projectId={projectId}
             budgetTotal={budgetTotal} budgetExecuted={budgetExecuted}
-            newAmount={newAmountByDraw.get(draw.id) ?? 0}
+            newAmount={newAmountByDraw[draw.id] ?? 0}
             onUpdate={(id, data) => mutation.mutate({ id, data })}
             onDelete={(id) => deleteMutation.mutate(id)} />
         ))}

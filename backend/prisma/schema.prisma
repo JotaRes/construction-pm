@@ -88,6 +88,11 @@ model Project {
   // esas siguen viniendo solo del PDF de aprobación de cada draw (delta correcto).
   drawsExcelUrl       String?
   drawsExcelName      String?
+  // Cómo reporta el lender los valores de cada draw (se adapta a cada lender):
+  //   ACUMULADO   = cada draw trae el total corrido (incluye draws anteriores) — ej. Trinity
+  //   INCREMENTAL = cada draw trae SOLO lo nuevo de ese draw
+  // Rige el cálculo del delta por ítem y los totales, para que sea exacto sin adivinar.
+  drawValuesMode      String   @default("ACUMULADO")
   // Datos extraídos del LOI (para CFO dashboard)
   loiSalePrice       Float?
   loiOfferDate       DateTime?

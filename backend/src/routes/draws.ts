@@ -306,6 +306,9 @@ export async function applyDrawApprovalsToBudget(
   // drawNumber de este draw — para restar lo ya acumulado por los draws anteriores.
   const thisDraw = await prisma.draw.findUnique({ where: { id: drawId }, select: { drawNumber: true } })
   const thisNum = thisDraw?.drawNumber ?? Number.MAX_SAFE_INTEGER
+  // Modo del lender: ACUMULADO (resta lo anterior) vs INCREMENTAL (ya es lo nuevo).
+  const proj = await prisma.project.findUnique({ where: { id: projectId }, select: { drawValuesMode: true } })
+  const mode = proj?.drawValuesMode === 'INCREMENTAL' ? 'INCREMENTAL' : 'ACUMULADO'
 
   for (const a of approvals) {
     // 1) Match por itemCode si viene en el PDF (formato A legacy)
@@ -322,14 +325,22 @@ export async function applyDrawApprovalsToBudget(
     // Trinity reporta el ACUMULADO por ítem en cada draw. El aporte de ESTE draw
     // = acumulado reportado − lo ya acumulado por los draws anteriores de esta línea.
     // Así nunca se cuenta dos veces (antes se guardaba el acumulado como si fuera delta).
-    const reportedCum = (a.currentAmountAvailable && a.currentAmountAvailable > 0)
+    const reported = (a.currentAmountAvailable && a.currentAmountAvailable > 0)
       ? a.currentAmountAvailable
       : (a.priorAmount || 0) + (a.deltaThisDraw || 0)
-    const priorAgg = await prisma.drawLineContribution.aggregate({
-      where: { budgetLineId: line.id, draw: { drawNumber: { lt: thisNum } } },
-      _sum: { deltaAmount: true },
-    })
-    const delta = Math.max(0, reportedCum - (priorAgg._sum.deltaAmount ?? 0))
+    let delta: number
+    if (mode === 'INCREMENTAL') {
+      // El reporte de este lender ya trae SOLO lo nuevo de este draw.
+      delta = Math.max(0, reported)
+    } else {
+      // ACUMULADO: el reporte trae el total corrido → el aporte de este draw
+      // = reportado − lo ya acumulado por draws anteriores de esta línea.
+      const priorAgg = await prisma.drawLineContribution.aggregate({
+        where: { budgetLineId: line.id, draw: { drawNumber: { lt: thisNum } } },
+        _sum: { deltaAmount: true },
+      })
+      delta = Math.max(0, reported - (priorAgg._sum.deltaAmount ?? 0))
+    }
     if (delta <= 0.005) continue
     await prisma.drawLineContribution.create({
       data: { drawId, budgetLineId: line.id, itemCode: line.itemCode, deltaAmount: delta },
@@ -1597,17 +1608,31 @@ router.post('/:projectId/docs/parse-pdf', handleUpload, async (req: Request, res
 async function computeDrawsValidation(projectId: string, excel?: Record<string, unknown> | null) {
   const project = await prisma.project.findUnique({
     where: { id: projectId },
-    select: { holdback: true, drawsExcelUrl: true, drawsExcelName: true },
+    select: { holdback: true, drawsExcelUrl: true, drawsExcelName: true, drawValuesMode: true },
   })
-  const draws = await prisma.draw.findMany({ where: { projectId }, select: { netWire: true, elegibleTrinity: true, estado: true } })
+  const mode = project?.drawValuesMode === 'INCREMENTAL' ? 'INCREMENTAL' : 'ACUMULADO'
+  const draws = await prisma.draw.findMany({ where: { projectId }, select: { id: true, drawNumber: true, netWire: true, elegibleTrinity: true, estado: true } })
   const lines = await prisma.budgetLine.findMany({ where: { projectId }, select: { valorInicial: true, valorAprobado: true } })
 
   const holdback = project?.holdback ?? 0
-  // netWire es por-draw; se suma. elegibleTrinity de Trinity es ACUMULADO por draw,
-  // así que el total elegible = el ÚLTIMO acumulado (el mayor), NO la suma de todos.
-  const activeDraws = draws.filter(d => d.estado !== 'EMPTY')
   const totalWired = draws.reduce((s, d) => s + d.netWire, 0)
-  const totalElegible = activeDraws.reduce((m, d) => Math.max(m, d.elegibleTrinity), 0)
+  // Monto NUEVO por draw + total elegible según el modo del lender:
+  //   ACUMULADO   → nuevo = elegible[n] − elegible[n-1]; total = último acumulado (máx)
+  //   INCREMENTAL → nuevo = elegible[n] (ya es lo de este draw); total = suma
+  const activeDraws = draws.filter(d => d.estado !== 'EMPTY').sort((a, b) => a.drawNumber - b.drawNumber)
+  const perDraw: Record<string, number> = {}
+  let totalElegible = 0
+  if (mode === 'INCREMENTAL') {
+    for (const d of activeDraws) { perDraw[d.id] = Math.max(0, d.elegibleTrinity); totalElegible += perDraw[d.id] }
+  } else {
+    let prevCum = 0
+    for (const d of activeDraws) {
+      const cum = d.elegibleTrinity || 0
+      perDraw[d.id] = Math.max(0, cum - prevCum)
+      prevCum = cum
+    }
+    totalElegible = activeDraws.length ? Math.max(...activeDraws.map(d => d.elegibleTrinity)) : 0
+  }
   const budgetTotal = lines.reduce((s, l) => s + l.valorInicial, 0)
   const totalApproved = lines.reduce((s, l) => s + l.valorAprobado, 0)
   const saldoHoldback = Math.max(0, holdback - totalWired)
@@ -1642,6 +1667,8 @@ async function computeDrawsValidation(projectId: string, excel?: Record<string, 
   return {
     file: { url: project?.drawsExcelUrl ?? null, name: project?.drawsExcelName ?? null },
     system: { holdback, totalWired, totalElegible, budgetTotal, totalApproved, saldoHoldback, pendientePorGirar },
+    mode,
+    perDraw,
     excel: excel ?? null,
     comparison: cmp,
     warnings,

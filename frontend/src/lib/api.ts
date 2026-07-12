@@ -134,6 +134,8 @@ export interface DrawsValidation {
     holdback: number; totalWired: number; totalElegible: number
     budgetTotal: number; totalApproved: number; saldoHoldback: number; pendientePorGirar: number
   }
+  mode: 'ACUMULADO' | 'INCREMENTAL'
+  perDraw: Record<string, number>
   excel: Record<string, unknown> | null
   comparison: Record<string, { excel: number; sistema: number; difiere: boolean }>
   warnings: string[]
