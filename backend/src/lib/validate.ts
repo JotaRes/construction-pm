@@ -35,3 +35,20 @@ export function parseOrError<T>(schema: z.ZodType<T>, body: unknown):
   const msg = result.error.errors.map((e) => `${e.path.join('.') || 'body'}: ${e.message}`).join(' · ')
   return { data: null, error: `Datos inválidos — ${msg}` }
 }
+
+// ===== PUNCH LIST (Lote B) =====
+export const PUNCH_SEVERITIES = ['BAJA', 'MEDIA', 'ALTA'] as const
+export const PUNCH_STATUSES = ['ABIERTO', 'CORREGIDO', 'VERIFICADO'] as const
+
+export const punchCreateSchema = z.object({
+  title: z.string().trim().min(1, 'Describe el defecto').max(300),
+  location: z.string().max(200).nullable().optional(),
+  responsable: z.string().max(200).nullable().optional(),
+  severity: z.enum(PUNCH_SEVERITIES).optional(),
+  notes: z.string().max(2000).nullable().optional(),
+  dueDate: z.coerce.date().nullable().optional(),
+})
+
+export const punchUpdateSchema = punchCreateSchema.partial().extend({
+  status: z.enum(PUNCH_STATUSES).optional(),
+})

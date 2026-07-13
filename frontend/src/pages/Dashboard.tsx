@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import ForecastCard from '../components/ForecastCard'
 import { useNavigate } from 'react-router-dom'
 import { projectsApi } from '../lib/api'
 import { formatUSD, formatPct, formatDate } from '../lib/calculations'
@@ -108,6 +109,9 @@ export default function Dashboard({ projectId }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Forecast de entrega + costo del atraso (Lote B) */}
+      <ForecastCard projectId={projectId} />
 
       {/* ── Row 1: Progress gauges ─────────────────────────── */}
       <div className="grid grid-cols-4 gap-4">

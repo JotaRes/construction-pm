@@ -111,6 +111,7 @@ model Project {
   phases       Phase[]
   draws        Draw[]
   changeOrders ChangeOrder[]
+  punchItems   PunchListItem[]
   partners    Partner[]
   providers   Provider[]
   notes       Note[]
@@ -439,6 +440,28 @@ model ChangeOrder {
   updatedAt    DateTime @updatedAt
 
   @@unique([projectId, coNumber])
+  @@index([projectId])
+}
+
+// Punch List (Lote B): cierre de obra (Etapa 9) con responsable, evidencia y estado.
+// Flujo: ABIERTO -> CORREGIDO (el responsable reporta) -> VERIFICADO (tú confirmas con evidencia).
+model PunchListItem {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title       String
+  location    String?  // ambiente: "Cocina", "Baño master", "Exterior norte"...
+  responsable String?  // quién debe corregirlo (GC, sub específico)
+  severity    String   @default("MEDIA") // BAJA | MEDIA | ALTA (bloquea cierre)
+  status      String   @default("ABIERTO") // ABIERTO | CORREGIDO | VERIFICADO
+  notes       String?
+  photoUrl    String?  // evidencia (foto del defecto o de la corrección)
+  photoName   String?
+  dueDate     DateTime?
+  resolvedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
   @@index([projectId])
 }
 

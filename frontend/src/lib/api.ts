@@ -527,3 +527,63 @@ export const changeOrdersApi = {
   remove: (projectId: string, id: string) =>
     api.delete(`/projects/${projectId}/change-orders/${id}`).then(r => r.data.data),
 }
+
+
+// ============ PUNCH LIST + FORECAST (Lote B) ============
+export interface PunchItem {
+  id: string
+  projectId: string
+  title: string
+  location: string | null
+  responsable: string | null
+  severity: 'BAJA' | 'MEDIA' | 'ALTA'
+  status: 'ABIERTO' | 'CORREGIDO' | 'VERIFICADO'
+  notes: string | null
+  photoUrl: string | null
+  photoName: string | null
+  dueDate: string | null
+  resolvedAt: string | null
+  createdAt: string
+}
+
+export interface PunchTotals { abiertos: number; corregidos: number; verificados: number; altasAbiertas: number }
+
+export const punchListApi = {
+  list: (projectId: string): Promise<{ items: PunchItem[]; totals: PunchTotals }> =>
+    api.get(`/projects/${projectId}/punch-list`).then(r => r.data.data),
+  create: (projectId: string, data: Record<string, unknown>) =>
+    api.post(`/projects/${projectId}/punch-list`, data).then(r => r.data.data),
+  update: (projectId: string, id: string, data: Record<string, unknown>) =>
+    api.patch(`/projects/${projectId}/punch-list/${id}`, data).then(r => r.data.data),
+  uploadPhoto: (projectId: string, id: string, formData: FormData) =>
+    api.post(`/projects/${projectId}/punch-list/${id}/photo`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data.data),
+  remove: (projectId: string, id: string) =>
+    api.delete(`/projects/${projectId}/punch-list/${id}`).then(r => r.data.data),
+}
+
+export interface ForecastData {
+  available: boolean
+  missing?: string[]
+  avance: number
+  daysElapsed?: number
+  pacePerWeek?: number
+  daysRemaining?: number
+  projectedFinish?: string
+  target?: string
+  coDays?: number
+  coCost?: number
+  targetAdjusted?: string
+  delayDays?: number
+  upb?: number
+  interestRate?: number
+  dailyInterest?: number
+  delayCost?: number
+  loanMaturity?: string | null
+  daysToMaturity?: number | null
+  maturityRisk?: boolean
+}
+
+export const forecastApi = {
+  get: (projectId: string): Promise<ForecastData> =>
+    api.get(`/projects/${projectId}/forecast`).then(r => r.data.data),
+}
