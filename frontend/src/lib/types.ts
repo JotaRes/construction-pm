@@ -57,6 +57,11 @@ export interface Provider {
   license: string | null
   address: string | null
   notes: string | null
+  // COI (Lote A)
+  insuranceCarrier: string | null
+  coiUrl: string | null
+  coiName: string | null
+  coiExpiresAt: string | null
   quotes: ProviderQuote[]
   documents?: ProviderDocument[]
 }

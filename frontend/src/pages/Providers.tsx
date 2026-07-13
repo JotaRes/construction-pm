@@ -296,6 +296,68 @@ function QuoteModal({ provider, projectId, onClose }: { provider: Provider; proj
   )
 }
 
+// COI (Lote A): estado del seguro del proveedor con semáforo de vencimiento.
+// Un sub con COI vencido trabajando en el lote es riesgo directo del holding.
+function CoiRow({ provider, projectId }: { provider: Provider; projectId: string }) {
+  const queryClient = useQueryClient()
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['providers', projectId] })
+
+  const uploadCoiMut = useMutation({
+    mutationFn: (file: File) => {
+      const fd = new FormData()
+      fd.append('file', file)
+      return providersApi.uploadCoi(projectId, provider.id, fd)
+    },
+    onSuccess: invalidate,
+  })
+  const removeCoiMut = useMutation({
+    mutationFn: () => providersApi.removeCoi(projectId, provider.id),
+    onSuccess: invalidate,
+  })
+  const dateMut = useMutation({
+    mutationFn: (coiExpiresAt: string | null) => providersApi.patch(projectId, provider.id, { coiExpiresAt }),
+    onSuccess: invalidate,
+  })
+
+  const days = provider.coiExpiresAt
+    ? Math.ceil((new Date(provider.coiExpiresAt).getTime() - Date.now()) / 86400000)
+    : null
+
+  const badge = days === null
+    ? { cls: 'bg-slate-100 text-slate-500', label: 'COI sin registrar' }
+    : days < 0
+      ? { cls: 'bg-red-500/10 text-red-500', label: `COI VENCIDO hace ${Math.abs(days)}d` }
+      : days < 30
+        ? { cls: 'bg-amber-500/10 text-amber-600', label: `COI vence en ${days}d` }
+        : { cls: 'bg-emerald-500/10 text-emerald-600', label: `COI vigente · ${days}d` }
+
+  return (
+    <div className="mt-2 flex items-center gap-2 flex-wrap">
+      <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${badge.cls}`}>
+        <ShieldCheck className="w-3 h-3" /> {badge.label}
+      </span>
+      <input type="date"
+        value={provider.coiExpiresAt ? provider.coiExpiresAt.slice(0, 10) : ''}
+        onChange={e => dateMut.mutate(e.target.value || null)}
+        title="Fecha de vencimiento del COI"
+        className="bg-slate-50 border border-slate-200 text-[10px] px-1.5 py-0.5 rounded-md focus:outline-none focus:border-[var(--brand-gold)] text-slate-500" />
+      {provider.coiUrl ? (
+        <>
+          <a href={provider.coiUrl} target="_blank" rel="noreferrer"
+            className="text-[10px] font-semibold text-[var(--brand-teal)] hover:underline">ver certificado</a>
+          <button onClick={() => removeCoiMut.mutate()} className="text-[10px] text-slate-400 hover:text-red-400 hover:underline">quitar</button>
+        </>
+      ) : (
+        <label className="inline-flex items-center gap-1 text-[10px] font-semibold text-[var(--brand-teal)] hover:underline cursor-pointer">
+          <Upload className="w-3 h-3" /> {uploadCoiMut.isPending ? 'Subiendo…' : 'Subir COI'}
+          <input type="file" className="hidden" accept=".pdf,image/*"
+            onChange={e => { const f = e.target.files?.[0]; if (f) uploadCoiMut.mutate(f) }} />
+        </label>
+      )}
+    </div>
+  )
+}
+
 function ProviderCard({ provider, projectId, onUpdate, onDelete }: {
   provider: Provider
   projectId: string
@@ -412,6 +474,9 @@ function ProviderCard({ provider, projectId, onUpdate, onDelete }: {
               {provider.address && <span className="text-slate-400">📍 {provider.address}</span>}
             </div>
             {provider.notes && <div className="text-[11px] text-slate-400 mt-1">{provider.notes}</div>}
+
+            {/* COI — Certificate of Insurance (Lote A) */}
+            <CoiRow provider={provider} projectId={projectId} />
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             <button onClick={() => setShowQuotes(true)}

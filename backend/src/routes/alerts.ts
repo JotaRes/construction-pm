@@ -10,6 +10,8 @@ router.get('/:projectId/alerts', async (req: Request, res: Response) => {
       include: {
         draws: true,
         phases: { include: { items: { include: { documents: true } } } },
+        providers: { include: { contracts: { select: { id: true, status: true } } } },
+        changeOrders: true,
       },
     })
     if (!project) return res.status(404).json({ data: null, error: 'Project not found' })
@@ -131,6 +133,83 @@ router.get('/:projectId/alerts', async (req: Request, res: Response) => {
         message: `${itemsSinFactura.length} actividad(es) ejecutada(s) sin factura adjunta`,
         action: 'Adjuntar la factura en cada actividad (columna Doc en EJECUCIÓN).',
         source: 'EJECUCIÓN — soportes',
+      })
+    }
+
+    // 7. SEGUROS (Lote A) — builder's risk del proyecto
+    if (project.builderRiskExpiresAt) {
+      const dias = Math.ceil((new Date(project.builderRiskExpiresAt).getTime() - today.getTime()) / 86400000)
+      if (dias < 60) {
+        alerts.push({
+          id: 'builder-risk-expiry',
+          level: dias < 0 ? 'critical' : dias < 30 ? 'critical' : 'warning',
+          title: dias < 0 ? "Builder's Risk VENCIDO" : "Builder's Risk por vencer",
+          message: dias < 0
+            ? `Venció hace ${Math.abs(dias)} día(s) — el proyecto está SIN cobertura`
+            : `${dias} día(s) restantes (${project.builderRiskCarrier ?? 'aseguradora sin registrar'})`,
+          action: 'Renovar la póliza YA. Un siniestro sin cobertura puede costar el proyecto completo.',
+          source: 'CONFIG — Seguros',
+        })
+      }
+    } else {
+      alerts.push({
+        id: 'builder-risk-missing',
+        level: 'warning',
+        title: "Builder's Risk sin registrar",
+        message: 'No hay póliza builder\'s risk cargada para este proyecto',
+        action: 'Registrar la póliza y su vencimiento en Configuración del proyecto.',
+        source: 'CONFIG — Seguros',
+      })
+    }
+
+    // 8. COI de subcontratistas con contrato ACTIVO (Lote A)
+    const activeProviders = (project.providers ?? []).filter(p => (p.contracts ?? []).some(c => c.status === 'ACTIVO'))
+    const coiProblems: string[] = []
+    let coiWorst = 'warning'
+    for (const p of activeProviders) {
+      if (!p.coiExpiresAt) {
+        coiProblems.push(`${p.name}: sin COI registrado`)
+      } else {
+        const dias = Math.ceil((new Date(p.coiExpiresAt).getTime() - today.getTime()) / 86400000)
+        if (dias < 0) { coiProblems.push(`${p.name}: COI VENCIDO hace ${Math.abs(dias)}d`); coiWorst = 'critical' }
+        else if (dias < 30) coiProblems.push(`${p.name}: COI vence en ${dias}d`)
+      }
+    }
+    if (coiProblems.length > 0) {
+      alerts.push({
+        id: 'coi-subcontractors',
+        level: coiWorst,
+        title: 'Seguros de subcontratistas (COI)',
+        message: coiProblems.join(' · '),
+        action: 'Exigir COI vigente antes de dejar entrar al sub a la obra. Su accidente sin seguro es TU responsabilidad.',
+        source: 'PROVEEDORES — COI',
+      })
+    }
+
+    // 9. CHANGE ORDERS (Lote A) — impacto en presupuesto y pendientes de decisión
+    const cos = project.changeOrders ?? []
+    const approvedCOs = cos.filter(c => c.status === 'APROBADO')
+    const pendingCOs = cos.filter(c => c.status === 'BORRADOR')
+    const coCost = approvedCOs.reduce((s2, c) => s2 + c.costDelta, 0)
+    const coDays = approvedCOs.reduce((s2, c) => s2 + c.daysDelta, 0)
+    if (approvedCOs.length > 0) {
+      alerts.push({
+        id: 'change-orders-impact',
+        level: coCost > 0 ? 'warning' : 'ok',
+        title: 'Impacto de Change Orders',
+        message: `${approvedCOs.length} CO aprobado(s): ${coCost >= 0 ? '+' : ''}$${coCost.toLocaleString('en-US', { maximumFractionDigits: 0 })} · ${coDays >= 0 ? '+' : ''}${coDays} día(s)`,
+        action: 'El presupuesto y cronograma ajustados ya reflejan estos cambios.',
+        source: 'CHANGE ORDERS',
+      })
+    }
+    if (pendingCOs.length > 0) {
+      alerts.push({
+        id: 'change-orders-pending',
+        level: 'warning',
+        title: 'Change Orders sin decidir',
+        message: `${pendingCOs.length} CO en borrador esperando aprobación o rechazo`,
+        action: 'Decidir cada CO: un cambio sin aprobar es un sobrecosto sin control.',
+        source: 'CHANGE ORDERS',
       })
     }
 

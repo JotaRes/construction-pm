@@ -100,17 +100,8 @@ model Project {
   loiExpectedClose   DateTime?
   loiEarnestMoney    Float?
 
-  // Seguros del proyecto (Lote A): builder's risk + liability del GC
-  builderRiskCarrier   String?
-  builderRiskPolicyNum String?
-  builderRiskExpiresAt DateTime?
-  builderRiskUrl       String?
-  builderRiskName      String?
-  gcLiabilityExpiresAt DateTime?
-
-  phases       Phase[]
-  draws        Draw[]
-  changeOrders ChangeOrder[]
+  phases      Phase[]
+  draws       Draw[]
   partners    Partner[]
   providers   Provider[]
   notes       Note[]
@@ -229,11 +220,6 @@ model Provider {
   license      String?
   address      String?
   notes        String?
-  // COI — Certificate of Insurance (Lote A): vencimiento alertado en /alerts
-  insuranceCarrier String?
-  coiUrl           String?
-  coiName          String?
-  coiExpiresAt     DateTime?
   items        Item[]
   quotes       ProviderQuote[]
   documents    ProviderDocument[]
@@ -322,7 +308,6 @@ model BudgetLine {
   pagadoSubs      Float   @default(0)
   order           Int     @default(0)
   contributions   DrawLineContribution[]
-  changeOrders    ChangeOrder[]
 }
 
 model Task {
@@ -387,7 +372,6 @@ model SubcontractorContract {
   contractName    String?
   notes           String?
   paymentSchedule SubcontractorPayment[]
-  changeOrders    ChangeOrder[]
   createdAt       DateTime               @default(now())
   updatedAt       DateTime               @updatedAt
 }
@@ -402,45 +386,9 @@ model SubcontractorPayment {
   paidDate      DateTime?
   status        String                @default("PENDIENTE") // PENDIENTE | PAGADO | RETENIDO
   notes         String?
-  // Lien waiver (Lote A): en SC un sub no pagado puede poner mechanic's lien.
-  // Para marcar PAGADO se exige waiver adjunto O una excepción explícita con razón.
-  lienWaiverUrl   String?
-  lienWaiverName  String?
-  lienWaiverAt    DateTime?
-  waiverException String?
   createdAt     DateTime              @default(now())
 }
 
-
-// Change Orders (Lote A): control formal de cambios de alcance.
-// Registra qué cambió, cuánto cuesta (+/-), cuántos días agrega y quién aprobó.
-// El presupuesto ajustado del proyecto = budget original + SUM(costDelta de APROBADOS).
-model ChangeOrder {
-  id           String   @id @default(cuid())
-  projectId    String
-  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  coNumber     Int      // consecutivo por proyecto (CO-1, CO-2...)
-  title        String
-  description  String?
-  reason       String   @default("OTRO") // CONDICION_OCULTA | ERROR_DISENO | SOLICITUD_PROPIETARIO | CODIGO | CLIMA | OTRO
-  costDelta    Float    @default(0)      // positivo = sobrecosto, negativo = crédito
-  daysDelta    Int      @default(0)      // días que agrega (+) o ahorra (-) al cronograma
-  status       String   @default("BORRADOR") // BORRADOR | APROBADO | RECHAZADO
-  requestedBy  String?  // quién lo origina (GC, sub, propietario, inspector)
-  approvedBy   String?
-  approvedAt   DateTime?
-  contractId   String?
-  contract     SubcontractorContract? @relation(fields: [contractId], references: [id])
-  budgetLineId String?
-  budgetLine   BudgetLine? @relation(fields: [budgetLineId], references: [id])
-  docUrl       String?  // soporte firmado (PDF/foto)
-  docName      String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  @@unique([projectId, coNumber])
-  @@index([projectId])
-}
 
 // ============================================================
 // MODULO FINANCIERO - Modelos prefijados con "Fin" para convivir

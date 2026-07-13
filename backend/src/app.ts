@@ -28,6 +28,7 @@ import capacityRoutes from './routes/capacity'
 import subcontractsRoutes from './routes/subcontracts'
 import executiveRoutes from './routes/executive'
 import portfolioRoutes from './routes/portfolio'
+import changeOrderRoutes from './routes/changeOrders'
 
 // === FINANCE MODULE ROUTES ===
 import finCatalogs from './finance/routes/catalogs'
@@ -176,6 +177,7 @@ app.use('/api/items', itemRoutes)
 app.use('/api/draws', drawRoutes)
 app.use('/api/subcontracts', subcontractsRoutes)
 app.use('/api/projects', executiveRoutes)
+app.use('/api/projects', changeOrderRoutes)
 app.use('/api/portfolio', portfolioRoutes)
 
 app.use('/api/backup', backupRoutes)

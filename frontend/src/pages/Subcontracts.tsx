@@ -4,6 +4,7 @@ import { subcontractsApi, providersApi, type SubContract, type SubPayment } from
 import { useConfirm } from '../components/ConfirmDialog'
 import {
   HardHat, Plus, Trash2, ChevronDown, CheckCircle2, Clock, AlertCircle, DollarSign,
+  ShieldCheck, ShieldAlert, Upload,
 } from 'lucide-react'
 
 const fmt = (n: number) =>
@@ -35,6 +36,9 @@ function ContractCard({ contract, projectId }: { contract: SubContract; projectI
   const [milestone, setMilestone] = useState('')
   const [amount, setAmount] = useState('')
   const [dueDate, setDueDate] = useState('')
+  // Lien waiver (Lote A): panel de excepción por pago
+  const [exceptionFor, setExceptionFor] = useState<string | null>(null)
+  const [exceptionText, setExceptionText] = useState('')
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['subcontracts', projectId] })
 
@@ -43,7 +47,20 @@ function ContractCard({ contract, projectId }: { contract: SubContract; projectI
     onSuccess: () => { invalidate(); setMilestone(''); setAmount(''); setDueDate(''); setShowPayForm(false) },
   })
   const payMut = useMutation({
-    mutationFn: (paymentId: string) => subcontractsApi.pay(paymentId),
+    mutationFn: ({ paymentId, waiverException }: { paymentId: string; waiverException?: string }) =>
+      subcontractsApi.pay(paymentId, waiverException),
+    onSuccess: () => { invalidate(); setExceptionFor(null); setExceptionText('') },
+  })
+  const uploadWaiverMut = useMutation({
+    mutationFn: ({ paymentId, file }: { paymentId: string; file: File }) => {
+      const fd = new FormData()
+      fd.append('file', file)
+      return subcontractsApi.uploadWaiver(paymentId, fd)
+    },
+    onSuccess: invalidate,
+  })
+  const removeWaiverMut = useMutation({
+    mutationFn: (paymentId: string) => subcontractsApi.removeWaiver(paymentId),
     onSuccess: invalidate,
   })
   const removePaymentMut = useMutation({
@@ -107,26 +124,88 @@ function ContractCard({ contract, projectId }: { contract: SubContract; projectI
               const tone = paymentTone(p)
               const Icon = tone.icon
               return (
-                <div key={p.id} className="flex items-center gap-3 bg-white border border-slate-200 rounded-lg px-3 py-2">
-                  <Icon className={`w-4 h-4 flex-shrink-0 ${tone.cls}`} />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm text-slate-700 truncate">{p.milestoneDesc}</div>
-                    <div className="text-[10px] text-slate-400">
-                      {tone.label}
-                      {p.dueDate && ` · vence ${new Date(p.dueDate).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' })}`}
-                      {p.paidDate && ` · pagado ${new Date(p.paidDate).toLocaleDateString('es', { day: '2-digit', month: 'short' })}`}
+                <div key={p.id} className="bg-white border border-slate-200 rounded-lg px-3 py-2 space-y-1.5">
+                  <div className="flex items-center gap-3">
+                    <Icon className={`w-4 h-4 flex-shrink-0 ${tone.cls}`} />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm text-slate-700 truncate">{p.milestoneDesc}</div>
+                      <div className="text-[10px] text-slate-400">
+                        {tone.label}
+                        {p.dueDate && ` · vence ${new Date(p.dueDate).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' })}`}
+                        {p.paidDate && ` · pagado ${new Date(p.paidDate).toLocaleDateString('es', { day: '2-digit', month: 'short' })}`}
+                      </div>
                     </div>
-                  </div>
-                  <span className="font-mono text-sm text-slate-700 whitespace-nowrap">{fmt(p.amount)}</span>
-                  {p.status !== 'PAGADO' && (
-                    <button onClick={() => payMut.mutate(p.id)}
-                      className="text-[11px] font-semibold px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 whitespace-nowrap">
-                      Registrar pago
+                    <span className="font-mono text-sm text-slate-700 whitespace-nowrap">{fmt(p.amount)}</span>
+                    {p.status !== 'PAGADO' && (
+                      <button onClick={() => {
+                        if (p.lienWaiverUrl) payMut.mutate({ paymentId: p.id })
+                        else setExceptionFor(f => (f === p.id ? null : p.id))
+                      }}
+                        className="text-[11px] font-semibold px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 whitespace-nowrap">
+                        Registrar pago
+                      </button>
+                    )}
+                    <button onClick={() => removePaymentMut.mutate(p.id)} className="text-slate-300 hover:text-red-400">
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
+                  </div>
+
+                  {/* Lien waiver (Lote A) — protección contra mechanic's liens en SC */}
+                  <div className="flex items-center gap-2 flex-wrap pl-7">
+                    {p.lienWaiverUrl ? (
+                      <>
+                        <a href={p.lienWaiverUrl} target="_blank" rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20">
+                          <ShieldCheck className="w-3 h-3" /> Lien waiver{p.lienWaiverName ? ` · ${p.lienWaiverName}` : ''}
+                        </a>
+                        {p.status !== 'PAGADO' && (
+                          <button onClick={() => removeWaiverMut.mutate(p.id)}
+                            className="text-[10px] text-slate-400 hover:text-red-400 hover:underline">quitar</button>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                          p.status === 'PAGADO'
+                            ? 'bg-red-500/10 text-red-500'
+                            : 'bg-amber-500/10 text-amber-600'
+                        }`}>
+                          <ShieldAlert className="w-3 h-3" />
+                          {p.status === 'PAGADO'
+                            ? `Pagado SIN waiver${p.waiverException ? ` — ${p.waiverException}` : ''}`
+                            : 'Sin lien waiver'}
+                        </span>
+                        <label className="inline-flex items-center gap-1 text-[10px] font-semibold text-[var(--brand-teal)] hover:underline cursor-pointer">
+                          <Upload className="w-3 h-3" />
+                          {uploadWaiverMut.isPending ? 'Subiendo…' : 'Subir waiver firmado'}
+                          <input type="file" className="hidden" accept=".pdf,image/*"
+                            onChange={e => { const f = e.target.files?.[0]; if (f) uploadWaiverMut.mutate({ paymentId: p.id, file: f }) }} />
+                        </label>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Panel de excepción: pagar sin waiver exige razón explícita */}
+                  {exceptionFor === p.id && !p.lienWaiverUrl && p.status !== 'PAGADO' && (
+                    <div className="ml-7 bg-amber-50 border border-amber-200 rounded-lg p-2.5 space-y-2">
+                      <div className="text-[11px] text-amber-700 font-medium">
+                        Este pago no tiene lien waiver. En Carolina del Sur, pagar sin waiver deja el lote expuesto a un mechanic's lien.
+                        Sube el waiver firmado (recomendado) o registra la razón de la excepción — quedará en el historial.
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <input value={exceptionText} onChange={e => setExceptionText(e.target.value)}
+                          placeholder="Razón de pagar sin waiver (obligatoria)"
+                          className="flex-1 min-w-[200px] bg-white border border-amber-200 text-[11px] px-2 py-1.5 rounded-lg focus:outline-none focus:border-amber-400" />
+                        <button disabled={!exceptionText.trim() || payMut.isPending}
+                          onClick={() => payMut.mutate({ paymentId: p.id, waiverException: exceptionText.trim() })}
+                          className="text-[11px] font-semibold px-2.5 py-1.5 rounded-md bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-40 whitespace-nowrap">
+                          Pagar sin waiver
+                        </button>
+                        <button onClick={() => { setExceptionFor(null); setExceptionText('') }}
+                          className="text-[11px] text-slate-400 hover:underline">Cancelar</button>
+                      </div>
+                    </div>
                   )}
-                  <button onClick={() => removePaymentMut.mutate(p.id)} className="text-slate-300 hover:text-red-400">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
                 </div>
               )
             })}

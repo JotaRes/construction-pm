@@ -5,6 +5,7 @@ import {
   AlertTriangle, Users, Folder, Search, BarChart3, Building2,
   ChevronDown, FolderKanban, ListChecks, FileSpreadsheet, Tag, LogOut,
   Archive, Menu, X, Download, Layers, GanttChart, Image, HardHat,
+  FileDiff,
 } from 'lucide-react'
 import { alertsApi, projectsApi, downloadAuthed } from '../../lib/api'
 import { logout } from '../AuthGate'
@@ -48,6 +49,7 @@ const navGroups = [
     items: [
       { to: '/tech/providers',  icon: Users,           label: 'Proveedores' },
       { to: '/tech/subcontracts', icon: HardHat,       label: 'Subcontratos' },
+      { to: '/tech/change-orders', icon: FileDiff,    label: 'Change Orders' },
       { to: '/tech/gallery',    icon: Image,           label: 'Galería' },
       { to: '/tech/files',      icon: Folder,          label: 'Archivos' },
       { to: '/tech/price-refs', icon: Tag,             label: 'Precios Ref.' },

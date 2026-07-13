@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import toast from 'react-hot-toast'
 import { projectsApi, drawsApi, docParseApi, constructionBudgetApi } from '../lib/api'
 import { formatUSD, formatPct, formatDate } from '../lib/calculations'
 import type { Project, Draw } from '../lib/types'
@@ -144,6 +145,7 @@ function ParsePanel({ projectId, cfg, onClose, onApply }: {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
+  const queryClient = useQueryClient()
 
   const handleParse = async () => {
     if (!file) return
@@ -157,6 +159,18 @@ function ParsePanel({ projectId, cfg, onClose, onApply }: {
       }
       setParsed(result.parsed ?? {})
       setPreview(result.preview ?? '')
+      // El backend además diligenció ítems de la sección Ejecución (no destructivo).
+      // Refrescamos esas vistas y avisamos qué gastos/asuntos se cargaron.
+      const execApplied: Array<{ itemCode: string; activity: string; applied: string[] }> = result.executionApplied ?? []
+      if (execApplied.length > 0) {
+        queryClient.invalidateQueries({ queryKey: ['phases', projectId] })
+        const conValor = execApplied.filter(e => e.applied.includes('valor ejecutado')).length
+        toast.success(
+          `✓ Ejecución diligenciada: ${execApplied.length} ítem(s) de financiamiento` +
+          (conValor > 0 ? ` (${conValor} con monto de gasto)` : ''),
+          { duration: 9000 },
+        )
+      }
     } catch {
       setError('Error procesando el archivo.')
     } finally {

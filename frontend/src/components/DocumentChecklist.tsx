@@ -61,8 +61,23 @@ export default function DocumentChecklist({ projectId, projectName, projectAddre
       // para que vea que el sistema actualizó automáticamente sfHeated, holdback, etc.
       const applied: string[] = result?.applied ?? []
       const extracted: Record<string, unknown> = result?.extracted ?? {}
+      const executionApplied: Array<{ itemCode: string; activity: string; applied: string[] }> = result?.executionApplied ?? []
       const ocrUsed: boolean = !!result?.ocrUsed
       const extractionError: string | null = result?.extractionError ?? null
+
+      // Si el documento diligenció ítems de la sección Ejecución, refrescar esas vistas
+      // y avisar al usuario qué asuntos (adquisición, financiamiento, etc.) se cargaron.
+      if (executionApplied.length > 0) {
+        qc.invalidateQueries({ queryKey: ['phases', projectId] })
+        const n = executionApplied.length
+        const codes = executionApplied.map(e => e.itemCode).join(', ')
+        const conValor = executionApplied.filter(e => e.applied.includes('valor ejecutado')).length
+        toast.success(
+          `✓ Ejecución diligenciada: ${n} ítem(s) — ${codes}` +
+          (conValor > 0 ? ` (${conValor} con monto de gasto)` : ''),
+          { duration: 9000 },
+        )
+      }
 
       if (applied.length > 0) {
         const friendly: Record<string, string> = {

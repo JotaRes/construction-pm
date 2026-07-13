@@ -34,7 +34,7 @@ router.get('/:projectId/providers', async (req: Request, res: Response) => {
 
 router.post('/:projectId/providers', async (req: Request, res: Response) => {
   try {
-    const { name, type, phoneCountry, phone, email, license, address, notes } = req.body
+    const { name, type, phoneCountry, phone, email, license, address, notes, insuranceCarrier, coiExpiresAt } = req.body
     if (!name?.trim()) return res.status(400).json({ data: null, error: 'Nombre requerido' })
     const provider = await prisma.provider.create({
       data: {
@@ -58,7 +58,7 @@ router.post('/:projectId/providers', async (req: Request, res: Response) => {
 
 router.patch('/:projectId/providers/:id', async (req: Request, res: Response) => {
   try {
-    const { name, type, phoneCountry, phone, email, license, address, notes } = req.body
+    const { name, type, phoneCountry, phone, email, license, address, notes, insuranceCarrier, coiExpiresAt } = req.body
     const provider = await prisma.provider.update({
       where: { id: req.params.id },
       data: {
@@ -70,6 +70,9 @@ router.patch('/:projectId/providers/:id', async (req: Request, res: Response) =>
         ...(license !== undefined && { license: license?.trim() || null }),
         ...(address !== undefined && { address: address?.trim() || null }),
         ...(notes !== undefined && { notes: notes?.trim() || null }),
+        // COI (Lote A)
+        ...(insuranceCarrier !== undefined && { insuranceCarrier: insuranceCarrier?.trim() || null }),
+        ...(coiExpiresAt !== undefined && { coiExpiresAt: coiExpiresAt ? new Date(coiExpiresAt) : null }),
       },
       include: { quotes: true, documents: true },
     })
@@ -211,6 +214,45 @@ router.delete('/:projectId/providers/:providerId/documents/:docId', async (req: 
     }
     await prisma.providerDocument.delete({ where: { id: req.params.docId } })
     res.json({ data: { ok: true }, error: null })
+  } catch (e) {
+    res.status(500).json({ data: null, error: String(e) })
+  }
+})
+
+// ── COI: subir certificado de seguro del proveedor (Lote A) ─────
+router.post('/:projectId/providers/:id/coi', upload.single('file'), async (req: Request, res: Response) => {
+  try {
+    if (!req.file) return res.status(400).json({ data: null, error: 'Archivo requerido' })
+    const { url } = await uploadToCloudinary(req.file.buffer, 'construction-pm/coi', resourceTypeFor(req.file.mimetype))
+    const provider = await prisma.provider.update({
+      where: { id: req.params.id },
+      data: {
+        coiUrl: url,
+        coiName: req.file.originalname,
+        ...(req.body?.coiExpiresAt ? { coiExpiresAt: new Date(req.body.coiExpiresAt) } : {}),
+        ...(req.body?.insuranceCarrier ? { insuranceCarrier: String(req.body.insuranceCarrier).trim() } : {}),
+      },
+      include: { quotes: true, documents: true },
+    })
+    res.json({ data: provider, error: null })
+  } catch (e) {
+    res.status(500).json({ data: null, error: String(e) })
+  }
+})
+
+router.delete('/:projectId/providers/:id/coi', async (req: Request, res: Response) => {
+  try {
+    const existing = await prisma.provider.findUnique({ where: { id: req.params.id } })
+    if (existing?.coiUrl) {
+      const publicId = extractPublicId(existing.coiUrl)
+      if (publicId) await deleteFromCloudinary(publicId).catch(() => {})
+    }
+    const provider = await prisma.provider.update({
+      where: { id: req.params.id },
+      data: { coiUrl: null, coiName: null },
+      include: { quotes: true, documents: true },
+    })
+    res.json({ data: provider, error: null })
   } catch (e) {
     res.status(500).json({ data: null, error: String(e) })
   }

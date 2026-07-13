@@ -61,11 +61,12 @@ router.get('/', async (req: Request, res: Response) => {
         budgetLines: true,
       },
     })
-    const [priceRefs, itemDocuments, subcontractorContracts, drawLineContributions] = await Promise.all([
+    const [priceRefs, itemDocuments, subcontractorContracts, drawLineContributions, changeOrders] = await Promise.all([
       prisma.priceRef.findMany(),
       prisma.itemDocument.findMany(),
       prisma.subcontractorContract.findMany({ include: { paymentSchedule: true } }),
       prisma.drawLineContribution.findMany(),
+      prisma.changeOrder.findMany(),
     ])
 
     const techSnapshot = JSON.stringify(
@@ -75,8 +76,9 @@ router.get('/', async (req: Request, res: Response) => {
         itemDocuments,
         subcontractorContracts,
         drawLineContributions,
+        changeOrders,
         exportedAt: new Date().toISOString(),
-        version: '1.3',
+        version: '1.4',
       },
       null,
       2

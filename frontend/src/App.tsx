@@ -27,6 +27,7 @@ import PhasesDashboard from './pages/PhasesDashboard'
 import GanttView from './pages/GanttView'
 import PhotoGallery from './pages/PhotoGallery'
 import Subcontracts from './pages/Subcontracts'
+import ChangeOrders from './pages/ChangeOrders'
 import Landing from './Landing'
 import FinanceApp from './finance/FinanceApp'
 import { useTheme } from './hooks/useTheme'
@@ -72,6 +73,7 @@ function TechModule() {
         <Route path="gantt" element={<GanttView projectId={activeProjectId} />} />
         <Route path="gallery" element={<PhotoGallery projectId={activeProjectId} />} />
         <Route path="subcontracts" element={<Subcontracts projectId={activeProjectId} />} />
+        <Route path="change-orders" element={<ChangeOrders projectId={activeProjectId} />} />
         <Route path="budget" element={<Budget projectId={activeProjectId} />} />
         <Route path="draws" element={<Draws projectId={activeProjectId} />} />
         <Route path="inspections" element={<Inspections projectId={activeProjectId} />} />

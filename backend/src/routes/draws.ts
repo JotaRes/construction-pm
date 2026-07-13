@@ -5,6 +5,7 @@ import ExcelJS from 'exceljs'
 import { uploadToCloudinary, resourceTypeFor } from '../lib/cloudinary'
 import { parseAmountFlexible } from '../lib/parseAmount'
 import { extractPdfText } from '../lib/pdfOcr'
+import { applyExtractedToExecution } from '../lib/executionAutofill'
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pdfParse = require('pdf-parse') as (buffer: Buffer) => Promise<{ text: string; numpages: number }>
@@ -857,6 +858,74 @@ export function parseHUDText(text: string): Record<string, unknown> {
   return result
 }
 
+// ── Desglose de gastos individuales del HUD-1 / Closing Disclosure ──────────
+// Cada línea de gasto del cierre del PRÉSTAMO se asocia al itemCode de la fase
+// F01 (Financiamiento y Préstamo) que le corresponde, para diligenciar la sección
+// de Ejecución con el detalle completo (no solo el total). Cada fee se busca por
+// sus etiquetas típicas (HUD-1 numerado y Closing Disclosure con nombre), y se
+// captura el monto en dólares más cercano DESPUÉS de la etiqueta dentro de una
+// ventana acotada — mismo enfoque de anclaje que parseHUDText.
+//
+// Orden IMPORTANTE: las etiquetas más específicas van primero. Una vez que un fee
+// captura su monto, ese tramo del texto se "consume" (se blanquea) para que otra
+// etiqueta no reclame el mismo importe (evita doble conteo: p.ej. "E-Record Mortgage"
+// no debe volver a caer en "Recording Mortgage").
+const HUD_FEE_LABELS: Array<{ itemCode: string; labels: string[]; window?: number }> = [
+  { itemCode: '01.03', labels: ['loan\\s*origination\\s*(?:fee|charge|charges)', 'origination\\s*(?:fee|charge|charges)', '\\b80[12]\\b[^$]{0,20}origination'] },   // Origination Fee
+  { itemCode: '01.04', labels: ['underwriting\\s*fee', '\\bunderwriting\\b'] },                                                                                       // Underwriting Fee
+  { itemCode: '01.05', labels: ['(?:loan\\s*)?processing\\s*fee'] },                                                                                                  // Processing Fee
+  { itemCode: '01.11', labels: ['insurance\\s*monitoring(?:\\s*fee)?', 'insurance\\s*tracking(?:\\s*fee)?', 'insurance\\s*compliance(?:\\s*fee)?'] },                  // Insurance Monitoring Fee (antes que Service Fee genérico)
+  { itemCode: '01.06', labels: ['(?:loan\\s*)?servic(?:e|ing)\\s*fee'] },                                                                                             // Service Fee
+  { itemCode: '01.07', labels: ['lender.?s?\\s*legal\\s*fee', 'document\\s*prep(?:aration)?\\s*fee', '\\blegal\\s*fee'] },                                             // Legal Fee (lender)
+  { itemCode: '01.08', labels: ['budget\\s*review(?:\\s*fee)?', 'permit\\s*validation', 'plan\\s*review(?:\\s*fee)?', 'feasibility(?:\\s*review|\\s*fee)?', 'draw\\s*(?:inspection\\s*)?set\\s* ?up'] }, // Budget Review/Permit Validation
+  { itemCode: '01.12', labels: ['per\\s*d(?:ay|iem)[^$)]{0,40}\\)', '(?:pre-?paid|prepaid|per\\s*diem|daily|interim|odd\\s*days?)\\s*interest', 'interest\\s*from[^$]{0,30}to'] }, // Daily interest pre-funding — el "per day)" ancla el TOTAL (no la tarifa diaria entre paréntesis)
+  { itemCode: '01.10', labels: ['(?:construction\\s*)?interest\\s*reserve'] },                                                                                        // Interest Reserve
+  { itemCode: '01.09', labels: ['lender.?s?\\s*inspection\\s*fee', 'initial\\s*inspection(?:\\s*fee)?', 'inspection\\s*fee'] },                                        // Inspection Fee inicial
+  { itemCode: '01.14', labels: ["lender.?s?\\s*title\\s*insurance", "lender.?s?\\s*(?:title\\s*)?coverage", 'loan\\s*(?:title\\s*)?policy', "mortgagee.?s?\\s*(?:title\\s*)?(?:policy|insurance)", 'title\\s*insurance[^$]{0,12}lender'] }, // Lender's Title Insurance
+  { itemCode: '01.15', labels: ['title\\s*(?:[-–—:]\\s*)?(?:search|abstract)', 'abstract\\s*(?:of\\s*title|fee)'] },                                                   // Title - Search/Abstract
+  { itemCode: '01.18', labels: ['title\\s*(?:[-–—:]\\s*)?exam(?:ination)?(?:\\s*fee)?'] },                                                                             // Title - Exam Fee
+  { itemCode: '01.19', labels: ['title\\s*(?:[-–—:]\\s*)?commitment(?:\\s*fee)?', 'commitment\\s*fee', 'title\\s*(?:[-–—:]\\s*)?binder(?:\\s*fee)?'] },                 // Title Commitment Fee
+  { itemCode: '01.17', labels: ['title\\s*(?:[-–—:]\\s*)?admin(?:istrative)?(?:\\s*fee)?', 'title\\s*(?:[-–—:]\\s*)?service\\s*fee'] },                                 // Title Administrative Fee
+  { itemCode: '01.16', labels: ['technology\\s*fee', 'e-?signature(?:\\s*fee)?', 'e-?recording\\s*technology(?:\\s*fee)?'] },                                          // Technology Fee
+  { itemCode: '01.20', labels: ['closing\\s*protection\\s*letter', '\\bcpl\\b'] },                                                                                    // CPL (Lender)
+  { itemCode: '01.13', labels: ['settlement\\s*(?:or\\s*closing\\s*)?fee', 'settlement\\s*/\\s*closing(?:\\s*fee)?', 'closing\\s*fee'] },                              // Closing - Settlement Fee (después de las específicas de título)
+  { itemCode: '01.23', labels: ['e-?record(?:ing)?\\s*(?:fee\\s*)?(?:[-–—:]?\\s*)?(?:for\\s*)?mortgage'] },                                                            // E-Record Fee Mortgage (antes que Recording Mortgage)
+  { itemCode: '01.22', labels: ['(?:e-?)?record(?:ing)?\\s*(?:fee\\s*)?(?:[-–—:]?\\s*)?(?:for\\s*)?deed', 'deed\\s*recording(?:\\s*fee)?'] },                          // E-Record Fee Deed
+  { itemCode: '01.21', labels: ['record(?:ing)?\\s*(?:fee\\s*)?(?:[-–—:]?\\s*)?(?:for\\s*)?mortgage', 'mortgage\\s*recording(?:\\s*fee)?'] },                          // Recording Mortgage
+]
+
+// Devuelve { [itemCode de F01]: monto } con cada gasto de cierre del préstamo
+// que se pudo identificar en el documento.
+export function parseHudLineItems(text: string): Record<string, number> {
+  let t = text
+    .replace(/\x00/g, ' ')
+    .replace(/\n/g, ' ')
+    .replace(/se\s+lement/gi, 'settlement')
+    .replace(/informa\s+on/gi, 'information')
+  const out: Record<string, number> = {}
+  for (const fee of HUD_FEE_LABELS) {
+    const window = fee.window ?? 45
+    for (const label of fee.labels) {
+      // Ancla en el `$` (como parseHUDText): captura el importe en dólares más cercano
+      // después de la etiqueta, tolerando texto/números intermedios (%, "to XYZ", nº de
+      // línea) pero deteniéndose en el primer `$`. 2 decimales obligatorios = importe real.
+      const re = new RegExp(`(${label})[^$]{0,${window}}\\$\\s*([\\d,]+\\.\\d{2})`, 'i')
+      const m = t.match(re)
+      if (!m) continue
+      const amt = parseMoney(m[2])
+      // Cota de cordura: un fee individual no es 0 ni un monto tipo loan amount.
+      if (amt > 0 && amt < 500000) {
+        out[fee.itemCode] = amt
+        // Consumir el tramo emparejado para que otra etiqueta no reclame el mismo importe.
+        const start = m.index ?? 0
+        t = t.slice(0, start) + ' '.repeat(m[0].length) + t.slice(start + m[0].length)
+      }
+      break
+    }
+  }
+  return out
+}
+
 export function parseLoanText(text: string): Record<string, unknown> {
   const result: Record<string, unknown> = {}
   const t = text.replace(/\n/g, ' ')
@@ -1588,8 +1657,28 @@ router.post('/:projectId/docs/parse-pdf', handleUpload, async (req: Request, res
     const parsed: Record<string, unknown> = parser ? parser(pdfData.text) : {}
     if (fileUrl) parsed.pdfUrl = fileUrl
 
+    // Auto-diligenciar la sección Ejecución (no destructivo, sólo llena casillas
+    // vacías). Los paneles del módulo Financiero suben aquí el HUD del cierre, la
+    // carta de aprobación y la LOI; se mapean a las fases F00/F01 igual que en el
+    // checklist documental. Para HUD/carta se extrae además el desglose de fees.
+    const DOCTYPE_TO_KIND: Record<string, string> = { HUD: 'hud_cierre', LOAN: 'carta_lender', LOI: 'loi_lender' }
+    let executionApplied: Array<{ itemCode: string; activity: string; applied: string[] }> = []
+    const execKind = DOCTYPE_TO_KIND[docType.toUpperCase()]
+    if (execKind) {
+      try {
+        const lineItems = (execKind === 'hud_cierre' || execKind === 'carta_lender')
+          ? parseHudLineItems(pdfData.text) : {}
+        executionApplied = await applyExtractedToExecution(
+          req.params.projectId, execKind, parsed, lineItems,
+          { url: fileUrl, name: req.file.originalname },
+        )
+      } catch (execErr) {
+        console.warn('[docs/parse-pdf] execution auto-fill failed for', docType, execErr)
+      }
+    }
+
     res.json({
-      data: { parsed, preview: pdfData.text.slice(0, 1500), isImage: false, imageUrl: null },
+      data: { parsed, preview: pdfData.text.slice(0, 1500), isImage: false, imageUrl: null, executionApplied },
       error: null,
     })
   } catch (e) {

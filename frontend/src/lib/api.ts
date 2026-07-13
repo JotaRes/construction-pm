@@ -146,6 +146,10 @@ export const providersApi = {
   create: (projectId: string, data: Record<string, unknown>) => api.post(`/projects/${projectId}/providers`, data).then(r => r.data.data),
   patch: (projectId: string, id: string, data: Record<string, unknown>) => api.patch(`/projects/${projectId}/providers/${id}`, data).then(r => r.data.data),
   delete: (projectId: string, id: string) => api.delete(`/projects/${projectId}/providers/${id}`).then(r => r.data.data),
+  uploadCoi: (projectId: string, id: string, formData: FormData) =>
+    api.post(`/projects/${projectId}/providers/${id}/coi`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data.data),
+  removeCoi: (projectId: string, id: string) =>
+    api.delete(`/projects/${projectId}/providers/${id}/coi`).then(r => r.data.data),
 }
 
 export const providerQuotesApi = {
@@ -254,6 +258,11 @@ export interface SubPayment {
   paidDate: string | null
   status: 'PENDIENTE' | 'PAGADO' | 'RETENIDO'
   notes: string | null
+  // Lien waiver (Lote A)
+  lienWaiverUrl: string | null
+  lienWaiverName: string | null
+  lienWaiverAt: string | null
+  waiverException: string | null
 }
 
 export interface SubContract {
@@ -284,8 +293,12 @@ export const subcontractsApi = {
     api.delete(`/subcontracts/${id}`).then(r => r.data.data),
   addPayment: (contractId: string, data: Record<string, unknown>) =>
     api.post(`/subcontracts/${contractId}/payments`, data).then(r => r.data.data),
-  pay: (paymentId: string) =>
-    api.patch(`/subcontracts/payments/${paymentId}/pay`).then(r => r.data.data),
+  pay: (paymentId: string, waiverException?: string) =>
+    api.patch(`/subcontracts/payments/${paymentId}/pay`, waiverException ? { waiverException } : {}).then(r => r.data.data),
+  uploadWaiver: (paymentId: string, formData: FormData) =>
+    api.post(`/subcontracts/payments/${paymentId}/waiver`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data.data),
+  removeWaiver: (paymentId: string) =>
+    api.delete(`/subcontracts/payments/${paymentId}/waiver`).then(r => r.data.data),
   removePayment: (paymentId: string) =>
     api.delete(`/subcontracts/payments/${paymentId}`).then(r => r.data.data),
 }
@@ -467,4 +480,50 @@ export interface SystemCapacity {
 
 export const systemApi = {
   capacity: (): Promise<SystemCapacity> => api.get('/system/capacity').then(r => r.data.data),
+}
+
+
+// ============ CHANGE ORDERS (Lote A) ============
+export interface ChangeOrder {
+  id: string
+  projectId: string
+  coNumber: number
+  title: string
+  description: string | null
+  reason: 'CONDICION_OCULTA' | 'ERROR_DISENO' | 'SOLICITUD_PROPIETARIO' | 'CODIGO' | 'CLIMA' | 'OTRO'
+  costDelta: number
+  daysDelta: number
+  status: 'BORRADOR' | 'APROBADO' | 'RECHAZADO'
+  requestedBy: string | null
+  approvedBy: string | null
+  approvedAt: string | null
+  contractId: string | null
+  contract: { id: string; provider: { id: string; name: string } | null } | null
+  budgetLineId: string | null
+  budgetLine: { id: string; itemCode: string; description: string } | null
+  docUrl: string | null
+  docName: string | null
+  createdAt: string
+}
+
+export interface ChangeOrderTotals {
+  approvedCost: number
+  approvedDays: number
+  approvedCount: number
+  pendingCount: number
+}
+
+export const changeOrdersApi = {
+  list: (projectId: string): Promise<{ orders: ChangeOrder[]; totals: ChangeOrderTotals }> =>
+    api.get(`/projects/${projectId}/change-orders`).then(r => r.data.data),
+  create: (projectId: string, data: Record<string, unknown>) =>
+    api.post(`/projects/${projectId}/change-orders`, data).then(r => r.data.data),
+  update: (projectId: string, id: string, data: Record<string, unknown>) =>
+    api.patch(`/projects/${projectId}/change-orders/${id}`, data).then(r => r.data.data),
+  decide: (projectId: string, id: string, decision: 'APROBADO' | 'RECHAZADO', approvedBy: string) =>
+    api.post(`/projects/${projectId}/change-orders/${id}/decide`, { decision, approvedBy }).then(r => r.data.data),
+  uploadDocument: (projectId: string, id: string, formData: FormData) =>
+    api.post(`/projects/${projectId}/change-orders/${id}/document`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data.data),
+  remove: (projectId: string, id: string) =>
+    api.delete(`/projects/${projectId}/change-orders/${id}`).then(r => r.data.data),
 }

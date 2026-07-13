@@ -6,8 +6,9 @@ import { PROJECT_DOC_CHECKLIST, DOC_KEYS, GROUP_LABELS } from '../lib/projectDoc
 import { extractTextFromFile } from '../lib/fileExtract'
 import {
   parseHUDText, parseLoanText, parseSurveyText, parsePlansText,
-  parsePermitText, parseAppraisalText, parseLOIText,
+  parsePermitText, parseAppraisalText, parseLOIText, parseHudLineItems,
 } from './draws'
+import { applyExtractedToExecution } from '../lib/executionAutofill'
 
 const router = Router()
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } })
@@ -41,6 +42,9 @@ const KIND_PARSER_MAP: Record<string, {
   permiso_electrico:    { parser: parsePermitText, fields: ['permitNumber', 'permitIssued', 'permitExpires'] },
   permiso_hoa:          { parser: parsePermitText, fields: ['permitNumber', 'permitIssued', 'permitExpires'] },
 }
+
+// El mapeo `kind` documental → ítems de EJECUCIÓN y la lógica de aplicación viven en
+// lib/executionAutofill.ts (compartido con el panel Financiero en routes/draws.ts).
 
 // Aplica datos extraídos al proyecto SIN sobrescribir valores ya configurados.
 // Sólo actualiza un campo si su valor actual es null/0/'' (placeholder).
@@ -226,6 +230,7 @@ router.post('/:projectId/files/upload', upload.single('file'), async (req: Reque
     // se autocompletan las casillas vacías del proyecto.
     let extracted: Record<string, unknown> = {}
     let applied: string[] = []
+    let executionApplied: Array<{ itemCode: string; activity: string; applied: string[] }> = []
     let extractionError: string | null = null
     let ocrUsed = false
     const parserCfg = kind ? KIND_PARSER_MAP[kind] : undefined
@@ -240,6 +245,20 @@ router.post('/:projectId/files/upload', upload.single('file'), async (req: Reque
         } else {
           extracted = parserCfg.parser(ex.text)
           applied = await applyExtractedToProject(req.params.projectId, extracted, parserCfg.fields)
+          // Además de poblar el Project, diligenciar los ítems de la sección Ejecución.
+          // Para los documentos de cierre/aprobación del préstamo, además del mapa
+          // semántico se extrae el desglose de gastos individuales (underwriting, title,
+          // recording, etc.) y se aplica cada fee a su línea de F01.
+          // En su propio try para que un fallo aquí no invalide la extracción ya aplicada.
+          try {
+            const lineItems = (kind === 'hud_cierre' || kind === 'carta_lender')
+              ? parseHudLineItems(ex.text) : {}
+            executionApplied = await applyExtractedToExecution(
+              req.params.projectId, kind!, extracted, lineItems, { url, name: file.name },
+            )
+          } catch (execErr) {
+            console.warn('[files/upload] execution auto-fill failed for kind', kind, execErr)
+          }
         }
       } catch (e) {
         extractionError = e instanceof Error ? e.message : String(e)
@@ -247,7 +266,7 @@ router.post('/:projectId/files/upload', upload.single('file'), async (req: Reque
       }
     }
 
-    res.json({ data: { file, extracted, applied, ocrUsed, extractionError }, error: null })
+    res.json({ data: { file, extracted, applied, executionApplied, ocrUsed, extractionError }, error: null })
   } catch (e) {
     console.error('[files/upload] error:', e)
     res.status(500).json({ data: null, error: String(e) })
