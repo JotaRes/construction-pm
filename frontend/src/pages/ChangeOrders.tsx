@@ -195,21 +195,21 @@ export default function ChangeOrders({ projectId }: { projectId: string }) {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
+        <div className="kpi-card p-4">
           <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1"><FileDiff className="w-3 h-3" /> Total COs</div>
           <div className="text-2xl font-bold font-mono text-slate-900">{orders.length}</div>
         </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
+        <div className="kpi-card p-4 kpi-card-gold">
           <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1"><DollarSign className="w-3 h-3" /> Impacto aprobado</div>
           <div className={`text-2xl font-bold font-mono ${totals.approvedCost > 0 ? 'text-red-500' : 'text-emerald-600'}`}>
             {totals.approvedCost > 0 ? '+' : ''}{fmt(totals.approvedCost)}
           </div>
         </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
+        <div className="kpi-card p-4">
           <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1"><CalendarPlus className="w-3 h-3" /> Días agregados</div>
           <div className="text-2xl font-bold font-mono text-slate-900">{totals.approvedDays > 0 ? '+' : ''}{totals.approvedDays}</div>
         </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
+        <div className="kpi-card p-4 kpi-card-amber">
           <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1"><Clock className="w-3 h-3" /> Sin decidir</div>
           <div className={`text-2xl font-bold font-mono ${totals.pendingCount > 0 ? 'text-amber-500' : 'text-slate-900'}`}>{totals.pendingCount}</div>
         </div>

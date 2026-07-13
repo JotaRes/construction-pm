@@ -24,7 +24,7 @@ export default function ForecastCard({ projectId }: { projectId: string }) {
 
   if (!f.available) {
     return (
-      <div className="bg-white border border-slate-200 rounded-xl p-4">
+      <div className="kpi-card p-4">
         <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-1">
           <CalendarClock className="w-4 h-4 text-[var(--brand-gold)]" /> Forecast de entrega
         </div>
@@ -39,7 +39,7 @@ export default function ForecastCard({ projectId }: { projectId: string }) {
   const Icon = late ? TrendingDown : TrendingUp
 
   return (
-    <div className={`bg-white border rounded-xl p-4 ${late ? 'border-amber-300' : 'border-slate-200'}`}>
+    <div className={`kpi-card p-4 ${late ? 'kpi-card-amber' : ''}`}>
       <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
         <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
           <CalendarClock className="w-4 h-4 text-[var(--brand-gold)]" /> Forecast de entrega

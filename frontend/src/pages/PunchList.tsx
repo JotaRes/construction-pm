@@ -169,19 +169,19 @@ export default function PunchList({ projectId }: { projectId: string }) {
 
       {/* KPIs + progreso */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
+        <div className="kpi-card p-4">
           <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1"><ClipboardCheck className="w-3 h-3" /> Total</div>
           <div className="text-2xl font-bold font-mono text-slate-900">{total}</div>
         </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
+        <div className="kpi-card p-4 kpi-card-red">
           <div className="text-xs text-slate-400 mb-1">Abiertos</div>
           <div className={`text-2xl font-bold font-mono ${totals.abiertos > 0 ? 'text-red-500' : 'text-slate-900'}`}>{totals.abiertos}</div>
         </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
+        <div className="kpi-card p-4 kpi-card-amber">
           <div className="text-xs text-slate-400 mb-1">Corregidos</div>
           <div className={`text-2xl font-bold font-mono ${totals.corregidos > 0 ? 'text-amber-500' : 'text-slate-900'}`}>{totals.corregidos}</div>
         </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
+        <div className="kpi-card p-4 kpi-card-green">
           <div className="text-xs text-slate-400 mb-1">Verificados</div>
           <div className="text-2xl font-bold font-mono text-emerald-600">{totals.verificados} <span className="text-xs text-slate-400">({pct}%)</span></div>
         </div>
