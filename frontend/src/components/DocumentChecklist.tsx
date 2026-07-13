@@ -120,8 +120,12 @@ export default function DocumentChecklist({ projectId, projectName, projectAddre
     mutationFn: (fileId: string) => filesApi.delete(projectId, fileId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['document-checklist', projectId] })
+      qc.invalidateQueries({ queryKey: ['files', projectId] })
+      qc.invalidateQueries({ queryKey: ['project', projectId] })
       toast.success('Documento eliminado')
     },
+    // BUG REPARADO: sin onError el fallo era invisible y parecía que el botón no funcionaba
+    onError: (e: any) => toast.error(e?.response?.data?.error || 'Error al eliminar el documento'),
   })
 
   const reclassifyMut = useMutation({
@@ -354,6 +358,12 @@ export default function DocumentChecklist({ projectId, projectName, projectAddre
                             )}
                           </div>
                           <div className="flex items-center gap-1 flex-shrink-0">
+                            {!f.url && (
+                              <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: 'var(--brand-teal-xl)', color: 'var(--brand-teal)' }}>
+                                importado
+                              </span>
+                            )}
+                            {f.url && (<>
                             <a
                               href={`/api/download?url=${encodeURIComponent(f.url)}&name=${encodeURIComponent(f.name)}&inline=1`}
                               target="_blank"
@@ -405,6 +415,7 @@ export default function DocumentChecklist({ projectId, projectName, projectAddre
                             >
                               <Trash2 size={12} />
                             </button>
+                            </>)}
                           </div>
                         </li>
                       ))}

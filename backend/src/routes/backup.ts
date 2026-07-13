@@ -308,6 +308,8 @@ router.post('/restore-tech', upload.single('file'), async (req: Request, res: Re
 
     // Wipe técnico — orden hijo→padre para respetar las foreign keys
     await prisma.itemDocument.deleteMany({})
+    await prisma.changeOrder.deleteMany({}).catch(() => {})
+    await prisma.punchListItem.deleteMany({}).catch(() => {})
     await prisma.subcontractorPayment.deleteMany({}).catch(() => {})
     await prisma.subcontractorContract.deleteMany({}).catch(() => {})
     await prisma.drawLineContribution.deleteMany({}).catch(() => {})
@@ -402,6 +404,8 @@ router.delete('/wipe-tech', async (req: Request, res: Response) => {
       return res.status(403).json({ data: null, error: 'Contraseña incorrecta. El reseteo fue bloqueado por seguridad.' })
     }
     await prisma.itemDocument.deleteMany({})
+    await prisma.changeOrder.deleteMany({}).catch(() => {})
+    await prisma.punchListItem.deleteMany({}).catch(() => {})
     await prisma.subcontractorPayment.deleteMany({}).catch(() => {})
     await prisma.subcontractorContract.deleteMany({}).catch(() => {})
     await prisma.drawLineContribution.deleteMany({}).catch(() => {})

@@ -196,7 +196,12 @@ function ResetPasswordModal({ open, onClose, onConfirm, isPending }: { open: boo
                 </div>
               </div>
               <div>
-                <label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'var(--brand-teal)' }}><Lock size={12} /> Contraseña de confirmación</label>
+                <label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'var(--brand-teal)' }}><Lock size={12} /> Contraseña de RESETEO</label>
+                <p className="text-[11px] mb-1.5" style={{ color: 'var(--brand-teal2)' }}>
+                  ⚠ No es la clave de acceso al portal: es la contraseña especial de reseteo (WIPE),
+                  configurada en Render → Environment. Protección extra para que un borrado total
+                  nunca pueda ocurrir por accidente.
+                </p>
                 <input
                   type="password" autoFocus
                   className="w-full px-3 py-2 rounded-lg text-sm border"

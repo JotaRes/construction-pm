@@ -113,11 +113,16 @@ router.get('/:projectId/document-checklist', async (req: Request, res: Response)
       { kind: 'carta_lender', url: project?.approvalLetterUrl ?? null,  name: project?.approvalLetterName ?? null },
       { kind: 'hud_cierre',   url: project?.hudUrl ?? null,             name: project?.hudName ?? null },
       { kind: 'otros',        url: project?.otrosFinancieroUrl ?? null, name: project?.otrosFinancieroName ?? null },
+      // Seguros y Excel del lender también deben VERSE en Archivos (antes eran invisibles)
+      { kind: 'seguros',      url: project?.builderRiskUrl ?? null,     name: project?.builderRiskName ?? "Builder's Risk" },
+      { kind: 'otros',        url: project?.drawsExcelUrl ?? null,      name: project?.drawsExcelName ?? 'Excel draws del lender' },
     ]
     for (const v of virtualMap) {
       if (!v.url) continue
-      // Si ya hay un ProjectFile real para ese kind, no agregamos el virtual (priorizamos lo real)
-      if ((byKind.get(v.kind)?.length ?? 0) > 0) continue
+      // Dedupe por URL (no por kind): antes, cualquier archivo real en la categoría
+      // OCULTABA el documento del panel Financiero — por eso "no aparecían".
+      const existing = byKind.get(v.kind) ?? []
+      if (existing.some((f: any) => f.url === v.url)) continue
       const virt = {
         id: `virtual-${v.kind}`,
         projectId,
@@ -132,6 +137,25 @@ router.get('/:projectId/document-checklist', async (req: Request, res: Response)
       }
       if (!byKind.has(v.kind)) byKind.set(v.kind, [])
       byKind.get(v.kind)!.push(virt)
+    }
+
+    // Construction Budget: si fue IMPORTADO en la sección Const. Budget pero no hay
+    // archivo en el checklist, mostrarlo como cargado (sin link si el import antiguo
+    // no guardó el PDF; los imports nuevos sí lo guardan como ProjectFile).
+    const budgetLineCount = await prisma.budgetLine.count({ where: { projectId } })
+    if (budgetLineCount > 0 && (byKind.get('construction_budget')?.length ?? 0) === 0) {
+      byKind.set('construction_budget', [{
+        id: 'virtual-construction_budget',
+        projectId,
+        name: `Construction Budget importado (${budgetLineCount} líneas) — ver sección Const. Budget`,
+        kind: 'construction_budget',
+        category: 'Construction Budget',
+        url: null,
+        mimetype: null,
+        size: null,
+        createdAt: new Date().toISOString(),
+        source: 'const-budget',
+      }])
     }
 
     const items = PROJECT_DOC_CHECKLIST.map((spec) => {
@@ -296,9 +320,36 @@ router.patch('/:projectId/files/:id', async (req: Request, res: Response) => {
   }
 })
 
+// DELETE — maneja archivos REALES (ProjectFile) y VIRTUALES (docs guardados en
+// campos del Project por el panel Financiero: hudUrl, loiUrl, etc.).
+// BUG REPARADO: antes, borrar un doc de "Financiamiento" fallaba con 500 porque
+// el id "virtual-hud_cierre" no existe en ProjectFile. Ahora un id virtual
+// limpia los campos correspondientes del Project (el doc desaparece de AMBAS
+// vistas: Archivos y panel Financiero — es el mismo documento).
+const VIRTUAL_FIELD_MAP: Record<string, { url: string; name: string }> = {
+  loi_lender:   { url: 'loiUrl',             name: 'loiName' },
+  carta_lender: { url: 'approvalLetterUrl',  name: 'approvalLetterName' },
+  hud_cierre:   { url: 'hudUrl',             name: 'hudName' },
+  otros:        { url: 'otrosFinancieroUrl', name: 'otrosFinancieroName' },
+  seguros:      { url: 'builderRiskUrl',     name: 'builderRiskName' },
+}
+
 router.delete('/:projectId/files/:id', async (req: Request, res: Response) => {
   try {
-    await prisma.projectFile.delete({ where: { id: req.params.id } })
+    const id = req.params.id
+    if (id.startsWith('virtual-')) {
+      const kind = id.replace('virtual-', '')
+      const fieldMap = VIRTUAL_FIELD_MAP[kind]
+      if (!fieldMap) {
+        return res.status(400).json({ data: null, error: `Documento virtual "${kind}" no se puede eliminar desde aquí.` })
+      }
+      await prisma.project.update({
+        where: { id: req.params.projectId },
+        data: { [fieldMap.url]: null, [fieldMap.name]: null },
+      })
+      return res.json({ data: { ok: true, virtual: true }, error: null })
+    }
+    await prisma.projectFile.delete({ where: { id } })
     res.json({ data: { ok: true }, error: null })
   } catch (e) {
     res.status(500).json({ data: null, error: String(e) })

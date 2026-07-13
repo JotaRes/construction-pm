@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express'
 import { prisma } from '../lib/prisma'
 import multer from 'multer'
+import { uploadToCloudinary } from '../lib/cloudinary'
 import { BUDGET_LINES_TEMPLATE } from '../data/budgetLinesTemplate'
 import { parseAmountFlexible } from '../lib/parseAmount'
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -358,6 +359,28 @@ router.post('/:id/construction-budget/import-from-pdf', upload.single('pdf'), as
           order: order++,
         },
       })
+    }
+
+    // FIX: guardar el PDF importado en Cloudinary + registrarlo como ProjectFile
+    // (kind construction_budget) para que APAREZCA en la sección Archivos.
+    // Best-effort: si Cloudinary falla, el import de líneas NO se pierde.
+    try {
+      const { url } = await uploadToCloudinary(req.file.buffer, `construction-pm/project-files/${projectId}`, 'raw')
+      // Evitar duplicados: un solo ProjectFile de este kind por import (reemplaza el anterior)
+      await prisma.projectFile.deleteMany({ where: { projectId, kind: 'construction_budget' } })
+      await prisma.projectFile.create({
+        data: {
+          projectId,
+          name: req.file.originalname || 'construction-budget.pdf',
+          kind: 'construction_budget',
+          category: 'Construction Budget',
+          url,
+          mimetype: req.file.mimetype,
+          size: req.file.size,
+        },
+      })
+    } catch (fileErr) {
+      console.warn('[construction-budget/import] no se pudo archivar el PDF:', fileErr)
     }
 
     const totalParsed = items.reduce((s, i) => s + i.amount, 0)
