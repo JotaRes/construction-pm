@@ -564,6 +564,9 @@ model FinExpenseCategory {
   name      String
   group     String?
   isCorporate Boolean @default(false)
+  // Bucket fiscal US para el paquete anual del contador (Lote C).
+  // Si es null se infiere por nombre/grupo (ver finance/lib/taxBuckets.ts).
+  taxBucket String?
   notes     String?
   createdAt DateTime @default(now())
   movements FinMovement[]

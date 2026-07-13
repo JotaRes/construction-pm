@@ -48,6 +48,7 @@ import finReports from './finance/routes/reports'
 import finCashflow from './finance/routes/cashflow'
 import finProjectReturns from './finance/routes/projectReturns'
 import finLiquidity from './finance/routes/liquidity'
+import finTaxPackage from './finance/routes/taxPackage'
 import { requireAuth } from './finance/lib/auth'
 
 // Red de seguridad: un archivo corrupto (p.ej. imagen dañada en OCR) puede hacer
@@ -205,6 +206,7 @@ app.use('/api/finance/reports', finReports)
 app.use('/api/finance/cashflow', finCashflow)
 app.use('/api/finance/project-returns', finProjectReturns)
 app.use('/api/finance/liquidity-projection', finLiquidity)
+app.use('/api/finance/tax-package', finTaxPackage)
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), version: 'v2-with-module-gate' })

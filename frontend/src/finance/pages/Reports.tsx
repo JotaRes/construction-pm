@@ -8,8 +8,29 @@ import {
 } from "recharts";
 import {
   TrendingUp, TrendingDown, Activity, Briefcase, FileText, History,
-  Plus, Edit3, Trash2, RotateCcw, Upload,
+  Plus, Edit3, Trash2, RotateCcw, Upload, FolderDown,
 } from "lucide-react";
+import axios from "axios";
+
+// Descarga autenticada del paquete anual del contador (ZIP con Excel por SPV)
+async function downloadTaxPackage(year: number, setBusy: (b: boolean) => void) {
+  setBusy(true);
+  try {
+    const token = localStorage.getItem("pm_auth_token");
+    const res = await axios.get(`/api/finance/tax-package?year=${year}`, {
+      responseType: "blob",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    const url = URL.createObjectURL(res.data);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `paquete-contador-${year}.zip`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } finally {
+    setBusy(false);
+  }
+}
 
 const ACTION_ICON: Record<string, any> = {
   create: Plus,
@@ -28,6 +49,7 @@ const ACTION_COLOR: Record<string, string> = {
 
 export default function Reports() {
   const [year, setYear] = useState(new Date().getFullYear());
+  const [taxBusy, setTaxBusy] = useState(false);
   const [tab, setTab] = useState<"flow" | "ratios" | "audit">("flow");
   const { data: sources } = useQuery({ queryKey: ["sources-uses"], queryFn: API.getSourcesUses });
   const { data: cashflow } = useQuery({ queryKey: ["cashflow", year], queryFn: () => API.getCashflow(year) });
@@ -36,11 +58,21 @@ export default function Reports() {
 
   return (
     <div className="space-y-5 page-content">
-      <div>
-        <h1 className="text-2xl font-bold" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>Reportes & Trazabilidad</h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--brand-teal2)' }}>
-          Análisis ejecutivo · Fuentes y usos · Ratios por proyecto · Historial de operaciones
-        </p>
+      <div className="flex items-start justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>Reportes & Trazabilidad</h1>
+          <p className="text-sm mt-1" style={{ color: 'var(--brand-teal2)' }}>
+            Análisis ejecutivo · Fuentes y usos · Ratios por proyecto · Historial de operaciones
+          </p>
+        </div>
+        {/* Paquete anual para el contador (Lote C) */}
+        <button onClick={() => downloadTaxPackage(year, setTaxBusy)} disabled={taxBusy}
+          className="flex items-center gap-2 px-4 py-2 text-white text-sm font-semibold rounded-lg disabled:opacity-50"
+          style={{ background: 'var(--brand-teal)' }}
+          title="ZIP con un Excel por SPV: egresos clasificados por bucket fiscal US, ingresos y resumen para el CPA">
+          <FolderDown className="w-4 h-4" />
+          {taxBusy ? 'Generando…' : `Paquete contador ${year}`}
+        </button>
       </div>
 
       {/* Tabs */}

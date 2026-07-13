@@ -103,7 +103,47 @@ export async function reconcileStatement(statementId: number): Promise<ReconResu
     }
   }
 
-  // 3) Movimientos en el período del extracto SIN match → "manual_only" (amarillo)
+  // 3) MATCH CON TOLERANCIA (Lote C): monto ±$1.00, fecha ±3 días.
+  //    Cubre redondeos y fees bancarios menores. El movimiento queda conciliado
+  //    pero marcado needsReview con la diferencia exacta para que el usuario
+  //    la vea — conciliar no es esconder centavos.
+  for (const line of stmt.lines) {
+    if (usedLineIds.has(line.id)) continue;
+    for (const m of candidateMovs) {
+      if (usedMovIds.has(m.id)) continue;
+      const days = Math.abs((m.date.getTime() - line.date.getTime()) / 86400000);
+      if (days > 3) continue;
+      const movAmt = m.amount;
+      let movType: "credit" | "debit";
+      if (m.accountId === stmt.accountId) {
+        movType = m.type === "Ingreso" ? "credit" : "debit";
+      } else {
+        movType = "credit";
+      }
+      const diff = Math.abs(movAmt - line.amount);
+      if (diff > 0.009 && diff <= 1.0 && movType === line.type) {
+        await prisma.finBankStatementLine.update({
+          where: { id: line.id },
+          data: { matchedMovementId: m.id, matchStatus: "matched_tolerance" },
+        });
+        await prisma.finMovement.update({
+          where: { id: m.id },
+          data: {
+            isReconciled: true,
+            matchStatus: "matched",
+            matchedLineId: line.id,
+            needsReview: true,
+            reviewReason: `Conciliado con tolerancia: diferencia de $${diff.toFixed(2)} vs extracto (línea ${line.id})`,
+          },
+        });
+        usedMovIds.add(m.id);
+        usedLineIds.add(line.id);
+        break;
+      }
+    }
+  }
+
+  // 4) Movimientos en el período del extracto SIN match → "manual_only" (amarillo)
   //    Quedan así hasta que aparezca línea de extracto que los respalde.
   for (const m of candidateMovs) {
     if (usedMovIds.has(m.id)) continue;
