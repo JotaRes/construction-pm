@@ -777,12 +777,7 @@ export function parseHUDText(text: string): Record<string, unknown> {
   const result: Record<string, unknown> = {}
   // U+0000 null bytes are a PDF font-ligature artifact ("tt" → null byte in this font family).
   // Must replace with space BEFORE other normalization so \s patterns work.
-  const t = text
-    .replace(/\x00/g, ' ')
-    .replace(/\n/g, ' ')
-    .replace(/se\s+lement/gi, 'settlement')
-    .replace(/transac\s+on/gi, 'transaction')
-    .replace(/informa\s+on/gi, 'information')
+  const t = normalizeHudText(text)
 
   const mp = '\\$?([\\d,]+\\.?\\d*)'
   const dp = '(\\d{1,2}[\\/-]\\d{1,2}[\\/-]\\d{2,4})'
@@ -901,15 +896,48 @@ const HUD_FEE_LABELS: Array<{ itemCode: string; labels: string[]; window?: numbe
 //           actividades nuevas en la fase correspondiente. Así ningún
 //           gasto del HUD se pierde aunque el nombre no esté en el catálogo.
 // ============================================================
-const FEE_KEYWORDS = /fee|charge|premium|escrow|tax(?:es)?|insurance|title|recording|survey|inspection|wire|courier|endorsement|search|application|appraisal|hoa|attorney|settlement|processing|review|notary|binder|commitment|exam|cpl|disbursement\s+fee/i
-const FEE_LABEL_BLACKLIST = /total|amount\s+(?:due|paid|financed)|loan\s+amount|purchase\s+price|sales?\s+price|contract\s+price|deposit|earnest|balance|cash\s+(?:to|from)|subtotal|principal|payoff|per\s+day|per\s+diem|initial\s+disbursement|holdback|reserve\s+deposit|page|borrower|seller|lender\s+name/i
-
-export function parseHudAllFees(text: string): { mapped: Record<string, number>; extras: Array<{ label: string; amount: number }> } {
-  let t = text
+// Las fuentes de muchos HUD pierden las ligaduras "tt"/"ti" al extraer texto
+// ("Settlement"→"Se lement", "Title"→"tle", "Attorney"→"A orney"). Sin esta
+// normalización los parsers no encuentran fees que SÍ están en el documento.
+// CALIBRADO contra el HUD real del Lote 87 (Guest & Brady, dic 2025).
+export function normalizeHudText(text: string): string {
+  return text
     .replace(/\x00/g, ' ')
     .replace(/\n/g, ' ')
-    .replace(/se\s+lement/gi, 'settlement')
-    .replace(/informa\s+on/gi, 'information')
+    .replace(/se\s*lement/gi, 'settlement')
+    .replace(/transac\s*on/gi, 'transaction')
+    .replace(/informa\s*on/gi, 'information')
+    .replace(/administra\s*ve/gi, 'administrative')
+    .replace(/a\s*orney/gi, 'attorney')
+    .replace(/\btle\b/gi, 'title')
+    .replace(/origina\s*on/gi, 'origination')
+    .replace(/cer\s*fica\s*on/gi, 'certification')
+    .replace(/connec\s*on/gi, 'connection')
+    .replace(/inspec\s*on/gi, 'inspection')
+    .replace(/addi\s*onal/gi, 'additional')
+    .replace(/ini\s*al/gi, 'initial')
+    .replace(/sec\s*on/gi, 'section')
+    .replace(/reduc\s*ons/gi, 'reductions')
+    .replace(/instruc\s*ons/gi, 'instructions')
+}
+
+const FEE_KEYWORDS = /fee|charge|premium|escrow|tax(?:es)?|insurance|title|recording|survey|inspection|wire|courier|endorsement|search|application|appraisal|hoa|attorney|settlement|processing|review|notary|binder|commitment|exam|cpl|disbursement\s+fee/i
+const FEE_LABEL_BLACKLIST = /total|amount\s+(?:due|paid|financed)|loan\s+amount|purchase\s+price|sales?\s+price|contract\s+price|deposit|earnest|balance|cash\s+(?:to|from)|subtotal|principal|payoff|per\s+day|per\s+diem|initial\s+disbursement|holdback|reserve\s+deposit|page|borrower|seller|lender\s+name|commission|policy\s+limit/i
+
+export interface HudFeesResult {
+  mapped: Record<string, number>
+  extras: Array<{ label: string; amount: number }>
+  capturedTotal: number
+  reconciled: boolean | null // null = no había total contra qué conciliar
+}
+
+// targetTotal = total de cargos DEL BORROWER (línea 103/1400 del HUD-1).
+// El texto plano pierde las columnas borrower/seller, así que la única forma
+// title-company-agnostic de excluir los fees del VENDEDOR es la conciliación:
+// si existe un subconjunto de candidatos que suma EXACTO el total del borrower,
+// ese subconjunto son tus fees y el resto se descarta.
+export function parseHudAllFees(text: string, targetTotal?: number): HudFeesResult {
+  let t = normalizeHudText(text)
   const mapped: Record<string, number> = {}
 
   // Paso 1: fees conocidos (consumen su tramo del texto)
@@ -947,17 +975,79 @@ export function parseHudAllFees(text: string): { mapped: Record<string, number>;
     if (extras.length >= 25) break // cota de cordura
   }
 
-  return { mapped, extras }
+  // ── Conciliación por suma (subset-sum en centavos) ──
+  type Cand = { key: string; amount: number; isMapped: boolean }
+  const candidates: Cand[] = [
+    ...Object.entries(mapped).map(([k, v]) => ({ key: k, amount: v, isMapped: true })),
+    ...extras.map((e) => ({ key: e.label, amount: e.amount, isMapped: false })),
+  ]
+  const capturedAll = candidates.reduce((s2, c) => s2 + c.amount, 0)
+  let reconciled: boolean | null = null
+
+  if (typeof targetTotal === 'number' && targetTotal > 0 && candidates.length > 0) {
+    const target = Math.round(targetTotal * 100)
+    const cents = candidates.map((c) => Math.round(c.amount * 100))
+    // DP subset-sum con reconstrucción (target acotado a $500k => 50M... cap real: suma de candidatos)
+    const cap = Math.min(target, cents.reduce((a, b) => a + b, 0))
+    if (cap === target && target <= 5_000_000) {
+      const from = new Int32Array(target + 1).fill(-2) // -2 = inalcanzable, -1 = base
+      from[0] = -1
+      for (let i = 0; i < cents.length; i++) {
+        for (let v = target; v >= cents[i]; v--) {
+          if (from[v] === -2 && from[v - cents[i]] !== -2 && from[v - cents[i]] !== i) {
+            from[v] = i
+          }
+        }
+      }
+      if (from[target] !== -2) {
+        // Reconstruir el subconjunto ganador
+        const chosen = new Set<number>()
+        let v = target
+        let guard = 0
+        while (v > 0 && from[v] >= 0 && guard++ < 1000) {
+          const i = from[v]
+          chosen.add(i)
+          v -= cents[i]
+        }
+        if (v === 0) {
+          const keepMapped: Record<string, number> = {}
+          const keepExtras: Array<{ label: string; amount: number }> = []
+          candidates.forEach((c, i) => {
+            if (!chosen.has(i)) return
+            if (c.isMapped) keepMapped[c.key] = c.amount
+            else keepExtras.push({ label: c.key, amount: c.amount })
+          })
+          return { mapped: keepMapped, extras: keepExtras, capturedTotal: targetTotal, reconciled: true }
+        }
+      }
+      reconciled = false // había total pero ningún subconjunto lo cuadra → no descartamos nada, se reporta
+    }
+  }
+
+  return { mapped, extras, capturedTotal: capturedAll, reconciled }
+}
+
+// Prorrateos de la sección J del HUD-1 (líneas 106-112: impuestos/HOA pagados por
+// el vendedor por adelantado que el comprador reembolsa). Son costos reales de la
+// adquisición que NO están dentro del total de la línea 1400.
+export function parseHudAdjustments(text: string): Array<{ label: string; amount: number }> {
+  const t = normalizeHudText(text)
+  const out: Array<{ label: string; amount: number }> = []
+  const re = /\b(10[6-9]|11[0-2])\.\s*([A-Za-z][A-Za-z /]{2,30}?)\s*((?:\d{1,2}\/\d{1,2}\/\d{2,4})\s*to\s*(?:\d{1,2}\/\d{1,2}\/\d{2,4}))?\s*\$([\d,]+\.\d{2})/gi
+  let m: RegExpExecArray | null
+  while ((m = re.exec(t)) !== null) {
+    const label = m[2].trim().replace(/\s+/g, ' ')
+    const period = m[3] ? ` (prorrateo ${m[3].trim()})` : ''
+    const amt = parseMoney(m[4])
+    if (amt > 0 && amt < 100000) out.push({ label: `${label}${period}`, amount: amt })
+  }
+  return out
 }
 
 // Devuelve { [itemCode de F01]: monto } con cada gasto de cierre del préstamo
 // que se pudo identificar en el documento.
 export function parseHudLineItems(text: string): Record<string, number> {
-  let t = text
-    .replace(/\x00/g, ' ')
-    .replace(/\n/g, ' ')
-    .replace(/se\s+lement/gi, 'settlement')
-    .replace(/informa\s+on/gi, 'information')
+  let t = normalizeHudText(text)
   const out: Record<string, number> = {}
   for (const fee of HUD_FEE_LABELS) {
     const window = fee.window ?? 45
@@ -1724,10 +1814,13 @@ router.post('/:projectId/docs/parse-pdf', handleUpload, async (req: Request, res
       try {
         let lineItems: Record<string, number> = {}
         let extraFees: Array<{ label: string; amount: number }> = []
-        if (execKind === 'hud_cierre' || execKind === 'hud_lote') {
-          const all = parseHudAllFees(pdfData.text)
+        if (execKind === 'hud_cierre') {
+          const target = typeof (parsed as any).closingCosts === 'number' ? (parsed as any).closingCosts as number : undefined
+          const all = parseHudAllFees(pdfData.text, target)
           lineItems = all.mapped
           extraFees = all.extras
+        } else if (execKind === 'hud_lote') {
+          extraFees = parseHudAdjustments(pdfData.text)
         } else if (execKind === 'carta_lender') {
           lineItems = parseHudLineItems(pdfData.text)
         }

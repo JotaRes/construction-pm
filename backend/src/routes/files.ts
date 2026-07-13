@@ -7,7 +7,7 @@ import { extractTextFromFile } from '../lib/fileExtract'
 import {
   parseHUDText, parseLoanText, parseSurveyText, parsePlansText,
   parsePermitText, parseAppraisalText, parseLOIText, parseHudLineItems,
-  parseHudAllFees,
+  parseHudAllFees, parseHudAdjustments,
 } from './draws'
 import { applyExtractedToExecution } from '../lib/executionAutofill'
 
@@ -278,10 +278,18 @@ router.post('/:projectId/files/upload', upload.single('file'), async (req: Reque
           try {
             let lineItems: Record<string, number> = {}
             let extraFees: Array<{ label: string; amount: number }> = []
-            if (kind === 'hud_cierre' || kind === 'hud_lote') {
-              const all = parseHudAllFees(ex.text)
+            if (kind === 'hud_cierre') {
+              // Fees del cierre del préstamo → ítems de F01, conciliados contra el
+              // total del borrower (línea 103/1400) para excluir los del vendedor.
+              const target = typeof extracted.closingCosts === 'number' ? extracted.closingCosts as number : undefined
+              const all = parseHudAllFees(ex.text, target)
               lineItems = all.mapped
               extraFees = all.extras
+            } else if (kind === 'hud_lote') {
+              // HUD de compra del LOTE: los fees de título YA están agregados en
+              // 00.02 (closingCosts) — itemizarlos duplicaría. Solo se agregan los
+              // prorrateos de impuestos/HOA (fuera de la línea 1400) como actividades.
+              extraFees = parseHudAdjustments(ex.text)
             } else if (kind === 'carta_lender') {
               lineItems = parseHudLineItems(ex.text)
             }
