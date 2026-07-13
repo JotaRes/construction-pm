@@ -25,7 +25,6 @@ import PriceReference from './pages/PriceReference'
 import TechImport from './pages/TechImport'
 import PhasesDashboard from './pages/PhasesDashboard'
 import GanttView from './pages/GanttView'
-import PhotoGallery from './pages/PhotoGallery'
 import Subcontracts from './pages/Subcontracts'
 import ChangeOrders from './pages/ChangeOrders'
 import PunchList from './pages/PunchList'
@@ -72,7 +71,6 @@ function TechModule() {
         <Route path="execution" element={<Execution projectId={activeProjectId} />} />
         <Route path="phases" element={<PhasesDashboard projectId={activeProjectId} />} />
         <Route path="gantt" element={<GanttView projectId={activeProjectId} />} />
-        <Route path="gallery" element={<PhotoGallery projectId={activeProjectId} />} />
         <Route path="subcontracts" element={<Subcontracts projectId={activeProjectId} />} />
         <Route path="change-orders" element={<ChangeOrders projectId={activeProjectId} />} />
         <Route path="punch-list" element={<PunchList projectId={activeProjectId} />} />

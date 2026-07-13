@@ -59,6 +59,10 @@ export async function applyExtractedToExecution(
   extracted: Record<string, unknown>,
   lineItems: Record<string, number>,
   fileMeta: { url: string | null; name: string },
+  // Fees del HUD que NO matchearon el catálogo: se CREAN como actividades
+  // nuevas en la fase correspondiente (F01 cierre / F00 lote) para que
+  // ningún gasto del documento quede sin contabilizar.
+  extraFees: Array<{ label: string; amount: number }> = [],
 ): Promise<Array<{ itemCode: string; activity: string; applied: string[] }>> {
   const targets = KIND_EXECUTION_MAP[kind] ?? []
 
@@ -95,6 +99,68 @@ export async function applyExtractedToExecution(
   const byCode = new Map(items.map((i) => [i.itemCode, i]))
 
   const result: Array<{ itemCode: string; activity: string; applied: string[] }> = []
+
+  // ── Fees no reconocidos → actividades NUEVAS en la fase correspondiente ──
+  if (extraFees.length > 0 && (kind === 'hud_cierre' || kind === 'hud_lote')) {
+    const phaseCode = kind === 'hud_cierre' ? 'F01' : 'F00'
+    const phase = await prisma.phase.findFirst({
+      where: { projectId, code: phaseCode },
+      include: { items: true },
+    })
+    if (phase) {
+      const existingCodes = phase.items.map((i) => i.itemCode)
+      const existingNames = new Set(phase.items.map((i) => i.activity.toLowerCase().trim()))
+      let idx = phase.items.length + 1
+      for (const fee of extraFees) {
+        const nameKey = fee.label.toLowerCase().trim()
+        // Idempotencia: si ya existe una actividad con ese nombre, actualizarla (solo si vacía)
+        const existing = phase.items.find((i) => i.activity.toLowerCase().trim() === nameKey)
+        if (existing) {
+          if (!existing.valorEjecutado || existing.valorEjecutado === 0) {
+            await prisma.item.update({
+              where: { id: existing.id },
+              data: { valorEjecutado: fee.amount, ...(feesArePaid ? { completado: true, estado: 'DONE' } : {}), ...(feesDate ? { fechaFinReal: new Date(feesDate) } : {}) },
+            })
+            result.push({ itemCode: existing.itemCode, activity: existing.activity, applied: ['valor ejecutado (fee del HUD)'] })
+          }
+          continue
+        }
+        if (existingNames.has(nameKey)) continue
+        let newCode = `${phaseCode.replace('F', '')}.A${String(idx).padStart(2, '0')}`
+        while (existingCodes.includes(newCode)) { idx++; newCode = `${phaseCode.replace('F', '')}.A${String(idx).padStart(2, '0')}` }
+        existingCodes.push(newCode)
+        existingNames.add(nameKey)
+        idx++
+        const created = await prisma.item.create({
+          data: {
+            phaseId: phase.id,
+            itemCode: newCode,
+            activity: fee.label,
+            description: `Creado automáticamente desde el HUD (${fileMeta.name})`,
+            unit: 'LS',
+            valorPresupuestado: 0,
+            valorEjecutado: fee.amount,
+            ...(feesArePaid ? { completado: true, estado: 'DONE' } : {}),
+            ...(feesDate ? { fechaFinReal: new Date(feesDate) } : {}),
+            order: phase.items.length + idx,
+          },
+        })
+        if (fileMeta.url) {
+          await prisma.itemDocument.create({
+            data: {
+              itemId: created.id,
+              type: 'FACTURA',
+              name: fileMeta.name,
+              amount: fee.amount,
+              fileUrl: fileMeta.url,
+              notes: 'Fee del HUD no catalogado — actividad creada automáticamente',
+            },
+          })
+        }
+        result.push({ itemCode: newCode, activity: fee.label, applied: ['actividad creada', 'valor ejecutado', 'soporte adjunto'] })
+      }
+    }
+  }
 
   for (const [itemCode, intent] of intents) {
     const item = byCode.get(itemCode)

@@ -7,6 +7,7 @@ import { extractTextFromFile } from '../lib/fileExtract'
 import {
   parseHUDText, parseLoanText, parseSurveyText, parsePlansText,
   parsePermitText, parseAppraisalText, parseLOIText, parseHudLineItems,
+  parseHudAllFees,
 } from './draws'
 import { applyExtractedToExecution } from '../lib/executionAutofill'
 
@@ -275,10 +276,17 @@ router.post('/:projectId/files/upload', upload.single('file'), async (req: Reque
           // recording, etc.) y se aplica cada fee a su línea de F01.
           // En su propio try para que un fallo aquí no invalide la extracción ya aplicada.
           try {
-            const lineItems = (kind === 'hud_cierre' || kind === 'carta_lender')
-              ? parseHudLineItems(ex.text) : {}
+            let lineItems: Record<string, number> = {}
+            let extraFees: Array<{ label: string; amount: number }> = []
+            if (kind === 'hud_cierre' || kind === 'hud_lote') {
+              const all = parseHudAllFees(ex.text)
+              lineItems = all.mapped
+              extraFees = all.extras
+            } else if (kind === 'carta_lender') {
+              lineItems = parseHudLineItems(ex.text)
+            }
             executionApplied = await applyExtractedToExecution(
-              req.params.projectId, kind!, extracted, lineItems, { url, name: file.name },
+              req.params.projectId, kind!, extracted, lineItems, { url, name: file.name }, extraFees,
             )
           } catch (execErr) {
             console.warn('[files/upload] execution auto-fill failed for kind', kind, execErr)

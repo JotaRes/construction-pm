@@ -894,6 +894,62 @@ const HUD_FEE_LABELS: Array<{ itemCode: string; labels: string[]; window?: numbe
   { itemCode: '01.21', labels: ['record(?:ing)?\\s*(?:fee\\s*)?(?:[-–—:]?\\s*)?(?:for\\s*)?mortgage', 'mortgage\\s*recording(?:\\s*fee)?'] },                          // Recording Mortgage
 ]
 
+// ============================================================
+// EXTRACCIÓN COMPLETA DE FEES DEL HUD (mejora "línea a línea"):
+//   mapped: fees reconocidos → itemCode de F01 (los 21 conocidos)
+//   extras: fees NO reconocidos → { label, amount } para CREARLOS como
+//           actividades nuevas en la fase correspondiente. Así ningún
+//           gasto del HUD se pierde aunque el nombre no esté en el catálogo.
+// ============================================================
+const FEE_KEYWORDS = /fee|charge|premium|escrow|tax(?:es)?|insurance|title|recording|survey|inspection|wire|courier|endorsement|search|application|appraisal|hoa|attorney|settlement|processing|review|notary|binder|commitment|exam|cpl|disbursement\s+fee/i
+const FEE_LABEL_BLACKLIST = /total|amount\s+(?:due|paid|financed)|loan\s+amount|purchase\s+price|sales?\s+price|contract\s+price|deposit|earnest|balance|cash\s+(?:to|from)|subtotal|principal|payoff|per\s+day|per\s+diem|initial\s+disbursement|holdback|reserve\s+deposit|page|borrower|seller|lender\s+name/i
+
+export function parseHudAllFees(text: string): { mapped: Record<string, number>; extras: Array<{ label: string; amount: number }> } {
+  let t = text
+    .replace(/\x00/g, ' ')
+    .replace(/\n/g, ' ')
+    .replace(/se\s+lement/gi, 'settlement')
+    .replace(/informa\s+on/gi, 'information')
+  const mapped: Record<string, number> = {}
+
+  // Paso 1: fees conocidos (consumen su tramo del texto)
+  for (const fee of HUD_FEE_LABELS) {
+    const window = fee.window ?? 45
+    for (const label of fee.labels) {
+      const re = new RegExp(`(${label})[^$]{0,${window}}\\$\\s*([\\d,]+\\.\\d{2})`, 'i')
+      const m = t.match(re)
+      if (!m) continue
+      const amt = parseMoney(m[2])
+      if (amt > 0 && amt < 500000) {
+        mapped[fee.itemCode] = amt
+        const start = m.index ?? 0
+        t = t.slice(0, start) + ' '.repeat(m[0].length) + t.slice(start + m[0].length)
+      }
+      break
+    }
+  }
+
+  // Paso 2: fees genéricos en el texto restante — etiqueta con keyword de fee + $monto
+  const extras: Array<{ label: string; amount: number }> = []
+  const seen = new Set<string>()
+  const genericRe = /([A-Z][A-Za-z][A-Za-z .,'&()\/\-]{3,60}?)\s*(?:\.{2,}|\s{1,})?\$\s*([\d,]+\.\d{2})/g
+  let gm: RegExpExecArray | null
+  while ((gm = genericRe.exec(t)) !== null) {
+    const rawLabel = gm[1].replace(/\s+/g, ' ').trim().replace(/[.:,\-]+$/, '')
+    const amt = parseMoney(gm[2])
+    if (!(amt >= 5 && amt < 200000)) continue
+    if (!FEE_KEYWORDS.test(rawLabel)) continue
+    if (FEE_LABEL_BLACKLIST.test(rawLabel)) continue
+    const key = rawLabel.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    extras.push({ label: rawLabel, amount: amt })
+    if (extras.length >= 25) break // cota de cordura
+  }
+
+  return { mapped, extras }
+}
+
 // Devuelve { [itemCode de F01]: monto } con cada gasto de cierre del préstamo
 // que se pudo identificar en el documento.
 export function parseHudLineItems(text: string): Record<string, number> {
@@ -1666,11 +1722,18 @@ router.post('/:projectId/docs/parse-pdf', handleUpload, async (req: Request, res
     const execKind = DOCTYPE_TO_KIND[docType.toUpperCase()]
     if (execKind) {
       try {
-        const lineItems = (execKind === 'hud_cierre' || execKind === 'carta_lender')
-          ? parseHudLineItems(pdfData.text) : {}
+        let lineItems: Record<string, number> = {}
+        let extraFees: Array<{ label: string; amount: number }> = []
+        if (execKind === 'hud_cierre' || execKind === 'hud_lote') {
+          const all = parseHudAllFees(pdfData.text)
+          lineItems = all.mapped
+          extraFees = all.extras
+        } else if (execKind === 'carta_lender') {
+          lineItems = parseHudLineItems(pdfData.text)
+        }
         executionApplied = await applyExtractedToExecution(
           req.params.projectId, execKind, parsed, lineItems,
-          { url: fileUrl, name: req.file.originalname },
+          { url: fileUrl, name: req.file.originalname }, extraFees,
         )
       } catch (execErr) {
         console.warn('[docs/parse-pdf] execution auto-fill failed for', docType, execErr)

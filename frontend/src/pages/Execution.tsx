@@ -383,7 +383,7 @@ function ItemRow({ item, onUpdate, onOpenPanel, onDelete }: {
   item: Item
   onUpdate: (id: string, data: Record<string, unknown>) => void
   onOpenPanel: (item: Item) => void
-  onDelete?: (id: string) => void
+  onDelete?: (item: Item) => void
 }) {
   const isSlot = item.itemCode.includes('X') && !item.itemCode.includes('.A')
   if (isSlot && !item.completado && !item.valorEjecutado) {
@@ -448,9 +448,16 @@ function ItemRow({ item, onUpdate, onOpenPanel, onDelete }: {
         </div>
       </td>
       <td className="px-2 py-2.5 w-16"><span className="text-[10px] font-mono text-slate-400">{item.itemCode}</span></td>
-      <td className="px-2 py-2.5">
-        <div className={`text-xs font-medium leading-tight ${item.completado ? 'line-through text-slate-400' : 'text-slate-800'}`}>{item.activity}</div>
-        {item.responsable && <div className="text-[10px] text-slate-400 mt-0.5">{item.responsable}</div>}
+      <td className="px-2 py-2.5" onClick={e => e.stopPropagation()}>
+        {/* Nombre editable: clic en el texto → input; Enter o salir guarda */}
+        <input
+          defaultValue={item.activity}
+          onBlur={e => { const v = e.target.value.trim(); if (v && v !== item.activity) onUpdate(item.id, { activity: v }) }}
+          onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+          className={`w-full bg-transparent text-xs font-medium leading-tight rounded px-1 py-0.5 border border-transparent hover:border-slate-200 focus:bg-white focus:border-[var(--brand-gold)] focus:outline-none transition-colors ${item.completado ? 'line-through text-slate-400' : 'text-slate-800'}`}
+          title="Clic para editar el nombre de la actividad"
+        />
+        {item.responsable && <div className="text-[10px] text-slate-400 mt-0.5 px-1">{item.responsable}</div>}
       </td>
       <td className="px-2 py-2.5 w-24" onClick={e => e.stopPropagation()}>
         <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium ${st.color} ${st.bg}`}>{st.label}</span>
@@ -466,16 +473,19 @@ function ItemRow({ item, onUpdate, onOpenPanel, onDelete }: {
           className="w-full bg-white border border-slate-200 text-[11px] font-mono font-semibold text-right text-slate-900 rounded px-1.5 py-1 focus:outline-none focus:border-[var(--brand-gold)] focus:ring-2 focus:ring-[var(--brand-gold)]/20 placeholder-slate-300" />
       </td>
       <td className="px-2 py-2.5 w-20 text-right border-l border-slate-100" onClick={e => e.stopPropagation()}>
-        {item.valorPresupuestado > 0 && item.valorEjecutado > 0 ? (
-          <span className={`text-[10px] font-mono font-semibold ${desviacion > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-            {desviacion > 0 ? '+' : ''}{formatUSD(desviacion)}
-          </span>
-        ) : onDelete ? (
-          <button onClick={() => onDelete(item.id)}
-            className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-500 hover:text-red-400 ml-auto block">
-            <Trash2 className="w-3 h-3" />
-          </button>
-        ) : null}
+        <div className="flex items-center justify-end gap-1.5">
+          {item.valorPresupuestado > 0 && item.valorEjecutado > 0 && (
+            <span className={`text-[10px] font-mono font-semibold ${desviacion > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+              {desviacion > 0 ? '+' : ''}{formatUSD(desviacion)}
+            </span>
+          )}
+          {onDelete && (
+            <button onClick={() => onDelete(item)} title="Eliminar actividad"
+              className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-red-500">
+              <Trash2 className="w-3 h-3" />
+            </button>
+          )}
+        </div>
       </td>
       <td className="pr-3 pl-1 py-2.5 w-12 text-center border-l border-slate-100" onClick={e => e.stopPropagation()}>
         <button onClick={() => onOpenPanel(item)}
@@ -494,11 +504,13 @@ function PhaseSection({ phase, defaultOpen = false, onUpdate, onOpenPanel, onCre
   phase: Phase
   onUpdate: (id: string, data: Record<string, unknown>) => void
   onOpenPanel: (item: Item) => void
-  onCreate: (phaseId: string) => void
-  onDelete: (id: string) => void
+  onCreate: (phaseId: string, activity?: string) => void
+  onDelete: (item: Item) => void
 }) {
   // FASE 1: colapsadas por defecto para una vista más limpia y amigable
   const [open, setOpen] = useState(defaultOpen)
+  const [showNewForm, setShowNewForm] = useState(false)
+  const [newName, setNewName] = useState('')
   const activeItems = phase.items.filter(i => !i.esNA)
   const doneItems = activeItems.filter(i => i.completado)
   const pct = activeItems.length === 0 ? 0 : (doneItems.length / activeItems.length) * 100
@@ -542,14 +554,29 @@ function PhaseSection({ phase, defaultOpen = false, onUpdate, onOpenPanel, onCre
             <tbody>
               {phase.items.map(item => (
                 <ItemRow key={item.id} item={item} onUpdate={onUpdate} onOpenPanel={onOpenPanel}
-                  onDelete={item.itemCode.includes('.A') ? onDelete : undefined} />
+                  onDelete={onDelete} />
               ))}
             </tbody>
           </table>
-          <button onClick={() => onCreate(phase.id)}
-            className="flex items-center gap-2 px-4 py-2 text-xs text-slate-500 hover:text-[var(--brand-gold)] hover:bg-[#C8922A]/5 transition-colors w-full border-t border-slate-100">
-            <Plus className="w-3.5 h-3.5" />Agregar actividad imprevista a {phase.code}
-          </button>
+          {/* Crear actividad CON nombre propio (ya no queda como "Nueva actividad") */}
+          {showNewForm ? (
+            <form onSubmit={e => { e.preventDefault(); const v = newName.trim(); if (v) { onCreate(phase.id, v); setNewName(''); setShowNewForm(false) } }}
+              className="flex items-center gap-2 px-4 py-2 w-full border-t border-slate-100 bg-white">
+              <Plus className="w-3.5 h-3.5 text-[var(--brand-gold)] flex-shrink-0" />
+              <input autoFocus value={newName} onChange={e => setNewName(e.target.value)}
+                placeholder={`Nombre de la nueva actividad en ${phase.code}…`}
+                className="flex-1 bg-slate-50 border border-slate-200 text-xs px-2 py-1.5 rounded-lg focus:outline-none focus:border-[var(--brand-gold)]" />
+              <button type="submit" disabled={!newName.trim()}
+                className="px-3 py-1.5 bg-[var(--brand-gold)] text-white text-xs font-semibold rounded-lg disabled:opacity-40">Crear</button>
+              <button type="button" onClick={() => { setShowNewForm(false); setNewName('') }}
+                className="text-xs text-slate-400 hover:underline">Cancelar</button>
+            </form>
+          ) : (
+            <button onClick={() => setShowNewForm(true)}
+              className="flex items-center gap-2 px-4 py-2 text-xs text-slate-500 hover:text-[var(--brand-gold)] hover:bg-[#C8922A]/5 transition-colors w-full border-t border-slate-100">
+              <Plus className="w-3.5 h-3.5" />Agregar actividad a {phase.code}
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -576,14 +603,32 @@ export default function Execution({ projectId }: { projectId: string }) {
   })
 
   const createMutation = useMutation({
-    mutationFn: (phaseId: string) => itemsApi.create({ phaseId }),
+    mutationFn: ({ phaseId, activity }: { phaseId: string; activity?: string }) =>
+      itemsApi.create({ phaseId, ...(activity ? { activity } : {}) }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['phases', projectId] }),
   })
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => itemsApi.delete(id),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['phases', projectId] }); setPanelItem(null) },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['phases', projectId] }); setPanelItem(null); toast.success('Actividad eliminada') },
+    onError: (e: any) => toast.error(e?.response?.data?.error || 'Error al eliminar la actividad'),
   })
+
+  // Eliminar CUALQUIER actividad (nueva o precargada) con confirmación explícita.
+  // Las precargadas advierten más fuerte: son parte de la plantilla de control.
+  const handleDeleteItem = async (item: Item) => {
+    const esPlantilla = !item.itemCode.includes('.A')
+    const ok = await confirm({
+      title: 'Eliminar actividad',
+      message: `¿Eliminar "${item.itemCode} — ${item.activity}"?`,
+      detail: esPlantilla
+        ? 'Esta actividad es de la plantilla base de control. Si la eliminas, desaparece de la ejecución, el presupuesto y el avance de la fase. Esta acción no se puede deshacer.'
+        : 'Se eliminará junto con su valor ejecutado y documentos adjuntos. Esta acción no se puede deshacer.',
+      destructive: true,
+      confirmText: 'Sí, eliminar',
+    })
+    if (ok) deleteMutation.mutate(item.id)
+  }
 
   // Borrar TODOS los datos de ejecución vía endpoint backend (batch atómico)
   const clearAllExecution = useMutation({
@@ -684,8 +729,8 @@ export default function Execution({ projectId }: { projectId: string }) {
             defaultOpen={expandAll}
             onUpdate={handleUpdate}
             onOpenPanel={setPanelItem}
-            onCreate={phaseId => createMutation.mutate(phaseId)}
-            onDelete={id => deleteMutation.mutate(id)}
+            onCreate={(phaseId, activity) => createMutation.mutate({ phaseId, activity })}
+            onDelete={item => handleDeleteItem(item)}
           />
         ))}
         {filteredPhases.length === 0 && (
