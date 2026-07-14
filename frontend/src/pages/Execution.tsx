@@ -277,6 +277,12 @@ function ItemPanel({ item, onUpdate, onClose }: {
   onClose: () => void
 }) {
   const [obsText, setObsText] = useState(item.observaciones ?? '')
+  // R2: proveedor asignado a la actividad (catálogo global del holding)
+  const { data: panelProviders = [] } = useQuery<Array<{ id: string; name: string }>>({
+    queryKey: ['providers-global'],
+    queryFn: providersGlobalApi.listAll,
+    staleTime: 60_000,
+  })
   return (
     <div className="fixed inset-0 z-40 flex justify-end">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
@@ -315,6 +321,19 @@ function ItemPanel({ item, onUpdate, onClose }: {
               ))}
             </div>
           </div>
+          {/* R2: PROVEEDOR DE LA ACTIVIDAD — quién ejecuta/ejecutó este ítem */}
+          <div>
+            <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-2">Proveedor de la actividad</div>
+            <select
+              value={item.providerId ?? ''}
+              onChange={e => onUpdate(item.id, { providerId: e.target.value || null })}
+              className="w-full bg-white border border-slate-200 text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)] text-slate-700">
+              <option value="">Sin proveedor asignado</option>
+              {panelProviders.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+            <p className="text-[10px] text-slate-400 mt-1">Del catálogo general. Las facturas que adjuntes abajo pueden usar este u otro proveedor.</p>
+          </div>
+
           <div>
             <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-2">Valores</div>
             <div className="grid grid-cols-2 gap-3">
@@ -475,7 +494,11 @@ function ItemRow({ item, onUpdate, onOpenPanel, onDelete }: {
           className={`w-full bg-transparent text-xs font-medium leading-tight rounded px-1 py-0.5 border border-transparent hover:border-slate-200 focus:bg-white focus:border-[var(--brand-gold)] focus:outline-none transition-colors ${item.completado ? 'line-through text-slate-400' : 'text-slate-800'}`}
           title="Clic para editar el nombre de la actividad"
         />
-        {item.responsable && <div className="text-[10px] text-slate-400 mt-0.5 px-1">{item.responsable}</div>}
+        {(item.responsable || item.provider) && (
+          <div className="text-[10px] text-slate-400 mt-0.5 px-1">
+            {item.provider ? `⚒ ${item.provider.name}` : item.responsable}
+          </div>
+        )}
       </td>
       <td className="px-2 py-2.5 w-24" onClick={e => e.stopPropagation()}>
         <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium ${st.color} ${st.bg}`}>{st.label}</span>
