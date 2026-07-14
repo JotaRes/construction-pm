@@ -304,7 +304,7 @@ const EDIT_SECTIONS: Array<{ title: string; fields: FieldDef[] }> = [
       { key: 'day1Disbursement', label: 'Day 1 Disbursement', type: 'number', placeholder: '0' },
       { key: 'interestReserve',  label: 'Interest Reserve', type: 'number', placeholder: '0' },
       { key: 'holdback',         label: 'Holdback', type: 'number', placeholder: '0' },
-      { key: 'interestRate',     label: 'Tasa anual (decimal — ej 0.085)', type: 'number', placeholder: '0.085' },
+      { key: 'interestRate',     label: 'Tasa anual % (ej 8.5)', type: 'number', placeholder: '8.5' },
       { key: 'loanTermMonths',   label: 'Plazo (meses)', type: 'number', placeholder: '18' },
       { key: 'settlementDate',   label: 'Fecha settlement', type: 'date' },
       { key: 'cashAtSettlement', label: 'Cash at Settlement', type: 'number', placeholder: '0' },
@@ -342,8 +342,8 @@ const EDIT_SECTIONS: Array<{ title: string; fields: FieldDef[] }> = [
       { key: 'realtorBrokerage',    label: 'Brokerage', type: 'text' },
       { key: 'realtorPhone',        label: 'Teléfono', type: 'tel' },
       { key: 'realtorEmail',        label: 'Email', type: 'email' },
-      { key: 'listingCommission',   label: 'Comisión listing (decimal — ej 0.03)', type: 'number' },
-      { key: 'buyerCommission',     label: 'Comisión buyer (decimal — ej 0.03)', type: 'number' },
+      { key: 'listingCommission',   label: 'Comisión listing % (ej 3)', type: 'number' },
+      { key: 'buyerCommission',     label: 'Comisión buyer % (ej 3)', type: 'number' },
       { key: 'targetListingPrice',  label: 'Precio listing objetivo', type: 'number' },
       { key: 'expectedPricePerSqft',label: 'Precio $/sqft esperado', type: 'number' },
     ],
@@ -351,12 +351,16 @@ const EDIT_SECTIONS: Array<{ title: string; fields: FieldDef[] }> = [
   {
     title: 'Benchmarks',
     fields: [
-      { key: 'contingencyPct',    label: 'Contingencia (decimal — ej 0.08)', type: 'number' },
-      { key: 'targetMarginPct',   label: 'Margen objetivo (decimal — ej 0.20)', type: 'number' },
+      { key: 'contingencyPct',    label: 'Contingencia % (ej 8)', type: 'number' },
+      { key: 'targetMarginPct',   label: 'Margen objetivo % (ej 20)', type: 'number' },
       { key: 'benchmarkSfTarget', label: '$/SF benchmark (ej 220)', type: 'number' },
     ],
   },
 ]
+
+// T4: campos que se MUESTRAN y EDITAN como porcentaje (3 = 3%) pero se
+// almacenan como decimal (0.03). Conversión automática en carga y guardado.
+const PCT_KEYS = new Set<string>(['listingCommission', 'buyerCommission', 'contingencyPct', 'targetMarginPct', 'interestRate'])
 
 const NUM_KEYS = new Set<string>(
   EDIT_SECTIONS.flatMap(s => s.fields).filter(f => f.type === 'number').map(f => f.key)
@@ -386,6 +390,9 @@ function EditProjectModal({ projectId, onClose }: { projectId: string; onClose: 
         if (DATE_KEYS.has(f.key) && typeof v === 'string') {
           // ISO date → YYYY-MM-DD para input type=date
           next[f.key] = v.slice(0, 10)
+        } else if (PCT_KEYS.has(f.key) && typeof v === 'number') {
+          // decimal almacenado → porcentaje visible (0.03 → "3")
+          next[f.key] = String(parseFloat((v * 100).toFixed(4)))
         } else {
           next[f.key] = String(v)
         }
@@ -419,11 +426,17 @@ function EditProjectModal({ projectId, onClose }: { projectId: string; onClose: 
     for (const [k, v] of Object.entries(form)) {
       const orig = project[k]
       const origStr = orig === null || orig === undefined ? '' :
-        DATE_KEYS.has(k) && typeof orig === 'string' ? orig.slice(0, 10) : String(orig)
+        DATE_KEYS.has(k) && typeof orig === 'string' ? orig.slice(0, 10) :
+        PCT_KEYS.has(k) && typeof orig === 'number' ? String(parseFloat((orig * 100).toFixed(4))) :
+        String(orig)
       if (v === origStr) continue
       if (v === '') {
         // Campo vacío en input — pasar null para limpiar
         payload[k] = null
+      } else if (PCT_KEYS.has(k)) {
+        // porcentaje visible → decimal almacenado ("3" → 0.03)
+        const n = parseFloat(v)
+        if (!Number.isNaN(n)) payload[k] = n / 100
       } else if (NUM_KEYS.has(k)) {
         const n = parseFloat(v)
         if (!Number.isNaN(n)) payload[k] = n

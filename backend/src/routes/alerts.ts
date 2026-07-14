@@ -136,6 +136,59 @@ router.get('/:projectId/alerts', async (req: Request, res: Response) => {
       })
     }
 
+    // 7. SECUENCIA CONSTRUCTIVA (T1) — el principio rector del control de obra:
+    // ninguna fase debería tener trabajo EN CURSO o HECHO si la fase anterior
+    // va por debajo del 80%. Trabajo fuera de secuencia = retrabajos, inspecciones
+    // reprobadas y draws sin soporte.
+    const orderedPhases = [...project.phases].sort((a, b) => a.order - b.order)
+    const outOfSequence: string[] = []
+    for (let i = 1; i < orderedPhases.length; i++) {
+      const prev = orderedPhases[i - 1]
+      const curr = orderedPhases[i]
+      const prevActive = prev.items.filter(it => !it.esNA)
+      const prevPct = prevActive.length ? prevActive.filter(it => it.completado).length / prevActive.length : 1
+      const currStarted = curr.items.some(it => !it.esNA && (it.completado || it.estado === 'EN_CURSO' || it.valorEjecutado > 0))
+      if (currStarted && prevPct < 0.8) {
+        outOfSequence.push(`${curr.code} arrancó con ${prev.code} al ${(prevPct * 100).toFixed(0)}%`)
+      }
+    }
+    if (outOfSequence.length > 0) {
+      alerts.push({
+        id: 'out-of-sequence',
+        level: 'critical',
+        title: 'Trabajo FUERA de secuencia constructiva',
+        message: outOfSequence.join(' · '),
+        action: 'Verificar en obra: trabajo fuera de secuencia genera retrabajos, inspecciones reprobadas y draws sin soporte físico.',
+        source: 'EJECUCIÓN — secuencia de fases',
+      })
+    }
+
+    // 8. INSPECCIONES PROGRAMADAS SIN PREREQUISITOS (T2)
+    const inspPend = await prisma.inspection.findMany({
+      where: { projectId: req.params.projectId, fechaSolicitada: { not: null }, resultado: null },
+      select: { tipo: true, wbs: true, prereqs: true, fechaSolicitada: true },
+    })
+    const inspSinPrereq: string[] = []
+    for (const insp of inspPend) {
+      try {
+        const list = insp.prereqs ? JSON.parse(insp.prereqs) as Array<{ label: string; done: boolean }> : []
+        const pending = list.filter(p => !p.done)
+        if (list.length > 0 && pending.length > 0) {
+          inspSinPrereq.push(`${insp.tipo}: ${pending.length} prerequisito(s) sin cumplir`)
+        }
+      } catch { /* prereqs malformado: ignorar */ }
+    }
+    if (inspSinPrereq.length > 0) {
+      alerts.push({
+        id: 'inspection-prereqs-pending',
+        level: 'critical',
+        title: 'Inspección programada SIN prerequisitos cumplidos',
+        message: inspSinPrereq.join(' · '),
+        action: 'NO llamar la inspección hasta cerrar el checklist. Una reprobación cuesta dinero Y bloquea la secuencia.',
+        source: 'INSPECCIONES — checklist previo',
+      })
+    }
+
     // 7. SEGUROS (Lote A) — builder's risk del proyecto
     if (project.builderRiskExpiresAt) {
       const dias = Math.ceil((new Date(project.builderRiskExpiresAt).getTime() - today.getTime()) / 86400000)

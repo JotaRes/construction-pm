@@ -305,6 +305,9 @@ model Inspection {
   wbs             String
   tipo            String
   prerrequisitos  String?
+  // T2: checklist estructurado de prerequisitos [{label, done}] en JSON.
+  // "prerrequisitos" (texto libre) se conserva como descripción legacy.
+  prereqs         String?
   fase            String?
   fechaSolicitada DateTime?
   fechaRealizada  DateTime?

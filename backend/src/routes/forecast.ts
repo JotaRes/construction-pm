@@ -22,7 +22,7 @@ router.get('/:projectId/forecast', async (req: Request, res: Response) => {
       where: { id: req.params.projectId },
       include: {
         phases: { include: { items: { select: { esNA: true, completado: true } } } },
-        draws: { orderBy: { drawNumber: 'desc' }, take: 1 },
+        draws: { orderBy: { drawNumber: 'asc' } },
         changeOrders: { where: { status: 'APROBADO' }, select: { daysDelta: true, costDelta: true } },
       },
     })
@@ -69,7 +69,31 @@ router.get('/:projectId/forecast', async (req: Request, res: Response) => {
     const delayDays = Math.ceil((projectedFinish.getTime() - targetAdjusted.getTime()) / 86400000)
 
     // Interés diario sobre el UPB actual (último draw) o el desembolso día 1
-    const upb = project.draws[0]?.upbPost || project.day1Disbursement || 0
+    const lastDraw = project.draws[project.draws.length - 1]
+    const upb = lastDraw?.upbPost || project.day1Disbursement || 0
+
+    // ── T3: PROYECCIÓN DEL PRÓXIMO DRAW ──
+    // Ritmo histórico: intervalo promedio entre wires + monto promedio →
+    // fecha estimada del próximo draw y cuántos faltan para agotar el holdback.
+    const wired = project.draws.filter(d => d.estado === 'WIRED' && d.fechaWire).sort(
+      (a, b) => new Date(a.fechaWire!).getTime() - new Date(b.fechaWire!).getTime())
+    let nextDrawDate: Date | null = null
+    let drawsRemaining: number | null = null
+    let avgDrawInterval: number | null = null
+    if (wired.length >= 1) {
+      const totalWiredAmt = wired.reduce((s2, d) => s2 + d.netWire, 0)
+      const avgNet = totalWiredAmt / wired.length
+      const remaining = Math.max(0, (project.holdback || 0) - totalWiredAmt)
+      drawsRemaining = avgNet > 0 ? Math.ceil(remaining / avgNet) : null
+      if (wired.length >= 2) {
+        const first = new Date(wired[0].fechaWire!).getTime()
+        const last = new Date(wired[wired.length - 1].fechaWire!).getTime()
+        avgDrawInterval = Math.round((last - first) / 86400000 / (wired.length - 1))
+        if (avgDrawInterval > 0 && remaining > 0) {
+          nextDrawDate = new Date(last + avgDrawInterval * 86400000)
+        }
+      }
+    }
     const dailyInterest = (upb * project.interestRate) / 365
     const delayCost = delayDays > 0 ? delayDays * dailyInterest : 0
 
@@ -104,6 +128,10 @@ router.get('/:projectId/forecast', async (req: Request, res: Response) => {
         loanMaturity,
         daysToMaturity,
         maturityRisk,
+        // T3
+        nextDrawDate,
+        drawsRemaining,
+        avgDrawInterval,
       },
       error: null,
     })

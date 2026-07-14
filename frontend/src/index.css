@@ -1273,3 +1273,22 @@ h1.text-2xl, h1.text-3xl {
 :is(.fin-app, .tech-app) .text-emerald-600,:is(.fin-app, .tech-app) .text-emerald-700,:is(.fin-app, .tech-app) .text-emerald-800,
 :is(.fin-app, .tech-app) .text-green-600,  :is(.fin-app, .tech-app) .text-green-700   { color: var(--ok)   !important; }
 :is(.fin-app, .tech-app) .text-stone-600,  :is(.fin-app, .tech-app) .text-stone-700   { color: var(--text-secondary) !important; }
+
+
+/* ============================================================
+   T5 — LEGIBILIDAD (solicitud del usuario, jul-2026)
+   El tema es SIEMPRE claro (useTheme fuerza light), por lo que estos
+   overrides son seguros. Dos problemas reales:
+   1. Tipos de 9-10px ilegibles en pantallas normales → mínimo efectivo 10.5-11.5px
+   2. Grises slate-400 (#94a3b8) sobre crema/blanco no pasan contraste →
+      se oscurecen un nivel manteniendo la jerarquía visual.
+   ============================================================ */
+.text-\[9px\]  { font-size: 10.5px !important; }
+.text-\[10px\] { font-size: 11px  !important; }
+.text-\[11px\] { font-size: 12px  !important; }
+
+/* Gris secundario: de slate-400 a un tono con contraste AA sobre crema */
+.text-slate-400 { color: #64748b !important; }   /* = slate-500 */
+.text-slate-500 { color: #475569 !important; }   /* = slate-600 */
+/* Placeholders un poco más visibles */
+.placeholder-slate-400::placeholder { color: #94a3b8 !important; }

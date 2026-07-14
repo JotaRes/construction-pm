@@ -1,6 +1,61 @@
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { inspectionsApi } from '../lib/api'
 import type { Inspection, InspectionEstado } from '../lib/types'
+import { CheckCircle2, AlertTriangle, Plus, X } from 'lucide-react'
+
+// ── T2: checklist de prerequisitos por inspección ──────────────
+// Regla de obra: NO llamar inspección sin checklist cerrado. Una reprobación
+// cuesta $50-100 y bloquea la secuencia 3-7 días hábiles.
+type Prereq = { label: string; done: boolean }
+
+function parsePrereqs(ins: Inspection): Prereq[] {
+  if (ins.prereqs) {
+    try { const p = JSON.parse(ins.prereqs); if (Array.isArray(p)) return p } catch { /* seed abajo */ }
+  }
+  // Semilla desde el texto libre legacy (separado por comas / puntos medios)
+  if (ins.prerrequisitos) {
+    return ins.prerrequisitos.split(/[,·;]+/).map(x => x.trim()).filter(Boolean)
+      .map(label => ({ label, done: false }))
+  }
+  return []
+}
+
+function PrereqChecklist({ ins, onSave }: { ins: Inspection; onSave: (json: string) => void }) {
+  const [items, setItems] = useState<Prereq[]>(() => parsePrereqs(ins))
+  const [newLabel, setNewLabel] = useState('')
+  const persist = (next: Prereq[]) => { setItems(next); onSave(JSON.stringify(next)) }
+  const doneCount = items.filter(i => i.done).length
+  const ready = items.length > 0 && doneCount === items.length
+
+  return (
+    <div className="mt-1.5 space-y-1 max-w-md">
+      {items.length > 0 && (
+        <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+          ready ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'}`}>
+          {ready ? <CheckCircle2 className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
+          {ready ? 'LISTA para llamar' : `${items.length - doneCount} prerequisito(s) pendiente(s)`}
+        </span>
+      )}
+      {items.map((p, idx) => (
+        <label key={idx} className="flex items-center gap-2 text-xs text-slate-600 cursor-pointer group">
+          <input type="checkbox" checked={p.done}
+            onChange={() => persist(items.map((x, i) => i === idx ? { ...x, done: !x.done } : x))}
+            className="accent-[var(--brand-gold)]" />
+          <span className={p.done ? 'line-through text-slate-400' : ''}>{p.label}</span>
+          <button onClick={e => { e.preventDefault(); persist(items.filter((_, i) => i !== idx)) }}
+            className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-400"><X className="w-3 h-3" /></button>
+        </label>
+      ))}
+      <form onSubmit={e => { e.preventDefault(); const v = newLabel.trim(); if (v) { persist([...items, { label: v, done: false }]); setNewLabel('') } }}
+        className="flex items-center gap-1.5">
+        <Plus className="w-3 h-3 text-slate-400" />
+        <input value={newLabel} onChange={e => setNewLabel(e.target.value)} placeholder="Agregar prerequisito…"
+          className="flex-1 bg-transparent text-[11px] text-slate-500 focus:outline-none border-b border-transparent focus:border-[var(--brand-gold)] py-0.5" />
+      </form>
+    </div>
+  )
+}
 
 const ESTADOS: InspectionEstado[] = ['PENDIENTE', 'PROGRAMADA', 'APROBADA', 'RECHAZADA']
 
@@ -62,11 +117,8 @@ export default function Inspections({ projectId }: { projectId: string }) {
                 </td>
                 <td className="px-4 py-3">
                   <div className="text-sm text-slate-800">{ins.tipo}</div>
-                  {ins.prerrequisitos && (
-                    <div className="text-[10px] text-slate-400 mt-0.5 leading-relaxed max-w-md">
-                      {ins.prerrequisitos}
-                    </div>
-                  )}
+                  <PrereqChecklist key={ins.id + (ins.prereqs ?? '')} ins={ins}
+                    onSave={json => mutation.mutate({ id: ins.id, data: { prereqs: json } })} />
                 </td>
                 <td className="px-4 py-3">
                   <span className="text-xs text-slate-500">{ins.fase}</span>

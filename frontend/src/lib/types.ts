@@ -138,6 +138,7 @@ export interface Draw {
 }
 
 export interface Inspection {
+  prereqs?: string | null
   id: string
   projectId: string
   wbs: string

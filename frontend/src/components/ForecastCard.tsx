@@ -83,6 +83,18 @@ export default function ForecastCard({ projectId }: { projectId: string }) {
         </div>
       </div>
 
+      {/* T3: proyección del próximo draw según ritmo histórico */}
+      {(f as any).nextDrawDate && (
+        <div className="mt-3 flex items-center gap-2 flex-wrap text-xs text-slate-500 border-t border-slate-100 pt-2">
+          <span className="font-semibold text-[var(--brand-teal)]">Próximo draw proyectado:</span>
+          <span className="font-mono font-semibold">{fmtDate((f as any).nextDrawDate)}</span>
+          {(f as any).avgDrawInterval && <span>· ritmo {String((f as any).avgDrawInterval)}d entre draws</span>}
+          {(f as any).drawsRemaining !== null && (f as any).drawsRemaining !== undefined && (
+            <span>· ~{String((f as any).drawsRemaining)} draw(s) para agotar holdback</span>
+          )}
+        </div>
+      )}
+
       {f.maturityRisk && (
         <div className="mt-3 flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-600">
           <AlertTriangle className="w-4 h-4 flex-shrink-0" />
