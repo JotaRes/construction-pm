@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express'
 import { prisma } from '../lib/prisma'
 import multer from 'multer'
+import { uploadToCloudinary, deleteFromCloudinary, extractPublicId } from '../lib/cloudinary'
 import { PHASES_TEMPLATE, INSPECTIONS_TEMPLATE } from '../data/phasesTemplate'
 import { parseAmountFlexible } from '../lib/parseAmount'
 
@@ -489,6 +490,47 @@ router.post('/:id/reset-construction-budget', async (req: Request, res: Response
     }
     const result = await prisma.budgetLine.deleteMany({ where: { projectId } })
     res.json({ data: { reset: result.count, message: `${result.count} líneas eliminadas` }, error: null })
+  } catch (e) {
+    res.status(500).json({ data: null, error: String(e) })
+  }
+})
+
+// ── Foto de referencia del proyecto (identificación visual) ──
+router.post('/:id/photo', upload.single('file'), async (req: Request, res: Response) => {
+  try {
+    if (!req.file) return res.status(400).json({ data: null, error: 'Archivo requerido' })
+    if (!req.file.mimetype.startsWith('image/')) {
+      return res.status(400).json({ data: null, error: 'Solo imágenes (JPG, PNG, WebP, HEIC)' })
+    }
+    // Borrar la foto anterior de Cloudinary si existía
+    const existing = await prisma.project.findUnique({ where: { id: req.params.id }, select: { photoUrl: true } })
+    if (existing?.photoUrl) {
+      const pid = extractPublicId(existing.photoUrl)
+      if (pid) await deleteFromCloudinary(pid).catch(() => {})
+    }
+    const { url } = await uploadToCloudinary(req.file.buffer, 'construction-pm/project-photos', 'image')
+    const project = await prisma.project.update({
+      where: { id: req.params.id },
+      data: { photoUrl: url, photoName: req.file.originalname },
+    })
+    res.json({ data: project, error: null })
+  } catch (e) {
+    res.status(500).json({ data: null, error: String(e) })
+  }
+})
+
+router.delete('/:id/photo', async (req: Request, res: Response) => {
+  try {
+    const existing = await prisma.project.findUnique({ where: { id: req.params.id }, select: { photoUrl: true } })
+    if (existing?.photoUrl) {
+      const pid = extractPublicId(existing.photoUrl)
+      if (pid) await deleteFromCloudinary(pid).catch(() => {})
+    }
+    const project = await prisma.project.update({
+      where: { id: req.params.id },
+      data: { photoUrl: null, photoName: null },
+    })
+    res.json({ data: project, error: null })
   } catch (e) {
     res.status(500).json({ data: null, error: String(e) })
   }

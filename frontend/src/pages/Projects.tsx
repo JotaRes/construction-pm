@@ -1,14 +1,14 @@
 import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Building2, MapPin, DollarSign, TrendingUp, ChevronRight, X, Trash2, Upload, FileText, CheckCircle, RefreshCw, Pencil } from 'lucide-react'
+import { Plus, Building2, MapPin, DollarSign, TrendingUp, ChevronRight, X, Trash2, Upload, FileText, CheckCircle, RefreshCw, Pencil, Camera } from 'lucide-react'
 import { projectsApi, projectsDeleteApi } from '../lib/api'
 import { useProjectStore } from '../store/projectStore'
 import { formatUSD } from '../lib/calculations'
 import toast from 'react-hot-toast'
 import type { Project, Draw } from '../lib/types'
 
-type ProjectListItem = Pick<Project, 'id' | 'name' | 'spv' | 'address' | 'arv' | 'constructionBudget' | 'holdback'> & {
+type ProjectListItem = Pick<Project, 'id' | 'name' | 'spv' | 'address' | 'arv' | 'constructionBudget' | 'holdback' | 'photoUrl' | 'photoName'> & {
   draws: Draw[]
 }
 
@@ -520,7 +520,8 @@ function EditProjectModal({ projectId, onClose }: { projectId: string; onClose: 
   )
 }
 
-function ProjectCard({ project, isActive, onSelect, onDelete, onEdit }: {
+function ProjectCard({ project, isActive, onSelect, onDelete, onEdit, onPhoto }: {
+  onPhoto: (file: File) => void
   project: ProjectListItem
   isActive: boolean
   onSelect: () => void
@@ -542,6 +543,16 @@ function ProjectCard({ project, isActive, onSelect, onDelete, onEdit }: {
         >
           <Pencil className="w-3.5 h-3.5" />
         </button>
+        {/* Foto de referencia: subir/cambiar */}
+        <label
+          onClick={e => e.stopPropagation()}
+          className="p-1.5 rounded-lg text-slate-500 hover:text-[var(--brand-teal)] hover:bg-[#2D4B52]/10 transition-colors cursor-pointer"
+          title={project.photoUrl ? 'Cambiar foto de referencia' : 'Subir foto de referencia'}
+        >
+          <Camera className="w-3.5 h-3.5" />
+          <input type="file" className="hidden" accept="image/*"
+            onChange={e => { const f = e.target.files?.[0]; if (f) onPhoto(f); e.target.value = '' }} />
+        </label>
         <button
           onClick={e => { e.stopPropagation(); onDelete() }}
           className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
@@ -553,6 +564,11 @@ function ProjectCard({ project, isActive, onSelect, onDelete, onEdit }: {
 
       <button onClick={onSelect} className="w-full text-left p-5">
         <div className="flex items-start justify-between mb-4 pr-6">
+          {/* Foto de referencia del proyecto */}
+          {project.photoUrl && (
+            <img src={project.photoUrl} alt={project.name}
+              className="w-14 h-14 rounded-xl object-cover mr-3 flex-shrink-0 border border-slate-200 shadow-sm" />
+          )}
           <div>
             <div className="flex items-center gap-2 mb-1">
               {isActive && <span className="text-[9px] font-bold tracking-wider text-[var(--brand-gold)] bg-[#C8922A]/15 px-2 py-0.5 rounded-full">ACTIVO</span>}
@@ -650,6 +666,15 @@ export default function Projects() {
     queryFn: projectsApi.list,
   })
 
+  const photoMutation = useMutation({
+    mutationFn: ({ projectId, file }: { projectId: string; file: File }) => {
+      const fd = new FormData()
+      fd.append('file', file)
+      return projectsApi.uploadPhoto(projectId, fd)
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['projects'] }),
+  })
+
   const deleteMutation = useMutation({
     mutationFn: (id: string) => projectsDeleteApi.delete(id),
     onSuccess: (_data, deletedId) => {
@@ -706,6 +731,7 @@ export default function Projects() {
               isActive={p.id === activeProjectId}
               onSelect={() => handleSelect(p.id)}
               onEdit={() => setEditTarget(p)}
+              onPhoto={file => photoMutation.mutate({ projectId: p.id, file })}
               onDelete={() => setDeleteTarget(p)}
             />
           ))}

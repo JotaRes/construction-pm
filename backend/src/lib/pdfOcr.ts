@@ -34,6 +34,14 @@ export async function extractPdfText(buffer: Buffer): Promise<{ text: string; oc
     return { text, ocrUsed: false, pages }
   }
 
+  // GUARDA DE MEMORIA (Render Starter = 512MB): PDFs enormes no entran a OCR.
+  // Un escaneado de >15MB a resolución alta puede tumbar el contenedor
+  // (email de Render 13-jul-2026: "exceeded its memory limit").
+  if (buffer.length > 15 * 1024 * 1024) {
+    console.warn('[pdf-ocr] PDF demasiado grande para OCR en este plan:', (buffer.length / 1048576).toFixed(1), 'MB')
+    return { text, ocrUsed: false, pages }
+  }
+
   // Intento 2: OCR vía tesseract.js. pdf-to-img convierte cada página a PNG.
   try {
     const ocrText = await runOcr(buffer)
@@ -50,7 +58,8 @@ async function runOcr(buffer: Buffer): Promise<string> {
   const { pdf } = await import('pdf-to-img')
   const { createWorker } = await import('tesseract.js')
 
-  const document = await pdf(buffer, { scale: 2 })
+  // scale 1.5 (antes 2): suficiente para OCR de documentos, ~45% menos memoria por página
+  const document = await pdf(buffer, { scale: 1.5 })
   const worker = await createWorker('eng', undefined, {
     // Silencia logs de tesseract por defecto
     logger: () => {},
@@ -58,7 +67,13 @@ async function runOcr(buffer: Buffer): Promise<string> {
 
   try {
     const pieces: string[] = []
+    let pageCount = 0
+    const MAX_OCR_PAGES = 6 // HUDs/cartas/permisos: 2-5 páginas. Límite = protección de memoria.
     for await (const image of document) {
+      if (++pageCount > MAX_OCR_PAGES) {
+        console.warn(`[pdf-ocr] OCR limitado a ${MAX_OCR_PAGES} páginas (doc tiene más)`)
+        break
+      }
       const result = await worker.recognize(image)
       pieces.push(result.data.text)
     }

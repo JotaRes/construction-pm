@@ -173,6 +173,8 @@ export interface ProjectFile {
 export interface Project {
   id: string
   name: string
+  photoUrl?: string | null
+  photoName?: string | null
   spv: string
   holding: string
   address: string

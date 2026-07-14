@@ -100,6 +100,10 @@ model Project {
   loiExpectedClose   DateTime?
   loiEarnestMoney    Float?
 
+  // Foto de referencia del proyecto (identificación visual en tarjetas y switcher)
+  photoUrl   String?
+  photoName  String?
+
   // Seguros del proyecto (Lote A): builder's risk + liability del GC
   builderRiskCarrier   String?
   builderRiskPolicyNum String?

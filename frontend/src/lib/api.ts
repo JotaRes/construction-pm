@@ -44,6 +44,10 @@ export async function downloadAuthed(url: string, filename: string): Promise<voi
 }
 
 export const projectsApi = {
+  uploadPhoto: (projectId: string, formData: FormData) =>
+    api.post(`/projects/${projectId}/photo`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data.data),
+  removePhoto: (projectId: string) =>
+    api.delete(`/projects/${projectId}/photo`).then(r => r.data.data),
   list: () => api.get('/projects').then(r => r.data.data),
   get: (id: string) => api.get(`/projects/${id}`).then(r => r.data.data),
   dashboard: (id: string) => api.get(`/projects/${id}/dashboard`).then(r => r.data.data),
