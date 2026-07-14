@@ -595,8 +595,8 @@ export default function Providers({ projectId }: { projectId: string }) {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Directorio de Proveedores</h1>
-          <p className="text-sm text-slate-500 mt-0.5">{providers.length} proveedores · Haz clic en "Cotizaciones" para ver historial y adjuntar documentos</p>
+          <h1 className="text-xl font-bold text-slate-900">Directorio de Proveedores — Catálogo General</h1>
+          <p className="text-sm text-slate-500 mt-0.5">{providers.length} proveedores del holding · aplican a TODOS los proyectos · el récord de facturación se alimenta de las facturas de Ejecución</p>
         </div>
         <button onClick={() => setShowAdd(true)}
           className="flex items-center gap-2 bg-[var(--brand-gold)] hover:bg-[#E0AD4F] text-white text-sm px-4 py-2 rounded-xl transition-colors">

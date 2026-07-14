@@ -47,13 +47,20 @@ const navGroups = [
   {
     label: 'Operaciones',
     items: [
-      { to: '/tech/providers',  icon: Users,           label: 'Proveedores' },
       { to: '/tech/subcontracts', icon: HardHat,       label: 'Subcontratos' },
       { to: '/tech/change-orders', icon: FileDiff,    label: 'Change Orders' },
       { to: '/tech/punch-list', icon: ClipboardCheck, label: 'Punch List' },
       { to: '/tech/files',      icon: Folder,          label: 'Archivos' },
-      { to: '/tech/price-refs', icon: Tag,             label: 'Precios Ref.' },
       { to: '/tech/import',     icon: Archive,         label: 'Importar / Backup' },
+    ],
+  },
+  {
+    // R2: catálogo GENERAL del holding — no pertenece a ningún proyecto.
+    // Proveedores y precios de referencia aplican a TODOS los proyectos.
+    label: 'Catálogo General',
+    items: [
+      { to: '/tech/providers',  icon: Users,           label: 'Proveedores' },
+      { to: '/tech/price-refs', icon: Tag,             label: 'Precios Ref.' },
     ],
   },
 ]
