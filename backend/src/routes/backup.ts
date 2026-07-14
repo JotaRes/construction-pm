@@ -90,7 +90,7 @@ router.get('/', async (req: Request, res: Response) => {
 
     // === DASHBOARDS EXCEL (plan B de control, legible para cualquiera) ===
     try {
-      const techXlsx = await buildTechExcel({ projects, priceRefs, drawLineContributions, subcontractorContracts })
+      const techXlsx = await buildTechExcel({ projects, priceRefs, drawLineContributions, subcontractorContracts, changeOrders, punchListItems })
       archive.append(techXlsx, { name: 'excel/reporte-tecnico.xlsx' })
     } catch (err) {
       console.error('Backup tech excel failed:', err)
@@ -254,13 +254,15 @@ router.get('/excel-tech', async (_req: Request, res: Response) => {
         budgetLines: true,
       },
     })
-    const [priceRefs, drawLineContributions, subcontractorContracts] = await Promise.all([
+    const [priceRefs, drawLineContributions, subcontractorContracts, changeOrders, punchListItems] = await Promise.all([
       prisma.priceRef.findMany(),
       prisma.drawLineContribution.findMany(),
       prisma.subcontractorContract.findMany({ include: { paymentSchedule: true } }),
+      prisma.changeOrder.findMany(),
+      prisma.punchListItem.findMany(),
     ])
 
-    const buf = await buildTechExcel({ projects, priceRefs, drawLineContributions, subcontractorContracts })
+    const buf = await buildTechExcel({ projects, priceRefs, drawLineContributions, subcontractorContracts, changeOrders, punchListItems })
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     res.setHeader('Content-Disposition', `attachment; filename="reporte-tecnico-${new Date().toISOString().slice(0, 10)}.xlsx"`)
     res.send(buf)
@@ -386,6 +388,16 @@ router.post('/restore-tech', upload.single('file'), async (req: Request, res: Re
         await prisma.subcontractorPayment.create({ data: normDates(pay) }).catch(() => {})
         counts.subcontractorPayments++
       }
+    }
+
+    // R3: restaurar también change orders y punch list (tablas nuevas del snapshot v1.4+)
+    for (const co of snapshot.changeOrders || []) {
+      await prisma.changeOrder.create({ data: normDates(co) }).catch(() => {})
+      ;(counts as any).changeOrders = ((counts as any).changeOrders ?? 0) + 1
+    }
+    for (const pi of snapshot.punchListItems || []) {
+      await prisma.punchListItem.create({ data: normDates(pi) }).catch(() => {})
+      ;(counts as any).punchListItems = ((counts as any).punchListItems ?? 0) + 1
     }
 
     res.json({ data: { restored: true, counts, version: snapshot.version }, error: null })

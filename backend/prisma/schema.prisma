@@ -220,8 +220,11 @@ model Partner {
 
 model Provider {
   id           String          @id @default(cuid())
-  projectId    String
-  project      Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  // GLOBAL (R2): projectId ahora es OPCIONAL. null = proveedor del catálogo
+  // general del holding, usable en todos los proyectos. Los existentes
+  // conservan su projectId (siguen visibles globalmente).
+  projectId    String?
+  project      Project?        @relation(fields: [projectId], references: [id], onDelete: Cascade)
   name         String
   type         String?           // categoría libre (puede ser "Otro: lo que sea")
   phoneCountry String?           @default("+1")   // código país, default USA
@@ -239,6 +242,7 @@ model Provider {
   quotes       ProviderQuote[]
   documents    ProviderDocument[]
   contracts    SubcontractorContract[]
+  invoiceDocs  ItemDocument[] @relation("InvoiceProvider")
 }
 
 model ProviderDocument {
@@ -351,6 +355,9 @@ model ItemDocument {
   type      String   @default("OTRO")
   name      String
   vendor    String?
+  // R2: proveedor del catálogo (para récord de facturación por proveedor/proyecto)
+  providerId String?
+  provider   Provider? @relation("InvoiceProvider", fields: [providerId], references: [id], onDelete: SetNull)
   amount    Float?
   fileUrl   String?
   notes     String?

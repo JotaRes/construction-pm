@@ -19,7 +19,7 @@ const upload = multer({
 router.get('/:projectId/providers', async (req: Request, res: Response) => {
   try {
     const providers = await prisma.provider.findMany({
-      where: { projectId: req.params.projectId },
+      where: { OR: [{ projectId: req.params.projectId }, { projectId: null }] },
       orderBy: { name: 'asc' },
       include: {
         quotes: { orderBy: { createdAt: 'desc' } },

@@ -342,7 +342,7 @@ function DrawCard({ draw, projectId, budgetTotal, budgetExecuted, newAmount, onU
               <Share2 className="w-3 h-3" />Documentos del Draw
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              <DocSlot draw={draw} kind="INVOICE"  label="Nuestra factura al lender"  icon={Receipt}    projectId={projectId} />
+              <DocSlot draw={draw} kind="INVOICE"  label="Nuestra factura al lender (opcional)"  icon={Receipt}    projectId={projectId} />
               <DocSlot draw={draw} kind="APPROVAL" label="Aprobación del lender"       icon={ShieldCheck} projectId={projectId} />
             </div>
           </div>
@@ -831,8 +831,9 @@ export default function Draws({ projectId }: { projectId: string }) {
   const wiredDraws = drawsConWire // backward-compat para vistas que lo usan abajo
   const lastSaldo = Math.max(0, initialHoldback - totalWired)
 
-  // Auditoría: draws con desembolso (netWire) sin documentos requeridos
-  const drawsConFalta = draws.filter(d => (d.netWire > 0 || d.estado !== 'EMPTY') && (!d.invoiceLenderUrl || !d.lenderApprovalUrl))
+  // Auditoría: solo la APROBACIÓN del lender es requerida — es la que alimenta
+  // el presupuesto aprobado (DrawLineContribution). "Nuestra factura" es opcional.
+  const drawsConFalta = draws.filter(d => (d.netWire > 0 || d.estado !== 'EMPTY') && !d.lenderApprovalUrl)
 
   if (isLoading) return <div className="text-slate-500 text-sm animate-pulse">Cargando draws...</div>
 
@@ -949,14 +950,13 @@ export default function Draws({ projectId }: { projectId: string }) {
                 {drawsConFalta.length} draw(s) con documentos faltantes
               </div>
               <div className="text-xs text-red-700 mt-0.5">
-                Cada draw ejecutado debe tener: <strong>factura al lender</strong> y <strong>aprobación post-inspección</strong>.
+                Cada draw ejecutado debe tener la <strong>aprobación post-inspección del lender</strong> (alimenta el presupuesto aprobado). La factura al lender es opcional.
               </div>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {drawsConFalta.map(d => (
                   <span key={d.id} className="text-[10px] bg-white text-red-700 border border-red-200 px-2 py-0.5 rounded-full font-mono">
                     Draw #{d.drawNumber}
-                    {!d.invoiceLenderUrl && ' · falta factura'}
-                    {!d.lenderApprovalUrl && ' · falta aprobación'}
+                    {!d.lenderApprovalUrl && ' · falta aprobación del lender'}
                   </span>
                 ))}
               </div>
@@ -1035,7 +1035,7 @@ export default function Draws({ projectId }: { projectId: string }) {
                       cumulative += d.netWire
                       const saldo = Math.max(0, initialHoldback - cumulative)
                       const pct = initialHoldback > 0 ? (cumulative / initialHoldback) * 100 : 0
-                      const hasAllDocs = !!(d.invoiceLenderUrl && d.lenderApprovalUrl)
+                      const hasAllDocs = !!d.lenderApprovalUrl // la factura es opcional
                       return (
                         <tr key={d.id} className="border-b border-slate-100 hover:bg-slate-50">
                           <td className="px-4 py-2.5">

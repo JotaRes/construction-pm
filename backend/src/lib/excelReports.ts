@@ -318,11 +318,16 @@ export interface TechExcelData {
   priceRefs: any[]
   drawLineContributions: any[]
   subcontractorContracts: any[] // con paymentSchedule
+  changeOrders?: any[]   // R3
+  punchListItems?: any[] // R3
 }
 
 export async function buildTechExcel(data: TechExcelData): Promise<Buffer> {
   const wb = new ExcelJS.Workbook()
   const { projects, priceRefs, subcontractorContracts } = data
+  const changeOrders = data.changeOrders ?? []
+  const punchListItems = data.punchListItems ?? []
+  const projName = new Map(projects.map((p) => [p.id, p.name]))
 
   const num = (v: any) => Number(v) || 0
   const allBudget = projects.flatMap((p) => p.budgetLines || [])
@@ -371,6 +376,10 @@ export async function buildTechExcel(data: TechExcelData): Promise<Buffer> {
       { label: 'Subcontratos', value: subcontractorContracts.length, numFmt: INT, accent: NAVY },
       { label: 'Valor subcontratos', value: subValor, numFmt: MONEY0 },
       { label: 'Proveedores', value: projects.flatMap((p) => p.providers || []).length, numFmt: INT, accent: NAVY },
+      { label: 'Impacto COs aprobados', value: changeOrders.filter((c: any) => c.status === 'APROBADO').reduce((s2: number, c: any) => s2 + (Number(c.costDelta) || 0), 0), numFmt: MONEY0, accent: RED },
+      { label: 'COs sin decidir', value: changeOrders.filter((c: any) => c.status === 'BORRADOR').length, numFmt: INT, accent: GOLD },
+      { label: 'Punch list abiertos', value: punchListItems.filter((i: any) => i.status !== 'VERIFICADO').length, numFmt: INT, accent: RED },
+      { label: 'Punch verificados', value: punchListItems.filter((i: any) => i.status === 'VERIFICADO').length, numFmt: INT, accent: GREEN },
     ],
     summary: {
       title: 'Resumen por proyecto',
@@ -594,6 +603,44 @@ export async function buildTechExcel(data: TechExcelData): Promise<Buffer> {
     ],
     rows: priceRefs,
   })
+
+    // ── Change Orders (R3) ──
+  if (changeOrders.length) {
+    addTableSheet(wb, {
+      name: 'Change Orders',
+      title: 'Change Orders — cambios de alcance',
+      columns: [
+        { header: 'Proyecto', key: '_proj', width: 24 },
+        { header: 'CO#', key: 'coNumber', width: 7, numFmt: INT },
+        { header: 'Título', key: 'title', width: 36 },
+        { header: 'Razón', key: 'reason', width: 18 },
+        { header: 'Costo Δ', key: 'costDelta', width: 14, numFmt: MONEY0, total: true },
+        { header: 'Días Δ', key: 'daysDelta', width: 9, numFmt: INT },
+        { header: 'Estado', key: 'status', width: 12 },
+        { header: 'Aprobó', key: 'approvedBy', width: 16 },
+        { header: 'Fecha decisión', key: 'approvedAt', width: 14 },
+      ],
+      rows: changeOrders.map((c: any) => ({ ...c, _proj: projName.get(c.projectId) ?? c.projectId })),
+    })
+  }
+
+  // ── Punch List (R3) ──
+  if (punchListItems.length) {
+    addTableSheet(wb, {
+      name: 'Punch List',
+      title: 'Punch List — cierre de obra',
+      columns: [
+        { header: 'Proyecto', key: '_proj', width: 24 },
+        { header: 'Defecto', key: 'title', width: 36 },
+        { header: 'Ubicación', key: 'location', width: 16 },
+        { header: 'Responsable', key: 'responsable', width: 16 },
+        { header: 'Severidad', key: 'severity', width: 11 },
+        { header: 'Estado', key: 'status', width: 12 },
+        { header: 'Verificado', key: 'resolvedAt', width: 14 },
+      ],
+      rows: punchListItems.map((i: any) => ({ ...i, _proj: projName.get(i.projectId) ?? i.projectId })),
+    })
+  }
 
   return toBuffer(wb)
 }

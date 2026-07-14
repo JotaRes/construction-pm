@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { providersApi, providerQuotesApi, providerDocumentsApi } from '../lib/api'
+import { providersApi, providerQuotesApi, providerDocumentsApi, providersGlobalApi } from '../lib/api'
 import { formatUSD, formatDate } from '../lib/calculations'
 import type { Provider, ProviderDocumentType } from '../lib/types'
 import { Plus, Trash2, X, Check, ChevronDown, FileText, Upload, ExternalLink, FolderOpen, ShieldCheck, FileSignature, Receipt, BadgeCheck, FileSpreadsheet } from 'lucide-react'
@@ -358,7 +358,8 @@ function CoiRow({ provider, projectId }: { provider: Provider; projectId: string
   )
 }
 
-function ProviderCard({ provider, projectId, onUpdate, onDelete }: {
+function ProviderCard({ provider, projectId, billing, onUpdate, onDelete }: {
+  billing?: Record<string, { projectName: string; total: number; count: number }>
   provider: Provider
   projectId: string
   onUpdate: (id: string, data: Record<string, unknown>) => void
@@ -462,6 +463,9 @@ function ProviderCard({ provider, projectId, onUpdate, onDelete }: {
               {provider.type && (
                 <span className="text-[10px] bg-[#2D4B52]/10 text-[var(--brand-teal)] px-2 py-0.5 rounded-full font-medium">{provider.type}</span>
               )}
+              <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: provider.projectId ? 'rgba(200,146,42,0.12)' : 'rgba(45,75,82,0.08)', color: provider.projectId ? 'var(--brand-gold)' : 'var(--brand-teal2)' }}>
+                {provider.project?.name ?? 'Global'}
+              </span>
             </div>
             <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
               {provider.phone && (
@@ -505,6 +509,18 @@ function ProviderCard({ provider, projectId, onUpdate, onDelete }: {
             <span className="font-mono font-semibold text-emerald-600">{formatUSD(totalQuotes)} total</span>
           </div>
         )}
+        {/* R2: récord de facturación por proyecto (facturas adjuntadas en Ejecución) */}
+        {billing && Object.keys(billing).length > 0 && (
+          <div className="mt-3 pt-3 border-t border-slate-100 space-y-1">
+            <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Facturación registrada</div>
+            {Object.entries(billing).map(([pid, b]) => (
+              <div key={pid} className="flex items-center justify-between text-[11px]">
+                <span className="text-slate-500">{b.projectName} · {b.count} factura(s)</span>
+                <span className="font-mono font-semibold text-[var(--brand-teal)]">{formatUSD(b.total)}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {showQuotes && <QuoteModal provider={provider} projectId={projectId} onClose={() => setShowQuotes(false)} />}
@@ -521,25 +537,31 @@ export default function Providers({ projectId }: { projectId: string }) {
     phoneCountry: '+1', phone: '', email: '', license: '', address: '', notes: '',
   })
 
+  // R2: catálogo GLOBAL — todos los proveedores del holding, usables en todos
+  // los proyectos. queryKey global para que Ejecución comparta el mismo caché.
   const { data: providers = [], isLoading } = useQuery<Provider[]>({
-    queryKey: ['providers', projectId],
-    queryFn: () => providersApi.list(projectId),
+    queryKey: ['providers-global'],
+    queryFn: providersGlobalApi.listAll,
+  })
+  const { data: billing = {} } = useQuery({
+    queryKey: ['providers-billing'],
+    queryFn: providersGlobalApi.billing,
   })
 
   const updateMut = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => providersApi.patch(projectId, id, data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['providers', projectId] }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['providers-global'] }); queryClient.invalidateQueries({ queryKey: ['providers', projectId] }) },
     onError: (e) => console.error('Provider update failed:', e),
   })
   const deleteMut = useMutation({
     mutationFn: (id: string) => providersApi.delete(projectId, id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['providers', projectId] }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['providers-global'] }); queryClient.invalidateQueries({ queryKey: ['providers', projectId] }) },
     onError: (e) => console.error('Provider delete failed:', e),
   })
   const createMut = useMutation({
-    mutationFn: (data: Record<string, unknown>) => providersApi.create(projectId, data),
+    mutationFn: (data: Record<string, unknown>) => providersGlobalApi.createGlobal(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['providers', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['providers-global'] })
       setShowAdd(false)
       setNewForm({ name: '', type: '', customType: '', phoneCountry: '+1', phone: '', email: '', license: '', address: '', notes: '' })
     },
@@ -648,7 +670,7 @@ export default function Providers({ projectId }: { projectId: string }) {
           <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2 px-1">{cat}</div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             {list.map(p => (
-              <ProviderCard key={p.id} provider={p} projectId={projectId}
+              <ProviderCard key={p.id} provider={p} projectId={projectId} billing={(billing as any)[p.id]}
                 onUpdate={(id, data) => updateMut.mutate({ id, data })}
                 onDelete={id => deleteMut.mutate(id)} />
             ))}

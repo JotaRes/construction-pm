@@ -587,3 +587,12 @@ export const forecastApi = {
   get: (projectId: string): Promise<ForecastData> =>
     api.get(`/projects/${projectId}/forecast`).then(r => r.data.data),
 }
+
+
+// ============ PROVEEDORES GLOBALES (R2) ============
+export const providersGlobalApi = {
+  listAll: () => api.get('/providers').then(r => r.data.data),
+  createGlobal: (data: Record<string, unknown>) => api.post('/providers', data).then(r => r.data.data),
+  billing: (): Promise<Record<string, Record<string, { projectName: string; total: number; count: number }>>> =>
+    api.get('/providers/billing').then(r => r.data.data),
+}

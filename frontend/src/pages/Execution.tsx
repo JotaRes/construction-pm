@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { phasesApi, itemsApi, itemDocumentsApi, projectsApi } from '../lib/api'
+import { phasesApi, itemsApi, itemDocumentsApi, projectsApi, providersGlobalApi } from '../lib/api'
 import { formatUSD } from '../lib/calculations'
 import type { Phase, Item, ItemEstado, ItemDocument } from '../lib/types'
 import {
@@ -37,7 +37,14 @@ function DocumentSection({ item }: { item: Item }) {
   const queryClient = useQueryClient()
   const [showForm, setShowForm] = useState(false)
   const [docType, setDocType] = useState<'COTIZACION' | 'FACTURA' | 'OTRO'>('COTIZACION')
+  // R2: proveedor del catálogo global, u 'OTRO' para escribir libre
+  const [providerId, setProviderId] = useState('')
   const [vendor, setVendor] = useState('')
+  const { data: allProviders = [] } = useQuery<Array<{ id: string; name: string }>>({
+    queryKey: ['providers-global'],
+    queryFn: providersGlobalApi.listAll,
+    staleTime: 60_000,
+  })
   const [amount, setAmount] = useState('')
   const [notes, setNotes] = useState('')
   const [file, setFile] = useState<File | null>(null)
@@ -54,7 +61,7 @@ function DocumentSection({ item }: { item: Item }) {
       queryClient.invalidateQueries({ queryKey: ['item-docs', item.id] })
       queryClient.invalidateQueries({ queryKey: ['phases'] })
       setShowForm(false)
-      setVendor(''); setAmount(''); setNotes(''); setFile(null)
+      setVendor(''); setProviderId(''); setAmount(''); setNotes(''); setFile(null)
     },
   })
 
@@ -128,6 +135,7 @@ function DocumentSection({ item }: { item: Item }) {
   const handleSubmit = () => {
     const fd = new FormData()
     fd.append('type', docType)
+    if (providerId && providerId !== 'OTRO') fd.append('providerId', providerId)
     fd.append('vendor', vendor)
     fd.append('amount', amount)
     fd.append('notes', notes)
@@ -178,9 +186,19 @@ function DocumentSection({ item }: { item: Item }) {
             ))}
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <input type="text" placeholder="Proveedor / contratista" value={vendor}
-              onChange={e => setVendor(e.target.value)}
-              className="col-span-2 bg-white border border-slate-200 text-slate-800 text-xs px-2.5 py-1.5 rounded-lg focus:outline-none focus:border-[#C8922A]/60 placeholder-slate-400" />
+            {/* R2: elegir proveedor del catálogo global o escribir uno puntual */}
+            <select value={providerId}
+              onChange={e => { setProviderId(e.target.value); if (e.target.value !== 'OTRO') setVendor('') }}
+              className="col-span-2 bg-white border border-slate-200 text-slate-800 text-xs px-2.5 py-1.5 rounded-lg focus:outline-none focus:border-[#C8922A]/60">
+              <option value="">Proveedor (elige del catálogo)…</option>
+              {allProviders.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              <option value="OTRO">Otro (escribir manualmente)</option>
+            </select>
+            {providerId === 'OTRO' && (
+              <input type="text" placeholder="Nombre del proveedor / contratista" value={vendor}
+                onChange={e => setVendor(e.target.value)}
+                className="col-span-2 bg-white border border-slate-200 text-slate-800 text-xs px-2.5 py-1.5 rounded-lg focus:outline-none focus:border-[#C8922A]/60 placeholder-slate-400" />
+            )}
             <input type="number" placeholder="Monto ($)" value={amount}
               onChange={e => setAmount(e.target.value)}
               className="bg-white border border-slate-200 text-slate-800 text-xs px-2.5 py-1.5 rounded-lg focus:outline-none focus:border-[#C8922A]/60 placeholder-slate-400 font-mono" />

@@ -32,7 +32,14 @@ router.get('/:itemId/documents', async (req: Request, res: Response) => {
 
 router.post('/:itemId/documents', upload.single('file'), async (req: Request, res: Response) => {
   try {
-    const { type = 'OTRO', name, vendor, amount, notes } = req.body
+    const { type = 'OTRO', name, vendor, amount, notes, providerId } = req.body
+    // R2: si viene providerId (catálogo global), usamos su nombre como vendor
+    // para consistencia visual y guardamos el vínculo para el récord de facturación.
+    let providerName: string | null = null
+    if (providerId) {
+      const prov = await prisma.provider.findUnique({ where: { id: String(providerId) }, select: { name: true } })
+      providerName = prov?.name ?? null
+    }
     let fileUrl: string | null = null
     if (req.file) {
       const { url } = await uploadToCloudinary(req.file.buffer, 'construction-pm/item-docs', resourceTypeFor(req.file.mimetype))
@@ -45,7 +52,8 @@ router.post('/:itemId/documents', upload.single('file'), async (req: Request, re
         itemId: req.params.itemId,
         type,
         name: docName,
-        vendor: vendor || null,
+        vendor: providerName ?? (vendor || null),
+        providerId: providerId ? String(providerId) : null,
         amount: docAmount,
         fileUrl,
         notes: notes || null,

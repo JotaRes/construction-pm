@@ -48,7 +48,8 @@ export interface ProviderDocument {
 
 export interface Provider {
   id: string
-  projectId: string
+  projectId: string | null
+  project?: { id: string; name: string } | null
   name: string
   type: string | null
   phoneCountry: string | null
