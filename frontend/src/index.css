@@ -581,7 +581,9 @@
 @keyframes pulseRed { 0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.3)} 60%{box-shadow:0 0 0 5px rgba(220,38,38,0)} }
 @keyframes badge-pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.18)} }
 
-.page-content { animation: fadeUp 0.28s var(--ease) both; }
+/* fill-mode backwards (no "both"): evita que el transform del último keyframe
+   quede retenido y atrape modales position:fixed. Ver bloque .page-content abajo. */
+.page-content { animation: fadeUp 0.28s var(--ease) backwards; }
 .badge-urgent { animation: badge-pulse 1.8s ease-in-out infinite; }
 
 /* Skeleton */
@@ -860,8 +862,13 @@ body {
 }
 
 /* ── .page-content — fade-in al montar ── */
+/* IMPORTANTE: fill-mode = backwards (NO "both"). Con "both" el transform del
+   último keyframe (translateY(0)) se retiene para siempre y establece un
+   containing block, lo que ATRAPA cualquier modal position:fixed dentro de la
+   página y lo recorta. Con "backwards" se conserva la animación de entrada
+   pero el transform NO queda pegado tras terminar. */
 .page-content {
-  animation: ds-page-in 0.28s ease both;
+  animation: ds-page-in 0.28s ease backwards;
 }
 @keyframes ds-page-in {
   from { opacity: 0; transform: translateY(8px); }
@@ -869,7 +876,7 @@ body {
 }
 
 /* ── Stagger de tarjetas en grid ── */
-.page-content > * { animation: ds-page-in 0.28s ease both; }
+.page-content > * { animation: ds-page-in 0.28s ease backwards; }
 .page-content > *:nth-child(1) { animation-delay: 0.04s; }
 .page-content > *:nth-child(2) { animation-delay: 0.08s; }
 .page-content > *:nth-child(3) { animation-delay: 0.12s; }

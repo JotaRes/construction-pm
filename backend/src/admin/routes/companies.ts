@@ -8,8 +8,70 @@ import { deleteFromCloudinary } from "../../finance/lib/cloudinary";
 import { parseOrError, companyCreateSchema, companyUpdateSchema } from "../lib/validate";
 import { computeAllCompliance } from "../lib/compliance";
 import { ensureDocTypesSeeded } from "../lib/seedDocTypes";
+import { SPVS } from "../../finance/data/catalogs";
 
 const router = Router();
+
+// Aplica los requisitos por defecto del due diligence a una empresa nueva.
+async function applyDefaultRequirements(companyId: number) {
+  const defaults = await prisma.admDocType.findMany({ where: { defaultRequired: true } });
+  if (defaults.length > 0) {
+    await prisma.admRequirement.createMany({
+      data: defaults.map((t) => ({ companyId, docTypeId: t.id, required: true })),
+      skipDuplicates: true,
+    });
+  }
+}
+
+// Crea una AdmCompany por cada SPV del módulo financiero que aún no tenga
+// empresa administrativa. Si la tabla FinSPV está vacía, usa el catálogo
+// maestro SPVS como respaldo — así el organigrama SIEMPRE puede poblarse.
+// Detecta la holding por el nombre y cuelga de ella las subsidiarias sin padre.
+export async function provisionCompaniesFromSPVs(): Promise<{ imported: number; skipped: number }> {
+  await ensureDocTypesSeeded();
+  const spvs = await prisma.finSPV.findMany({ include: { admCompany: { select: { id: true } } } });
+
+  let imported = 0;
+  let skipped = 0;
+
+  if (spvs.length > 0) {
+    for (const spv of spvs) {
+      if (spv.admCompany) { skipped++; continue; }
+      const company = await prisma.admCompany.create({
+        data: {
+          name: spv.name,
+          role: /holding/i.test(spv.name) ? "HOLDING" : "SUBSIDIARY_OWNER",
+          finSpvId: spv.id,
+          notes: spv.notes ?? null,
+        },
+      });
+      await applyDefaultRequirements(company.id);
+      imported++;
+    }
+  } else {
+    // Respaldo: sin SPVs en la BD → sembrar desde el catálogo maestro.
+    for (const s of SPVS) {
+      const exists = await prisma.admCompany.findFirst({ where: { name: s.name } });
+      if (exists) { skipped++; continue; }
+      const company = await prisma.admCompany.create({
+        data: { name: s.name, role: /holding/i.test(s.name) ? "HOLDING" : "SUBSIDIARY_OWNER" },
+      });
+      await applyDefaultRequirements(company.id);
+      imported++;
+    }
+  }
+
+  // Colgar las subsidiarias sin padre bajo la holding.
+  const holding = await prisma.admCompany.findFirst({ where: { role: "HOLDING" } });
+  if (holding) {
+    await prisma.admCompany.updateMany({
+      where: { role: { not: "HOLDING" }, parentId: null, id: { not: holding.id } },
+      data: { parentId: holding.id },
+    });
+  }
+
+  return { imported, skipped };
+}
 
 // Lista plana de empresas con su SPV vinculado
 router.get("/", async (_req, res) => {
@@ -30,6 +92,10 @@ router.get("/", async (_req, res) => {
 router.get("/orgchart", async (_req, res) => {
   try {
     await ensureDocTypesSeeded();
+    // Poblar el organigrama automáticamente la primera vez (aún sin empresas).
+    if ((await prisma.admCompany.count()) === 0) {
+      await provisionCompaniesFromSPVs();
+    }
     const [companies, compliance] = await Promise.all([
       prisma.admCompany.findMany({
         include: {
@@ -101,40 +167,8 @@ router.post("/", async (req, res) => {
 // solo crea las que aún no tienen empresa administrativa vinculada)
 router.post("/import-spvs", async (_req, res) => {
   try {
-    await ensureDocTypesSeeded();
-    const spvs = await prisma.finSPV.findMany({ include: { admCompany: { select: { id: true } } } });
-    const pending = spvs.filter((s) => !s.admCompany);
-    const defaults = await prisma.admDocType.findMany({ where: { defaultRequired: true } });
-
-    const created = [];
-    for (const spv of pending) {
-      const company = await prisma.admCompany.create({
-        data: {
-          name: spv.name,
-          role: /holding/i.test(spv.name) ? "HOLDING" : "SUBSIDIARY_OWNER",
-          finSpvId: spv.id,
-          notes: spv.notes ?? null,
-        },
-      });
-      if (defaults.length > 0) {
-        await prisma.admRequirement.createMany({
-          data: defaults.map((t) => ({ companyId: company.id, docTypeId: t.id, required: true })),
-          skipDuplicates: true,
-        });
-      }
-      created.push(company);
-    }
-
-    // Si hay holding, colgar automáticamente las subsidiarias sin padre
-    const holding = await prisma.admCompany.findFirst({ where: { role: "HOLDING" } });
-    if (holding) {
-      await prisma.admCompany.updateMany({
-        where: { role: { not: "HOLDING" }, parentId: null },
-        data: { parentId: holding.id },
-      });
-    }
-
-    ok(res, { imported: created.length, skipped: spvs.length - pending.length, companies: created });
+    const result = await provisionCompaniesFromSPVs();
+    ok(res, result);
   } catch (e) { fail(res, e); }
 });
 

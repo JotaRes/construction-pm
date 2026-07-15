@@ -212,9 +212,9 @@ export default function OrgChart() {
 
       {/* Modal crear empresa */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.5)" }} onClick={() => setShowForm(false)}>
+        <div className="fixed inset-0 z-50 flex items-start justify-center p-4 py-8 overflow-y-auto" style={{ background: "rgba(0,0,0,0.5)" }} onClick={() => setShowForm(false)}>
           <div
-            className="rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto"
+            className="rounded-2xl p-6 w-full max-w-lg my-auto"
             style={{ background: "var(--bg-base)", border: "1px solid var(--border)" }}
             onClick={(e) => e.stopPropagation()}
           >
