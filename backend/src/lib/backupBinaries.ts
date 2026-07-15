@@ -20,7 +20,7 @@ const isAllowedHost = (hostname: string) =>
   ALLOWED_HOSTS.some((h) => hostname === h || hostname.endsWith('.' + h))
 
 export interface BinaryTarget {
-  module: 'tecnico' | 'financiero'
+  module: 'tecnico' | 'financiero' | 'administrativo'
   entity: string // descripción legible del registro de origen
   folder: string // subcarpeta dentro de files/<module>/
   name: string // nombre sugerido (puede venir sin extensión)
@@ -131,6 +131,23 @@ export function collectFinanceTargets(snap: any): BinaryTarget[] {
   for (const d of snap.movDocs || []) push(`Doc movimiento #${d.movementId}`, `movimientos`, safe(d.filename, d.id), d.url)
   for (const d of snap.projDocs || []) push(`Doc proyecto #${d.projectId}`, `proyectos`, safe(d.filename, d.id), d.url)
   for (const s of snap.statements || []) push(`Extracto · ${s.filename}`, `extractos`, safe(s.filename, s.id), s.url)
+  return out
+}
+
+export function collectAdminTargets(documents: any[], companies: any[]): BinaryTarget[] {
+  const out: BinaryTarget[] = []
+  const nameOf = new Map((companies || []).map((c: any) => [c.id, c.name]))
+  for (const d of documents || []) {
+    if (!d.url || typeof d.url !== 'string' || !d.url.trim() || d.url.startsWith('local:')) continue
+    const companyName = safe(nameOf.get(d.companyId) || `empresa-${d.companyId}`)
+    out.push({
+      module: 'administrativo',
+      entity: `Doc corporativo · ${nameOf.get(d.companyId) ?? d.companyId}`,
+      folder: companyName,
+      name: safe(d.filename, String(d.id)),
+      url: d.url,
+    })
+  }
   return out
 }
 

@@ -30,6 +30,7 @@ import ChangeOrders from './pages/ChangeOrders'
 import PunchList from './pages/PunchList'
 import Landing from './Landing'
 import FinanceApp from './finance/FinanceApp'
+import AdminApp from './admin/AdminApp'
 import { useTheme } from './hooks/useTheme'
 
 function TechModule() {
@@ -108,6 +109,11 @@ export default function App() {
             <Route path="/finance/*" element={
               <ModuleGate moduleName="finance" moduleLabel="Módulo Financiero">
                 <FinanceApp />
+              </ModuleGate>
+            } />
+            <Route path="/admin/*" element={
+              <ModuleGate moduleName="admin" moduleLabel="Módulo Administrativo">
+                <AdminApp />
               </ModuleGate>
             } />
           </Routes>

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Building2, Wallet, ArrowRight, Download, Loader2 } from 'lucide-react'
+import { Building2, Wallet, Landmark, ArrowRight, Download, Loader2 } from 'lucide-react'
 import { useState } from 'react'
 import { logout } from './components/AuthGate'
 import HomeExecutiveDashboard from './components/HomeExecutiveDashboard'
@@ -138,7 +138,7 @@ export default function Landing() {
           </div>
 
           {/* Module cards */}
-          <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
             {/* Módulo Técnico */}
             <Link
               to="/tech"
@@ -203,6 +203,41 @@ export default function Landing() {
                   reportes ejecutivos y trazabilidad documental.
                 </p>
                 <div className="flex items-center gap-2 text-sm font-medium" style={{ color: '#5eead4' }}>
+                  Entrar al módulo
+                  <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
+                </div>
+              </div>
+            </Link>
+
+            {/* Módulo Administrativo */}
+            <Link
+              to="/admin"
+              className="group relative overflow-hidden rounded-2xl p-8 transition-all duration-300 hover:-translate-y-1"
+              style={{
+                background: 'linear-gradient(135deg, #2A1E3F 0%, #3E2C5C 100%)',
+                boxShadow: '0 10px 30px -10px rgba(42, 30, 63, 0.5)',
+              }}
+            >
+              <div
+                className="absolute top-0 right-0 w-32 h-32 rounded-full opacity-10 -mt-8 -mr-8"
+                style={{ background: '#8b5cf6' }}
+              />
+              <div className="relative">
+                <div
+                  className="w-14 h-14 rounded-xl flex items-center justify-center mb-6"
+                  style={{ background: 'rgba(139,92,246,0.10)', border: '1px solid rgba(139,92,246,0.22)' }}
+                >
+                  <Landmark size={26} color="#c4b5fd" />
+                </div>
+                <div className="text-xs font-mono uppercase tracking-widest mb-2" style={{ color: '#c4b5fd' }}>
+                  Módulo 03
+                </div>
+                <h2 className="text-2xl font-semibold text-white mb-3">Administrativo</h2>
+                <p className="text-sm leading-relaxed mb-6" style={{ color: 'rgba(255,255,255,0.7)' }}>
+                  Gobierno corporativo: organigrama del holding, expediente jurídico y documental
+                  de cada empresa, cumplimiento, alertas de vencimiento y tareas.
+                </p>
+                <div className="flex items-center gap-2 text-sm font-medium" style={{ color: '#c4b5fd' }}>
                   Entrar al módulo
                   <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
                 </div>

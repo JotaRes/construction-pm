@@ -17,7 +17,7 @@ import axios from 'axios'
 const STORAGE_KEY = (m: string) => `ra_module_unlocked_${m}`
 
 interface Props {
-  moduleName: 'tech' | 'finance'
+  moduleName: 'tech' | 'finance' | 'admin'
   moduleLabel: string
   children: ReactNode
 }
@@ -58,8 +58,11 @@ export default function ModuleGate({ moduleName, moduleLabel, children }: Props)
   if (unlocked) return <>{children}</>
 
   const isFinance = moduleName === 'finance'
-  const accent = isFinance ? '#0d9488' : 'var(--brand-gold)'
-  const bg = isFinance
+  const isAdmin = moduleName === 'admin'
+  const accent = isAdmin ? '#8b5cf6' : isFinance ? '#0d9488' : 'var(--brand-gold)'
+  const bg = isAdmin
+    ? 'linear-gradient(135deg, #2A1E3F 0%, #3E2C5C 100%)'
+    : isFinance
     ? 'linear-gradient(135deg, #0F2027 0%, #1B3640 100%)'
     : 'linear-gradient(135deg, var(--brand-teal) 0%, #3A5F68 100%)'
 

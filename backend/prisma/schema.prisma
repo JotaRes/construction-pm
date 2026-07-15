@@ -500,6 +500,9 @@ model FinSPV {
   createdAt DateTime @default(now())
   accounts  FinAccount[]
   projects  FinProject[]
+  // Vínculo con el módulo administrativo: cada SPV puede tener su empresa
+  // en el organigrama corporativo (1:1, opcional, no destructivo)
+  admCompany AdmCompany?
 
   @@map("fin_spv")
 }
@@ -852,5 +855,119 @@ model FinActivityLog {
   createdAt DateTime @default(now())
 
   @@map("fin_activity_log")
+}
+
+// ============================================================
+// ============================================================
+// MÓDULO ADMINISTRATIVO — GOBIERNO CORPORATIVO
+// Modelos prefijados con `Adm`, tablas con prefijo `adm_`
+// (misma convención que el módulo financiero `Fin` / `fin_`)
+// ============================================================
+// ============================================================
+
+// Empresa del grupo: la holding y sus subsidiarias.
+// parentId construye el organigrama (holding arriba, subsidiarias abajo).
+// finSpvId vincula (opcional, 1:1) con el SPV del módulo financiero —
+// una sola fuente de verdad, sin duplicar empresas.
+model AdmCompany {
+  id               Int       @id @default(autoincrement())
+  name             String
+  legalName        String?
+  role             String    @default("SUBSIDIARY_OWNER") // HOLDING | PROPERTY_MANAGER | SUBSIDIARY_OWNER | OTHER
+  entityType       String?   @default("LLC")
+  stateOfFormation String?
+  ein              String?
+  formationDate    DateTime?
+  registeredAgent  String?
+  address          String?
+  status           String    @default("ACTIVE") // ACTIVE | INACTIVE | DISSOLVED
+  notes            String?
+
+  parentId Int?
+  parent   AdmCompany?  @relation("AdmCompanyHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children AdmCompany[] @relation("AdmCompanyHierarchy")
+
+  finSpvId Int?    @unique
+  finSpv   FinSPV? @relation(fields: [finSpvId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  documents    AdmDocument[]
+  requirements AdmRequirement[]
+  tasks        AdmTask[]
+
+  @@map("adm_company")
+}
+
+// Catálogo de tipos documentales del due diligence corporativo
+// (articles of organization, operating agreement, EIN, annual report,
+// good standing, pólizas, certificados bancarios, hojas de vida, etc.)
+model AdmDocType {
+  id              Int     @id @default(autoincrement())
+  code            String  @unique
+  name            String
+  category        String  // FORMACION | FISCAL | BANCARIO | SEGUROS | CUMPLIMIENTO | PROPIEDAD | PERSONAL | LEGAL | OTRO
+  description     String?
+  defaultRequired Boolean @default(false) // se exige por defecto a toda empresa
+  hasExpiry       Boolean @default(false) // requiere fecha de vencimiento/renovación
+  renewalMonths   Int?    // frecuencia típica de renovación (12 = anual)
+  sortOrder       Int     @default(0)
+
+  documents    AdmDocument[]
+  requirements AdmRequirement[]
+
+  @@map("adm_doc_type")
+}
+
+// Documento del expediente digital de una empresa (archivo en Cloudinary)
+model AdmDocument {
+  id         Int         @id @default(autoincrement())
+  companyId  Int
+  company    AdmCompany  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  docTypeId  Int?
+  docType    AdmDocType? @relation(fields: [docTypeId], references: [id], onDelete: SetNull)
+  filename   String
+  url        String
+  publicId   String?
+  mimetype   String?
+  size       Int?
+  issueDate  DateTime?
+  expiryDate DateTime? // motor de alertas: vencido / por vencer
+  notes      String?
+  uploadedAt DateTime  @default(now())
+
+  @@map("adm_document")
+}
+
+// Requisito documental por empresa (checklist de cumplimiento):
+// qué tipos de documento DEBE tener al día cada empresa.
+model AdmRequirement {
+  id        Int        @id @default(autoincrement())
+  companyId Int
+  company   AdmCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  docTypeId Int
+  docType   AdmDocType @relation(fields: [docTypeId], references: [id], onDelete: Cascade)
+  required  Boolean    @default(true)
+  notes     String?
+
+  @@unique([companyId, docTypeId])
+  @@map("adm_requirement")
+}
+
+// Tarea administrativa (opcionalmente ligada a una empresa)
+model AdmTask {
+  id          Int         @id @default(autoincrement())
+  companyId   Int?
+  company     AdmCompany? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  dueDate     DateTime?
+  priority    String      @default("media") // alta | media | baja
+  status      String      @default("pendiente") // pendiente | en_progreso | completada
+  createdAt   DateTime    @default(now())
+  completedAt DateTime?
+
+  @@map("adm_task")
 }
 

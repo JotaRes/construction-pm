@@ -52,6 +52,13 @@ import finLiquidity from './finance/routes/liquidity'
 import finTaxPackage from './finance/routes/taxPackage'
 import { requireAuth } from './finance/lib/auth'
 
+// === ADMIN MODULE ROUTES (gobierno corporativo) ===
+import admCompanies from './admin/routes/companies'
+import admDocTypes from './admin/routes/docTypes'
+import admDocuments from './admin/routes/documents'
+import admTasks from './admin/routes/tasks'
+import admDashboard from './admin/routes/dashboard'
+
 // Red de seguridad: un archivo corrupto (p.ej. imagen dañada en OCR) puede hacer
 // abortar el módulo WASM de tesseract con un error ASÍNCRONO no atrapable por
 // try/catch. Estos guards registran el fallo y MANTIENEN el servidor vivo en vez
@@ -209,6 +216,15 @@ app.use('/api/finance/cashflow', finCashflow)
 app.use('/api/finance/project-returns', finProjectReturns)
 app.use('/api/finance/liquidity-projection', finLiquidity)
 app.use('/api/finance/tax-package', finTaxPackage)
+
+// === ADMIN MODULE — prefijo /api/admin/* ===
+// Gobierno corporativo: organigrama, expediente digital, cumplimiento,
+// tareas y alertas. Auth compartida vía el gate global de /api/*.
+app.use('/api/admin/companies', admCompanies)
+app.use('/api/admin/doc-types', admDocTypes)
+app.use('/api/admin', admDocuments)      // /companies/:id/documents + /documents/:id
+app.use('/api/admin/tasks', admTasks)
+app.use('/api/admin/dashboard', admDashboard)
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), version: 'v2-with-module-gate' })
