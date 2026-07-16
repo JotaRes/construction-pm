@@ -140,6 +140,9 @@ export const drawsApi = {
   },
   deleteLenderExcel: (projectId: string) =>
     api.delete(`/projects/${projectId}/draws/lender-excel`).then(r => r.data.data as DrawsValidation),
+  // Sincroniza el desembolsado (netWire) por draw desde el Excel YA cargado (sin resubir).
+  syncFromExcel: (projectId: string) =>
+    api.post(`/projects/${projectId}/draws/sync-from-excel`).then(r => r.data as { data: DrawsValidation; drawsApplied?: number; error: string | null }),
   // Reparación one-time: convierte contribuciones ACUMULADAS por ítem a DELTAS reales.
   repairCumulative: (projectId: string) =>
     api.post(`/projects/${projectId}/draws/repair-cumulative`).then(r => r.data.data as { linesFixed: number; contribsFixed: number; totalAprobado: number }),

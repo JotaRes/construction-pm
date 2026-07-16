@@ -2124,6 +2124,33 @@ router.delete('/:projectId/draws/lender-excel', async (req: Request, res: Respon
   }
 })
 
+// POST sincronizar el DESEMBOLSADO (netWire) por draw desde el Excel YA cargado
+// (drawsExcelUrl), sin necesidad de volver a subirlo. Re-descarga el Excel del
+// lender, lo lee fila por fila y puebla netWire + Draw Amount en cada draw.
+// Idempotente. Es lo que hace que "Total Desembolsado" deje de estar en 0.
+router.post('/:projectId/draws/sync-from-excel', async (req: Request, res: Response) => {
+  try {
+    const project = await prisma.project.findUnique({
+      where: { id: req.params.projectId },
+      select: { drawsExcelUrl: true },
+    })
+    if (!project?.drawsExcelUrl) {
+      return res.status(400).json({ data: null, error: 'No hay Excel del lender cargado. Súbelo primero en esta sección.' })
+    }
+    const resp = await fetch(project.drawsExcelUrl)
+    if (!resp.ok) {
+      return res.status(502).json({ data: null, error: `No se pudo descargar el Excel almacenado (HTTP ${resp.status}).` })
+    }
+    const buf = Buffer.from(await resp.arrayBuffer())
+    const rows = await parseDrawCalculationRows(buf)
+    const drawsApplied = await applyDrawExcelRows(req.params.projectId, rows)
+    const validation = await computeDrawsValidation(req.params.projectId, null)
+    res.json({ data: validation, drawsApplied, error: null })
+  } catch (e) {
+    res.status(500).json({ data: null, error: String(e) })
+  }
+})
+
 // ── POST reparar contribuciones ACUMULADAS → DELTAS ─────────────────────────
 // Arregla el histórico donde cada contribución guardó el ACUMULADO del ítem en
 // vez del delta. Por cada línea, ordena sus contribuciones por drawNumber y

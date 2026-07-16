@@ -29,6 +29,14 @@ if (typeof window !== 'undefined' && 'caches' in window) {
 
 // === Registrar Service Worker (solo HTTPS producción) ===
 if (typeof window !== 'undefined' && 'serviceWorker' in navigator && location.protocol === 'https:') {
+  // Auto-actualización: cuando un SW nuevo toma control (tras un deploy), recargar
+  // UNA vez para que el PWA instalado no quede pegado a una versión vieja.
+  let refreshing = false
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshing) return
+    refreshing = true
+    window.location.reload()
+  })
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').then((reg) => {
       reg.update().catch(() => {})
@@ -39,6 +47,8 @@ if (typeof window !== 'undefined' && 'serviceWorker' in navigator && location.pr
             if ('caches' in window) {
               caches.keys().then((keys) => keys.forEach((k) => caches.delete(k)))
             }
+            // Forzar que el SW nuevo tome control inmediatamente → controllerchange → reload
+            nw.postMessage({ type: 'SKIP_WAITING' })
           }
         })
       })

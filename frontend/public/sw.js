@@ -1,12 +1,17 @@
-// Service worker minimalista para Restrepo Acosta — versión 3
+// Service worker minimalista para Restrepo Acosta — versión 4
 // IMPORTANTE: el HTML SIEMPRE va a la red (network-only) para evitar
 // que un index.html cacheado apunte a bundles JS viejos que ya no existen
 // (Vite genera hashes nuevos en cada build).
-const VERSION = 'ra-sistema-v3'
+const VERSION = 'ra-sistema-v4'
 
 self.addEventListener('install', (event) => {
   // Skip waiting → activación inmediata
   self.skipWaiting()
+})
+
+// El cliente (main.tsx) pide activar el SW nuevo de inmediato tras un deploy.
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting()
 })
 
 self.addEventListener('activate', (event) => {

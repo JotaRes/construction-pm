@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { drawsApi, drawParseApi, constructionBudgetApi, projectsApi, type DrawLineApproval, type DrawsValidation } from '../lib/api'
 import { formatUSD, formatDate } from '../lib/calculations'
@@ -670,6 +670,32 @@ function LenderExcelPanel({ projectId }: { projectId: string }) {
     },
   })
 
+  // Sincroniza el desembolsado (netWire) por draw desde el Excel YA cargado.
+  const syncMut = useMutation({
+    mutationFn: () => drawsApi.syncFromExcel(projectId),
+    onSuccess: (res) => {
+      const applied = (res as any)?.drawsApplied ?? 0
+      toast.success(applied > 0 ? `Desembolso sincronizado en ${applied} draw(s) desde el Excel` : 'Excel leído — sin filas de desembolso nuevas')
+      queryClient.invalidateQueries({ queryKey: ['draws-validation', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['draws', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['project', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['project-dashboard', projectId] })
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.error || 'Error al sincronizar desde el Excel'),
+  })
+
+  // Auto-sincronización: si hay Excel cargado pero el desembolsado total está en 0,
+  // se dispara una sola vez para poblar el netWire sin que el usuario resuba nada.
+  const autoSyncedRef = useRef(false)
+  const hasExcel = !!validation?.file?.url
+  const totalWiredNow = validation?.system?.totalWired ?? 0
+  useEffect(() => {
+    if (hasExcel && totalWiredNow === 0 && !autoSyncedRef.current && !syncMut.isPending) {
+      autoSyncedRef.current = true
+      syncMut.mutate()
+    }
+  }, [hasExcel, totalWiredNow]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const modeMut = useMutation({
     mutationFn: (m: 'ACUMULADO' | 'INCREMENTAL') => projectsApi.patch(projectId, { drawValuesMode: m }),
     onSuccess: () => {
@@ -700,6 +726,11 @@ function LenderExcelPanel({ projectId }: { projectId: string }) {
               <a href={file.url} target="_blank" rel="noreferrer" className="text-xs text-blue-700 hover:underline flex items-center gap-1">
                 <FileText className="w-3 h-3" />{file.name || 'Excel'}
               </a>
+              <button onClick={() => syncMut.mutate()} disabled={syncMut.isPending}
+                className="text-[11px] font-medium text-emerald-700 hover:text-emerald-800 disabled:opacity-40 flex items-center gap-1"
+                title="Vuelve a leer el Excel cargado y puebla el desembolsado (netWire) de cada draw">
+                {syncMut.isPending ? 'Sincronizando…' : '↻ Sincronizar desembolso'}
+              </button>
               <button onClick={() => delMut.mutate()} disabled={delMut.isPending} className="text-[11px] text-slate-400 hover:text-red-500 disabled:opacity-40">Eliminar</button>
             </>
           )}
