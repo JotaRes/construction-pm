@@ -137,6 +137,10 @@ model Phase {
   name      String
   groupName String
   order     Int
+  // Enlace fase ↔ Construction Budget: uno o varios divCode de BudgetLine
+  // (coma-separados). Se auto-completa por nombre/código y es editable.
+  // Habilita la comparativa por fase: ejecutado vs presupuestado del budget.
+  budgetDivCode String?
   items     Item[]
 }
 
@@ -162,6 +166,21 @@ model Item {
   observaciones      String?
   order              Int
   documents          ItemDocument[]
+  subactivities      SubActivity[]
+}
+
+// Subactividades de una actividad (Item) de Ejecución.
+// El "valor" es EJECUTADO (gastado). Cuando una actividad tiene subactividades,
+// su Item.valorEjecutado = suma de las subactividades (roll-up guardado en el
+// backend), de modo que fases, dashboard y alertas lo reflejan sin cambios.
+model SubActivity {
+  id             String   @id @default(cuid())
+  itemId         String
+  item           Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  description    String
+  valorEjecutado Float    @default(0)
+  order          Int      @default(0)
+  createdAt      DateTime @default(now())
 }
 
 model Draw {

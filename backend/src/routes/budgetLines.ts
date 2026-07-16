@@ -9,6 +9,16 @@ const pdfParse = require('pdf-parse') as (buffer: Buffer) => Promise<{ text: str
 
 const router = Router()
 
+// Mantiene Project.constructionBudget = Σ valorInicial de las BudgetLines.
+// Así el "Budget" del proyecto se llena solo desde el Construction Budget cargado
+// (no manual) y habilita %APR y el factor de desembolso en todo el sistema.
+export async function syncConstructionBudget(projectId: string) {
+  const lines = await prisma.budgetLine.findMany({
+    where: { projectId }, select: { valorInicial: true },
+  })
+  const total = lines.reduce((s, l) => s + l.valorInicial, 0)
+  await prisma.project.update({ where: { id: projectId }, data: { constructionBudget: total } })
+}
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -63,6 +73,8 @@ router.patch('/:projectId/construction-budget/:id', async (req: Request, res: Re
       where: { id: req.params.id },
       data,
     })
+    // Si cambió el valorInicial, refrescar el Budget del proyecto.
+    if ('valorInicial' in data) await syncConstructionBudget(req.params.projectId)
     res.json({ data: line, error: null })
   } catch (e) {
     res.status(500).json({ data: null, error: String(e) })
@@ -92,6 +104,7 @@ router.post('/:id/construction-budget/init', async (req: Request, res: Response)
         },
       })
     }
+    await syncConstructionBudget(req.params.id)
     res.json({ data: { count: order }, error: null })
   } catch (e) {
     res.status(500).json({ data: null, error: String(e) })
@@ -360,6 +373,7 @@ router.post('/:id/construction-budget/import-from-pdf', upload.single('pdf'), as
         },
       })
     }
+    await syncConstructionBudget(projectId)
 
     // FIX: guardar el PDF importado en Cloudinary + registrarlo como ProjectFile
     // (kind construction_budget) para que APAREZCA en la sección Archivos.

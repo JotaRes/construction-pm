@@ -1,8 +1,8 @@
 import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { phasesApi, itemsApi, itemDocumentsApi, projectsApi, providersGlobalApi } from '../lib/api'
+import { phasesApi, itemsApi, itemDocumentsApi, projectsApi, providersGlobalApi, subactivitiesApi } from '../lib/api'
 import { formatUSD } from '../lib/calculations'
-import type { Phase, Item, ItemEstado, ItemDocument } from '../lib/types'
+import type { Phase, Item, ItemEstado, ItemDocument, SubActivity } from '../lib/types'
 import {
   ChevronDown, ChevronRight, X, Calendar, User, FileText,
   Plus, Trash2, Paperclip, Upload, AlertTriangle,
@@ -271,6 +271,87 @@ function DocumentSection({ item }: { item: Item }) {
   )
 }
 
+// Subactividades de una actividad: cada una con descripción + valor ejecutado.
+// El ejecutado de la actividad = suma de subactividades (roll-up en el backend).
+function SubactivitiesEditor({ item }: { item: Item }) {
+  const qc = useQueryClient()
+  const [desc, setDesc] = useState('')
+  const [valor, setValor] = useState('')
+
+  const { data: subs = [] } = useQuery<SubActivity[]>({
+    queryKey: ['subactivities', item.id],
+    queryFn: () => subactivitiesApi.list(item.id),
+    initialData: item.subactivities ?? [],
+  })
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ['subactivities', item.id] })
+    qc.invalidateQueries({ queryKey: ['phases'] })
+  }
+  const createMut = useMutation({
+    mutationFn: (data: Record<string, unknown>) => subactivitiesApi.create(item.id, data),
+    onSuccess: () => { setDesc(''); setValor(''); invalidate() },
+  })
+  const updateMut = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => subactivitiesApi.update(id, data),
+    onSuccess: invalidate,
+  })
+  const deleteMut = useMutation({
+    mutationFn: (id: string) => subactivitiesApi.delete(id),
+    onSuccess: invalidate,
+  })
+
+  const total = subs.reduce((s, x) => s + (x.valorEjecutado || 0), 0)
+  const add = () => {
+    if (!desc.trim()) return
+    createMut.mutate({ description: desc.trim(), valorEjecutado: parseFloat(valor) || 0 })
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-[10px] text-slate-400 uppercase tracking-wider">Subactividades</div>
+        {subs.length > 0 && <div className="text-[10px] font-mono text-[var(--brand-teal)]">Suma ejecutada: {formatUSD(total)}</div>}
+      </div>
+      {subs.length > 0 && (
+        <div className="space-y-1.5 mb-2">
+          {subs.map(sub => (
+            <div key={sub.id} className="flex items-center gap-2 bg-white rounded-lg px-2 py-1.5 border border-slate-200">
+              <input defaultValue={sub.description}
+                onBlur={e => { const v = e.target.value.trim(); if (v && v !== sub.description) updateMut.mutate({ id: sub.id, data: { description: v } }) }}
+                onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+                className="flex-1 min-w-0 bg-transparent text-xs text-slate-700 focus:outline-none" />
+              <input type="number" defaultValue={sub.valorEjecutado || ''}
+                onBlur={e => { const v = parseFloat(e.target.value) || 0; if (v !== sub.valorEjecutado) updateMut.mutate({ id: sub.id, data: { valorEjecutado: v } }) }}
+                onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+                placeholder="0"
+                className="w-24 bg-slate-50 border border-slate-200 text-xs font-mono text-right text-slate-800 rounded px-1.5 py-0.5 focus:outline-none focus:border-[var(--brand-gold)]" />
+              <button onClick={() => deleteMut.mutate(sub.id)} title="Eliminar subactividad" className="text-slate-400 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="flex items-center gap-2">
+        <input value={desc} onChange={e => setDesc(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') add() }}
+          placeholder="Descripción de la subactividad"
+          className="flex-1 min-w-0 bg-white border border-slate-200 text-xs text-slate-700 rounded-lg px-2 py-1.5 focus:outline-none focus:border-[var(--brand-gold)] placeholder-slate-400" />
+        <input type="number" value={valor} onChange={e => setValor(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') add() }}
+          placeholder="Valor"
+          className="w-24 bg-white border border-slate-200 text-xs font-mono text-right text-slate-700 rounded-lg px-1.5 py-1.5 focus:outline-none focus:border-[var(--brand-gold)] placeholder-slate-400" />
+        <button onClick={add} disabled={!desc.trim() || createMut.isPending} title="Agregar subactividad"
+          className="flex items-center px-2 py-1.5 bg-[var(--brand-gold)] hover:bg-[#E0AD4F] text-white rounded-lg disabled:opacity-40">
+          <Plus className="w-3.5 h-3.5" />
+        </button>
+      </div>
+      {subs.length > 0 && (
+        <p className="text-[10px] text-slate-400 mt-1.5">El ejecutado de la actividad se calcula como la suma de sus subactividades.</p>
+      )}
+    </div>
+  )
+}
+
 function ItemPanel({ item, onUpdate, onClose }: {
   item: Item
   onUpdate: (id: string, data: Record<string, unknown>) => void
@@ -342,13 +423,20 @@ function ItemPanel({ item, onUpdate, onClose }: {
                 <div className="text-sm font-mono text-slate-700">{formatUSD(item.valorPresupuestado)}</div>
               </div>
               <div className="bg-white rounded-lg p-3">
-                <div className="text-[10px] text-slate-400 mb-1">Ejecutado</div>
-                <input type="number" defaultValue={item.valorEjecutado || ''}
-                  onBlur={e => onUpdate(item.id, { valorEjecutado: parseFloat(e.target.value) || 0 })}
-                  onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
-                  placeholder="0"
-                  className="w-full bg-transparent text-sm font-mono text-[var(--brand-teal)] focus:outline-none placeholder-slate-400" />
+                <div className="text-[10px] text-slate-400 mb-1">Ejecutado{(item.subactivities?.length ?? 0) > 0 ? ' (Σ subactividades)' : ''}</div>
+                {(item.subactivities?.length ?? 0) > 0 ? (
+                  <div className="text-sm font-mono text-[var(--brand-teal)]" title="Suma de las subactividades — edítalas abajo">{formatUSD(item.valorEjecutado)}</div>
+                ) : (
+                  <input type="number" defaultValue={item.valorEjecutado || ''}
+                    onBlur={e => onUpdate(item.id, { valorEjecutado: parseFloat(e.target.value) || 0 })}
+                    onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+                    placeholder="0"
+                    className="w-full bg-transparent text-sm font-mono text-[var(--brand-teal)] focus:outline-none placeholder-slate-400" />
+                )}
               </div>
+            </div>
+            <div className="mt-3">
+              <SubactivitiesEditor item={item} />
             </div>
             {item.valorPresupuestado > 0 && item.valorEjecutado > 0 && (
               <div className={`mt-2 text-xs font-mono px-2 py-1 rounded ${item.valorEjecutado > item.valorPresupuestado ? 'text-red-400 bg-red-500/10' : 'text-emerald-400 bg-emerald-500/10'}`}>
@@ -507,11 +595,19 @@ function ItemRow({ item, onUpdate, onOpenPanel, onDelete }: {
         <span className="text-[11px] font-mono text-slate-600">{formatUSD(item.valorPresupuestado)}</span>
       </td>
       <td className="px-2 py-2.5 w-24 text-right border-l border-slate-100" onClick={e => e.stopPropagation()}>
-        <input type="number" defaultValue={item.valorEjecutado || ''}
-          onBlur={e => onUpdate(item.id, { valorEjecutado: parseFloat(e.target.value) || 0 })}
-          onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
-          placeholder="—"
-          className="w-full bg-white border border-slate-200 text-[11px] font-mono font-semibold text-right text-slate-900 rounded px-1.5 py-1 focus:outline-none focus:border-[var(--brand-gold)] focus:ring-2 focus:ring-[var(--brand-gold)]/20 placeholder-slate-300" />
+        {(item.subactivities?.length ?? 0) > 0 ? (
+          <button onClick={() => onOpenPanel(item)} title={`${item.subactivities!.length} subactividad(es) — suma. Clic para editar`}
+            className="w-full flex items-center justify-end gap-1 text-[11px] font-mono font-semibold text-[var(--brand-teal)]">
+            <span className="text-[8px] px-1 rounded bg-teal-100 text-teal-700">Σ{item.subactivities!.length}</span>
+            {formatUSD(item.valorEjecutado)}
+          </button>
+        ) : (
+          <input type="number" defaultValue={item.valorEjecutado || ''}
+            onBlur={e => onUpdate(item.id, { valorEjecutado: parseFloat(e.target.value) || 0 })}
+            onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+            placeholder="—"
+            className="w-full bg-white border border-slate-200 text-[11px] font-mono font-semibold text-right text-slate-900 rounded px-1.5 py-1 focus:outline-none focus:border-[var(--brand-gold)] focus:ring-2 focus:ring-[var(--brand-gold)]/20 placeholder-slate-300" />
+        )}
       </td>
       <td className="px-2 py-2.5 w-20 text-right border-l border-slate-100" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-end gap-1.5">
@@ -540,13 +636,16 @@ function ItemRow({ item, onUpdate, onOpenPanel, onDelete }: {
   )
 }
 
-function PhaseSection({ phase, defaultOpen = false, onUpdate, onOpenPanel, onCreate, onDelete }: {
+function PhaseSection({ phase, defaultOpen = false, onUpdate, onOpenPanel, onCreate, onDelete, summary, divisions, onMapBudget }: {
   defaultOpen?: boolean
   phase: Phase
   onUpdate: (id: string, data: Record<string, unknown>) => void
   onOpenPanel: (item: Item) => void
   onCreate: (phaseId: string, activity?: string) => void
   onDelete: (item: Item) => void
+  summary?: { budgetTotal: number; ejecutadoTotal: number; budgetDivCode: string | null; variancePct: number }
+  divisions: Array<{ divCode: string; divName: string; total: number }>
+  onMapBudget: (phaseId: string, code: string | null) => void
 }) {
   // FASE 1: colapsadas por defecto para una vista más limpia y amigable
   const [open, setOpen] = useState(defaultOpen)
@@ -579,6 +678,36 @@ function PhaseSection({ phase, defaultOpen = false, onUpdate, onOpenPanel, onCre
       </button>
       {open && (
         <div className="mt-0.5 bg-slate-50/60 rounded-b-xl border border-slate-200/30 border-t-0 overflow-hidden">
+          {/* Comparativa vs Construction Budget cargado (presupuestado vs ejecutado) */}
+          {divisions.length > 0 && (() => {
+            const bdg = summary?.budgetTotal ?? 0
+            const eje = summary?.ejecutadoTotal ?? ejecutado
+            const dev = bdg > 0 ? ((eje - bdg) / bdg) * 100 : 0
+            return (
+              <div className="flex items-center flex-wrap gap-x-5 gap-y-1 px-4 py-2 bg-white border-b border-slate-200 text-[11px]">
+                <span className="text-slate-400 uppercase tracking-wider text-[9px]">Vs. Construction Budget</span>
+                <span className="text-slate-500">Presupuestado: <b className="font-mono text-slate-700">{bdg > 0 ? formatUSD(bdg) : '—'}</b></span>
+                <span className="text-slate-500">Ejecutado: <b className="font-mono text-[var(--brand-teal)]">{formatUSD(eje)}</b></span>
+                {bdg > 0 && (
+                  <span className={`font-mono font-semibold ${eje > bdg ? 'text-red-500' : 'text-emerald-600'}`}>
+                    {dev > 0 ? '+' : ''}{dev.toFixed(0)}% {eje > bdg ? '(sobre)' : '(bajo)'}
+                  </span>
+                )}
+                <label className="ml-auto flex items-center gap-1.5 text-slate-400">
+                  <span className="text-[9px] uppercase">División del budget</span>
+                  <select
+                    value={summary?.budgetDivCode ?? ''}
+                    onChange={e => onMapBudget(phase.id, e.target.value || null)}
+                    className="bg-white border border-slate-200 text-[11px] text-slate-700 rounded px-1.5 py-1 focus:outline-none focus:border-[var(--brand-gold)]"
+                    title="Enlaza esta fase con una división de tu Construction Budget"
+                  >
+                    <option value="">Auto (por código)</option>
+                    {divisions.map(d => <option key={d.divCode} value={d.divCode}>{d.divCode} · {d.divName} ({formatUSD(d.total)})</option>)}
+                  </select>
+                </label>
+              </div>
+            )
+          })()}
           <table className="w-full">
             <thead>
               <tr className="border-b-2 border-slate-300 bg-slate-100">
@@ -636,6 +765,22 @@ export default function Execution({ projectId }: { projectId: string }) {
   const { data: phases = [], isLoading } = useQuery<Phase[]>({
     queryKey: ['phases', projectId],
     queryFn: () => phasesApi.list(projectId),
+  })
+
+  // Comparativa por fase vs Construction Budget cargado (presupuestado vs ejecutado)
+  const { data: phaseSummary = [] } = useQuery({
+    queryKey: ['phases-summary', projectId],
+    queryFn: () => phasesApi.summary(projectId),
+  })
+  const { data: budgetDivisions = [] } = useQuery({
+    queryKey: ['budget-divisions', projectId],
+    queryFn: () => phasesApi.budgetDivisions(projectId),
+  })
+  const summaryById = new Map(phaseSummary.map(s => [s.id, s]))
+  const setBudgetLinkMut = useMutation({
+    mutationFn: ({ phaseId, code }: { phaseId: string; code: string | null }) =>
+      phasesApi.setBudgetLink(projectId, phaseId, code),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['phases-summary', projectId] }),
   })
 
   const updateMutation = useMutation({
@@ -772,6 +917,9 @@ export default function Execution({ projectId }: { projectId: string }) {
             onOpenPanel={setPanelItem}
             onCreate={(phaseId, activity) => createMutation.mutate({ phaseId, activity })}
             onDelete={item => handleDeleteItem(item)}
+            summary={summaryById.get(phase.id)}
+            divisions={budgetDivisions}
+            onMapBudget={(phaseId, code) => setBudgetLinkMut.mutate({ phaseId, code })}
           />
         ))}
         {filteredPhases.length === 0 && (

@@ -712,6 +712,123 @@ function parseDrawExcelTabular(sheetRows: unknown[][]): Record<string, unknown> 
   return out
 }
 
+// ── Parser POR DRAW (una fila por draw) de la hoja "Draw Calculation" ──────
+// A diferencia de parseDrawExcelTabular (que lee solo la primera fila), lee
+// TODAS las filas de datos del Excel del lender y devuelve, por cada draw, su
+// Draw Amount (montoSolicitado) y Net Wire (desembolsado real). Es la fuente
+// para poblar el netWire de cada draw y calcular el "Total Desembolsado".
+export interface DrawExcelRow {
+  drawNumber: number | null
+  montoSolicitado: number | null
+  netWire: number | null
+  elegibleTrinity: number | null
+  porcentajeFunded: number | null
+}
+
+function parseDrawCalculationRowsFromSheet(sheetRows: unknown[][]): DrawExcelRow[] {
+  if (!sheetRows.length) return []
+  const realRows = sheetRows.slice(0, Math.min(sheetRows.length, 200)).map(r => r ?? [])
+
+  // Header row: >=4 celdas de texto seguida por una fila con >=2 numéricas.
+  let headerIdx = -1
+  for (let i = 0; i < realRows.length - 1; i++) {
+    const headerRow = realRows[i]
+    const dataRow = realRows[i + 1]
+    if (!headerRow.length || !dataRow.length) continue
+    const textCount = headerRow.filter(v => typeof v === 'string' && v.trim().length > 1).length
+    const numCount = dataRow.filter(v => typeof v === 'number' && Number.isFinite(v)).length
+    if (textCount >= 4 && numCount >= 2) { headerIdx = i; break }
+  }
+  if (headerIdx === -1) return []
+  const headerRow = realRows[headerIdx]
+
+  // Section row (Pre/Post) para desambiguar UPB, etc.
+  let sectionRow: unknown[] | null = null
+  for (let i = headerIdx - 1; i >= 0 && i >= headerIdx - 3; i--) {
+    const candidate = realRows[i]
+    if (candidate.some(v => typeof v === 'string' && /pre[-\s]?draw|post[-\s]?draw/i.test(v))) { sectionRow = candidate; break }
+  }
+
+  // Mapa columna → campo (una sola vez).
+  const colField: (string | null)[] = []
+  for (let c = 0; c < headerRow.length; c++) {
+    const label = headerRow[c]
+    if (typeof label !== 'string' || !label.trim()) { colField[c] = null; continue }
+    let section: string | null = null
+    if (sectionRow) {
+      for (let cc = c; cc >= 0; cc--) {
+        const sv = sectionRow[cc]
+        if (typeof sv === 'string' && sv.trim()) { if (/post/i.test(sv)) section = 'post'; else if (/pre/i.test(sv)) section = 'pre'; break }
+      }
+    }
+    colField[c] = mapHeaderToField(label, section)
+  }
+
+  const out: DrawExcelRow[] = []
+  for (let r = headerIdx + 1; r < realRows.length; r++) {
+    const dataRow = realRows[r]
+    if (!dataRow.length || !dataRow.some(v => typeof v === 'number' && Number.isFinite(v))) continue
+    const rec: DrawExcelRow = { drawNumber: null, montoSolicitado: null, netWire: null, elegibleTrinity: null, porcentajeFunded: null }
+    for (let c = 0; c < headerRow.length; c++) {
+      const field = colField[c]
+      if (!field) continue
+      const n = cellToNumber(dataRow[c])
+      if (n === null) continue
+      if (field === 'drawNumber') rec.drawNumber = Math.round(n)
+      else if (field === 'montoSolicitado' && rec.montoSolicitado === null) rec.montoSolicitado = n
+      else if (field === 'netWire' && rec.netWire === null) rec.netWire = n
+      else if (field === 'elegibleTrinity' && rec.elegibleTrinity === null) rec.elegibleTrinity = n
+      else if (field === 'porcentajeFunded' && rec.porcentajeFunded === null) rec.porcentajeFunded = n
+    }
+    // Solo filas que aporten un monto de draw o desembolso.
+    if ((rec.montoSolicitado ?? 0) > 0 || (rec.netWire ?? 0) > 0) out.push(rec)
+  }
+  return out
+}
+
+// Devuelve las filas por-draw del Excel del lender (primera hoja que las tenga).
+export async function parseDrawCalculationRows(buffer: Buffer): Promise<DrawExcelRow[]> {
+  const sheets = await loadWorkbookRows(buffer)
+  for (const s of sheets) {
+    const rows = parseDrawCalculationRowsFromSheet(s.rows)
+    if (rows.length > 0) return rows
+  }
+  return []
+}
+
+// Aplica las filas del Excel del lender a cada Draw del proyecto: puebla netWire
+// (desembolsado) y montoSolicitado por drawNumber. El Excel es la fuente de
+// verdad del desembolso. No toca valorAprobado (eso viene del PDF por draw).
+// Devuelve cuántos draws se actualizaron/crearon.
+async function applyDrawExcelRows(projectId: string, rows: DrawExcelRow[]): Promise<number> {
+  if (!rows.length) return 0
+  const existing = await prisma.draw.findMany({ where: { projectId }, select: { id: true, drawNumber: true } })
+  const byNumber = new Map(existing.map(d => [d.drawNumber, d.id]))
+  let applied = 0
+  // Filas con drawNumber explícito; si falta, se asignan en orden.
+  let autoNum = 0
+  for (const row of rows) {
+    autoNum += 1
+    const dn = row.drawNumber ?? autoNum
+    const data: Record<string, unknown> = {}
+    if (row.netWire !== null) data.netWire = row.netWire
+    if (row.montoSolicitado !== null) data.montoSolicitado = row.montoSolicitado
+    if (row.elegibleTrinity !== null) data.elegibleTrinity = row.elegibleTrinity
+    if (row.porcentajeFunded !== null) data.porcentajeFunded = row.porcentajeFunded
+    if ((row.netWire ?? 0) > 0) data.estado = 'WIRED'
+    if (Object.keys(data).length === 0) continue
+    const id = byNumber.get(dn)
+    if (id) {
+      await prisma.draw.update({ where: { id }, data })
+    } else {
+      await prisma.draw.create({ data: { projectId, drawNumber: dn, ...data } as any })
+    }
+    applied += 1
+  }
+  await recalcHoldback(projectId)
+  return applied
+}
+
 export async function parseDrawExcel(buffer: Buffer): Promise<{ parsed: Record<string, unknown>; preview: string }> {
   const sheets = await loadWorkbookRows(buffer)
 
@@ -1112,6 +1229,19 @@ export function parseLoanText(text: string): Record<string, unknown> {
   if (reserve) result.interestReserve = parseMoney(reserve[1])
   const closingDate = t.match(new RegExp(`(?:commitment|closing|settlement)\\s*date\\s*:?\\s*${dp}`, 'i'))
   if (closingDate) result.settlementDate = normalizeDate(closingDate[1])
+  // ARV (After Repair Value): si la carta lo trae explícito, se usa. Si no, se
+  // DEDUCE del LTARV (Loan-to-After-Repair-Value): ARV = loanAmount / LTARV.
+  // Ej. Hera Lote 87: Loan $402,350 ÷ LTARV 65% ≈ $619,000.
+  const arvExplicit = t.match(new RegExp(`after[-\\s]*repair[-\\s]*value(?:\\s*\\(arv\\))?\\s*:?\\s*${mp}`, 'i'))
+  if (arvExplicit) result.arv = parseMoney(arvExplicit[1])
+  const ltarv = t.match(/ltarv\s*:?\s*(\d+\.?\d*)\s*%/i)
+  if (ltarv) {
+    const pct = parseFloat(ltarv[1]) / 100
+    result.ltarv = pct
+    if (!result.arv && typeof result.loanAmount === 'number' && pct > 0) {
+      result.arv = Math.round((result.loanAmount as number) / pct)
+    }
+  }
   return result
 }
 
@@ -1947,9 +2077,13 @@ router.post('/:projectId/draws/lender-excel', (req: Request, res: Response) => {
 
       let parsed: Record<string, unknown> = {}
       let extractionError: string | null = null
+      let drawsApplied = 0
       try {
         const r = await parseDrawExcel(req.file.buffer)
         parsed = r.parsed
+        // Poblar netWire (desembolsado) y Draw Amount por cada draw desde el Excel.
+        const rows = await parseDrawCalculationRows(req.file.buffer)
+        drawsApplied = await applyDrawExcelRows(req.params.projectId, rows)
       } catch (e) {
         extractionError = `Error al parsear Excel: ${e instanceof Error ? e.message : String(e)}`
       }
@@ -1969,7 +2103,7 @@ router.post('/:projectId/draws/lender-excel', (req: Request, res: Response) => {
       })
 
       const validation = await computeDrawsValidation(req.params.projectId, parsed)
-      res.json({ data: validation, extractionError, error: null })
+      res.json({ data: validation, extractionError, drawsApplied, error: null })
     } catch (e) {
       res.status(500).json({ data: null, error: String(e) })
     }

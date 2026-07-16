@@ -646,14 +646,18 @@ function LenderExcelPanel({ projectId }: { projectId: string }) {
     mutationFn: (f: File) => drawsApi.uploadLenderExcel(projectId, f),
     onSuccess: (res) => {
       const err = (res as any)?.extractionError as string | null | undefined
+      const applied = (res as any)?.drawsApplied as number | undefined
       if (err) {
         toast.error(`Excel subido, pero la lectura automática falló: ${err}`, { duration: 8000 })
       } else {
         const w = res?.data?.warnings?.length ?? 0
-        toast.success(w > 0 ? `Excel cargado — ${w} diferencia(s) detectada(s), revísalas abajo` : 'Excel cargado y validado — los totales cuadran')
+        const desemMsg = applied && applied > 0 ? ` · desembolso aplicado a ${applied} draw(s)` : ''
+        toast.success((w > 0 ? `Excel cargado — ${w} diferencia(s) detectada(s), revísalas abajo` : 'Excel cargado y validado — los totales cuadran') + desemMsg)
       }
       queryClient.invalidateQueries({ queryKey: ['draws-validation', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['draws', projectId] })
       queryClient.invalidateQueries({ queryKey: ['project', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['project-dashboard', projectId] })
     },
     onError: (e: any) => toast.error(e?.response?.data?.error || 'Error al subir el Excel'),
   })

@@ -9,6 +9,7 @@ import authRoutes from './routes/auth'
 import projectRoutes from './routes/projects'
 import phaseRoutes from './routes/phases'
 import itemRoutes from './routes/items'
+import subactivityRoutes from './routes/subactivities'
 import drawRoutes from './routes/draws'
 import providerRoutes from './routes/providers'
 import inspectionRoutes from './routes/inspections'
@@ -185,6 +186,7 @@ app.use('/api/projects', budgetLineRoutes)
 app.use('/api/price-refs', priceRefRoutes)
 app.use('/api/items', itemDocumentRoutes)
 app.use('/api/items', itemRoutes)
+app.use('/api', subactivityRoutes)   // /api/items/:id/subactivities + /api/subactivities/:id
 app.use('/api/draws', drawRoutes)
 app.use('/api/subcontracts', subcontractsRoutes)
 app.use('/api/projects', executiveRoutes)

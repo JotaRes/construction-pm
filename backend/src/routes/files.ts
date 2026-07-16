@@ -37,7 +37,7 @@ const KIND_PARSER_MAP: Record<string, {
   // Financiamiento
   hud_cierre:     { parser: parseHUDText,       fields: ['settlementDate', 'closingCosts', 'cashAtSettlement', 'contractSalesPrice', 'loanAmount', 'holdback'] },
   loi_lender:     { parser: parseLOIText,       fields: ['loiSalePrice', 'loiOfferDate', 'loiExpectedClose', 'loiEarnestMoney'] },
-  carta_lender:   { parser: parseLoanText,      fields: ['lender', 'loanNumber', 'loanAmount', 'interestRate', 'loanTermMonths', 'holdback', 'day1Disbursement', 'interestReserve', 'settlementDate'] },
+  carta_lender:   { parser: parseLoanText,      fields: ['lender', 'loanNumber', 'loanAmount', 'interestRate', 'loanTermMonths', 'holdback', 'day1Disbursement', 'interestReserve', 'settlementDate', 'arv'] },
   // Permisos
   permiso_construccion: { parser: parsePermitText, fields: ['permitNumber', 'permitIssued', 'permitExpires', 'county'] },
   permiso_electrico:    { parser: parsePermitText, fields: ['permitNumber', 'permitIssued', 'permitExpires'] },

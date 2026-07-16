@@ -68,6 +68,10 @@ export const phasesApi = {
   list: (projectId: string) => api.get(`/projects/${projectId}/phases`).then(r => r.data.data),
   summary: (projectId: string): Promise<PhaseSummary[]> =>
     api.get(`/projects/${projectId}/phases-summary`).then(r => r.data.data),
+  budgetDivisions: (projectId: string): Promise<Array<{ divCode: string; divName: string; total: number }>> =>
+    api.get(`/projects/${projectId}/budget-divisions`).then(r => r.data.data),
+  setBudgetLink: (projectId: string, phaseId: string, budgetDivCode: string | null) =>
+    api.patch(`/projects/${projectId}/phases/${phaseId}`, { budgetDivCode }).then(r => r.data.data),
 }
 
 export interface PhaseSummary {
@@ -82,6 +86,8 @@ export interface PhaseSummary {
   budgetTotal: number
   approvedTotal: number
   paidTotal: number
+  ejecutadoTotal: number
+  budgetDivCode: string | null
   variancePct: number
   startDateReal: string | null
   endDateReal: string | null
@@ -92,6 +98,13 @@ export const itemsApi = {
   create: (data: Record<string, unknown>) => api.post('/items', data).then(r => r.data.data),
   patch: (id: string, data: Record<string, unknown>) => api.patch(`/items/${id}`, data).then(r => r.data.data),
   delete: (id: string) => api.delete(`/items/${id}`).then(r => r.data.data),
+}
+
+export const subactivitiesApi = {
+  list: (itemId: string) => api.get(`/items/${itemId}/subactivities`).then(r => r.data.data),
+  create: (itemId: string, data: Record<string, unknown>) => api.post(`/items/${itemId}/subactivities`, data).then(r => r.data.data),
+  update: (id: string, data: Record<string, unknown>) => api.patch(`/subactivities/${id}`, data).then(r => r.data.data),
+  delete: (id: string) => api.delete(`/subactivities/${id}`).then(r => r.data.data),
 }
 
 export const drawsApi = {

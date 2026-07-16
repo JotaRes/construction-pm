@@ -100,6 +100,15 @@ export interface Item {
   observaciones: string | null
   order: number
   documents?: { id: string; type: string }[]
+  subactivities?: SubActivity[]
+}
+
+export interface SubActivity {
+  id: string
+  itemId: string
+  description: string
+  valorEjecutado: number
+  order: number
 }
 
 export interface Phase {

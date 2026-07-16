@@ -4,6 +4,7 @@ import multer from 'multer'
 import { uploadToCloudinary, deleteFromCloudinary, extractPublicId } from '../lib/cloudinary'
 import { PHASES_TEMPLATE, INSPECTIONS_TEMPLATE } from '../data/phasesTemplate'
 import { parseAmountFlexible } from '../lib/parseAmount'
+import { disbursementFactor } from '../lib/financeCalc'
 
 const router = Router()
 
@@ -111,10 +112,27 @@ router.get('/:id/dashboard', async (req: Request, res: Response) => {
     })
     if (!project) return res.status(404).json({ data: null, error: 'Project not found' })
 
-    const wiredDraws = project.draws.filter(d => d.estado === 'WIRED')
-    const totalDrawn = wiredDraws.reduce((s, d) => s + d.netWire, 0)
+    // Total desembolsado = Σ netWire de TODOS los draws (netWire=0 si aún no se
+    // giró). Consistente con la cadena de recálculo de saldoHoldback en draws.ts
+    // y robusto ante estados no promovidos a 'WIRED'.
+    const totalDrawn = project.draws.reduce((s, d) => s + d.netWire, 0)
     const upbActual = totalDrawn
     const saldoHoldback = project.holdback - totalDrawn
+
+    // Budget real del proyecto = Construction Budget cargado (BudgetLines).
+    const budgetLines = await prisma.budgetLine.findMany({
+      where: { projectId: project.id },
+      select: { valorInicial: true, valorAprobado: true },
+    })
+    const budgetLinesInicialSum = budgetLines.reduce((s, l) => s + l.valorInicial, 0)
+    const budgetConstruction = project.constructionBudget > 0
+      ? project.constructionBudget
+      : budgetLinesInicialSum
+    const factor = disbursementFactor({
+      holdback: project.holdback,
+      constructionBudget: project.constructionBudget,
+      budgetLinesInicialSum,
+    })
 
     const phaseStats = project.phases.map(phase => {
       const activeItems = phase.items.filter(i => !i.esNA)
@@ -140,15 +158,19 @@ router.get('/:id/dashboard', async (req: Request, res: Response) => {
       }
     })
 
-    const totalBudget = phaseStats.reduce((s, p) => s + p.budget, 0)
+    // Presupuesto por fase (valorPresupuestado de items) — solo para ponderar
+    // el avance general. El "Budget vs Ejecutado" mostrado usa el Construction
+    // Budget real (budgetConstruction), que es el presupuesto de verdad.
+    const totalBudgetExec = phaseStats.reduce((s, p) => s + p.budget, 0)
     const totalEjecutado = phaseStats.reduce((s, p) => s + p.ejecutado, 0)
+    const totalBudget = budgetConstruction > 0 ? budgetConstruction : totalBudgetExec
 
     const avanceGeneral = (() => {
-      if (totalBudget === 0) {
+      if (totalBudgetExec === 0) {
         const sum = phaseStats.reduce((s, p) => s + p.avancePct, 0)
         return phaseStats.length === 0 ? 0 : sum / phaseStats.length
       }
-      return phaseStats.reduce((s, p) => s + p.avancePct * (p.budget / totalBudget), 0)
+      return phaseStats.reduce((s, p) => s + p.avancePct * (p.budget / totalBudgetExec), 0)
     })()
 
     const today = new Date()
@@ -202,10 +224,14 @@ router.get('/:id/dashboard', async (req: Request, res: Response) => {
         kpis: {
           avanceGeneral,
           totalBudget,
+          totalBudgetExec,
+          budgetConstruction,
           totalEjecutado,
           totalDrawn,
           upbActual,
           saldoHoldback,
+          disbursementFactor: factor,
+          totalDesembolsadoTeorico: budgetConstruction * factor,
           diasAlPermit,
           tiempoTranscurrido,
           desfaseFisicoVsTiempo: avanceGeneral - tiempoTranscurrido,

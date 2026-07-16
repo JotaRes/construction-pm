@@ -50,13 +50,15 @@ interface DivGroup {
 function DivSection({
   group,
   onUpdate,
+  factor,
 }: {
   group: DivGroup
   onUpdate: (id: string, data: Record<string, unknown>) => void
+  factor: number
 }) {
   const totalIni  = group.lines.reduce((s, l) => s + l.valorInicial, 0)
-  const totalPres = group.lines.reduce((s, l) => s + l.valorPresentado, 0)
   const totalApr  = group.lines.reduce((s, l) => s + l.valorAprobado, 0)
+  const totalDesemb = totalApr * factor
   const pct = totalIni > 0 ? (totalApr / totalIni) * 100 : 0
 
   const [open, setOpen] = useState(totalIni > 0)
@@ -83,8 +85,11 @@ function DivSection({
           <span className={`w-28 text-right ${totalIni > 0 ? 'text-slate-800 font-semibold' : 'text-slate-500'}`}>
             {totalIni > 0 ? formatUSD(totalIni) : '—'}
           </span>
-          <span className={`w-28 text-right ${totalPres > 0 ? 'text-[var(--brand-teal)]' : 'text-slate-500'}`}>
-            {totalPres > 0 ? formatUSD(totalPres) : '—'}
+          <span className={`w-28 text-right ${totalDesemb > 0 ? 'text-[var(--brand-teal)]' : 'text-slate-500'}`} title="Desembolsado = Aprobado × factor del lender">
+            {totalDesemb > 0 ? formatUSD(totalDesemb) : '—'}
+          </span>
+          <span className="w-16 text-right text-slate-400">
+            {totalIni > 0 ? `${((totalApr / totalIni) * 100).toFixed(0)}%` : '—'}
           </span>
           <span className={`w-32 text-right ${totalApr > 0 ? 'text-emerald-400' : 'text-slate-500'}`}>
             {totalApr > 0 ? formatUSD(totalApr) : '—'}
@@ -110,7 +115,8 @@ function DivSection({
               <th className="px-2 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider w-10">Ud.</th>
               <th className="px-2 py-1.5 text-right text-[9px] text-slate-400 uppercase tracking-wider w-20">Cant. ✏</th>
               <th className="px-2 py-1.5 text-right text-[9px] text-slate-400 uppercase tracking-wider w-28">Inicial ✏</th>
-              <th className="px-2 py-1.5 text-right text-[9px] text-slate-400 uppercase tracking-wider w-28">Presentado ✏</th>
+              <th className="px-2 py-1.5 text-right text-[9px] text-[var(--brand-teal)] uppercase tracking-wider w-28" title={`Desembolsado = Aprobado × ${(factor * 100).toFixed(2)}% (factor del lender)`}>Desembolsado</th>
+              <th className="px-2 py-1.5 text-right text-[9px] text-slate-400 uppercase tracking-wider w-16">%APR</th>
               <th className="px-2 py-1.5 text-right text-[9px] text-emerald-600/70 uppercase tracking-wider w-32">Aprobado (auto desde Draws)</th>
               <th className="pr-4 pl-2 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider w-24">Progreso</th>
             </tr>
@@ -143,8 +149,15 @@ function DivSection({
                   <td className="px-2 py-2">
                     <Num value={line.valorInicial} onSave={v => onUpdate(line.id, { valorInicial: v })} />
                   </td>
-                  <td className="px-2 py-2">
-                    <Num value={line.valorPresentado} onSave={v => onUpdate(line.id, { valorPresentado: v })} dim={line.valorPresentado === 0} />
+                  <td className="px-2 py-2 text-right">
+                    {line.valorAprobado > 0
+                      ? <span className="text-xs font-mono text-[var(--brand-teal)]" title="Aprobado × factor del lender">{formatUSD(line.valorAprobado * factor)}</span>
+                      : <span className="text-xs font-mono text-slate-400">—</span>}
+                  </td>
+                  <td className="px-2 py-2 text-right">
+                    <span className="text-[11px] font-mono text-slate-500">
+                      {line.valorInicial > 0 ? `${((line.valorAprobado / line.valorInicial) * 100).toFixed(0)}%` : '—'}
+                    </span>
                   </td>
                   <td className="px-2 py-2">
                     <Num value={line.valorAprobado} onSave={v => onUpdate(line.id, { valorAprobado: v })} dim={line.valorAprobado === 0} />
@@ -187,6 +200,13 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
     queryKey: ['construction-budget', projectId],
     queryFn: () => constructionBudgetApi.list(projectId),
   })
+
+  // Factor de desembolso del lender (holdback ÷ budget). Fuente única en el KPIs.
+  const { data: dash } = useQuery({
+    queryKey: ['project-dashboard', projectId],
+    queryFn: () => projectsApi.dashboard(projectId),
+  })
+  const factor: number = dash?.kpis?.disbursementFactor ?? 0.8488
 
   const mutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) =>
@@ -252,8 +272,8 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
   const groups = Array.from(divMap.values())
 
   const totalIni  = lines.reduce((s, l) => s + l.valorInicial, 0)
-  const totalPres = lines.reduce((s, l) => s + l.valorPresentado, 0)
   const totalApr  = lines.reduce((s, l) => s + l.valorAprobado, 0)
+  const totalDesemb = totalApr * factor
   const pctGlobal = totalIni > 0 ? (totalApr / totalIni) * 100 : 0
   const saldoPorAprobar = totalIni - totalApr
 
@@ -337,8 +357,8 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
           <div className="text-lg font-bold font-mono text-slate-900">{formatUSD(totalIni)}</div>
         </div>
         <div className="kpi-card kpi-card-amber">
-          <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1.5">Presentado<br/><span className="text-slate-400 normal-case">Solicitado en draws</span></div>
-          <div className="text-lg font-bold font-mono text-[var(--brand-teal)]">{formatUSD(totalPres)}</div>
+          <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1.5">Desembolsado<br/><span className="text-slate-400 normal-case">Aprobado × {(factor * 100).toFixed(2)}%</span></div>
+          <div className="text-lg font-bold font-mono text-[var(--brand-teal)]">{formatUSD(totalDesemb)}</div>
         </div>
         <div className="kpi-card kpi-card-green">
           <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1.5">Aprobado<br/><span className="text-slate-400 normal-case">Validado por Trinity</span></div>
@@ -374,7 +394,7 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
       {/* Legend */}
       <div className="flex items-center gap-5 text-[10px] text-slate-400">
         <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded bg-slate-500 inline-block"/>Inicial = firmado con lender</span>
-        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded bg-blue-500 inline-block"/>Presentado = solicitado en draw</span>
+        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded bg-[var(--brand-teal)] inline-block"/>Desembolsado = Aprobado × {(factor * 100).toFixed(2)}% (lo que gira el lender)</span>
         <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded bg-emerald-500 inline-block"/>Aprobado = Trinity validated</span>
         <span className="ml-auto text-[#C8922A]/60">Todos los valores son editables · clic para editar · % calcula monto automáticamente</span>
       </div>
@@ -387,7 +407,7 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
           <div className="flex-1 text-[10px] text-slate-400 uppercase tracking-wider">División</div>
           <div className="flex items-center shrink-0 text-[10px] text-slate-400 uppercase tracking-wider">
             <span className="w-28 text-right">Inicial</span>
-            <span className="w-28 text-right">Presentado</span>
+            <span className="w-28 text-right text-[var(--brand-teal)]">Desembolsado</span>
             <span className="w-16 text-right text-[#C8922A]/70">% Apr.</span>
             <span className="w-28 text-right text-emerald-700">Aprobado</span>
             <span className="w-24 text-right">Progreso</span>
@@ -399,6 +419,7 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
             key={group.divCode}
             group={group}
             onUpdate={(id, data) => mutation.mutate({ id, data })}
+            factor={factor}
           />
         ))}
 
@@ -408,7 +429,7 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
           <div className="flex-1 text-sm font-bold text-slate-800 uppercase tracking-wider">Total General</div>
           <div className="flex items-center shrink-0 text-sm font-mono font-bold">
             <span className="w-28 text-right text-slate-900">{formatUSD(totalIni)}</span>
-            <span className="w-28 text-right text-[var(--brand-teal)]">{totalPres > 0 ? formatUSD(totalPres) : '—'}</span>
+            <span className="w-28 text-right text-[var(--brand-teal)]">{totalDesemb > 0 ? formatUSD(totalDesemb) : '—'}</span>
             <span className="w-16 text-right text-[var(--brand-gold)]">
               {pctGlobal > 0 ? `${pctGlobal.toFixed(1)}%` : '—'}
             </span>

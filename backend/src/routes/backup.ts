@@ -50,7 +50,7 @@ router.get('/', async (req: Request, res: Response) => {
     // === MÓDULO TÉCNICO ===
     const projects = await prisma.project.findMany({
       include: {
-        phases: { include: { items: true } },
+        phases: { include: { items: { include: { subactivities: true } } } },
         draws: true,
         partners: true,
         providers: { include: { quotes: true, documents: true } },
@@ -270,7 +270,7 @@ router.get('/excel-tech', async (_req: Request, res: Response) => {
   try {
     const projects = await prisma.project.findMany({
       include: {
-        phases: { include: { items: true } },
+        phases: { include: { items: { include: { subactivities: true } } } },
         draws: true,
         partners: true,
         providers: { include: { quotes: true, documents: true } },
