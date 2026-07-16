@@ -91,6 +91,7 @@ export interface Item {
   completado: boolean
   quantity?: number | null
   valorPresupuestado: number
+  valorEjecutadoBase?: number
   valorEjecutado: number
   providerId: string | null
   provider: Provider | null

@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express'
 import { prisma } from '../lib/prisma'
+import { recomputeItemExecuted } from './subactivities'
 
 const router = Router()
 
@@ -39,7 +40,7 @@ router.patch('/:id', async (req: Request, res: Response) => {
   try {
     const {
       activity, description, responsable, unit, esNA, completado,
-      valorPresupuestado, valorEjecutado, providerId, estado,
+      valorPresupuestado, valorEjecutado, valorEjecutadoBase, providerId, estado,
       fechaInicioReal, fechaFinReal, observaciones, order, quantity,
     } = req.body
     const data: Record<string, unknown> = {}
@@ -51,17 +52,24 @@ router.patch('/:id', async (req: Request, res: Response) => {
     if (completado !== undefined) data.completado = completado
     if (quantity !== undefined) data.quantity = (quantity === null || quantity === '') ? null : Number(quantity)
     if (valorPresupuestado !== undefined) data.valorPresupuestado = Number(valorPresupuestado)
-    if (valorEjecutado !== undefined) data.valorEjecutado = Number(valorEjecutado)
+    // El valor "ejecutado" que edita el usuario es el VALOR BASE de la actividad.
+    // El total (valorEjecutado) se recomputa como base + Σ subactividades.
+    const baseIncoming = valorEjecutadoBase !== undefined ? valorEjecutadoBase
+      : valorEjecutado !== undefined ? valorEjecutado : undefined
+    let recompute = false
+    if (baseIncoming !== undefined) { data.valorEjecutadoBase = Number(baseIncoming); recompute = true }
     if (providerId !== undefined) data.providerId = providerId || null
     if (estado !== undefined) data.estado = estado
     if (fechaInicioReal !== undefined) data.fechaInicioReal = fechaInicioReal ? new Date(fechaInicioReal) : null
     if (fechaFinReal !== undefined) data.fechaFinReal = fechaFinReal ? new Date(fechaFinReal) : null
     if (observaciones !== undefined) data.observaciones = observaciones || null
     if (order !== undefined) data.order = Number(order)
-    const item = await prisma.item.update({
+    await prisma.item.update({ where: { id: req.params.id }, data })
+    // Recomputar el total ejecutado = base + Σ subactividades tras cambiar la base.
+    if (recompute) await recomputeItemExecuted(req.params.id)
+    const item = await prisma.item.findUnique({
       where: { id: req.params.id },
-      data,
-      include: { provider: true },
+      include: { provider: true, subactivities: { orderBy: { order: 'asc' } } },
     })
     res.json({ data: item, error: null })
   } catch (e) {

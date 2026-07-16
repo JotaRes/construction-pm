@@ -88,9 +88,6 @@ function DivSection({
           <span className={`w-28 text-right ${totalDesemb > 0 ? 'text-[var(--brand-teal)]' : 'text-slate-500'}`} title="Desembolsado = Aprobado × factor del lender">
             {totalDesemb > 0 ? formatUSD(totalDesemb) : '—'}
           </span>
-          <span className="w-16 text-right text-slate-400">
-            {totalIni > 0 ? `${((totalApr / totalIni) * 100).toFixed(0)}%` : '—'}
-          </span>
           <span className={`w-32 text-right ${totalApr > 0 ? 'text-emerald-400' : 'text-slate-500'}`}>
             {totalApr > 0 ? formatUSD(totalApr) : '—'}
           </span>
@@ -116,7 +113,6 @@ function DivSection({
               <th className="px-2 py-1.5 text-right text-[9px] text-slate-400 uppercase tracking-wider w-20">Cant. ✏</th>
               <th className="px-2 py-1.5 text-right text-[9px] text-slate-400 uppercase tracking-wider w-28">Inicial ✏</th>
               <th className="px-2 py-1.5 text-right text-[9px] text-[var(--brand-teal)] uppercase tracking-wider w-28" title={`Desembolsado = Aprobado × ${(factor * 100).toFixed(2)}% (factor del lender)`}>Desembolsado</th>
-              <th className="px-2 py-1.5 text-right text-[9px] text-slate-400 uppercase tracking-wider w-16">%APR</th>
               <th className="px-2 py-1.5 text-right text-[9px] text-emerald-600/70 uppercase tracking-wider w-32">Aprobado (auto desde Draws)</th>
               <th className="pr-4 pl-2 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider w-24">Progreso</th>
             </tr>
@@ -153,11 +149,6 @@ function DivSection({
                     {line.valorAprobado > 0
                       ? <span className="text-xs font-mono text-[var(--brand-teal)]" title="Aprobado × factor del lender">{formatUSD(line.valorAprobado * factor)}</span>
                       : <span className="text-xs font-mono text-slate-400">—</span>}
-                  </td>
-                  <td className="px-2 py-2 text-right">
-                    <span className="text-[11px] font-mono text-slate-500">
-                      {line.valorInicial > 0 ? `${((line.valorAprobado / line.valorInicial) * 100).toFixed(0)}%` : '—'}
-                    </span>
                   </td>
                   <td className="px-2 py-2">
                     <Num value={line.valorAprobado} onSave={v => onUpdate(line.id, { valorAprobado: v })} dim={line.valorAprobado === 0} />
@@ -408,7 +399,6 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
           <div className="flex items-center shrink-0 text-[10px] text-slate-400 uppercase tracking-wider">
             <span className="w-28 text-right">Inicial</span>
             <span className="w-28 text-right text-[var(--brand-teal)]">Desembolsado</span>
-            <span className="w-16 text-right text-[#C8922A]/70">% Apr.</span>
             <span className="w-28 text-right text-emerald-700">Aprobado</span>
             <span className="w-24 text-right">Progreso</span>
           </div>
@@ -430,9 +420,6 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
           <div className="flex items-center shrink-0 text-sm font-mono font-bold">
             <span className="w-28 text-right text-slate-900">{formatUSD(totalIni)}</span>
             <span className="w-28 text-right text-[var(--brand-teal)]">{totalDesemb > 0 ? formatUSD(totalDesemb) : '—'}</span>
-            <span className="w-16 text-right text-[var(--brand-gold)]">
-              {pctGlobal > 0 ? `${pctGlobal.toFixed(1)}%` : '—'}
-            </span>
             <span className="w-28 text-right text-emerald-300">{totalApr > 0 ? formatUSD(totalApr) : '—'}</span>
             <span className="w-24 text-right text-slate-400">{pctGlobal.toFixed(1)}%</span>
           </div>

@@ -9,16 +9,19 @@ import { prisma } from '../lib/prisma'
 
 const router = Router()
 
-// Recalcula y GUARDA Item.valorEjecutado = Σ subactividades cuando existan.
-// Si la actividad ya no tiene subactividades, se respeta el valor manual actual.
+// Recalcula y GUARDA Item.valorEjecutado = valorEjecutadoBase + Σ subactividades.
+// Las subactividades SUMAN al valor propio de la actividad, no lo reemplazan.
 export async function recomputeItemExecuted(itemId: string) {
-  const subs = await prisma.subActivity.findMany({
-    where: { itemId },
-    select: { valorEjecutado: true },
+  const item = await prisma.item.findUnique({
+    where: { id: itemId },
+    select: { valorEjecutadoBase: true, subactivities: { select: { valorEjecutado: true } } },
   })
-  if (subs.length === 0) return
-  const sum = subs.reduce((s, x) => s + (x.valorEjecutado || 0), 0)
-  await prisma.item.update({ where: { id: itemId }, data: { valorEjecutado: sum } })
+  if (!item) return
+  const sumSubs = item.subactivities.reduce((s, x) => s + (x.valorEjecutado || 0), 0)
+  await prisma.item.update({
+    where: { id: itemId },
+    data: { valorEjecutado: (item.valorEjecutadoBase || 0) + sumSubs },
+  })
 }
 
 // Listar subactividades de una actividad

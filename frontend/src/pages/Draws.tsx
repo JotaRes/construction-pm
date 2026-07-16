@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { drawsApi, drawParseApi, constructionBudgetApi, projectsApi, type DrawLineApproval, type DrawsValidation } from '../lib/api'
 import { formatUSD, formatDate } from '../lib/calculations'
 import type { Draw, DrawEstado } from '../lib/types'
-import { Upload, FileText, CheckCircle, X, AlertTriangle, Receipt, ShieldCheck, Share2, Mail, MessageCircle, Download, Trash2, Table2, TrendingDown, ChevronDown, RefreshCw } from 'lucide-react'
+import { Upload, FileText, CheckCircle, X, AlertTriangle, Mail, MessageCircle, Download, Trash2, Table2, TrendingDown, ChevronDown, RefreshCw } from 'lucide-react'
 import { useConfirm } from '../components/ConfirmDialog'
 import toast from 'react-hot-toast'
 
@@ -41,8 +41,11 @@ function ShareButtons({ url, label }: { url: string; label: string }) {
   )
 }
 
-// Slot para subir documentos del draw (invoice, approval, Excel)
-function DocSlot({
+// Slot para subir documentos del draw (invoice, approval, Excel).
+// NOTA: ya no se renderiza en el recuadro del draw (los documentos por draw no se
+// cargan aquí; se usa el Excel general del lender). Se conserva exportado por si
+// se necesita reactivar la carga puntual de un PDF por draw.
+export function DocSlot({
   draw, kind, label, icon: Icon, projectId,
 }: {
   draw: Draw
@@ -205,7 +208,7 @@ function Field({ label, value, onChange, type = 'text', mono = false }: {
   )
 }
 
-function DrawCard({ draw, projectId, budgetTotal, budgetExecuted, newAmount, onUpdate, onDelete }: {
+function DrawCard({ draw, budgetTotal, budgetExecuted, newAmount, onUpdate, onDelete }: {
   draw: Draw
   projectId: string
   budgetTotal: number
@@ -292,8 +295,12 @@ function DrawCard({ draw, projectId, budgetTotal, budgetExecuted, newAmount, onU
               onChange={v => save('elegibleTrinity', v)} type="number" />
             <Field label="Net Wire" value={String(draw.netWire || '')} mono
               onChange={v => save('netWire', v)} type="number" />
-            <Field label="% Funded" value={String(draw.porcentajeFunded || '')} mono
-              onChange={v => save('porcentajeFunded', v)} type="number" />
+            <div>
+              <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">% Funded</div>
+              <div className="text-sm font-mono text-slate-800 px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg">
+                {draw.porcentajeFunded ? `${(draw.porcentajeFunded * 100).toFixed(2)}%` : '—'}
+              </div>
+            </div>
             <Field label="UPB Pre" value={String(draw.upbPre || '')} mono
               onChange={v => save('upbPre', v)} type="number" />
             <Field label="UPB Post" value={String(draw.upbPost || '')} mono
@@ -335,17 +342,6 @@ function DrawCard({ draw, projectId, budgetTotal, budgetExecuted, newAmount, onU
               )}
             </div>
           )}
-
-          {/* Documentos del draw — invoice + lender approval + Excel */}
-          <div className="space-y-2">
-            <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-              <Share2 className="w-3 h-3" />Documentos del Draw
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              <DocSlot draw={draw} kind="INVOICE"  label="Nuestra factura al lender (opcional)"  icon={Receipt}    projectId={projectId} />
-              <DocSlot draw={draw} kind="APPROVAL" label="Aprobación del lender"       icon={ShieldCheck} projectId={projectId} />
-            </div>
-          </div>
 
           {/* PDF original del draw (si existe) */}
           {draw.pdfUrl && (

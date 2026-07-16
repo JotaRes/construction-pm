@@ -2,7 +2,7 @@ import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { phasesApi, itemsApi, itemDocumentsApi, projectsApi, providersGlobalApi, subactivitiesApi } from '../lib/api'
 import { formatUSD } from '../lib/calculations'
-import type { Phase, Item, ItemEstado, ItemDocument, SubActivity } from '../lib/types'
+import type { Phase, Item, ItemEstado, ItemDocument } from '../lib/types'
 import {
   ChevronDown, ChevronRight, X, Calendar, User, FileText,
   Plus, Trash2, Paperclip, Upload, AlertTriangle,
@@ -18,10 +18,6 @@ const ESTADOS: { value: ItemEstado; label: string; color: string; bg: string }[]
   { value: 'DONE',      label: 'Hecho',     color: 'text-emerald-400', bg: 'bg-emerald-500/15 hover:bg-emerald-500/25' },
   { value: 'NA',        label: 'N/A',       color: 'text-slate-400',  bg: 'bg-white hover:bg-slate-100' },
 ]
-
-function estadoStyle(estado: ItemEstado) {
-  return ESTADOS.find(e => e.value === estado) ?? ESTADOS[0]
-}
 
 const DOC_TYPES = [
   { value: 'COTIZACION', label: 'Cotización', color: 'text-sky-300 bg-sky-500/20 border-sky-500/40' },
@@ -271,87 +267,6 @@ function DocumentSection({ item }: { item: Item }) {
   )
 }
 
-// Subactividades de una actividad: cada una con descripción + valor ejecutado.
-// El ejecutado de la actividad = suma de subactividades (roll-up en el backend).
-function SubactivitiesEditor({ item }: { item: Item }) {
-  const qc = useQueryClient()
-  const [desc, setDesc] = useState('')
-  const [valor, setValor] = useState('')
-
-  const { data: subs = [] } = useQuery<SubActivity[]>({
-    queryKey: ['subactivities', item.id],
-    queryFn: () => subactivitiesApi.list(item.id),
-    initialData: item.subactivities ?? [],
-  })
-
-  const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ['subactivities', item.id] })
-    qc.invalidateQueries({ queryKey: ['phases'] })
-  }
-  const createMut = useMutation({
-    mutationFn: (data: Record<string, unknown>) => subactivitiesApi.create(item.id, data),
-    onSuccess: () => { setDesc(''); setValor(''); invalidate() },
-  })
-  const updateMut = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => subactivitiesApi.update(id, data),
-    onSuccess: invalidate,
-  })
-  const deleteMut = useMutation({
-    mutationFn: (id: string) => subactivitiesApi.delete(id),
-    onSuccess: invalidate,
-  })
-
-  const total = subs.reduce((s, x) => s + (x.valorEjecutado || 0), 0)
-  const add = () => {
-    if (!desc.trim()) return
-    createMut.mutate({ description: desc.trim(), valorEjecutado: parseFloat(valor) || 0 })
-  }
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-2">
-        <div className="text-[10px] text-slate-400 uppercase tracking-wider">Subactividades</div>
-        {subs.length > 0 && <div className="text-[10px] font-mono text-[var(--brand-teal)]">Suma ejecutada: {formatUSD(total)}</div>}
-      </div>
-      {subs.length > 0 && (
-        <div className="space-y-1.5 mb-2">
-          {subs.map(sub => (
-            <div key={sub.id} className="flex items-center gap-2 bg-white rounded-lg px-2 py-1.5 border border-slate-200">
-              <input defaultValue={sub.description}
-                onBlur={e => { const v = e.target.value.trim(); if (v && v !== sub.description) updateMut.mutate({ id: sub.id, data: { description: v } }) }}
-                onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
-                className="flex-1 min-w-0 bg-transparent text-xs text-slate-700 focus:outline-none" />
-              <input type="number" defaultValue={sub.valorEjecutado || ''}
-                onBlur={e => { const v = parseFloat(e.target.value) || 0; if (v !== sub.valorEjecutado) updateMut.mutate({ id: sub.id, data: { valorEjecutado: v } }) }}
-                onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
-                placeholder="0"
-                className="w-24 bg-slate-50 border border-slate-200 text-xs font-mono text-right text-slate-800 rounded px-1.5 py-0.5 focus:outline-none focus:border-[var(--brand-gold)]" />
-              <button onClick={() => deleteMut.mutate(sub.id)} title="Eliminar subactividad" className="text-slate-400 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
-            </div>
-          ))}
-        </div>
-      )}
-      <div className="flex items-center gap-2">
-        <input value={desc} onChange={e => setDesc(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') add() }}
-          placeholder="Descripción de la subactividad"
-          className="flex-1 min-w-0 bg-white border border-slate-200 text-xs text-slate-700 rounded-lg px-2 py-1.5 focus:outline-none focus:border-[var(--brand-gold)] placeholder-slate-400" />
-        <input type="number" value={valor} onChange={e => setValor(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') add() }}
-          placeholder="Valor"
-          className="w-24 bg-white border border-slate-200 text-xs font-mono text-right text-slate-700 rounded-lg px-1.5 py-1.5 focus:outline-none focus:border-[var(--brand-gold)] placeholder-slate-400" />
-        <button onClick={add} disabled={!desc.trim() || createMut.isPending} title="Agregar subactividad"
-          className="flex items-center px-2 py-1.5 bg-[var(--brand-gold)] hover:bg-[#E0AD4F] text-white rounded-lg disabled:opacity-40">
-          <Plus className="w-3.5 h-3.5" />
-        </button>
-      </div>
-      {subs.length > 0 && (
-        <p className="text-[10px] text-slate-400 mt-1.5">El ejecutado de la actividad se calcula como la suma de sus subactividades.</p>
-      )}
-    </div>
-  )
-}
-
 function ItemPanel({ item, onUpdate, onClose }: {
   item: Item
   onUpdate: (id: string, data: Record<string, unknown>) => void
@@ -423,21 +338,18 @@ function ItemPanel({ item, onUpdate, onClose }: {
                 <div className="text-sm font-mono text-slate-700">{formatUSD(item.valorPresupuestado)}</div>
               </div>
               <div className="bg-white rounded-lg p-3">
-                <div className="text-[10px] text-slate-400 mb-1">Ejecutado{(item.subactivities?.length ?? 0) > 0 ? ' (Σ subactividades)' : ''}</div>
-                {(item.subactivities?.length ?? 0) > 0 ? (
-                  <div className="text-sm font-mono text-[var(--brand-teal)]" title="Suma de las subactividades — edítalas abajo">{formatUSD(item.valorEjecutado)}</div>
-                ) : (
-                  <input type="number" defaultValue={item.valorEjecutado || ''}
-                    onBlur={e => onUpdate(item.id, { valorEjecutado: parseFloat(e.target.value) || 0 })}
-                    onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
-                    placeholder="0"
-                    className="w-full bg-transparent text-sm font-mono text-[var(--brand-teal)] focus:outline-none placeholder-slate-400" />
+                <div className="text-[10px] text-slate-400 mb-1">Ejecutado (base)</div>
+                <input type="number" defaultValue={(item.valorEjecutadoBase ?? item.valorEjecutado) || ''}
+                  onBlur={e => onUpdate(item.id, { valorEjecutadoBase: parseFloat(e.target.value) || 0 })}
+                  onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+                  placeholder="0"
+                  className="w-full bg-transparent text-sm font-mono text-[var(--brand-teal)] focus:outline-none placeholder-slate-400" />
+                {(item.subactivities?.length ?? 0) > 0 && (
+                  <div className="text-[10px] text-slate-400 mt-1">Total con subactividades: <span className="font-mono text-[var(--brand-teal)]">{formatUSD(item.valorEjecutado)}</span></div>
                 )}
               </div>
             </div>
-            <div className="mt-3">
-              <SubactivitiesEditor item={item} />
-            </div>
+            <p className="text-[10px] text-slate-400 mt-2">Las subactividades (desglose) se agregan desde la tabla de Ejecución: abre la actividad con la flecha ▸.</p>
             {item.valorPresupuestado > 0 && item.valorEjecutado > 0 && (
               <div className={`mt-2 text-xs font-mono px-2 py-1 rounded ${item.valorEjecutado > item.valorPresupuestado ? 'text-red-400 bg-red-500/10' : 'text-emerald-400 bg-emerald-500/10'}`}>
                 {item.valorEjecutado > item.valorPresupuestado ? '▲ Sobreejecutado' : '▼ Bajo presupuesto'}{' '}
@@ -510,6 +422,15 @@ function ItemRow({ item, onUpdate, onOpenPanel, onDelete }: {
   onOpenPanel: (item: Item) => void
   onDelete?: (item: Item) => void
 }) {
+  const qc = useQueryClient()
+  const [expanded, setExpanded] = useState(false)
+  const [newSubDesc, setNewSubDesc] = useState('')
+  const [newSubVal, setNewSubVal] = useState('')
+  const invalidate = () => qc.invalidateQueries({ queryKey: ['phases'] })
+  const createSub = useMutation({ mutationFn: (d: Record<string, unknown>) => subactivitiesApi.create(item.id, d), onSuccess: () => { setNewSubDesc(''); setNewSubVal(''); invalidate() } })
+  const updateSub = useMutation({ mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => subactivitiesApi.update(id, data), onSuccess: invalidate })
+  const deleteSub = useMutation({ mutationFn: (id: string) => subactivitiesApi.delete(id), onSuccess: invalidate })
+
   const isSlot = item.itemCode.includes('X') && !item.itemCode.includes('.A')
   if (isSlot && !item.completado && !item.valorEjecutado) {
     return (
@@ -518,121 +439,168 @@ function ItemRow({ item, onUpdate, onOpenPanel, onDelete }: {
       </tr>
     )
   }
-  const st = estadoStyle(item.estado)
-  const desviacion = item.valorEjecutado - item.valorPresupuestado
+  const subs = item.subactivities ?? []
+  const hasSubs = subs.length > 0
+  const base = item.valorEjecutadoBase ?? item.valorEjecutado
+  const totalEjec = item.valorEjecutado            // backend roll-up = base + Σ subs
+  const desviacion = totalEjec - item.valorPresupuestado
   const docCount = item.documents?.length ?? 0
   const hasFactura = item.documents?.some(d => d.type === 'FACTURA') ?? false
-  // Alerta: el ítem tiene valor ejecutado o está completado pero NO tiene factura
-  const warnDoc = (item.valorEjecutado > 0 || item.completado) && !hasFactura
-  let rowBg = 'border-b border-slate-100 hover:bg-white/40 transition-colors group cursor-pointer'
-  if (item.completado) rowBg = 'border-b border-slate-200/20 bg-emerald-50/40 hover:bg-emerald-950/30 transition-colors group cursor-pointer'
-  else if (item.estado === 'EN_CURSO') rowBg = 'border-b border-slate-200/30 bg-amber-50/60 hover:bg-amber-50/40 transition-colors group cursor-pointer'
+  const warnDoc = (totalEjec > 0 || item.completado) && !hasFactura
+  const phaseCode = item.itemCode.split('.')[0]
+  const addSub = () => { if (!newSubDesc.trim()) return; createSub.mutate({ description: newSubDesc.trim(), valorEjecutado: parseFloat(newSubVal) || 0 }) }
+  let rowBg = 'border-b border-slate-100 hover:bg-white/40 transition-colors group'
+  if (item.completado) rowBg = 'border-b border-slate-200/20 bg-emerald-50/40 hover:bg-emerald-50/60 transition-colors group'
+  else if (item.estado === 'EN_CURSO') rowBg = 'border-b border-slate-200/30 bg-amber-50/60 hover:bg-amber-50/40 transition-colors group'
   return (
-    <tr className={`${rowBg} ${item.esNA ? 'opacity-40' : ''}`} onClick={() => onOpenPanel(item)}>
-      {/* N/A toggle al inicio — un solo click para inhabilitar el ítem que no aplica */}
-      <td className="pl-3 pr-1 py-2.5 w-10" onClick={e => e.stopPropagation()}>
-        <button
-          onClick={() => onUpdate(item.id, { esNA: !item.esNA })}
-          title={item.esNA ? 'Re-habilitar ítem (sí aplica)' : 'Marcar como NO APLICA'}
-          className={`w-7 h-7 rounded-md flex items-center justify-center transition-all ${
-            item.esNA
-              ? 'bg-slate-300 text-slate-600 hover:bg-slate-400'
-              : 'bg-white border border-slate-200 text-slate-300 hover:border-slate-400 hover:text-slate-500'
-          }`}
-        >
-          {item.esNA ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-        </button>
-      </td>
-      {/* Estados — botones grandes con label, fáciles de presionar */}
-      <td className="pl-2 pr-2 py-2.5 w-32" onClick={e => e.stopPropagation()}>
-        <div className="flex gap-0.5">
-          {ESTADOS.filter(e => e.value !== 'NA').map(e => {
-            const active = item.estado === e.value
-            const colors = e.value === 'DONE'
-              ? active ? 'bg-emerald-500 text-white' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
-              : e.value === 'EN_CURSO'
-                ? active ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-600 hover:bg-amber-100'
-                : active ? 'bg-slate-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-            return (
-              <button
-                key={e.value}
-                title={e.label}
-                onClick={() => {
-                  const updates: Record<string, unknown> = { estado: e.value }
-                  if (e.value === 'DONE') updates.completado = true
-                  if (e.value === 'PENDIENTE') updates.completado = false
-                  onUpdate(item.id, updates)
-                }}
-                disabled={item.esNA}
-                className={`flex-1 px-1.5 py-1 rounded text-[9px] font-bold uppercase tracking-wider transition-all disabled:opacity-30 disabled:cursor-not-allowed ${colors}`}
-              >
-                {e.value === 'DONE' ? '✓' : e.value === 'EN_CURSO' ? '⋯' : '—'}
-              </button>
-            )
-          })}
-        </div>
-      </td>
-      <td className="px-2 py-2.5 w-16"><span className="text-[10px] font-mono text-slate-400">{item.itemCode}</span></td>
-      <td className="px-2 py-2.5" onClick={e => e.stopPropagation()}>
-        {/* Nombre editable: clic en el texto → input; Enter o salir guarda */}
-        <input
-          defaultValue={item.activity}
-          onBlur={e => { const v = e.target.value.trim(); if (v && v !== item.activity) onUpdate(item.id, { activity: v }) }}
-          onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
-          className={`w-full bg-transparent text-xs font-medium leading-tight rounded px-1 py-0.5 border border-transparent hover:border-slate-200 focus:bg-white focus:border-[var(--brand-gold)] focus:outline-none transition-colors ${item.completado ? 'line-through text-slate-400' : 'text-slate-800'}`}
-          title="Clic para editar el nombre de la actividad"
-        />
-        {(item.responsable || item.provider) && (
-          <div className="text-[10px] text-slate-400 mt-0.5 px-1">
-            {item.provider ? `⚒ ${item.provider.name}` : item.responsable}
-          </div>
-        )}
-      </td>
-      <td className="px-2 py-2.5 w-24" onClick={e => e.stopPropagation()}>
-        <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium ${st.color} ${st.bg}`}>{st.label}</span>
-      </td>
-      <td className="px-2 py-2.5 w-24 text-right border-l border-slate-100">
-        <span className="text-[11px] font-mono text-slate-600">{formatUSD(item.valorPresupuestado)}</span>
-      </td>
-      <td className="px-2 py-2.5 w-24 text-right border-l border-slate-100" onClick={e => e.stopPropagation()}>
-        {(item.subactivities?.length ?? 0) > 0 ? (
-          <button onClick={() => onOpenPanel(item)} title={`${item.subactivities!.length} subactividad(es) — suma. Clic para editar`}
-            className="w-full flex items-center justify-end gap-1 text-[11px] font-mono font-semibold text-[var(--brand-teal)]">
-            <span className="text-[8px] px-1 rounded bg-teal-100 text-teal-700">Σ{item.subactivities!.length}</span>
-            {formatUSD(item.valorEjecutado)}
+    <>
+      <tr className={`${rowBg} ${item.esNA ? 'opacity-40' : ''}`}>
+        {/* St. — N/A toggle */}
+        <td className="pl-3 pr-1 py-2.5 w-16">
+          <button
+            onClick={() => onUpdate(item.id, { esNA: !item.esNA })}
+            title={item.esNA ? 'Re-habilitar ítem (sí aplica)' : 'Marcar como NO APLICA'}
+            className={`w-7 h-7 rounded-md flex items-center justify-center transition-all ${item.esNA ? 'bg-slate-300 text-slate-600 hover:bg-slate-400' : 'bg-white border border-slate-200 text-slate-300 hover:border-slate-400 hover:text-slate-500'}`}>
+            {item.esNA ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
           </button>
-        ) : (
-          <input type="number" defaultValue={item.valorEjecutado || ''}
-            onBlur={e => onUpdate(item.id, { valorEjecutado: parseFloat(e.target.value) || 0 })}
-            onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
-            placeholder="—"
-            className="w-full bg-white border border-slate-200 text-[11px] font-mono font-semibold text-right text-slate-900 rounded px-1.5 py-1 focus:outline-none focus:border-[var(--brand-gold)] focus:ring-2 focus:ring-[var(--brand-gold)]/20 placeholder-slate-300" />
-        )}
-      </td>
-      <td className="px-2 py-2.5 w-20 text-right border-l border-slate-100" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-end gap-1.5">
-          {item.valorPresupuestado > 0 && item.valorEjecutado > 0 && (
-            <span className={`text-[10px] font-mono font-semibold ${desviacion > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-              {desviacion > 0 ? '+' : ''}{formatUSD(desviacion)}
-            </span>
-          )}
-          {onDelete && (
-            <button onClick={() => onDelete(item)} title="Eliminar actividad"
-              className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-red-500">
-              <Trash2 className="w-3 h-3" />
+        </td>
+        {/* Cód. — abre el panel de detalle */}
+        <td className="px-2 py-2.5 w-16 cursor-pointer" onClick={() => onOpenPanel(item)} title="Ver detalle de la actividad">
+          <span className="text-[10px] font-mono text-slate-400 hover:text-[var(--brand-gold)]">{item.itemCode}</span>
+        </td>
+        {/* Actividad — nombre editable + toggle de subactividades */}
+        <td className="px-2 py-2.5">
+          <div className="flex items-center gap-1">
+            <button onClick={() => setExpanded(e => !e)} title="Subactividades (desglose)" className="flex-shrink-0 text-slate-300 hover:text-[var(--brand-gold)]">
+              {expanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
             </button>
+            <input
+              defaultValue={item.activity}
+              onBlur={e => { const v = e.target.value.trim(); if (v && v !== item.activity) onUpdate(item.id, { activity: v }) }}
+              onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+              className={`w-full bg-transparent text-xs font-medium leading-tight rounded px-1 py-0.5 border border-transparent hover:border-slate-200 focus:bg-white focus:border-[var(--brand-gold)] focus:outline-none transition-colors ${item.completado ? 'line-through text-slate-400' : 'text-slate-800'}`}
+              title="Clic para editar el nombre de la actividad" />
+            {hasSubs && <span className="text-[8px] px-1 rounded bg-teal-100 text-teal-700 font-mono flex-shrink-0" title={`${subs.length} subactividad(es)`}>Σ{subs.length}</span>}
+          </div>
+          {(item.responsable || item.provider) && (
+            <div className="text-[10px] text-slate-400 mt-0.5 px-1 ml-4">{item.provider ? `⚒ ${item.provider.name}` : item.responsable}</div>
           )}
-        </div>
-      </td>
-      <td className="pr-3 pl-1 py-2.5 w-12 text-center border-l border-slate-100" onClick={e => e.stopPropagation()}>
-        <button onClick={() => onOpenPanel(item)}
-          className={`inline-flex items-center justify-center gap-0.5 text-[10px] font-mono font-semibold transition-colors ${warnDoc ? 'text-[var(--brand-gold)]' : docCount > 0 ? 'text-emerald-600' : 'text-slate-400 hover:text-slate-600'}`}
-          title={warnDoc ? '⚠ Sin factura adjunta — súbela en el panel del ítem' : docCount > 0 ? `${docCount} documento(s) adjunto(s)` : 'Adjuntar documento / factura'}>
-          {warnDoc ? <AlertTriangle className="w-3.5 h-3.5" /> : <Paperclip className="w-3.5 h-3.5" />}
-          {docCount > 0 && <span>{docCount}</span>}
-        </button>
-      </td>
-    </tr>
+        </td>
+        {/* Estado — botones de estado */}
+        <td className="px-2 py-2.5 w-24">
+          <div className="flex gap-0.5">
+            {ESTADOS.filter(e => e.value !== 'NA').map(e => {
+              const active = item.estado === e.value
+              const colors = e.value === 'DONE'
+                ? active ? 'bg-emerald-500 text-white' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                : e.value === 'EN_CURSO'
+                  ? active ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-600 hover:bg-amber-100'
+                  : active ? 'bg-slate-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+              return (
+                <button key={e.value} title={e.label} disabled={item.esNA}
+                  onClick={() => { const u: Record<string, unknown> = { estado: e.value }; if (e.value === 'DONE') u.completado = true; if (e.value === 'PENDIENTE') u.completado = false; onUpdate(item.id, u) }}
+                  className={`flex-1 px-1.5 py-1 rounded text-[9px] font-bold uppercase tracking-wider transition-all disabled:opacity-30 disabled:cursor-not-allowed ${colors}`}>
+                  {e.value === 'DONE' ? '✓' : e.value === 'EN_CURSO' ? '⋯' : '—'}
+                </button>
+              )
+            })}
+          </div>
+        </td>
+        {/* Budget */}
+        <td className="px-2 py-2.5 w-24 text-right border-l border-slate-100">
+          <span className="text-[11px] font-mono text-slate-600">{formatUSD(item.valorPresupuestado)}</span>
+        </td>
+        {/* Ejecutado — total (base + subactividades) */}
+        <td className="px-2 py-2.5 w-24 text-right border-l border-slate-100">
+          {hasSubs ? (
+            <button onClick={() => setExpanded(true)} title={`Base ${formatUSD(base)} + ${subs.length} subactividad(es)`}
+              className="w-full flex items-center justify-end gap-1 text-[11px] font-mono font-semibold text-[var(--brand-teal)]">
+              <span className="text-[8px] px-1 rounded bg-teal-100 text-teal-700">Σ</span>{formatUSD(totalEjec)}
+            </button>
+          ) : (
+            <input type="number" defaultValue={base || ''}
+              onBlur={e => onUpdate(item.id, { valorEjecutadoBase: parseFloat(e.target.value) || 0 })}
+              onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+              placeholder="—"
+              className="w-full bg-white border border-slate-200 text-[11px] font-mono font-semibold text-right text-slate-900 rounded px-1.5 py-1 focus:outline-none focus:border-[var(--brand-gold)] focus:ring-2 focus:ring-[var(--brand-gold)]/20 placeholder-slate-300" />
+          )}
+        </td>
+        {/* Desv. */}
+        <td className="px-2 py-2.5 w-20 text-right border-l border-slate-100">
+          <div className="flex items-center justify-end gap-1.5">
+            {item.valorPresupuestado > 0 && totalEjec > 0 && (
+              <span className={`text-[10px] font-mono font-semibold ${desviacion > 0 ? 'text-red-600' : 'text-emerald-600'}`}>{desviacion > 0 ? '+' : ''}{formatUSD(desviacion)}</span>
+            )}
+            {onDelete && (
+              <button onClick={() => onDelete(item)} title="Eliminar actividad" className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-red-500">
+                <Trash2 className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+        </td>
+        {/* Doc */}
+        <td className="pr-3 pl-1 py-2.5 w-12 text-center border-l border-slate-100">
+          <button onClick={() => onOpenPanel(item)}
+            className={`inline-flex items-center justify-center gap-0.5 text-[10px] font-mono font-semibold transition-colors ${warnDoc ? 'text-[var(--brand-gold)]' : docCount > 0 ? 'text-emerald-600' : 'text-slate-400 hover:text-slate-600'}`}
+            title={warnDoc ? '⚠ Sin factura adjunta — súbela en el panel del ítem' : docCount > 0 ? `${docCount} documento(s) adjunto(s)` : 'Adjuntar documento / factura'}>
+            {warnDoc ? <AlertTriangle className="w-3.5 h-3.5" /> : <Paperclip className="w-3.5 h-3.5" />}
+            {docCount > 0 && <span>{docCount}</span>}
+          </button>
+        </td>
+      </tr>
+
+      {/* Desglose — subactividades (SUMAN al valor base de la actividad) */}
+      {expanded && (
+        <tr className="bg-slate-50/70">
+          <td colSpan={8} className="p-0">
+            <div className="ml-10 mr-4 my-2 rounded-lg border border-slate-200 bg-white">
+              <div className="px-3 py-2 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
+                <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+                  Desglose · Fase {phaseCode} · Actividad {item.itemCode}
+                </div>
+                <div className="text-[10px] font-mono text-slate-500">
+                  Base {formatUSD(base)} + Sub {formatUSD(Math.max(0, totalEjec - base))} = <span className="font-bold text-[var(--brand-teal)]">{formatUSD(totalEjec)}</span>
+                </div>
+              </div>
+              {/* Valor base de la actividad (se respeta y las subactividades se suman) */}
+              <div className="px-3 py-2 flex items-center gap-2 border-b border-slate-100">
+                <span className="text-[11px] text-slate-500 flex-1">Valor de la actividad (base)</span>
+                <input type="number" defaultValue={base || ''}
+                  onBlur={e => onUpdate(item.id, { valorEjecutadoBase: parseFloat(e.target.value) || 0 })}
+                  onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+                  placeholder="0"
+                  className="w-28 bg-slate-50 border border-slate-200 text-[11px] font-mono text-right text-slate-800 rounded px-1.5 py-1 focus:outline-none focus:border-[var(--brand-gold)]" />
+              </div>
+              {/* Subactividades existentes */}
+              {subs.map((sub, idx) => (
+                <div key={sub.id} className="px-3 py-1.5 flex items-center gap-2 border-b border-slate-50 last:border-0">
+                  <span className="text-[10px] font-mono text-[var(--brand-gold)] w-20 flex-shrink-0">{item.itemCode}.{String(idx + 1).padStart(3, '0')}</span>
+                  <input defaultValue={sub.description}
+                    onBlur={e => { const v = e.target.value.trim(); if (v && v !== sub.description) updateSub.mutate({ id: sub.id, data: { description: v } }) }}
+                    onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+                    className="flex-1 min-w-0 bg-transparent text-[11px] text-slate-700 focus:outline-none border-b border-transparent focus:border-slate-200" />
+                  <input type="number" defaultValue={sub.valorEjecutado || ''}
+                    onBlur={e => { const v = parseFloat(e.target.value) || 0; if (v !== sub.valorEjecutado) updateSub.mutate({ id: sub.id, data: { valorEjecutado: v } }) }}
+                    onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+                    placeholder="0"
+                    className="w-28 bg-slate-50 border border-slate-200 text-[11px] font-mono text-right text-slate-800 rounded px-1.5 py-1 focus:outline-none focus:border-[var(--brand-gold)]" />
+                  <button onClick={() => deleteSub.mutate(sub.id)} title="Eliminar subactividad" className="text-slate-300 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
+                </div>
+              ))}
+              {/* Agregar subactividad */}
+              <div className="px-3 py-2 flex items-center gap-2 bg-slate-50/50">
+                <span className="text-[10px] font-mono text-slate-300 w-20 flex-shrink-0">{item.itemCode}.{String(subs.length + 1).padStart(3, '0')}</span>
+                <input value={newSubDesc} onChange={e => setNewSubDesc(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addSub() }}
+                  placeholder="Nueva subactividad…" className="flex-1 min-w-0 bg-white border border-slate-200 text-[11px] text-slate-700 rounded px-2 py-1 focus:outline-none focus:border-[var(--brand-gold)] placeholder-slate-400" />
+                <input type="number" value={newSubVal} onChange={e => setNewSubVal(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addSub() }}
+                  placeholder="Valor" className="w-28 bg-white border border-slate-200 text-[11px] font-mono text-right text-slate-700 rounded px-1.5 py-1 focus:outline-none focus:border-[var(--brand-gold)] placeholder-slate-400" />
+                <button onClick={addSub} disabled={!newSubDesc.trim() || createSub.isPending} title="Agregar subactividad" className="flex items-center px-1.5 py-1 bg-[var(--brand-gold)] hover:bg-[#E0AD4F] text-white rounded disabled:opacity-40"><Plus className="w-3.5 h-3.5" /></button>
+              </div>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
   )
 }
 
@@ -776,6 +744,11 @@ export default function Execution({ projectId }: { projectId: string }) {
     queryKey: ['budget-divisions', projectId],
     queryFn: () => phasesApi.budgetDivisions(projectId),
   })
+  // Total del Construction Budget cargado (referencia para la alerta de sobrecosto)
+  const { data: dash } = useQuery({
+    queryKey: ['project-dashboard', projectId],
+    queryFn: () => projectsApi.dashboard(projectId),
+  })
   const summaryById = new Map(phaseSummary.map(s => [s.id, s]))
   const setBudgetLinkMut = useMutation({
     mutationFn: ({ phaseId, code }: { phaseId: string; code: string | null }) =>
@@ -858,6 +831,13 @@ export default function Execution({ projectId }: { projectId: string }) {
   const doneTotal = totalItems.filter(i => i.completado)
   const pctGeneral = totalItems.length === 0 ? 0 : (doneTotal.length / totalItems.length) * 100
 
+  // Totales de ejecución (sumatoria de todas las fases) + referencia del budget
+  const grandPresupuestado = phases.reduce((s, p) => s + p.items.reduce((ss, i) => ss + i.valorPresupuestado, 0), 0)
+  const grandEjecutado = phases.reduce((s, p) => s + p.items.reduce((ss, i) => ss + i.valorEjecutado, 0), 0)
+  const grandBudget = dash?.kpis?.totalBudget ?? 0   // Construction Budget cargado
+  const overBudget = grandBudget > 0 && grandEjecutado > grandBudget
+  const deltaVsBudget = grandEjecutado - grandBudget
+
   if (isLoading) return <div className="text-slate-500 text-sm animate-pulse">Cargando ejecución...</div>
 
   return (
@@ -908,6 +888,37 @@ export default function Execution({ projectId }: { projectId: string }) {
             </button>
           </div>
         </div>
+
+        {/* Totales de ejecución (sumatoria de fases) + alerta de sobrecosto */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="kpi-card">
+            <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Presupuesto (obra)</div>
+            <div className="text-lg font-bold font-mono text-slate-800">{formatUSD(grandPresupuestado)}</div>
+          </div>
+          <div className="kpi-card">
+            <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Total Ejecutado</div>
+            <div className="text-lg font-bold font-mono text-[var(--brand-teal)]">{formatUSD(grandEjecutado)}</div>
+          </div>
+          <div className="kpi-card">
+            <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Construction Budget</div>
+            <div className="text-lg font-bold font-mono text-slate-800">{grandBudget > 0 ? formatUSD(grandBudget) : '—'}</div>
+          </div>
+          <div className={`kpi-card ${overBudget ? 'border-red-300 bg-red-50/60' : ''}`}>
+            <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Δ Ejecutado vs Budget</div>
+            <div className={`text-lg font-bold font-mono ${overBudget ? 'text-red-600' : 'text-emerald-600'}`}>
+              {grandBudget > 0 ? `${deltaVsBudget > 0 ? '+' : ''}${formatUSD(deltaVsBudget)}` : '—'}
+            </div>
+          </div>
+        </div>
+        {overBudget && (
+          <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+            <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0" />
+            <span className="text-sm text-red-600 font-medium">
+              La ejecución ({formatUSD(grandEjecutado)}) supera el Construction Budget ({formatUSD(grandBudget)}) por {formatUSD(deltaVsBudget)}.
+            </span>
+          </div>
+        )}
+
         {filteredPhases.map(phase => (
           <PhaseSection
             key={`${phase.id}-${expandTrigger}`}
@@ -924,6 +935,21 @@ export default function Execution({ projectId }: { projectId: string }) {
         ))}
         {filteredPhases.length === 0 && (
           <div className="text-center py-16 text-slate-400 text-sm">No hay ítems con el filtro seleccionado.</div>
+        )}
+
+        {/* Total general de ejecución (sumatoria de todas las fases) */}
+        {filteredPhases.length > 0 && (
+          <div className="flex items-center flex-wrap gap-x-6 gap-y-1 px-4 py-3 bg-white rounded-xl border border-slate-200 text-sm">
+            <span className="font-bold text-slate-800 uppercase tracking-wider">Total Ejecución</span>
+            <span className="text-slate-500">Presupuesto obra: <b className="font-mono text-slate-800">{formatUSD(grandPresupuestado)}</b></span>
+            <span className="text-slate-500">Ejecutado: <b className="font-mono text-[var(--brand-teal)]">{formatUSD(grandEjecutado)}</b></span>
+            {grandBudget > 0 && <span className="text-slate-500">Construction Budget: <b className="font-mono text-slate-800">{formatUSD(grandBudget)}</b></span>}
+            {grandBudget > 0 && (
+              <span className={`ml-auto font-mono font-semibold ${overBudget ? 'text-red-600' : 'text-emerald-600'}`}>
+                Δ {deltaVsBudget > 0 ? '+' : ''}{formatUSD(deltaVsBudget)} {overBudget ? '(sobre budget)' : '(bajo budget)'}
+              </span>
+            )}
+          </div>
         )}
       </div>
       {panelItem && <ItemPanel item={panelItem} onUpdate={handleUpdate} onClose={() => setPanelItem(null)} />}

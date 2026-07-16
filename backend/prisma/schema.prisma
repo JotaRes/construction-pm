@@ -157,6 +157,11 @@ model Item {
   completado         Boolean        @default(false)
   quantity           Float?         // cantidad en la unidad (para precios de referencia por unidad)
   valorPresupuestado Float          @default(0)
+  // valorEjecutadoBase = valor propio de la actividad (lo que edita el usuario).
+  // valorEjecutado = valorEjecutadoBase + Σ subactividades (roll-up guardado).
+  // Así las subactividades SUMAN al valor de la actividad, no lo reemplazan, y
+  // fases/dashboard/alertas (que leen valorEjecutado) reflejan el total.
+  valorEjecutadoBase Float          @default(0)
   valorEjecutado     Float          @default(0)
   providerId         String?
   provider           Provider?      @relation(fields: [providerId], references: [id], onDelete: SetNull)
