@@ -19,6 +19,25 @@ router.get('/:projectId/phases', async (req: Request, res: Response) => {
         },
       },
     })
+
+    // Auto-reparación de valorEjecutadoBase: si el backfill de la migración no
+    // pobló el valor base (quedó en 0) pero el total ejecutado ya reflejaba un
+    // valor, se deriva base = total − Σ subactividades. Idempotente: una vez
+    // corregido, la condición deja de cumplirse y no vuelve a escribir. Esto
+    // evita perder el valor original al agregar subactividades.
+    const repairs: Promise<unknown>[] = []
+    for (const phase of phases) {
+      for (const item of phase.items) {
+        const sumSubs = item.subactivities.reduce((s, x) => s + (x.valorEjecutado || 0), 0)
+        const derivedBase = item.valorEjecutado - sumSubs
+        if (item.valorEjecutadoBase === 0 && derivedBase > 0) {
+          item.valorEjecutadoBase = derivedBase
+          repairs.push(prisma.item.update({ where: { id: item.id }, data: { valorEjecutadoBase: derivedBase } }))
+        }
+      }
+    }
+    if (repairs.length > 0) await Promise.all(repairs)
+
     res.json({ data: phases, error: null })
   } catch (e) {
     res.status(500).json({ data: null, error: String(e) })

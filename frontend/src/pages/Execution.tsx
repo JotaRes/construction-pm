@@ -339,7 +339,7 @@ function ItemPanel({ item, onUpdate, onClose }: {
               </div>
               <div className="bg-white rounded-lg p-3">
                 <div className="text-[10px] text-slate-400 mb-1">Ejecutado (base)</div>
-                <input type="number" defaultValue={(item.valorEjecutadoBase ?? item.valorEjecutado) || ''}
+                <input type="number" defaultValue={Math.max(0, item.valorEjecutado - (item.subactivities ?? []).reduce((s, x) => s + (x.valorEjecutado || 0), 0)) || ''}
                   onBlur={e => onUpdate(item.id, { valorEjecutadoBase: parseFloat(e.target.value) || 0 })}
                   onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
                   placeholder="0"
@@ -441,8 +441,11 @@ function ItemRow({ item, onUpdate, onOpenPanel, onDelete }: {
   }
   const subs = item.subactivities ?? []
   const hasSubs = subs.length > 0
-  const base = item.valorEjecutadoBase ?? item.valorEjecutado
-  const totalEjec = item.valorEjecutado            // backend roll-up = base + Σ subs
+  const totalEjec = item.valorEjecutado            // backend roll-up = base + Σ subs (total real)
+  const sumSubs = subs.reduce((s, x) => s + (x.valorEjecutado || 0), 0)
+  // Base = valor propio de la actividad, DERIVADO del total real (robusto: no
+  // depende de que valorEjecutadoBase esté bien poblado en la BD).
+  const base = Math.max(0, totalEjec - sumSubs)
   const desviacion = totalEjec - item.valorPresupuestado
   const docCount = item.documents?.length ?? 0
   const hasFactura = item.documents?.some(d => d.type === 'FACTURA') ?? false
