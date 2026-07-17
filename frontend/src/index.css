@@ -623,6 +623,46 @@ input[type=number] { -moz-appearance: textfield; }
 
 /* Tablas anchas: scroll horizontal suave en cualquier contenedor overflow-x */
 .overflow-x-auto { -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+
+/* ═══════════════════════════════════════════════════════
+   MICRO-ANIMACIONES — sistema más vivo e ilustrativo
+   ═══════════════════════════════════════════════════════ */
+
+/* Barras de progreso: brillo sutil en movimiento sobre el relleno */
+.bar-fill {
+  position: relative;
+  overflow: hidden;
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.bar-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.45) 50%, transparent 70%);
+  background-size: 200% 100%;
+  animation: barShine 2.8s ease-in-out infinite;
+}
+@keyframes barShine {
+  0%   { background-position: 200% 0; }
+  60%, 100% { background-position: -100% 0; }
+}
+
+/* Entrada suave de tarjetas KPI y secciones */
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.kpi-card, .section-card { animation: fadeSlideUp 0.35s var(--ease, ease-out) both; }
+.kpi-card:nth-child(2) { animation-delay: 0.05s; }
+.kpi-card:nth-child(3) { animation-delay: 0.10s; }
+.kpi-card:nth-child(4) { animation-delay: 0.15s; }
+.kpi-card:nth-child(5) { animation-delay: 0.20s; }
+
+/* Respeto a usuarios con reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .bar-fill::after { animation: none; }
+  .kpi-card, .section-card { animation: none; }
+}
 .card .overflow-x-auto,
 .fin-app .card .overflow-x-auto { -webkit-overflow-scrolling: touch; }
 @media (hover: none) {

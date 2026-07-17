@@ -97,7 +97,7 @@ function DivSection({
           <div className="w-24 flex items-center gap-2 justify-end pl-2 md:pl-4">
             <div className="w-14 h-1.5 bg-slate-200 rounded-full overflow-hidden">
               <div
-                className={`h-full rounded-full transition-all ${pct > 0 ? 'bg-emerald-500' : 'bg-slate-200'}`}
+                className={`h-full rounded-full bar-fill ${pct > 0 ? 'bg-emerald-500' : 'bg-slate-200'}`}
                 style={{ width: `${Math.min(pct, 100)}%` }}
               />
             </div>
@@ -412,7 +412,7 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
         </div>
         <div className="h-2.5 bg-slate-200 rounded-full overflow-hidden">
           <div
-            className="h-full rounded-full transition-all bg-emerald-500"
+            className="h-full rounded-full bar-fill bg-emerald-500"
             style={{ width: `${Math.min(pctGlobal, 100)}%` }}
           />
         </div>

@@ -10,6 +10,7 @@ import {
   ChevronsDown, ChevronsUp,
 } from 'lucide-react'
 import { useConfirm } from '../components/ConfirmDialog'
+import MiniDonut from '../components/MiniDonut'
 import toast from 'react-hot-toast'
 
 const ESTADOS: { value: ItemEstado; label: string; color: string; bg: string }[] = [
@@ -616,16 +617,13 @@ function ItemRow({ item, onUpdate, onOpenPanel, onDelete }: {
   )
 }
 
-function PhaseSection({ phase, defaultOpen = false, onUpdate, onOpenPanel, onCreate, onDelete, summary, divisions, onMapBudget }: {
+function PhaseSection({ phase, defaultOpen = false, onUpdate, onOpenPanel, onCreate, onDelete }: {
   defaultOpen?: boolean
   phase: Phase
   onUpdate: (id: string, data: Record<string, unknown>) => void
   onOpenPanel: (item: Item) => void
   onCreate: (phaseId: string, activity?: string) => void
   onDelete: (item: Item) => void
-  summary?: { budgetTotal: number; ejecutadoTotal: number; budgetDivCode: string | null; variancePct: number }
-  divisions: Array<{ divCode: string; divName: string; total: number }>
-  onMapBudget: (phaseId: string, code: string | null) => void
 }) {
   // FASE 1: colapsadas por defecto para una vista más limpia y amigable
   const [open, setOpen] = useState(defaultOpen)
@@ -636,10 +634,9 @@ function PhaseSection({ phase, defaultOpen = false, onUpdate, onOpenPanel, onCre
   const pct = activeItems.length === 0 ? 0 : (doneItems.length / activeItems.length) * 100
   const budget = phase.items.reduce((s, i) => s + i.valorPresupuestado, 0)
   const ejecutado = phase.items.reduce((s, i) => s + i.valorEjecutado, 0)
-  // Alerta por fase: ejecución real supera lo presupuestado en el Construction Budget enlazado
-  const phaseBudget = summary?.budgetTotal ?? 0
-  const phaseEjec = summary?.ejecutadoTotal ?? ejecutado
-  const phaseOver = phaseBudget > 0 && phaseEjec > phaseBudget
+  // Alerta por fase: ejecución real supera el presupuesto de obra de la MISMA fase
+  // (misma fuente de datos — comparación exacta ítem a ítem)
+  const phaseOver = budget > 0 && ejecutado > budget
   const borderColor = phaseOver ? 'border-l-2 border-red-500/70' : pct === 100 ? 'border-l-2 border-emerald-500/50' : pct > 0 ? 'border-l-2 border-amber-500/50' : ''
   const phaseClass = `w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 bg-white/90 rounded-xl border ${borderColor} border-slate-200/40 hover:border-slate-200 transition-colors`
   return (
@@ -650,9 +647,9 @@ function PhaseSection({ phase, defaultOpen = false, onUpdate, onOpenPanel, onCre
         <span className="text-sm font-semibold text-slate-800 flex-1 text-left leading-tight min-w-0 truncate">{phase.name}</span>
         {phaseOver && (
           <span className="flex items-center gap-1 text-[9px] font-bold text-red-600 bg-red-50 border border-red-200 rounded-full px-1.5 py-0.5 flex-shrink-0"
-            title={`Ejecutado ${formatUSD(phaseEjec)} supera el budget ${formatUSD(phaseBudget)}`}>
+            title={`Ejecutado ${formatUSD(ejecutado)} supera el presupuesto de la fase ${formatUSD(budget)}`}>
             <AlertTriangle className="w-3 h-3" />
-            <span className="hidden sm:inline">SOBRE BUDGET</span>
+            <span className="hidden sm:inline">SOBRE PRESUPUESTO</span>
           </span>
         )}
         <div className="flex items-center gap-2 sm:gap-4 text-xs shrink-0">
@@ -663,51 +660,19 @@ function PhaseSection({ phase, defaultOpen = false, onUpdate, onOpenPanel, onCre
           )}
           <span className={`font-mono font-semibold w-9 text-right ${pct > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>{pct.toFixed(0)}%</span>
           <div className="w-10 sm:w-14 h-1.5 bg-slate-200/80 rounded-full overflow-hidden">
-            <div className={`h-full rounded-full transition-all ${pct > 0 ? 'bg-emerald-500' : 'bg-slate-200'}`} style={{ width: `${pct}%` }} />
+            <div className={`h-full rounded-full bar-fill ${pct > 0 ? 'bg-emerald-500' : 'bg-slate-200'}`} style={{ width: `${pct}%` }} />
           </div>
         </div>
       </button>
       {open && (
         <div className="mt-0.5 bg-slate-50/60 rounded-b-xl border border-slate-200/30 border-t-0 overflow-hidden">
-          {/* Comparativa vs Construction Budget cargado (presupuestado vs ejecutado) */}
-          {divisions.length > 0 && (() => {
-            const bdg = summary?.budgetTotal ?? 0
-            const eje = summary?.ejecutadoTotal ?? ejecutado
-            const dev = bdg > 0 ? ((eje - bdg) / bdg) * 100 : 0
-            const over = bdg > 0 && eje > bdg
-            return (
-              <>
-              {over && (
-                <div className="flex items-center gap-2 px-4 py-2 bg-red-50 border-b border-red-200 text-[11px] text-red-700 font-medium">
-                  <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
-                  Alerta: la ejecución de esta fase ({formatUSD(eje)}) supera lo presupuestado en el Construction Budget ({formatUSD(bdg)}) por <b className="font-mono">{formatUSD(eje - bdg)}</b>.
-                </div>
-              )}
-              <div className="flex items-center flex-wrap gap-x-5 gap-y-1 px-4 py-2 bg-white border-b border-slate-200 text-[11px]">
-                <span className="text-slate-400 uppercase tracking-wider text-[9px]">Vs. Construction Budget</span>
-                <span className="text-slate-500">Presupuestado: <b className="font-mono text-slate-700">{bdg > 0 ? formatUSD(bdg) : '—'}</b></span>
-                <span className="text-slate-500">Ejecutado: <b className="font-mono text-[var(--brand-teal)]">{formatUSD(eje)}</b></span>
-                {bdg > 0 && (
-                  <span className={`font-mono font-semibold ${over ? 'text-red-500' : 'text-emerald-600'}`}>
-                    {dev > 0 ? '+' : ''}{dev.toFixed(0)}% {over ? '(sobre)' : '(bajo)'}
-                  </span>
-                )}
-                <label className="ml-auto flex items-center gap-1.5 text-slate-400">
-                  <span className="text-[9px] uppercase">División del budget</span>
-                  <select
-                    value={summary?.budgetDivCode ?? ''}
-                    onChange={e => onMapBudget(phase.id, e.target.value || null)}
-                    className="bg-white border border-slate-200 text-[11px] text-slate-700 rounded px-1.5 py-1 focus:outline-none focus:border-[var(--brand-gold)]"
-                    title="Enlaza esta fase con una división de tu Construction Budget"
-                  >
-                    <option value="">Auto (por código)</option>
-                    {divisions.map(d => <option key={d.divCode} value={d.divCode}>{d.divCode} · {d.divName} ({formatUSD(d.total)})</option>)}
-                  </select>
-                </label>
-              </div>
-              </>
-            )
-          })()}
+          {/* Alerta de sobrecosto de la fase — presupuesto de obra vs ejecutado (misma fuente, ítem a ítem) */}
+          {phaseOver && (
+            <div className="flex items-center gap-2 px-4 py-2 bg-red-50 border-b border-red-200 text-[11px] text-red-700 font-medium">
+              <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+              La ejecución de esta fase ({formatUSD(ejecutado)}) supera su presupuesto de obra ({formatUSD(budget)}) por <b className="font-mono">{formatUSD(ejecutado - budget)}</b>.
+            </div>
+          )}
           <div className="overflow-x-auto">
           <table className="w-full min-w-[680px]">
             <thead>
@@ -767,27 +732,6 @@ export default function Execution({ projectId }: { projectId: string }) {
   const { data: phases = [], isLoading } = useQuery<Phase[]>({
     queryKey: ['phases', projectId],
     queryFn: () => phasesApi.list(projectId),
-  })
-
-  // Comparativa por fase vs Construction Budget cargado (presupuestado vs ejecutado)
-  const { data: phaseSummary = [] } = useQuery({
-    queryKey: ['phases-summary', projectId],
-    queryFn: () => phasesApi.summary(projectId),
-  })
-  const { data: budgetDivisions = [] } = useQuery({
-    queryKey: ['budget-divisions', projectId],
-    queryFn: () => phasesApi.budgetDivisions(projectId),
-  })
-  // Total del Construction Budget cargado (referencia para la alerta de sobrecosto)
-  const { data: dash } = useQuery({
-    queryKey: ['project-dashboard', projectId],
-    queryFn: () => projectsApi.dashboard(projectId),
-  })
-  const summaryById = new Map(phaseSummary.map(s => [s.id, s]))
-  const setBudgetLinkMut = useMutation({
-    mutationFn: ({ phaseId, code }: { phaseId: string; code: string | null }) =>
-      phasesApi.setBudgetLink(projectId, phaseId, code),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['phases-summary', projectId] }),
   })
 
   const updateMutation = useMutation({
@@ -865,12 +809,11 @@ export default function Execution({ projectId }: { projectId: string }) {
   const doneTotal = totalItems.filter(i => i.completado)
   const pctGeneral = totalItems.length === 0 ? 0 : (doneTotal.length / totalItems.length) * 100
 
-  // Totales de ejecución (sumatoria de todas las fases) + referencia del budget
+  // Totales de ejecución (sumatoria de todas las fases) — fuente única: los ítems de obra
   const grandPresupuestado = phases.reduce((s, p) => s + p.items.reduce((ss, i) => ss + i.valorPresupuestado, 0), 0)
   const grandEjecutado = phases.reduce((s, p) => s + p.items.reduce((ss, i) => ss + i.valorEjecutado, 0), 0)
-  const grandBudget = dash?.kpis?.totalBudget ?? 0   // Construction Budget cargado
-  const overBudget = grandBudget > 0 && grandEjecutado > grandBudget
-  const deltaVsBudget = grandEjecutado - grandBudget
+  const overBudget = grandPresupuestado > 0 && grandEjecutado > grandPresupuestado
+  const deltaVsBudget = grandEjecutado - grandPresupuestado
 
   if (isLoading) return <div className="text-slate-500 text-sm animate-pulse">Cargando ejecución...</div>
 
@@ -884,7 +827,7 @@ export default function Execution({ projectId }: { projectId: string }) {
               <span className="text-sm text-slate-500">{doneTotal.length}/{totalItems.length} ítems</span>
               <div className="flex items-center gap-2">
                 <div className="w-32 h-1.5 bg-white rounded-full overflow-hidden">
-                  <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${pctGeneral}%` }} />
+                  <div className="h-full bg-emerald-500 rounded-full transition-all bar-fill" style={{ width: `${pctGeneral}%` }} />
                 </div>
                 <span className="text-xs font-mono font-semibold text-emerald-600">{pctGeneral.toFixed(1)}%</span>
               </div>
@@ -923,24 +866,32 @@ export default function Execution({ projectId }: { projectId: string }) {
           </div>
         </div>
 
-        {/* Totales de ejecución (sumatoria de fases) + alerta de sobrecosto */}
+        {/* Totales de ejecución — fuente única: presupuesto de obra vs ejecutado real */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div className="kpi-card">
             <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Presupuesto (obra)</div>
             <div className="text-lg font-bold font-mono text-slate-800">{formatUSD(grandPresupuestado)}</div>
+            <div className="text-[10px] text-slate-400 mt-1">Σ ítems de todas las fases</div>
           </div>
           <div className="kpi-card">
             <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Total Ejecutado</div>
             <div className="text-lg font-bold font-mono text-[var(--brand-teal)]">{formatUSD(grandEjecutado)}</div>
+            <div className="mt-2 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+              <div className="h-full bg-emerald-500 rounded-full bar-fill" style={{ width: `${grandPresupuestado > 0 ? Math.min(100, (grandEjecutado / grandPresupuestado) * 100) : 0}%` }} />
+            </div>
           </div>
-          <div className="kpi-card">
-            <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Construction Budget</div>
-            <div className="text-lg font-bold font-mono text-slate-800">{grandBudget > 0 ? formatUSD(grandBudget) : '—'}</div>
-          </div>
-          <div className={`kpi-card ${overBudget ? 'border-red-300 bg-red-50/60' : ''}`}>
-            <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Δ Ejecutado vs Budget</div>
+          <div className={`kpi-card ${overBudget ? 'kpi-card-red border-red-300 bg-red-50/60' : 'kpi-card-green'}`}>
+            <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Desviación</div>
             <div className={`text-lg font-bold font-mono ${overBudget ? 'text-red-600' : 'text-emerald-600'}`}>
-              {grandBudget > 0 ? `${deltaVsBudget > 0 ? '+' : ''}${formatUSD(deltaVsBudget)}` : '—'}
+              {grandPresupuestado > 0 ? `${deltaVsBudget > 0 ? '+' : ''}${formatUSD(deltaVsBudget)}` : '—'}
+            </div>
+            <div className="text-[10px] text-slate-400 mt-1">{overBudget ? 'sobre presupuesto de obra' : 'bajo presupuesto de obra'}</div>
+          </div>
+          <div className="kpi-card flex items-center gap-3">
+            <MiniDonut pct={pctGeneral} size={56} />
+            <div>
+              <div className="text-[10px] text-slate-400 uppercase tracking-wider">Avance físico</div>
+              <div className="text-xs text-slate-500 mt-0.5">{doneTotal.length}/{totalItems.length} ítems</div>
             </div>
           </div>
         </div>
@@ -948,7 +899,7 @@ export default function Execution({ projectId }: { projectId: string }) {
           <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
             <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0" />
             <span className="text-sm text-red-600 font-medium">
-              La ejecución ({formatUSD(grandEjecutado)}) supera el Construction Budget ({formatUSD(grandBudget)}) por {formatUSD(deltaVsBudget)}.
+              La ejecución ({formatUSD(grandEjecutado)}) supera el presupuesto de obra ({formatUSD(grandPresupuestado)}) por {formatUSD(deltaVsBudget)}.
             </span>
           </div>
         )}
@@ -962,9 +913,6 @@ export default function Execution({ projectId }: { projectId: string }) {
             onOpenPanel={setPanelItem}
             onCreate={(phaseId, activity) => createMutation.mutate({ phaseId, activity })}
             onDelete={item => handleDeleteItem(item)}
-            summary={summaryById.get(phase.id)}
-            divisions={budgetDivisions}
-            onMapBudget={(phaseId, code) => setBudgetLinkMut.mutate({ phaseId, code })}
           />
         ))}
         {filteredPhases.length === 0 && (
@@ -977,10 +925,9 @@ export default function Execution({ projectId }: { projectId: string }) {
             <span className="font-bold text-slate-800 uppercase tracking-wider">Total Ejecución</span>
             <span className="text-slate-500">Presupuesto obra: <b className="font-mono text-slate-800">{formatUSD(grandPresupuestado)}</b></span>
             <span className="text-slate-500">Ejecutado: <b className="font-mono text-[var(--brand-teal)]">{formatUSD(grandEjecutado)}</b></span>
-            {grandBudget > 0 && <span className="text-slate-500">Construction Budget: <b className="font-mono text-slate-800">{formatUSD(grandBudget)}</b></span>}
-            {grandBudget > 0 && (
+            {grandPresupuestado > 0 && (
               <span className={`ml-auto font-mono font-semibold ${overBudget ? 'text-red-600' : 'text-emerald-600'}`}>
-                Δ {deltaVsBudget > 0 ? '+' : ''}{formatUSD(deltaVsBudget)} {overBudget ? '(sobre budget)' : '(bajo budget)'}
+                Δ {deltaVsBudget > 0 ? '+' : ''}{formatUSD(deltaVsBudget)} {overBudget ? '(sobre presupuesto)' : '(bajo presupuesto)'}
               </span>
             )}
           </div>

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { phasesApi, type PhaseSummary } from '../lib/api'
 import { Layers, TrendingUp, Calendar } from 'lucide-react'
+import MiniDonut from '../components/MiniDonut'
 
 const fmt = (n: number) =>
   n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
@@ -42,10 +43,12 @@ export default function PhasesDashboard({ projectId }: { projectId: string }) {
 
       {/* KPI row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
-          <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1"><Layers className="w-3 h-3" /> Avance global</div>
-          <div className="text-2xl font-bold font-mono text-slate-900">{globalPct}%</div>
-          <div className="text-[11px] text-slate-400">{doneItems}/{totalItems} ítems</div>
+        <div className="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-3">
+          <MiniDonut pct={globalPct} size={56} />
+          <div>
+            <div className="flex items-center gap-1.5 text-xs text-slate-400"><Layers className="w-3 h-3" /> Avance global</div>
+            <div className="text-[11px] text-slate-400 mt-0.5">{doneItems}/{totalItems} ítems</div>
+          </div>
         </div>
         <div className="bg-white border border-slate-200 rounded-xl p-4">
           <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1"><TrendingUp className="w-3 h-3" /> Budget total</div>
@@ -86,7 +89,7 @@ export default function PhasesDashboard({ projectId }: { projectId: string }) {
                     </td>
                     <td className="px-3 py-3 min-w-[150px]">
                       <div className="h-2 w-32 rounded-full bg-slate-200 overflow-hidden">
-                        <div className={`h-2 rounded-full transition-all ${st.bar}`} style={{ width: `${p.progressPct}%` }} />
+                        <div className={`h-2 rounded-full bar-fill ${st.bar}`} style={{ width: `${p.progressPct}%` }} />
                       </div>
                       <span className={`text-[11px] font-mono font-semibold ${p.progressPct > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>{p.progressPct}%</span>
                       <span className="text-[11px] text-slate-400"> ({p.completedItems}/{p.totalItems})</span>

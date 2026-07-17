@@ -863,9 +863,6 @@ export default function Draws({ projectId }: { projectId: string }) {
   const lastSaldo = Math.max(0, initialHoldback - totalWired)
 
   // Auditoría: solo la APROBACIÓN del lender es requerida — es la que alimenta
-  // el presupuesto aprobado (DrawLineContribution). "Nuestra factura" es opcional.
-  const drawsConFalta = draws.filter(d => (d.netWire > 0 || d.estado !== 'EMPTY') && !d.lenderApprovalUrl)
-
   if (isLoading) return <div className="text-slate-500 text-sm animate-pulse">Cargando draws...</div>
 
   return (
@@ -971,31 +968,6 @@ export default function Draws({ projectId }: { projectId: string }) {
       {/* Excel general del lender — carga y validación (parte superior) */}
       <LenderExcelPanel projectId={projectId} />
 
-      {/* Alerta global de documentos faltantes */}
-      {drawsConFalta.length > 0 && (
-        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <div className="text-sm font-semibold text-red-800">
-                {drawsConFalta.length} draw(s) con documentos faltantes
-              </div>
-              <div className="text-xs text-red-700 mt-0.5">
-                Cada draw ejecutado debe tener la <strong>aprobación post-inspección del lender</strong> (alimenta el presupuesto aprobado). La factura al lender es opcional.
-              </div>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {drawsConFalta.map(d => (
-                  <span key={d.id} className="text-[10px] bg-white text-red-700 border border-red-200 px-2 py-0.5 rounded-full font-mono">
-                    Draw #{d.drawNumber}
-                    {!d.lenderApprovalUrl && ' · falta aprobación del lender'}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* ── KPI row ── */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <div className="kpi-card">
@@ -1082,7 +1054,7 @@ export default function Draws({ projectId }: { projectId: string }) {
                           <td className="px-4 py-2.5">
                             <div className="flex items-center gap-1.5 justify-center">
                               <div className="w-12 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                                <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${Math.min(pct, 100)}%` }} />
+                                <div className="h-full bg-emerald-500 rounded-full bar-fill" style={{ width: `${Math.min(pct, 100)}%` }} />
                               </div>
                               <span className="text-[10px] font-mono font-semibold text-emerald-600">{pct.toFixed(0)}%</span>
                             </div>
