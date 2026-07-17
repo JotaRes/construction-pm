@@ -8,9 +8,11 @@ const fmt = (n: number) =>
 const fmtDate = (d: string | null) =>
   d ? new Date(d).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
 
+// Progreso siempre en verde (homogéneo con Const. Budget); el estado se
+// diferencia con el badge, no con el color de la barra.
 function statusStyle(s: PhaseSummary['status']) {
   if (s === 'COMPLETA') return { bar: 'bg-emerald-500', badge: 'bg-emerald-500/15 text-emerald-600', label: 'Completa' }
-  if (s === 'EN_CURSO') return { bar: 'bg-[var(--brand-gold)]', badge: 'bg-[#C8922A]/15 text-[var(--brand-gold)]', label: 'En curso' }
+  if (s === 'EN_CURSO') return { bar: 'bg-emerald-500', badge: 'bg-[#C8922A]/15 text-[var(--brand-gold)]', label: 'En curso' }
   return { bar: 'bg-slate-300', badge: 'bg-slate-100 text-slate-500', label: 'Pendiente' }
 }
 
@@ -84,9 +86,10 @@ export default function PhasesDashboard({ projectId }: { projectId: string }) {
                     </td>
                     <td className="px-3 py-3 min-w-[150px]">
                       <div className="h-2 w-32 rounded-full bg-slate-200 overflow-hidden">
-                        <div className={`h-2 rounded-full ${st.bar}`} style={{ width: `${p.progressPct}%` }} />
+                        <div className={`h-2 rounded-full transition-all ${st.bar}`} style={{ width: `${p.progressPct}%` }} />
                       </div>
-                      <span className="text-[11px] text-slate-400">{p.progressPct}% ({p.completedItems}/{p.totalItems})</span>
+                      <span className={`text-[11px] font-mono font-semibold ${p.progressPct > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>{p.progressPct}%</span>
+                      <span className="text-[11px] text-slate-400"> ({p.completedItems}/{p.totalItems})</span>
                     </td>
                     <td className="px-3 py-3 text-xs text-slate-500 whitespace-nowrap">
                       <span className="inline-flex items-center gap-1"><Calendar className="w-3 h-3 text-slate-300" />{fmtDate(p.startDateReal)}</span>

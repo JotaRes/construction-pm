@@ -337,7 +337,7 @@ export default function Budget({ projectId }: { projectId: string }) {
       </div>
 
       {/* KPI row */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="kpi-card">
           <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1.5">Total presupuestado</div>
           <div className="text-xl font-bold font-mono text-slate-900">{formatUSD(totalBudget)}</div>

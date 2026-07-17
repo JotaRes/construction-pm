@@ -4,7 +4,7 @@ import { constructionBudgetApi, projectsApi } from '../lib/api'
 import { formatUSD } from '../lib/calculations'
 import type { BudgetLine } from '../lib/types'
 import { useConfirm } from '../components/ConfirmDialog'
-import { ChevronDown, ChevronRight, Upload, FileText, Eraser, FileUp } from 'lucide-react'
+import { ChevronDown, ChevronRight, Upload, FileText, Eraser, FileUp, Download, ChevronsDown, ChevronsUp } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 /* ── Inline editable number ─────────────────────── */
@@ -51,17 +51,20 @@ function DivSection({
   group,
   onUpdate,
   factor,
+  defaultOpen = false,
 }: {
   group: DivGroup
   onUpdate: (id: string, data: Record<string, unknown>) => void
   factor: number
+  defaultOpen?: boolean
 }) {
   const totalIni  = group.lines.reduce((s, l) => s + l.valorInicial, 0)
   const totalApr  = group.lines.reduce((s, l) => s + l.valorAprobado, 0)
   const totalDesemb = totalApr * factor
   const pct = totalIni > 0 ? (totalApr / totalIni) * 100 : 0
 
-  const [open, setOpen] = useState(totalIni > 0)
+  // Contraída por defecto: el usuario despliega solo lo que quiere revisar
+  const [open, setOpen] = useState(defaultOpen)
 
   const borderColor = pct === 100 ? 'border-l-emerald-500/60'
     : pct > 0 ? 'border-l-amber-500/60'
@@ -82,39 +85,38 @@ function DivSection({
           <span className="text-sm font-semibold text-slate-800">{group.divName}</span>
         </div>
         <div className="flex items-center gap-0 shrink-0 text-xs font-mono">
-          <span className={`w-28 text-right ${totalIni > 0 ? 'text-slate-800 font-semibold' : 'text-slate-500'}`}>
+          <span className={`w-28 text-right hidden md:inline-block ${totalIni > 0 ? 'text-slate-800 font-semibold' : 'text-slate-500'}`}>
             {totalIni > 0 ? formatUSD(totalIni) : '—'}
           </span>
-          <span className={`w-28 text-right ${totalDesemb > 0 ? 'text-[var(--brand-teal)]' : 'text-slate-500'}`} title="Desembolsado = Aprobado × factor del lender">
+          <span className={`w-28 text-right hidden lg:inline-block ${totalDesemb > 0 ? 'text-[var(--brand-teal)]' : 'text-slate-500'}`} title="Desembolsado = Aprobado × factor del lender">
             {totalDesemb > 0 ? formatUSD(totalDesemb) : '—'}
           </span>
-          <span className={`w-32 text-right ${totalApr > 0 ? 'text-emerald-400' : 'text-slate-500'}`}>
+          <span className={`w-32 text-right hidden md:inline-block ${totalApr > 0 ? 'text-emerald-600 font-semibold' : 'text-slate-500'}`}>
             {totalApr > 0 ? formatUSD(totalApr) : '—'}
           </span>
-          <div className="w-24 flex items-center gap-2 justify-end pl-4">
+          <div className="w-24 flex items-center gap-2 justify-end pl-2 md:pl-4">
             <div className="w-14 h-1.5 bg-slate-200 rounded-full overflow-hidden">
               <div
-                className={`h-full rounded-full transition-all ${pct === 100 ? 'bg-emerald-500' : pct > 0 ? 'bg-[var(--brand-teal)]' : 'bg-slate-200'}`}
+                className={`h-full rounded-full transition-all ${pct > 0 ? 'bg-emerald-500' : 'bg-slate-200'}`}
                 style={{ width: `${Math.min(pct, 100)}%` }}
               />
             </div>
-            <span className={`text-[10px] w-6 text-right ${pct > 0 ? 'text-slate-500' : 'text-slate-500'}`}>{pct.toFixed(0)}%</span>
+            <span className={`text-[10px] font-semibold w-7 text-right ${pct > 0 ? 'text-emerald-600' : 'text-slate-500'}`}>{pct.toFixed(0)}%</span>
           </div>
         </div>
       </button>
 
       {open && (
-        <table className="w-full">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[640px]">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200">
-              <th className="pl-8 pr-2 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider w-16">Cód.</th>
-              <th className="px-2 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider">Descripción</th>
-              <th className="px-2 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider w-10">Ud.</th>
-              <th className="px-2 py-1.5 text-right text-[9px] text-slate-400 uppercase tracking-wider w-20">Cant. ✏</th>
-              <th className="px-2 py-1.5 text-right text-[9px] text-slate-400 uppercase tracking-wider w-28">Inicial ✏</th>
+              <th className="pl-8 pr-2 py-1.5 text-left text-[9px] text-slate-500 uppercase tracking-wider w-16">Cód.</th>
+              <th className="px-2 py-1.5 text-left text-[9px] text-slate-500 uppercase tracking-wider">Descripción</th>
+              <th className="px-2 py-1.5 text-right text-[9px] text-slate-500 uppercase tracking-wider w-28">Inicial ✏</th>
               <th className="px-2 py-1.5 text-right text-[9px] text-[var(--brand-teal)] uppercase tracking-wider w-28" title={`Desembolsado = Aprobado × ${(factor * 100).toFixed(2)}% (factor del lender)`}>Desembolsado</th>
-              <th className="px-2 py-1.5 text-right text-[9px] text-emerald-600/70 uppercase tracking-wider w-32">Aprobado (auto desde Draws)</th>
-              <th className="pr-4 pl-2 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider w-24">Progreso</th>
+              <th className="px-2 py-1.5 text-right text-[9px] text-emerald-700 uppercase tracking-wider w-32">Aprobado (auto desde Draws)</th>
+              <th className="pr-4 pl-2 py-1.5 text-left text-[9px] text-slate-500 uppercase tracking-wider w-24">Progreso</th>
             </tr>
           </thead>
           <tbody>
@@ -126,7 +128,7 @@ function DivSection({
                   key={line.id}
                   className={`border-b border-slate-200/30 transition-colors
                     ${line.valorAprobado > 0 && line.valorAprobado >= line.valorInicial && line.valorInicial > 0
-                      ? 'bg-emerald-950/15 hover:bg-emerald-950/25'
+                      ? 'bg-emerald-50 hover:bg-emerald-100/60'
                       : line.valorAprobado > 0
                       ? 'bg-amber-50/60 hover:bg-amber-50/40'
                       : 'hover:bg-white/30'}`}
@@ -137,10 +139,6 @@ function DivSection({
                   <td className="px-2 py-2">
                     <div className="text-xs text-slate-700">{line.description}</div>
                     {line.vendor && <div className="text-[9px] text-slate-400 mt-0.5">{line.vendor}</div>}
-                  </td>
-                  <td className="px-2 py-2 text-[10px] text-slate-400 text-center">{line.unit}</td>
-                  <td className="px-2 py-2">
-                    <Num value={line.quantity ?? 0} onSave={v => onUpdate(line.id, { quantity: v })} dim={!line.quantity} plain />
                   </td>
                   <td className="px-2 py-2">
                     <Num value={line.valorInicial} onSave={v => onUpdate(line.id, { valorInicial: v })} />
@@ -158,11 +156,11 @@ function DivSection({
                       <div className="flex items-center gap-1.5">
                         <div className="w-10 h-1.5 bg-slate-200 rounded-full overflow-hidden flex-shrink-0">
                           <div
-                            className={`h-full rounded-full ${pctLine >= 100 ? 'bg-emerald-500' : pctLine > 0 ? 'bg-[var(--brand-teal)]' : 'bg-slate-200'}`}
+                            className={`h-full rounded-full transition-all ${pctLine > 0 ? 'bg-emerald-500' : 'bg-slate-200'}`}
                             style={{ width: `${Math.min(pctLine, 100)}%` }}
                           />
                         </div>
-                        <span className={`text-[10px] font-mono w-8 ${pctLine > 0 ? 'text-slate-500' : 'text-slate-500'}`}>
+                        <span className={`text-[10px] font-mono font-semibold w-8 ${pctLine > 0 ? 'text-emerald-600' : 'text-slate-500'}`}>
                           {pctLine.toFixed(0)}%
                         </span>
                         {diff < 0 && line.valorAprobado > 0 && (
@@ -176,6 +174,7 @@ function DivSection({
             })}
           </tbody>
         </table>
+        </div>
       )}
     </div>
   )
@@ -186,6 +185,9 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
   const queryClient = useQueryClient()
   const confirm = useConfirm()
   const importInputRef = useRef<HTMLInputElement>(null)
+  // Expandir/colapsar todas las divisiones (por defecto todas contraídas)
+  const [expandAll, setExpandAll] = useState(false)
+  const [expandTrigger, setExpandTrigger] = useState(0)
 
   const { data: lines = [], isLoading } = useQuery<BudgetLine[]>({
     queryKey: ['construction-budget', projectId],
@@ -268,6 +270,28 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
   const pctGlobal = totalIni > 0 ? (totalApr / totalIni) * 100 : 0
   const saldoPorAprobar = totalIni - totalApr
 
+  // Descargar el budget cargado como CSV (abre directo en Excel)
+  const handleDownloadCsv = () => {
+    const esc = (s: string) => `"${String(s ?? '').replace(/"/g, '""')}"`
+    const rows = [
+      ['Division', 'Codigo', 'Descripcion', 'Proveedor', 'Valor Inicial', 'Aprobado', 'Desembolsado', '% Aprobado'].join(','),
+      ...lines.map(l => [
+        esc(`${l.divCode} ${l.divName}`), esc(l.itemCode), esc(l.description), esc(l.vendor ?? ''),
+        l.valorInicial, l.valorAprobado, (l.valorAprobado * factor).toFixed(2),
+        l.valorInicial > 0 ? ((l.valorAprobado / l.valorInicial) * 100).toFixed(1) : '0',
+      ].join(',')),
+      ['TOTAL', '', '', '', totalIni, totalApr, totalDesemb.toFixed(2), pctGlobal.toFixed(1)].join(','),
+    ]
+    const blob = new Blob(['﻿' + rows.join('\n')], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `construction-budget-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    toast.success('Budget descargado como CSV')
+  }
+
   if (isLoading) return <div className="text-slate-500 text-sm animate-pulse">Cargando Construction Budget...</div>
 
   // Empty state — solo opción de importar PDF
@@ -310,7 +334,7 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col md:flex-row md:items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-slate-900">Construction Budget</h1>
           <p className="text-sm text-slate-500 mt-0.5">
@@ -318,9 +342,26 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <label className="flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg border border-[var(--brand-gold)] bg-[var(--brand-gold)] text-white hover:bg-[#E0AD4F] transition-colors cursor-pointer">
+          <button
+            onClick={() => { setExpandAll(v => !v); setExpandTrigger(t => t + 1) }}
+            className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:border-[var(--brand-gold)] text-slate-700 text-xs font-semibold rounded-lg transition-colors"
+            title={expandAll ? 'Colapsar todas las divisiones' : 'Expandir todas las divisiones'}
+          >
+            {expandAll ? <ChevronsUp className="w-3.5 h-3.5" /> : <ChevronsDown className="w-3.5 h-3.5" />}
+            {expandAll ? 'Colapsar' : 'Expandir'} todo
+          </button>
+          <button
+            onClick={handleDownloadCsv}
+            className="flex items-center gap-1.5 px-3 py-2 bg-white border border-[var(--brand-teal)]/40 hover:bg-[var(--brand-teal)]/5 text-[var(--brand-teal)] text-xs font-semibold rounded-lg transition-colors"
+            title="Descargar el budget cargado (CSV, abre en Excel)"
+          >
+            <Download className="w-3.5 h-3.5" />
+            Descargar budget
+          </button>
+          <label className="flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg border border-[var(--brand-gold)] bg-[var(--brand-gold)] text-white hover:bg-[#E0AD4F] transition-colors cursor-pointer"
+            title="Reemplaza el budget cargado por el de un PDF nuevo del lender">
             <FileUp className="w-3.5 h-3.5" />
-            {importPdfMut.isPending ? 'Importando…' : 'Cargar PDF nuevo'}
+            {importPdfMut.isPending ? 'Importando…' : 'Cambiar budget (PDF)'}
             <input
               ref={importInputRef}
               type="file"
@@ -342,7 +383,7 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
       </div>
 
       {/* KPI row */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="kpi-card">
           <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1.5">Valor Inicial<br/><span className="text-slate-400 normal-case">Lo pactado con lender</span></div>
           <div className="text-lg font-bold font-mono text-slate-900">{formatUSD(totalIni)}</div>
@@ -353,11 +394,11 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
         </div>
         <div className="kpi-card kpi-card-green">
           <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1.5">Aprobado<br/><span className="text-slate-400 normal-case">Validado por Trinity</span></div>
-          <div className="text-lg font-bold font-mono text-emerald-300">{formatUSD(totalApr)}</div>
+          <div className="text-lg font-bold font-mono text-emerald-600">{formatUSD(totalApr)}</div>
         </div>
         <div className={`kpi-card ${saldoPorAprobar > 0 ? '' : 'kpi-card-green'}`}>
           <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1.5">Saldo por aprobar<br/><span className="text-slate-400 normal-case">{pctGlobal.toFixed(1)}% ejecutado</span></div>
-          <div className={`text-lg font-bold font-mono ${saldoPorAprobar > 0 ? 'text-slate-700' : 'text-emerald-400'}`}>
+          <div className={`text-lg font-bold font-mono ${saldoPorAprobar > 0 ? 'text-slate-700' : 'text-emerald-600'}`}>
             {formatUSD(saldoPorAprobar)}
           </div>
         </div>
@@ -371,7 +412,7 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
         </div>
         <div className="h-2.5 bg-slate-200 rounded-full overflow-hidden">
           <div
-            className={`h-full rounded-full transition-all ${pctGlobal >= 100 ? 'bg-emerald-500' : 'bg-[var(--brand-teal)]'}`}
+            className="h-full rounded-full transition-all bg-emerald-500"
             style={{ width: `${Math.min(pctGlobal, 100)}%` }}
           />
         </div>
@@ -383,11 +424,11 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-5 text-[10px] text-slate-400">
+      <div className="flex items-center flex-wrap gap-x-5 gap-y-1.5 text-[10px] text-slate-500">
         <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded bg-slate-500 inline-block"/>Inicial = firmado con lender</span>
         <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded bg-[var(--brand-teal)] inline-block"/>Desembolsado = Aprobado × {(factor * 100).toFixed(2)}% (lo que gira el lender)</span>
         <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded bg-emerald-500 inline-block"/>Aprobado = Trinity validated</span>
-        <span className="ml-auto text-[#C8922A]/60">Todos los valores son editables · clic para editar · % calcula monto automáticamente</span>
+        <span className="md:ml-auto text-slate-600 font-medium bg-white border border-slate-200 rounded-full px-2.5 py-1">✏ Todos los valores son editables · clic para editar</span>
       </div>
 
       {/* Main table */}
@@ -396,20 +437,21 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
         <div className="flex items-center px-4 py-2.5 bg-slate-50 border-b border-slate-200">
           <div className="w-3.5 mr-3" />
           <div className="flex-1 text-[10px] text-slate-400 uppercase tracking-wider">División</div>
-          <div className="flex items-center shrink-0 text-[10px] text-slate-400 uppercase tracking-wider">
-            <span className="w-28 text-right">Inicial</span>
-            <span className="w-28 text-right text-[var(--brand-teal)]">Desembolsado</span>
-            <span className="w-28 text-right text-emerald-700">Aprobado</span>
+          <div className="flex items-center shrink-0 text-[10px] text-slate-500 uppercase tracking-wider">
+            <span className="w-28 text-right hidden md:inline-block">Inicial</span>
+            <span className="w-28 text-right text-[var(--brand-teal)] hidden lg:inline-block">Desembolsado</span>
+            <span className="w-32 text-right text-emerald-700 hidden md:inline-block">Aprobado</span>
             <span className="w-24 text-right">Progreso</span>
           </div>
         </div>
 
         {groups.map(group => (
           <DivSection
-            key={group.divCode}
+            key={`${group.divCode}-${expandTrigger}`}
             group={group}
             onUpdate={(id, data) => mutation.mutate({ id, data })}
             factor={factor}
+            defaultOpen={expandAll}
           />
         ))}
 
@@ -418,10 +460,10 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
           <div className="w-3.5 mr-3" />
           <div className="flex-1 text-sm font-bold text-slate-800 uppercase tracking-wider">Total General</div>
           <div className="flex items-center shrink-0 text-sm font-mono font-bold">
-            <span className="w-28 text-right text-slate-900">{formatUSD(totalIni)}</span>
-            <span className="w-28 text-right text-[var(--brand-teal)]">{totalDesemb > 0 ? formatUSD(totalDesemb) : '—'}</span>
-            <span className="w-28 text-right text-emerald-300">{totalApr > 0 ? formatUSD(totalApr) : '—'}</span>
-            <span className="w-24 text-right text-slate-400">{pctGlobal.toFixed(1)}%</span>
+            <span className="w-28 text-right text-slate-900 hidden md:inline-block">{formatUSD(totalIni)}</span>
+            <span className="w-28 text-right text-[var(--brand-teal)] hidden lg:inline-block">{totalDesemb > 0 ? formatUSD(totalDesemb) : '—'}</span>
+            <span className="w-32 text-right text-emerald-600 hidden md:inline-block">{totalApr > 0 ? formatUSD(totalApr) : '—'}</span>
+            <span className="w-24 text-right text-emerald-600">{pctGlobal.toFixed(1)}%</span>
           </div>
         </div>
       </div>

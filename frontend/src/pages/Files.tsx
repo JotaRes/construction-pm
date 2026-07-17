@@ -399,7 +399,7 @@ export default function Files({ projectId }: { projectId: string }) {
       {/* ── Manual URL reference ──────────────────────────────── */}
       <div className="bg-white rounded-xl border border-slate-200 p-4">
         <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-3">Agregar referencia manual (URL)</div>
-        <div className="grid grid-cols-3 gap-3 mb-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
           <input placeholder="Nombre del documento *" value={name} onChange={e => setName(e.target.value)}
             className="bg-slate-50 text-slate-800 text-sm px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-[var(--brand-gold)]" />
           <input placeholder="URL o path del archivo *" value={url} onChange={e => setUrl(e.target.value)}

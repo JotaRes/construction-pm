@@ -613,7 +613,16 @@ input[type=number] { -moz-appearance: textfield; }
   button, a.btn-brand, a.btn-teal { min-height: 44px; }
   .modal-content { max-width: 100% !important; max-height: 100vh !important; border-radius: 0 !important; }
   h1.text-2xl { font-size: 1.25rem !important; }
+
+  /* Nada se sale del recuadro: gráficos y tarjetas contenidos en su caja */
+  .page-content { overflow-x: hidden; }
+  .recharts-wrapper, .recharts-surface { max-width: 100% !important; }
+  .kpi-card .text-2xl { font-size: 1.15rem !important; }
+  .section-card { border-radius: 12px; }
 }
+
+/* Tablas anchas: scroll horizontal suave en cualquier contenedor overflow-x */
+.overflow-x-auto { -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
 .card .overflow-x-auto,
 .fin-app .card .overflow-x-auto { -webkit-overflow-scrolling: touch; }
 @media (hover: none) {

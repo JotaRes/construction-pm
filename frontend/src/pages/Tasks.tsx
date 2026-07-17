@@ -275,7 +275,7 @@ export default function Tasks({ projectId }: { projectId: string }) {
         </div>
       )}
 
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {PRIORITIES.map(p => {
           const count = tasks.filter(t => !t.done && t.priority === p.value).length
           return (

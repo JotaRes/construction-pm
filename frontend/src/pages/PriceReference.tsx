@@ -492,7 +492,7 @@ export default function PriceReference() {
 
       {view === 'manual' && (<>
       {/* KPI cards */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="kpi-card">
           <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">Total referencias</div>
           <div className="text-2xl font-bold font-mono text-slate-900">{stats.total}</div>

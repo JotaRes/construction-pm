@@ -596,7 +596,7 @@ function ProjectCard({ project, isActive, onSelect, onDelete, onEdit, onPhoto }:
           <ChevronRight className={`w-4 h-4 text-slate-400 group-hover:text-[var(--brand-gold)] transition-colors flex-shrink-0 ${isActive ? 'text-[var(--brand-gold)]' : ''}`} />
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="bg-slate-50 rounded-lg p-3">
             <div className="flex items-center gap-1.5 mb-1">
               <TrendingUp className="w-3 h-3 text-emerald-400" />

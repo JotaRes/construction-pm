@@ -870,12 +870,12 @@ export default function Draws({ projectId }: { projectId: string }) {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-slate-900">Draw Tracker</h1>
           <p className="text-sm text-slate-500 mt-0.5">Hera Holdings LLC — Historial de desembolsos</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <button onClick={async () => {
               const ok = await confirm({
                 title: 'Resetear sección Draws',
@@ -1042,6 +1042,7 @@ export default function Draws({ projectId }: { projectId: string }) {
               <TrendingDown className="w-4 h-4 text-[var(--brand-teal)]" />
               <span className="text-sm font-semibold text-slate-800">Secuencia de holdback draw a draw</span>
               <span className="text-[10px] text-slate-400 bg-slate-200 px-2 py-0.5 rounded-full">{wiredDraws.length} draws wired</span>
+              <span className="text-[10px] text-slate-400 hidden md:inline">· se actualiza automáticamente con cada Excel del lender</span>
             </div>
             <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showTimeline ? '' : '-rotate-90'}`} />
           </button>
@@ -1056,7 +1057,6 @@ export default function Draws({ projectId }: { projectId: string }) {
                     <th className="px-4 py-2 text-right text-[10px] text-emerald-600/70 uppercase tracking-wider">Aprobado (Net Wire)</th>
                     <th className="px-4 py-2 text-right text-[10px] text-[#C8922A]/80 uppercase tracking-wider">Saldo holdback</th>
                     <th className="px-4 py-2 text-center text-[10px] text-slate-400 uppercase tracking-wider w-20">% Cons.</th>
-                    <th className="px-4 py-2 text-center text-[10px] text-slate-400 uppercase tracking-wider w-24">Docs</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1066,7 +1066,6 @@ export default function Draws({ projectId }: { projectId: string }) {
                       cumulative += d.netWire
                       const saldo = Math.max(0, initialHoldback - cumulative)
                       const pct = initialHoldback > 0 ? (cumulative / initialHoldback) * 100 : 0
-                      const hasAllDocs = !!d.lenderApprovalUrl // la factura es opcional
                       return (
                         <tr key={d.id} className="border-b border-slate-100 hover:bg-slate-50">
                           <td className="px-4 py-2.5">
@@ -1083,15 +1082,10 @@ export default function Draws({ projectId }: { projectId: string }) {
                           <td className="px-4 py-2.5">
                             <div className="flex items-center gap-1.5 justify-center">
                               <div className="w-12 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                                <div className="h-full bg-[var(--brand-teal)] rounded-full" style={{ width: `${Math.min(pct, 100)}%` }} />
+                                <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${Math.min(pct, 100)}%` }} />
                               </div>
-                              <span className="text-[10px] font-mono text-slate-500">{pct.toFixed(0)}%</span>
+                              <span className="text-[10px] font-mono font-semibold text-emerald-600">{pct.toFixed(0)}%</span>
                             </div>
-                          </td>
-                          <td className="px-4 py-2.5 text-center">
-                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${hasAllDocs ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'}`}>
-                              {hasAllDocs ? '✓ OK' : '⚠ FALTA'}
-                            </span>
                           </td>
                         </tr>
                       )
@@ -1105,7 +1099,7 @@ export default function Draws({ projectId }: { projectId: string }) {
                     <td className="px-4 py-2.5 text-right font-mono font-bold">
                       <span className={lastSaldo < 50000 ? 'text-red-500' : 'text-[var(--brand-gold)]'}>{formatUSD(lastSaldo)}</span>
                     </td>
-                    <td colSpan={2} />
+                    <td />
                   </tr>
                 </tfoot>
               </table>

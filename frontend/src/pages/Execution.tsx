@@ -14,7 +14,7 @@ import toast from 'react-hot-toast'
 
 const ESTADOS: { value: ItemEstado; label: string; color: string; bg: string }[] = [
   { value: 'PENDIENTE', label: 'Pendiente', color: 'text-slate-500',  bg: 'bg-slate-200/60 hover:bg-slate-100' },
-  { value: 'EN_CURSO',  label: 'En curso',  color: 'text-[var(--brand-gold)]',  bg: 'bg-[#C8922A]/15 hover:bg-blue-500/25' },
+  { value: 'EN_CURSO',  label: 'En curso',  color: 'text-[var(--brand-gold)]',  bg: 'bg-[#C8922A]/15 hover:bg-[#C8922A]/25' },
   { value: 'DONE',      label: 'Hecho',     color: 'text-emerald-400', bg: 'bg-emerald-500/15 hover:bg-emerald-500/25' },
   { value: 'NA',        label: 'N/A',       color: 'text-slate-400',  bg: 'bg-white hover:bg-slate-100' },
 ]
@@ -282,7 +282,7 @@ function ItemPanel({ item, onUpdate, onClose }: {
   return (
     <div className="fixed inset-0 z-40 flex justify-end">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative w-96 h-full bg-slate-50 border-l border-slate-200 flex flex-col shadow-2xl overflow-y-auto">
+      <div className="relative w-full max-w-md sm:w-96 h-full bg-slate-50 border-l border-slate-200 flex flex-col shadow-2xl overflow-y-auto">
         <div className="flex items-start gap-3 px-5 py-4 border-b border-slate-200 bg-slate-50/95 sticky top-0 z-10">
           <div className="flex-1 min-w-0">
             <div className="text-[10px] font-mono text-slate-400 mb-0.5">{item.itemCode}</div>
@@ -349,7 +349,7 @@ function ItemPanel({ item, onUpdate, onClose }: {
                 )}
               </div>
             </div>
-            <p className="text-[10px] text-slate-400 mt-2">Las subactividades (desglose) se agregan desde la tabla de Ejecución: abre la actividad con la flecha ▸.</p>
+            <p className="text-[10px] text-slate-400 mt-2">Las subactividades (desglose) se agregan desde la tabla de Ejecución con el botón verde ＋ junto al nombre de la actividad.</p>
             {item.valorPresupuestado > 0 && item.valorEjecutado > 0 && (
               <div className={`mt-2 text-xs font-mono px-2 py-1 rounded ${item.valorEjecutado > item.valorPresupuestado ? 'text-red-400 bg-red-500/10' : 'text-emerald-400 bg-emerald-500/10'}`}>
                 {item.valorEjecutado > item.valorPresupuestado ? '▲ Sobreejecutado' : '▼ Bajo presupuesto'}{' '}
@@ -474,8 +474,17 @@ function ItemRow({ item, onUpdate, onOpenPanel, onDelete }: {
         {/* Actividad — nombre editable + toggle de subactividades */}
         <td className="px-2 py-2.5">
           <div className="flex items-center gap-1">
-            <button onClick={() => setExpanded(e => !e)} title="Subactividades (desglose)" className="flex-shrink-0 text-slate-300 hover:text-[var(--brand-gold)]">
-              {expanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+            {/* Botón + SIEMPRE visible: abre el desglose de subactividades */}
+            <button
+              onClick={() => setExpanded(e => !e)}
+              title={expanded ? 'Cerrar subactividades' : 'Agregar / ver subactividades (desglose)'}
+              className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center border transition-all
+                ${expanded
+                  ? 'bg-emerald-500 border-emerald-500 text-white rotate-45'
+                  : hasSubs
+                    ? 'bg-emerald-50 border-emerald-300 text-emerald-600 hover:bg-emerald-500 hover:text-white'
+                    : 'bg-white border-slate-300 text-slate-400 hover:border-emerald-400 hover:text-emerald-600'}`}>
+              <Plus className="w-3 h-3" />
             </button>
             <input
               defaultValue={item.activity}
@@ -483,7 +492,7 @@ function ItemRow({ item, onUpdate, onOpenPanel, onDelete }: {
               onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
               className={`w-full bg-transparent text-xs font-medium leading-tight rounded px-1 py-0.5 border border-transparent hover:border-slate-200 focus:bg-white focus:border-[var(--brand-gold)] focus:outline-none transition-colors ${item.completado ? 'line-through text-slate-400' : 'text-slate-800'}`}
               title="Clic para editar el nombre de la actividad" />
-            {hasSubs && <span className="text-[8px] px-1 rounded bg-teal-100 text-teal-700 font-mono flex-shrink-0" title={`${subs.length} subactividad(es)`}>Σ{subs.length}</span>}
+            {hasSubs && <span className="text-[8px] px-1 rounded bg-emerald-100 text-emerald-700 font-mono flex-shrink-0" title={`${subs.length} subactividad(es)`}>Σ{subs.length}</span>}
           </div>
           {(item.responsable || item.provider) && (
             <div className="text-[10px] text-slate-400 mt-0.5 px-1 ml-4">{item.provider ? `⚒ ${item.provider.name}` : item.responsable}</div>
@@ -627,23 +636,34 @@ function PhaseSection({ phase, defaultOpen = false, onUpdate, onOpenPanel, onCre
   const pct = activeItems.length === 0 ? 0 : (doneItems.length / activeItems.length) * 100
   const budget = phase.items.reduce((s, i) => s + i.valorPresupuestado, 0)
   const ejecutado = phase.items.reduce((s, i) => s + i.valorEjecutado, 0)
-  const borderColor = pct === 100 ? 'border-l-2 border-emerald-500/50' : pct > 0 ? 'border-l-2 border-amber-500/50' : ''
-  const phaseClass = `w-full flex items-center gap-3 px-4 py-3 bg-white/90 rounded-xl border ${borderColor} border-slate-200/40 hover:border-slate-200 transition-colors`
+  // Alerta por fase: ejecución real supera lo presupuestado en el Construction Budget enlazado
+  const phaseBudget = summary?.budgetTotal ?? 0
+  const phaseEjec = summary?.ejecutadoTotal ?? ejecutado
+  const phaseOver = phaseBudget > 0 && phaseEjec > phaseBudget
+  const borderColor = phaseOver ? 'border-l-2 border-red-500/70' : pct === 100 ? 'border-l-2 border-emerald-500/50' : pct > 0 ? 'border-l-2 border-amber-500/50' : ''
+  const phaseClass = `w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 bg-white/90 rounded-xl border ${borderColor} border-slate-200/40 hover:border-slate-200 transition-colors`
   return (
     <div className="mb-2.5">
       <button onClick={() => setOpen(o => !o)} className={phaseClass}>
-        {open ? <ChevronDown className="w-3.5 h-3.5 text-slate-400" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-400" />}
-        <span className="text-[10px] font-mono text-[var(--brand-gold)] w-7">{phase.code}</span>
-        <span className="text-sm font-semibold text-slate-800 flex-1 text-left">{phase.name}</span>
-        <div className="flex items-center gap-4 text-xs shrink-0">
-          <span className="text-slate-400 font-mono">{doneItems.length}/{activeItems.length}</span>
+        {open ? <ChevronDown className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />}
+        <span className="text-[10px] font-mono text-[var(--brand-gold)] w-7 flex-shrink-0">{phase.code}</span>
+        <span className="text-sm font-semibold text-slate-800 flex-1 text-left leading-tight min-w-0 truncate">{phase.name}</span>
+        {phaseOver && (
+          <span className="flex items-center gap-1 text-[9px] font-bold text-red-600 bg-red-50 border border-red-200 rounded-full px-1.5 py-0.5 flex-shrink-0"
+            title={`Ejecutado ${formatUSD(phaseEjec)} supera el budget ${formatUSD(phaseBudget)}`}>
+            <AlertTriangle className="w-3 h-3" />
+            <span className="hidden sm:inline">SOBRE BUDGET</span>
+          </span>
+        )}
+        <div className="flex items-center gap-2 sm:gap-4 text-xs shrink-0">
+          <span className="text-slate-400 font-mono hidden sm:block">{doneItems.length}/{activeItems.length}</span>
           <span className="text-slate-400 font-mono hidden lg:block">{budget > 0 ? formatUSD(budget) : '—'}</span>
           {ejecutado > 0 && (
-            <span className={`font-mono text-[11px] hidden lg:block ${ejecutado > budget && budget > 0 ? 'text-red-400' : 'text-[var(--brand-teal)]'}`}>{formatUSD(ejecutado)}</span>
+            <span className={`font-mono text-[11px] hidden lg:block ${phaseOver ? 'text-red-500' : 'text-[var(--brand-teal)]'}`}>{formatUSD(ejecutado)}</span>
           )}
-          <span className={`font-mono font-semibold w-9 text-right ${pct === 100 ? 'text-emerald-400' : pct > 0 ? 'text-[var(--brand-gold)]' : 'text-slate-400'}`}>{pct.toFixed(0)}%</span>
-          <div className="w-14 h-1.5 bg-slate-200/80 rounded-full overflow-hidden">
-            <div className={`h-full rounded-full transition-all ${pct === 100 ? 'bg-emerald-500' : pct > 0 ? 'bg-[var(--brand-teal)]' : 'bg-slate-200'}`} style={{ width: `${pct}%` }} />
+          <span className={`font-mono font-semibold w-9 text-right ${pct > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>{pct.toFixed(0)}%</span>
+          <div className="w-10 sm:w-14 h-1.5 bg-slate-200/80 rounded-full overflow-hidden">
+            <div className={`h-full rounded-full transition-all ${pct > 0 ? 'bg-emerald-500' : 'bg-slate-200'}`} style={{ width: `${pct}%` }} />
           </div>
         </div>
       </button>
@@ -654,14 +674,22 @@ function PhaseSection({ phase, defaultOpen = false, onUpdate, onOpenPanel, onCre
             const bdg = summary?.budgetTotal ?? 0
             const eje = summary?.ejecutadoTotal ?? ejecutado
             const dev = bdg > 0 ? ((eje - bdg) / bdg) * 100 : 0
+            const over = bdg > 0 && eje > bdg
             return (
+              <>
+              {over && (
+                <div className="flex items-center gap-2 px-4 py-2 bg-red-50 border-b border-red-200 text-[11px] text-red-700 font-medium">
+                  <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+                  Alerta: la ejecución de esta fase ({formatUSD(eje)}) supera lo presupuestado en el Construction Budget ({formatUSD(bdg)}) por <b className="font-mono">{formatUSD(eje - bdg)}</b>.
+                </div>
+              )}
               <div className="flex items-center flex-wrap gap-x-5 gap-y-1 px-4 py-2 bg-white border-b border-slate-200 text-[11px]">
                 <span className="text-slate-400 uppercase tracking-wider text-[9px]">Vs. Construction Budget</span>
                 <span className="text-slate-500">Presupuestado: <b className="font-mono text-slate-700">{bdg > 0 ? formatUSD(bdg) : '—'}</b></span>
                 <span className="text-slate-500">Ejecutado: <b className="font-mono text-[var(--brand-teal)]">{formatUSD(eje)}</b></span>
                 {bdg > 0 && (
-                  <span className={`font-mono font-semibold ${eje > bdg ? 'text-red-500' : 'text-emerald-600'}`}>
-                    {dev > 0 ? '+' : ''}{dev.toFixed(0)}% {eje > bdg ? '(sobre)' : '(bajo)'}
+                  <span className={`font-mono font-semibold ${over ? 'text-red-500' : 'text-emerald-600'}`}>
+                    {dev > 0 ? '+' : ''}{dev.toFixed(0)}% {over ? '(sobre)' : '(bajo)'}
                   </span>
                 )}
                 <label className="ml-auto flex items-center gap-1.5 text-slate-400">
@@ -677,9 +705,11 @@ function PhaseSection({ phase, defaultOpen = false, onUpdate, onOpenPanel, onCre
                   </select>
                 </label>
               </div>
+              </>
             )
           })()}
-          <table className="w-full">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[680px]">
             <thead>
               <tr className="border-b-2 border-slate-300 bg-slate-100">
                 <th className="pl-4 pr-2 py-2 text-left text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-16">St.</th>
@@ -699,6 +729,7 @@ function PhaseSection({ phase, defaultOpen = false, onUpdate, onOpenPanel, onCre
               ))}
             </tbody>
           </table>
+          </div>
           {/* Crear actividad CON nombre propio (ya no queda como "Nueva actividad") */}
           {showNewForm ? (
             <form onSubmit={e => { e.preventDefault(); const v = newName.trim(); if (v) { onCreate(phase.id, v); setNewName(''); setShowNewForm(false) } }}
@@ -846,26 +877,26 @@ export default function Execution({ projectId }: { projectId: string }) {
   return (
     <>
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           <div>
             <h1 className="text-xl font-bold text-slate-900">Control de Ejecución</h1>
             <div className="flex items-center gap-3 mt-1">
               <span className="text-sm text-slate-500">{doneTotal.length}/{totalItems.length} ítems</span>
               <div className="flex items-center gap-2">
                 <div className="w-32 h-1.5 bg-white rounded-full overflow-hidden">
-                  <div className="h-full bg-blue-500 rounded-full" style={{ width: `${pctGeneral}%` }} />
+                  <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${pctGeneral}%` }} />
                 </div>
-                <span className="text-xs font-mono text-slate-500">{pctGeneral.toFixed(1)}%</span>
+                <span className="text-xs font-mono font-semibold text-emerald-600">{pctGeneral.toFixed(1)}%</span>
               </div>
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <input type="text" placeholder="Buscar actividad..." value={search} onChange={e => setSearch(e.target.value)}
-              className="bg-white border border-slate-200 text-xs text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)] w-44 placeholder-slate-400" />
+              className="bg-white border border-slate-200 text-xs text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)] w-full sm:w-44 placeholder-slate-400" />
             <div className="flex gap-0.5 bg-white rounded-lg p-0.5 border border-slate-200">
               {[{ v: 'ALL', l: 'Todos' }, { v: 'PENDIENTE', l: 'Pendiente' }, { v: 'EN_CURSO', l: 'En curso' }, { v: 'DONE', l: 'Hecho' }].map(f => (
                 <button key={f.v} onClick={() => setFilter(f.v)}
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${filter === f.v ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
+                  className={`px-2.5 sm:px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${filter === f.v ? 'bg-[var(--brand-teal)] text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
                   {f.l}
                 </button>
               ))}

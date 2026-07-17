@@ -95,7 +95,7 @@ export default function Dashboard({ projectId }: Props) {
   return (
     <div className="space-y-5 page-content">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-xl font-bold text-slate-900">{project.name}</h1>
           <p className="text-sm text-slate-500 mt-0.5">{project.address} · {project.county}</p>
@@ -114,7 +114,7 @@ export default function Dashboard({ projectId }: Props) {
       <ForecastCard projectId={projectId} />
 
       {/* ── Row 1: Progress gauges ─────────────────────────── */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         {/* Main donut */}
         <div className="kpi-card col-span-1 flex flex-col items-center justify-center gap-2 cursor-pointer hover:scale-[1.02] transition-transform"
           onClick={() => navigate('/tech/execution')}>
@@ -154,7 +154,7 @@ export default function Dashboard({ projectId }: Props) {
       </div>
 
       {/* ── Row 2: Progress by group + $/SF ───────────────── */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
         {/* Radial bar for groups */}
         <div className="bg-white rounded-xl border border-slate-200 p-4">
           <div className="text-xs font-semibold text-slate-700 mb-3">Avance por Grupo</div>
@@ -231,7 +231,7 @@ export default function Dashboard({ projectId }: Props) {
       )}
 
       {/* ── Row 4: Draws bar + Inspections ────────────────── */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
         {/* Draws chart */}
         <div className="bg-white rounded-xl border border-slate-200 p-4">
           <div className="text-xs font-semibold text-slate-700 mb-3">Historial de Draws</div>
