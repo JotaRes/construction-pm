@@ -59,7 +59,7 @@ export default function Import() {
   return (
     <div className="space-y-5 page-content">
       <div>
-        <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><Archive className="w-[22px] h-[22px]" strokeWidth={2.2} /></span><span>Importar / Backup</span></h1>
+        <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><Archive className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>Importar / Backup</span></h1>
         <p className="text-sm mt-1" style={{ color: 'var(--brand-teal2)' }}>Exporta tus datos a Excel o JSON, restaura desde backup, importa desde Excel maestro, o resetea desde cero</p>
       </div>
 

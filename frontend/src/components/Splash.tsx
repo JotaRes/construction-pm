@@ -25,17 +25,17 @@ export default function Splash() {
         pointerEvents: out ? 'none' : 'all',
       }}
     >
-      {/* Logo mark */}
+      {/* Logo mark — monocromo puro (sistema fijo: sin naranjas, calma) */}
       <div style={{
-        width: 56, height: 56, borderRadius: 11,
-        background: '#b06840',
+        width: 56, height: 56, borderRadius: 14,
+        background: 'rgba(255,255,255,0.08)',
+        border: '1px solid rgba(255,255,255,0.10)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        animation: 'ra-splash-pulse 2s ease-in-out infinite',
       }}>
         <svg width="26" height="24" viewBox="0 0 90 80" fill="none">
-          <polygon points="12,74 12,18 41,6 41,74" fill="rgba(255,255,255,0.9)"/>
-          <polygon points="46,74 46,28 67,20 67,74" fill="rgba(255,255,255,0.7)"/>
-          <path d="M 5,68 Q 42,50 82,61" stroke="rgba(255,220,160,0.9)"
+          <polygon points="12,74 12,18 41,6 41,74" fill="rgba(255,255,255,0.92)"/>
+          <polygon points="46,74 46,28 67,20 67,74" fill="rgba(255,255,255,0.55)"/>
+          <path d="M 5,68 Q 42,50 82,61" stroke="rgba(255,255,255,0.85)"
             strokeWidth="5.5" fill="none" strokeLinecap="round"/>
         </svg>
       </div>
@@ -70,17 +70,13 @@ export default function Splash() {
       }}>
         <div style={{
           height: '100%',
-          background: '#b06840',
+          background: '#0071E3',
           borderRadius: 1,
           animation: 'ra-splash-load 1.9s ease-in-out forwards',
         }} />
       </div>
 
       <style>{`
-        @keyframes ra-splash-pulse {
-          0%,100% { box-shadow: 0 0 0 0 rgba(176,104,64,0.45); }
-          50%      { box-shadow: 0 0 0 16px rgba(176,104,64,0); }
-        }
         @keyframes ra-splash-load {
           0%   { width: 0 }
           60%  { width: 72% }

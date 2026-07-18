@@ -60,7 +60,7 @@ export default function Capital() {
     <div className="space-y-5 page-content">
       <div className="flex items-end justify-between flex-wrap gap-3">
         <div>
-          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><PiggyBank className="w-[22px] h-[22px]" strokeWidth={2.2} /></span><span>Capital aportado</span></h1>
+          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><PiggyBank className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>Capital aportado</span></h1>
           <p className="text-sm mt-1" style={{ color: 'var(--brand-teal2)' }}>
             Equity por socio · {data.contribs.length} aportes bancarizados (auto) + {data.nonBank.length} no-bancarizados
           </p>

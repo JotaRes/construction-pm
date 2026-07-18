@@ -35,7 +35,7 @@ export default function PhasesDashboard({ projectId }: { projectId: string }) {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><Layers className="w-[22px] h-[22px]" strokeWidth={2.2} /></span><span>Control de Fases Constructivas</span></h1>
+        <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><Layers className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>Control de Fases Constructivas</span></h1>
         <p className="text-sm text-slate-500 mt-0.5">
           Avance, fechas reales y presupuesto vs pagado por etapa (Fases 0–9)
         </p>

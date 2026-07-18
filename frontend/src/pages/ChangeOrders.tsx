@@ -181,7 +181,7 @@ export default function ChangeOrders({ projectId }: { projectId: string }) {
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><ClipboardList className="w-[22px] h-[22px]" strokeWidth={2.2} /></span><span>Change Orders</span></h1>
+          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><ClipboardList className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>Change Orders</span></h1>
           <p className="text-sm text-slate-500 mt-0.5">Control formal de cambios de alcance: costo, días y aprobación</p>
         </div>
         <button onClick={() => setShowForm(s => !s)}

@@ -126,7 +126,7 @@ export default function Movements() {
     <div className="space-y-4 page-content">
       <div className="flex items-end justify-between flex-wrap gap-3">
         <div>
-          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><ArrowLeftRight className="w-[22px] h-[22px]" strokeWidth={2.2} /></span><span>Movimientos</span></h1>
+          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><ArrowLeftRight className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>Movimientos</span></h1>
           <p className="text-sm" style={{ color: 'var(--brand-teal2)' }}>
             {data?.total || 0} registros · <span className="text-emerald-600 font-semibold">{usd(totals.ing, { compact: true })}</span> ingresos · <span className="text-red-600 font-semibold">{usd(totals.egr, { compact: true })}</span> egresos · Neto <span className={cls("font-semibold", totals.neto >= 0 ? "text-emerald-600" : "text-red-600")}>{usd(totals.neto, { compact: true })}</span>
           </p>

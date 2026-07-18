@@ -107,7 +107,7 @@ export default function Alerts({ projectId }: { projectId: string }) {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><AlertTriangle className="w-[22px] h-[22px]" strokeWidth={2.2} /></span><span>Centro de Alertas</span></h1>
+        <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><AlertTriangle className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>Centro de Alertas</span></h1>
         <p className="text-sm text-slate-500 mt-0.5">
           {critical.length > 0 && <span className="text-red-400">{critical.length} crítica{critical.length > 1 ? 's' : ''} · </span>}
           {warning.length > 0 && <span className="text-[var(--brand-gold)]">{warning.length} advertencia{warning.length > 1 ? 's' : ''} · </span>}

@@ -170,7 +170,7 @@ export default function Catalogs() {
     <div className="space-y-4 page-content">
       <div className="flex items-end justify-between">
         <div>
-          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><BookOpen className="w-[22px] h-[22px]" strokeWidth={2.2} /></span><span>Catálogos</span></h1>
+          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><BookOpen className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>Catálogos</span></h1>
           <p className="text-sm" style={{ color: 'var(--brand-teal2)' }}>
             Listas maestras: cuentas, socios, prestamistas, categorías, proveedores y orígenes
           </p>

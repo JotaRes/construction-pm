@@ -699,7 +699,7 @@ export default function Providers({ projectId }: { projectId: string }) {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><Users className="w-[22px] h-[22px]" strokeWidth={2.2} /></span><span>Directorio de Proveedores — Catálogo General</span></h1>
+          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><Users className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>Directorio de Proveedores — Catálogo General</span></h1>
           <p className="text-sm text-slate-500 mt-0.5">{providers.length} proveedores del holding · aplican a TODOS los proyectos · el récord de facturación se alimenta de las facturas de Ejecución</p>
         </div>
         <button onClick={() => setShowAdd(true)}

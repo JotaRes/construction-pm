@@ -299,7 +299,7 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
     return (
       <div className="space-y-5">
         <div>
-          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><FileSpreadsheet className="w-[22px] h-[22px]" strokeWidth={2.2} /></span><span>Construction Budget</span></h1>
+          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><FileSpreadsheet className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>Construction Budget</span></h1>
           <p className="text-sm text-slate-500 mt-0.5">Lender Report · sin líneas todavía</p>
         </div>
         <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center space-y-5">
@@ -336,7 +336,7 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-start justify-between gap-3">
         <div>
-          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><FileSpreadsheet className="w-[22px] h-[22px]" strokeWidth={2.2} /></span><span>Construction Budget</span></h1>
+          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><FileSpreadsheet className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>Construction Budget</span></h1>
           <p className="text-sm text-slate-500 mt-0.5">
             Lender Report · {lines.length} líneas · {groups.length} divisiones
           </p>

@@ -989,7 +989,7 @@ export default function Draws({ projectId }: { projectId: string }) {
     <div className="space-y-5">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         <div>
-          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><Landmark className="w-[22px] h-[22px]" strokeWidth={2.2} /></span><span>Draw Tracker</span></h1>
+          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><Landmark className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>Draw Tracker</span></h1>
           <p className="text-sm text-slate-500 mt-0.5">Hera Holdings LLC — Historial de desembolsos</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">

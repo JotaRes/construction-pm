@@ -286,7 +286,7 @@ export default function Files({ projectId }: { projectId: string }) {
 
   return (
     <div className="space-y-6">
-      <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><FolderOpen className="w-[22px] h-[22px]" strokeWidth={2.2} /></span><span>Repositorio de Archivos</span></h1>
+      <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><FolderOpen className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>Repositorio de Archivos</span></h1>
 
       {/* === CHECKLIST DOCUMENTAL (nueva sección destacada) === */}
       <DocumentChecklist

@@ -31,10 +31,8 @@ function RALogoMark({ width = 96, height = 72 }: { width?: number; height?: numb
       <polygon points="46,74 46,28 67,20 67,74" fill="url(#ra-rt)"/>
       {/* Destello interior torre derecha */}
       <polygon points="46,28 46,38 52,35 52,25" fill="rgba(255,255,255,0.07)"/>
-      {/* Arco gold — la firma de la marca */}
-      <path d="M 5,68 Q 42,50 82,61" stroke="#0071E3" strokeWidth="5.5" fill="none" strokeLinecap="round" filter="url(#ra-glow)"/>
-      {/* Arco shimmer encima */}
-      <path d="M 5,68 Q 42,50 82,61" stroke="rgba(236,201,122,0.4)" strokeWidth="2" fill="none" strokeLinecap="round"/>
+      {/* Arco azul — la firma de la marca (acento único del sistema) */}
+      <path d="M 5,68 Q 42,50 82,61" stroke="#0071E3" strokeWidth="5.5" fill="none" strokeLinecap="round"/>
     </svg>
   )
 }
@@ -137,112 +135,54 @@ export default function Landing() {
             </div>
           </div>
 
-          {/* Module cards */}
+          {/* Module cards — UNA sola familia visual (sistema fijo): superficie
+              blanca, borde hairline, icono monocromo en squircle neutro, enlace
+              en el único acento. La diferencia entre módulos la da el contenido,
+              no el color. */}
           <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
-            {/* Módulo Técnico */}
-            <Link
-              to="/tech"
-              className="group relative overflow-hidden rounded-2xl p-8 transition-all duration-300 hover:-translate-y-1"
-              style={{
-                background: 'linear-gradient(135deg, var(--brand-teal) 0%, var(--brand-teal2) 100%)',
-                boxShadow: '0 10px 30px -10px rgba(45, 75, 82, 0.4)',
-              }}
-            >
-              <div
-                className="absolute top-0 right-0 w-32 h-32 rounded-full opacity-10 -mt-8 -mr-8"
-                style={{ background: 'var(--brand-gold)' }}
-              />
-              <div className="relative">
+            {[
+              {
+                to: '/tech', num: '01', title: 'Técnico', Icon: Building2,
+                desc: 'Gestión de obra residencial: proyectos, fases, presupuestos, ejecución, draws, inspecciones, alertas y proveedores.',
+              },
+              {
+                to: '/finance', num: '02', title: 'Financiero', Icon: Wallet,
+                desc: 'CFO digital: movimientos, capital aportado, deuda, conciliación bancaria, reportes ejecutivos y trazabilidad documental.',
+              },
+              {
+                to: '/admin', num: '03', title: 'Administrativo', Icon: Landmark,
+                desc: 'Gobierno corporativo: organigrama del holding, expediente jurídico y documental de cada empresa, cumplimiento, alertas de vencimiento y tareas.',
+              },
+            ].map(({ to, num, title, Icon, desc }) => (
+              <Link
+                key={to}
+                to={to}
+                className="group rounded-2xl p-8 transition-all duration-200 hover:-translate-y-0.5"
+                style={{
+                  background: '#FFFFFF',
+                  border: '1px solid rgba(0,0,0,0.08)',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                }}
+              >
                 <div
-                  className="w-14 h-14 rounded-xl flex items-center justify-center mb-6"
-                  style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}
+                  className="w-14 h-14 rounded-2xl flex items-center justify-center mb-6"
+                  style={{ background: '#F5F5F7' }}
                 >
-                  <Building2 size={26} color="var(--brand-gold2)" />
+                  <Icon size={24} strokeWidth={1.8} color="#1D1D1F" />
                 </div>
-                <div className="text-xs font-mono uppercase tracking-widest mb-2" style={{ color: 'var(--brand-gold2)' }}>
-                  Módulo 01
+                <div className="text-[11px] uppercase tracking-[0.18em] font-medium mb-2" style={{ color: '#86868B' }}>
+                  Módulo {num}
                 </div>
-                <h2 className="text-2xl font-semibold text-white mb-3">Técnico</h2>
-                <p className="text-sm leading-relaxed mb-6" style={{ color: 'rgba(255,255,255,0.7)' }}>
-                  Gestión de obra residencial: proyectos, fases, presupuestos, ejecución, draws,
-                  inspecciones, alertas y proveedores.
+                <h2 className="text-2xl font-semibold mb-3" style={{ color: '#1D1D1F', letterSpacing: '-0.02em' }}>{title}</h2>
+                <p className="text-sm leading-relaxed mb-6" style={{ color: '#48484A' }}>
+                  {desc}
                 </p>
-                <div className="flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--brand-gold2)' }}>
+                <div className="flex items-center gap-2 text-sm font-medium" style={{ color: '#0071E3' }}>
                   Entrar al módulo
                   <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
                 </div>
-              </div>
-            </Link>
-
-            {/* Módulo Financiero */}
-            <Link
-              to="/finance"
-              className="group relative overflow-hidden rounded-2xl p-8 transition-all duration-300 hover:-translate-y-1"
-              style={{
-                background: 'linear-gradient(135deg, #0F2027 0%, #1B3640 100%)',
-                boxShadow: '0 10px 30px -10px rgba(15, 32, 39, 0.5)',
-              }}
-            >
-              <div
-                className="absolute top-0 right-0 w-32 h-32 rounded-full opacity-10 -mt-8 -mr-8"
-                style={{ background: '#22c55e' }}
-              />
-              <div className="relative">
-                <div
-                  className="w-14 h-14 rounded-xl flex items-center justify-center mb-6"
-                  style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.18)' }}
-                >
-                  <Wallet size={26} color="#5eead4" />
-                </div>
-                <div className="text-xs font-mono uppercase tracking-widest mb-2" style={{ color: '#5eead4' }}>
-                  Módulo 02
-                </div>
-                <h2 className="text-2xl font-semibold text-white mb-3">Financiero</h2>
-                <p className="text-sm leading-relaxed mb-6" style={{ color: 'rgba(255,255,255,0.7)' }}>
-                  CFO digital: movimientos, capital aportado, deuda, conciliación bancaria,
-                  reportes ejecutivos y trazabilidad documental.
-                </p>
-                <div className="flex items-center gap-2 text-sm font-medium" style={{ color: '#5eead4' }}>
-                  Entrar al módulo
-                  <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
-                </div>
-              </div>
-            </Link>
-
-            {/* Módulo Administrativo */}
-            <Link
-              to="/admin"
-              className="group relative overflow-hidden rounded-2xl p-8 transition-all duration-300 hover:-translate-y-1"
-              style={{
-                background: 'linear-gradient(135deg, #2A1E3F 0%, #3E2C5C 100%)',
-                boxShadow: '0 10px 30px -10px rgba(42, 30, 63, 0.5)',
-              }}
-            >
-              <div
-                className="absolute top-0 right-0 w-32 h-32 rounded-full opacity-10 -mt-8 -mr-8"
-                style={{ background: '#8b5cf6' }}
-              />
-              <div className="relative">
-                <div
-                  className="w-14 h-14 rounded-xl flex items-center justify-center mb-6"
-                  style={{ background: 'rgba(139,92,246,0.10)', border: '1px solid rgba(139,92,246,0.22)' }}
-                >
-                  <Landmark size={26} color="#c4b5fd" />
-                </div>
-                <div className="text-xs font-mono uppercase tracking-widest mb-2" style={{ color: '#c4b5fd' }}>
-                  Módulo 03
-                </div>
-                <h2 className="text-2xl font-semibold text-white mb-3">Administrativo</h2>
-                <p className="text-sm leading-relaxed mb-6" style={{ color: 'rgba(255,255,255,0.7)' }}>
-                  Gobierno corporativo: organigrama del holding, expediente jurídico y documental
-                  de cada empresa, cumplimiento, alertas de vencimiento y tareas.
-                </p>
-                <div className="flex items-center gap-2 text-sm font-medium" style={{ color: '#c4b5fd' }}>
-                  Entrar al módulo
-                  <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
-                </div>
-              </div>
-            </Link>
+              </Link>
+            ))}
           </div>
 
           {/* Backup panel — global del sistema */}
@@ -257,9 +197,9 @@ export default function Landing() {
             >
               <div
                 className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{ background: 'var(--brand-teal)', boxShadow: '0 4px 12px rgba(29,29,31,0.2)' }}
+                style={{ background: '#F5F5F7' }}
               >
-                <Download size={20} color="var(--brand-gold2)" />
+                <Download size={20} strokeWidth={1.8} color="#1D1D1F" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-semibold mb-0.5" style={{ color: 'var(--brand-teal)' }}>
@@ -277,9 +217,8 @@ export default function Landing() {
                 disabled={downloading}
                 className="text-sm font-medium px-4 py-2 rounded-lg transition-all disabled:opacity-60 flex items-center gap-2"
                 style={{
-                  background: 'linear-gradient(135deg, var(--brand-gold) 0%, var(--brand-gold2) 100%)',
+                  background: '#0071E3',
                   color: 'white',
-                  boxShadow: '0 4px 14px rgba(0,113,227,0.25)',
                 }}
               >
                 {downloading ? (

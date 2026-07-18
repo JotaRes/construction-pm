@@ -455,7 +455,7 @@ export default function PriceReference() {
         <div>
           <div className="flex items-center gap-2 mb-0.5">
             <Tag className="w-5 h-5 text-[var(--brand-gold)]" />
-            <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><Tag className="w-[22px] h-[22px]" strokeWidth={2.2} /></span><span>Precios de Referencia</span></h1>
+            <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><Tag className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>Precios de Referencia</span></h1>
           </div>
           <p className="text-xs text-slate-400">Promedios automáticos de tus presupuestos y ejecución (general al módulo técnico), más un catálogo manual opcional.</p>
         </div>

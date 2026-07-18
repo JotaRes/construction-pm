@@ -16,7 +16,7 @@ export default function PageHeader({ icon: Icon, title, subtitle, children }: {
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         <div className="page-head">
           <div className="page-head-icon">
-            <Icon className="w-[22px] h-[22px]" strokeWidth={2.2} />
+            <Icon className="w-[22px] h-[22px]" strokeWidth={1.8} />
           </div>
           <div>
             <h1 className="page-head-title">{title}</h1>

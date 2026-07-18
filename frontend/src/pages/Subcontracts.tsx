@@ -282,7 +282,7 @@ export default function Subcontracts({ projectId }: { projectId: string }) {
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><FileSignature className="w-[22px] h-[22px]" strokeWidth={2.2} /></span><span>Subcontratistas</span></h1>
+          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><FileSignature className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>Subcontratistas</span></h1>
           <p className="text-sm text-slate-500 mt-0.5">Contratos, alcance y calendario de pagos por hito</p>
         </div>
         <button onClick={() => setShowForm(s => !s)}

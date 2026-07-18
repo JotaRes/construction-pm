@@ -1244,7 +1244,7 @@ export default function Execution({ projectId }: { projectId: string }) {
       <div className="space-y-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           <div>
-            <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><HardHat className="w-[22px] h-[22px]" strokeWidth={2.2} /></span><span>Presupuesto & Ejecución</span></h1>
+            <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><HardHat className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>Presupuesto & Ejecución</span></h1>
             <div className="flex items-center gap-3 mt-1">
               <span className="text-sm text-slate-500">{doneTotal.length}/{totalItems.length} ítems</span>
               <div className="flex items-center gap-2">

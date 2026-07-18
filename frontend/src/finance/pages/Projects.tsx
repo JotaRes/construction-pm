@@ -30,7 +30,7 @@ export default function Projects() {
     <div className="space-y-5 page-content">
       <div className="flex items-end justify-between flex-wrap gap-3">
         <div>
-          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><FolderKanban className="w-[22px] h-[22px]" strokeWidth={2.2} /></span><span>Proyectos</span></h1>
+          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><FolderKanban className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>Proyectos</span></h1>
           <p className="text-sm" style={{ color: 'var(--brand-teal2)' }}>{projects.length} proyectos en el portafolio</p>
         </div>
         <button className="btn-primary" onClick={() => setOpen(true)}><Plus size={14} /> Nuevo proyecto</button>

@@ -765,7 +765,7 @@ export default function Financial({ projectId }: { projectId: string }) {
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><BarChart3 className="w-[22px] h-[22px]" strokeWidth={2.2} /></span><span>Modelo Financiero CFO</span></h1>
+          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><BarChart3 className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>Modelo Financiero CFO</span></h1>
           <p className="text-sm text-slate-500 mt-0.5">Non-Dutch daily accrual · Análisis de timing & rate para toma de decisión</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -822,39 +822,39 @@ export default function Financial({ projectId }: { projectId: string }) {
       </div>
 
       {/* ── CFO DASHBOARD ─ Timing & Rate Decision Analysis ──────────────────────── */}
-      <div className="bg-gradient-to-br from-[var(--brand-teal)] via-[#234048] to-[#1B3036] rounded-2xl p-5 text-white">
+      <div className="bg-white border border-black/[0.08] rounded-2xl p-5">
         <div className="flex items-center gap-2 mb-4">
           <Activity className="w-4 h-4 text-[var(--brand-gold)]" />
           <h2 className="text-sm font-bold uppercase tracking-wider">CFO Dashboard — Análisis para toma de decisión</h2>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-white/90">
-          <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-slate-800">
+          <div className="bg-[#F5F5F7] rounded-xl p-3">
             <div className="text-[10px] uppercase opacity-60 mb-1">Burn rate / día</div>
             <div className="text-lg font-bold font-mono text-[#0077ED]">{formatUSD(dailyBurn)}</div>
             <div className="text-[10px] opacity-50 mt-1">UPB × tasa diaria</div>
           </div>
-          <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+          <div className="bg-[#F5F5F7] rounded-xl p-3">
             <div className="text-[10px] uppercase opacity-60 mb-1">Días del préstamo consumidos</div>
-            <div className={`text-lg font-bold font-mono ${consumoLoanPct > 80 ? 'text-red-300' : consumoLoanPct > 60 ? 'text-[#0077ED]' : 'text-emerald-300'}`}>
+            <div className={`text-lg font-bold font-mono ${consumoLoanPct > 80 ? 'text-red-600' : consumoLoanPct > 60 ? 'text-[#0077ED]' : 'text-emerald-600'}`}>
               {consumoLoanPct.toFixed(0)}%
             </div>
             <div className="text-[10px] opacity-50 mt-1">{diasDesde}d de {diasTotalLoan}d</div>
           </div>
-          <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+          <div className="bg-[#F5F5F7] rounded-xl p-3">
             <div className="text-[10px] uppercase opacity-60 mb-1">Días restantes loan</div>
-            <div className={`text-lg font-bold font-mono ${diasRestantes < 60 ? 'text-red-300' : diasRestantes < 120 ? 'text-[#0077ED]' : 'text-white'}`}>
+            <div className={`text-lg font-bold font-mono ${diasRestantes < 60 ? 'text-red-600' : diasRestantes < 120 ? 'text-[#0077ED]' : 'text-slate-900'}`}>
               {diasRestantes}d
             </div>
             {loanExpiresOn && (
               <div className="text-[10px] opacity-50 mt-1">Vence {formatDate(loanExpiresOn.toISOString())}</div>
             )}
           </div>
-          <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+          <div className="bg-[#F5F5F7] rounded-xl p-3">
             <div className="text-[10px] uppercase opacity-60 mb-1">Días al target completion</div>
             <div className={`text-lg font-bold font-mono ${
-              diasParaTarget == null ? 'text-white/60' :
-              diasParaTarget < 0 ? 'text-red-300' :
-              diasParaTarget < 30 ? 'text-[#0077ED]' : 'text-emerald-300'
+              diasParaTarget == null ? 'text-slate-400' :
+              diasParaTarget < 0 ? 'text-red-600' :
+              diasParaTarget < 30 ? 'text-[#0077ED]' : 'text-emerald-600'
             }`}>
               {diasParaTarget == null ? '—' : `${diasParaTarget}d`}
             </div>
@@ -866,7 +866,7 @@ export default function Financial({ projectId }: { projectId: string }) {
 
         {/* Decisión: ¿extender vs vender vs refinanciar? */}
         <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+          <div className="bg-[#F5F5F7] rounded-xl p-3">
             <div className="flex items-center gap-2 mb-1">
               <DollarSign className="w-3.5 h-3.5 text-[var(--brand-gold)]" />
               <div className="text-[10px] uppercase opacity-60">Costo total de espera (estimado a expiración)</div>
@@ -874,24 +874,24 @@ export default function Financial({ projectId }: { projectId: string }) {
             <div className="text-lg font-bold font-mono text-[#0077ED]">{formatUSD(dailyBurn * diasRestantes)}</div>
             <div className="text-[10px] opacity-50 mt-1">Si nadie compra antes</div>
           </div>
-          <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+          <div className="bg-[#F5F5F7] rounded-xl p-3">
             <div className="flex items-center gap-2 mb-1">
-              <TrendingUp className="w-3.5 h-3.5 text-emerald-300" />
+              <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
               <div className="text-[10px] uppercase opacity-60">Si vendo HOY (estimado)</div>
             </div>
-            <div className={`text-lg font-bold font-mono ${gananciaBreve > 0 ? 'text-emerald-300' : 'text-red-300'}`}>
+            <div className={`text-lg font-bold font-mono ${gananciaBreve > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
               {formatUSD(gananciaBreve)}
             </div>
             <div className="text-[10px] opacity-50 mt-1">ROI {roi.toFixed(1)}% · Margen {margen.toFixed(1)}%</div>
           </div>
-          <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+          <div className="bg-[#F5F5F7] rounded-xl p-3">
             <div className="flex items-center gap-2 mb-1">
               <Calendar className="w-3.5 h-3.5 text-[var(--brand-gold)]" />
               <div className="text-[10px] uppercase opacity-60">LOI activo</div>
             </div>
             {project.loiSalePrice ? (
               <>
-                <div className="text-lg font-bold font-mono text-white">{formatUSD(project.loiSalePrice)}</div>
+                <div className="text-lg font-bold font-mono text-slate-900">{formatUSD(project.loiSalePrice)}</div>
                 <div className="text-[10px] opacity-50 mt-1">
                   {loiVsArv != null
                     ? `vs ARV: ${loiVsArv >= 0 ? '+' : ''}${formatUSD(loiVsArv)}`

@@ -1510,10 +1510,11 @@ h1, h2, .font-display, .page-head-title, .kpi-value {
 
 /* ── Encabezado de módulo: squircle tintado, sin gradiente ni brillo ── */
 .page-head-icon {
-  background: #EAF2FD !important;
-  color: var(--brand-gold) !important;
+  background: #F5F5F7 !important;
+  color: #1D1D1F !important;
   box-shadow: none !important;
   border-radius: 14px;
+  border: 1px solid rgba(0,0,0,0.05);
 }
 .page-head-icon::after { display: none !important; }
 .page-head-rule {
