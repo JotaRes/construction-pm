@@ -1,4 +1,6 @@
 import axios from 'axios'
+import toast from 'react-hot-toast'
+import { PDFDocument } from 'pdf-lib'
 
 const api = axios.create({ baseURL: '/api' })
 
@@ -221,14 +223,112 @@ export const notesApi = {
   delete: (projectId: string, id: string) => api.delete(`/projects/${projectId}/notes/${id}`).then(r => r.data.data),
 }
 
+// ── Subida con auto-division de PDFs que superan el limite de 10 MB ──────────
+async function uploadOneFile(projectId: string, file: File, kind?: string, name?: string) {
+  const fd = new FormData()
+  fd.append('file', file)
+  if (kind) fd.append('kind', kind)
+  if (name) fd.append('name', name)
+  return api
+    .post(`/projects/${projectId}/files/upload`, fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+    .then((r) => r.data.data)
+}
+
+function pageRange(from: number, to: number): number[] {
+  const out: number[] = []
+  for (let i = from; i <= to; i++) out.push(i)
+  return out
+}
+
+// Divide un PDF en el MENOR numero de partes tal que cada una pese < targetBytes.
+// Va agregando paginas a una parte mientras quepa; cuando no, abre una parte nueva.
+async function splitPdfBySize(file: File, targetBytes: number): Promise<Uint8Array[]> {
+  const srcBytes = new Uint8Array(await file.arrayBuffer())
+  const doc = await PDFDocument.load(srcBytes, { ignoreEncryption: true })
+  const total = doc.getPageCount()
+  const parts: Uint8Array[] = []
+  let start = 0
+  while (start < total) {
+    let end = start
+    let lastGood: Uint8Array | null = null
+    while (end < total) {
+      const part = await PDFDocument.create()
+      const pages = await part.copyPages(doc, pageRange(start, end))
+      pages.forEach((p) => part.addPage(p))
+      const out = await part.save()
+      if (out.length <= targetBytes) {
+        lastGood = out
+        end++
+      } else {
+        break
+      }
+    }
+    if (lastGood === null) {
+      // Una sola pagina ya supera el objetivo: se sube esa pagina sola igual.
+      const part = await PDFDocument.create()
+      const [pg] = await part.copyPages(doc, [start])
+      part.addPage(pg)
+      lastGood = await part.save()
+      end = start + 1
+    }
+    parts.push(lastGood)
+    start = end
+  }
+  return parts
+}
+
 export const filesApi = {
   list: (projectId: string) => api.get(`/projects/${projectId}/files`).then(r => r.data.data),
   create: (projectId: string, data: Record<string, unknown>) => api.post(`/projects/${projectId}/files`, data).then(r => r.data.data),
-  upload: (projectId: string, file: File, kind?: string) => {
-    const fd = new FormData()
-    fd.append('file', file)
-    if (kind) fd.append('kind', kind)
-    return api.post(`/projects/${projectId}/files/upload`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data.data)
+  upload: async (projectId: string, file: File, kind?: string) => {
+    // Cloudinary (almacenamiento) topa en 10 MB por archivo. Si un PDF supera
+    // ese peso, se divide automaticamente en partes < 10 MB y se suben todas,
+    // avisando al usuario. Archivos no-PDF que superen el limite no se pueden
+    // partir: se informa con un mensaje claro en vez de fallar en silencio.
+    const LIMIT = 10 * 1024 * 1024
+    const TARGET = Math.floor(9.3 * 1024 * 1024)
+    const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name)
+
+    if (file.size <= LIMIT) {
+      return uploadOneFile(projectId, file, kind)
+    }
+
+    if (!isPdf) {
+      toast.error(
+        `"${file.name}" pesa ${(file.size / 1048576).toFixed(1)} MB y supera el limite de 10 MB del almacenamiento. Solo puedo dividir automaticamente archivos PDF; comprime o divide este archivo antes de subirlo.`,
+        { duration: 10000 },
+      )
+      throw new Error('El archivo supera 10 MB y no es PDF, no se puede dividir automaticamente.')
+    }
+
+    // PDF grande -> dividir por tamano y subir cada parte
+    toast(
+      `"${file.name}" pesa ${(file.size / 1048576).toFixed(1)} MB y supera el limite de 10 MB. Lo estoy dividiendo en partes y subiendolo automaticamente...`,
+      { icon: '\u2702\ufe0f', duration: 7000 },
+    )
+    let parts: Uint8Array[]
+    try {
+      parts = await splitPdfBySize(file, TARGET)
+    } catch (e) {
+      toast.error(
+        `No pude dividir "${file.name}" automaticamente (puede estar protegido o danado). Subelo dividido manualmente o comprimelo.`,
+        { duration: 10000 },
+      )
+      throw e
+    }
+    const base = file.name.replace(/\.pdf$/i, '')
+    let firstResult: unknown = null
+    for (let i = 0; i < parts.length; i++) {
+      const partName = `${base} (Parte ${i + 1} de ${parts.length}).pdf`
+      const partFile = new File([parts[i] as BlobPart], partName, { type: 'application/pdf' })
+      const res = await uploadOneFile(projectId, partFile, kind, partName)
+      if (i === 0) firstResult = res
+    }
+    toast.success(
+      `Listo: "${file.name}" se subio en ${parts.length} partes, cada una por debajo de 10 MB.`,
+      { duration: 9000 },
+    )
+    return firstResult
   },
   patch: (projectId: string, id: string, data: Record<string, unknown>) => api.patch(`/projects/${projectId}/files/${id}`, data).then(r => r.data.data),
   delete: (projectId: string, id: string) => api.delete(`/projects/${projectId}/files/${id}`).then(r => r.data.data),
