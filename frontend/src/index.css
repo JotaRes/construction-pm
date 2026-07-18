@@ -1443,3 +1443,175 @@ button:active:not(:disabled) { transform: scale(0.965); }
   border: 1px solid rgba(46,107,180,0.22);
   border-radius: 999px; padding: 3px 10px;
 }
+
+/* ════════════════════════════════════════════════════════════════
+   V4 — "PURE" (jul-2026) · Rediseño minimalista línea Apple
+   UNA sola verdad de color: neutros puros + UN acento azul.
+   Esta capa va AL FINAL a propósito: gana la cascada y disciplina
+   todo lo anterior sin tocar página por página.
+   ════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* Neutros (grises Apple) */
+  --brand-teal:    #1D1D1F;   /* tinta principal */
+  --brand-teal2:   #6E6E73;   /* texto secundario */
+  --brand-teal3:   #48484A;
+  --brand-teal-xl: #F2F2F7;
+  --brand-dark:    #1D1D1F;
+  /* EL acento (único color de marca) */
+  --brand-gold:    #0071E3;
+  --brand-gold2:   #0077ED;
+  --brand-gold3:   #A7CCF3;
+  /* Superficies */
+  --brand-cream:   #E8E8ED;
+  --brand-cream2:  #F5F5F7;   /* fondo de página */
+  --brand-cream3:  #FFFFFF;
+  /* Sombras: neutras, casi imperceptibles */
+  --shadow-card:       0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.05);
+  --shadow-card-hover: 0 2px 4px rgba(0,0,0,0.05), 0 16px 40px rgba(0,0,0,0.08);
+  --shadow-gold:       0 1px 2px rgba(0,113,227,0.25), 0 6px 18px rgba(0,113,227,0.22);
+  --shadow-teal:       0 1px 2px rgba(0,0,0,0.10), 0 6px 18px rgba(0,0,0,0.12);
+  --shadow-modal:      0 12px 48px rgba(0,0,0,0.16), 0 2px 8px rgba(0,0,0,0.08);
+}
+
+/* ── Fondo puro: sin retícula, sin grano, sin gradientes ── */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', 'Segoe UI', sans-serif !important;
+  background-color: #F5F5F7 !important;
+  background-image: none !important;
+  color: #1D1D1F;
+}
+
+/* ── Tipografía: sans del sistema en TODO (adiós serif) ── */
+h1, h2, .font-display, .page-head-title, .kpi-value {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', sans-serif !important;
+  font-weight: 650 !important;
+  letter-spacing: -0.022em !important;
+}
+.page-head-title { font-size: 1.5rem; color: #1D1D1F; }
+.page-head-sub   { color: #6E6E73; opacity: 1; }
+
+/* ── Superficies planas: blanco, radio generoso, borde hairline ── */
+.kpi-card, .section-card, .module-card {
+  background: #FFFFFF !important;
+  border: 1px solid rgba(0,0,0,0.07) !important;
+  border-radius: 18px !important;
+  box-shadow: var(--shadow-card) !important;
+}
+.kpi-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-card-hover) !important; }
+/* Sin barras de color superiores ni brillos internos — el dato es el color */
+.kpi-card::before, .kpi-card::after { display: none !important; }
+.section-card-header {
+  background: transparent;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+.section-title { font-family: inherit; letter-spacing: 0.08em; color: #6E6E73; }
+
+/* ── Encabezado de módulo: squircle tintado, sin gradiente ni brillo ── */
+.page-head-icon {
+  background: #EAF2FD !important;
+  color: var(--brand-gold) !important;
+  box-shadow: none !important;
+  border-radius: 14px;
+}
+.page-head-icon::after { display: none !important; }
+.page-head-rule {
+  height: 1px; margin-top: 14px;
+  background: rgba(0,0,0,0.08);
+}
+
+/* ── Botones: planos, sin shimmer, sin gradiente ── */
+.btn-base::before { display: none !important; }
+.btn-brand {
+  background: var(--brand-gold) !important;
+  box-shadow: none !important;
+  border-radius: 12px;
+}
+.btn-brand:hover { background: var(--brand-gold2) !important; transform: none; box-shadow: 0 4px 14px rgba(0,113,227,0.30) !important; }
+.btn-teal { background: #1D1D1F !important; box-shadow: none !important; border-radius: 12px; }
+.btn-teal:hover { background: #3A3A3C !important; transform: none; }
+.btn-ghost {
+  color: #1D1D1F; background: #FFFFFF;
+  border: 1px solid rgba(0,0,0,0.12); box-shadow: none; border-radius: 12px;
+}
+.btn-ghost:hover { background: #F5F5F7; transform: none; }
+
+/* ── Calma: sin shimmer en barras de progreso ── */
+.bar-fill::after, .kpi-bar-fill::after { display: none !important; }
+
+/* ── Sidebar: grafito puro — sin grano, sin líneas doradas, sin glow ── */
+.sidebar-ra, .fin-app aside {
+  background: #161617 !important;
+  border-right: 1px solid rgba(255,255,255,0.06) !important;
+  box-shadow: none !important;
+}
+.sidebar-ra::before, .sidebar-ra::after { display: none !important; }
+.sidebar-nav-item { color: rgba(255,255,255,0.60); border-radius: 10px; }
+.sidebar-nav-item::before { display: none !important; }
+.sidebar-nav-item:hover {
+  color: #FFFFFF; background: rgba(255,255,255,0.07);
+  border-color: transparent; transform: none; box-shadow: none;
+}
+.sidebar-nav-item:hover svg { color: #FFFFFF; transform: none; }
+.sidebar-nav-item.active {
+  color: #FFFFFF; background: rgba(0,113,227,0.22);
+  border-color: transparent; box-shadow: none;
+}
+.sidebar-nav-item.active::after {
+  background: var(--brand-gold);
+  box-shadow: none;
+}
+.sidebar-nav-item.active svg { color: #7DB8F0; }
+
+/* ── Landing coherente ── */
+.landing-bg { background: #F5F5F7 !important; }
+
+/* ── COLAPSO DEL CÓCTEL DE COLOR ─────────────────────────────────
+   Todas las familias frías dispersas (violet/purple/indigo/sky/blue)
+   se rinden al ÚNICO acento. Ámbar y esmeralda se unifican a un solo
+   tono semántico cada una. El rojo queda solo para peligro real.    */
+
+/* Fríos → acento único */
+.text-violet-300, .text-violet-400, .text-violet-500, .text-violet-600, .text-violet-700,
+.text-purple-500, .text-purple-600, .text-purple-700,
+.text-indigo-400, .text-indigo-500, .text-indigo-600, .text-indigo-700,
+.text-sky-300, .text-sky-400, .text-sky-500, .text-sky-600, .text-sky-700,
+.text-blue-400, .text-blue-500, .text-blue-600, .text-blue-700 { color: var(--brand-gold) !important; }
+
+.bg-violet-50, .bg-purple-50, .bg-indigo-50, .bg-sky-50, .bg-blue-50 { background-color: #EAF2FD !important; }
+.border-violet-200, .border-purple-200, .border-indigo-200, .border-indigo-300,
+.border-sky-200, .border-blue-200 { border-color: rgba(0,113,227,0.30) !important; }
+.bg-indigo-500, .bg-violet-500, .bg-sky-500, .bg-blue-500 { background-color: var(--brand-gold) !important; }
+.kpi-card-purple::before { display: none !important; }
+
+/* Ámbar unificado (una sola voz de advertencia) */
+.text-amber-500, .text-amber-600, .text-amber-700, .text-amber-800 { color: #B25E09 !important; }
+.bg-amber-50 { background-color: #FdF4E7 !important; }
+.border-amber-200, .border-amber-300 { border-color: rgba(178,94,9,0.30) !important; }
+
+/* Esmeralda unificada (una sola voz de éxito) */
+.text-emerald-400, .text-emerald-500, .text-emerald-600, .text-emerald-700,
+.text-green-600, .text-green-700 { color: #1D9A5B !important; }
+.bg-emerald-50 { background-color: #E9F6EF !important; }
+.border-emerald-200, .border-emerald-300 { border-color: rgba(29,154,91,0.30) !important; }
+
+/* El módulo financiero abandona su acento naranja propio */
+.fin-app {
+  --accent: var(--brand-gold) !important;
+  --accent-soft: #EAF2FD !important;
+  --inf: var(--brand-gold) !important;
+}
+
+/* Inputs: foco limpio con anillo del acento */
+input:focus, select:focus, textarea:focus {
+  border-color: var(--brand-gold) !important;
+  box-shadow: 0 0 0 3px rgba(0,113,227,0.14) !important;
+}
+
+/* Tablas: hover al acento puro, cabeceras serenas */
+tbody tr:hover { background-color: rgba(0,113,227,0.04); }
+thead tr { background: #FAFAFC !important; }
+
+/* Scrollbar neutro */
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.18); border: 2px solid #F5F5F7; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.30); }
