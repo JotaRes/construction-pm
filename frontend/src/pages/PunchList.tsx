@@ -155,7 +155,7 @@ export default function PunchList({ projectId }: { projectId: string }) {
           <p className="text-sm text-slate-500 mt-0.5">Cierre de obra: defecto → responsable → evidencia → verificado</p>
         </div>
         <button onClick={() => setShowForm(s => !s)}
-          className="flex items-center gap-2 px-4 py-2 bg-[var(--brand-gold)] hover:bg-[#E0AD4F] text-white text-sm font-semibold rounded-lg">
+          className="flex items-center gap-2 px-4 py-2 bg-[var(--brand-gold)] hover:bg-[#55809B] text-white text-sm font-semibold rounded-lg">
           <Plus className="w-4 h-4" /> Nuevo ítem
         </button>
       </div>

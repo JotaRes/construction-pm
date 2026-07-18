@@ -296,7 +296,7 @@ export default function Files({ projectId }: { projectId: string }) {
       />
 
       {/* ── Smart PDF Upload ─────────────────────────────────── */}
-      <div className="bg-white rounded-xl border border-[#C8922A]/40 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-[#3E6B85]/40 shadow-sm overflow-hidden">
         <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2">
           <Upload className="w-4 h-4 text-[var(--brand-gold)]" />
           <span className="text-sm font-semibold text-slate-800">Cargar documento y extraer datos</span>
@@ -322,7 +322,7 @@ export default function Files({ projectId }: { projectId: string }) {
           </div>
 
           <button onClick={handleExtract} disabled={!uploadFile || extracting}
-            className="flex items-center gap-2 bg-[var(--brand-gold)] hover:bg-[#E0AD4F] disabled:opacity-40 text-white text-sm font-semibold px-5 py-2 rounded-lg transition-colors">
+            className="flex items-center gap-2 bg-[var(--brand-gold)] hover:bg-[#55809B] disabled:opacity-40 text-white text-sm font-semibold px-5 py-2 rounded-lg transition-colors">
             {extracting ? (
               <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Extrayendo datos...</>
             ) : (

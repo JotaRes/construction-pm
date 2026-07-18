@@ -354,7 +354,7 @@ export default function Tasks({ projectId }: { projectId: string }) {
           </div>
         )}
         <button type="submit" disabled={!newTitle.trim() || createMut.isPending}
-          className="flex items-center gap-2 px-4 py-2 bg-[var(--brand-gold)] hover:bg-[#E0AD4F] text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-40">
+          className="flex items-center gap-2 px-4 py-2 bg-[var(--brand-gold)] hover:bg-[#55809B] text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-40">
           <Plus className="w-4 h-4" />Agregar {newTipo === 'NOTA' ? 'nota' : 'tarea'}
         </button>
       </form>

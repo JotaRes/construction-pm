@@ -15,7 +15,7 @@ import toast from 'react-hot-toast'
 
 const ESTADOS: { value: ItemEstado; label: string; color: string; bg: string }[] = [
   { value: 'PENDIENTE', label: 'Pendiente', color: 'text-slate-500',  bg: 'bg-slate-200/60 hover:bg-slate-100' },
-  { value: 'EN_CURSO',  label: 'En curso',  color: 'text-[var(--brand-gold)]',  bg: 'bg-[#C8922A]/15 hover:bg-[#C8922A]/25' },
+  { value: 'EN_CURSO',  label: 'En curso',  color: 'text-[var(--brand-gold)]',  bg: 'bg-[#3E6B85]/15 hover:bg-[#3E6B85]/25' },
   { value: 'DONE',      label: 'Hecho',     color: 'text-emerald-400', bg: 'bg-emerald-500/15 hover:bg-emerald-500/25' },
   { value: 'NA',        label: 'N/A',       color: 'text-slate-400',  bg: 'bg-white hover:bg-slate-100' },
 ]
@@ -154,7 +154,7 @@ function DocumentSection({ item }: { item: Item }) {
           )}
         </div>
         <button onClick={() => setShowForm(v => !v)}
-          className="text-[10px] text-[#C8922A]/70 hover:text-[var(--brand-gold)] transition-colors flex items-center gap-1">
+          className="text-[10px] text-[#3E6B85]/70 hover:text-[var(--brand-gold)] transition-colors flex items-center gap-1">
           <Plus className="w-3 h-3" /> Adjuntar
         </button>
       </div>
@@ -186,7 +186,7 @@ function DocumentSection({ item }: { item: Item }) {
             {/* R2: elegir proveedor del catálogo global o escribir uno puntual */}
             <select value={providerId}
               onChange={e => { setProviderId(e.target.value); if (e.target.value !== 'OTRO') setVendor('') }}
-              className="col-span-2 bg-white border border-slate-200 text-slate-800 text-xs px-2.5 py-1.5 rounded-lg focus:outline-none focus:border-[#C8922A]/60">
+              className="col-span-2 bg-white border border-slate-200 text-slate-800 text-xs px-2.5 py-1.5 rounded-lg focus:outline-none focus:border-[#3E6B85]/60">
               <option value="">Proveedor (elige del catálogo)…</option>
               {allProviders.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               <option value="OTRO">Otro (escribir manualmente)</option>
@@ -194,11 +194,11 @@ function DocumentSection({ item }: { item: Item }) {
             {providerId === 'OTRO' && (
               <input type="text" placeholder="Nombre del proveedor / contratista" value={vendor}
                 onChange={e => setVendor(e.target.value)}
-                className="col-span-2 bg-white border border-slate-200 text-slate-800 text-xs px-2.5 py-1.5 rounded-lg focus:outline-none focus:border-[#C8922A]/60 placeholder-slate-400" />
+                className="col-span-2 bg-white border border-slate-200 text-slate-800 text-xs px-2.5 py-1.5 rounded-lg focus:outline-none focus:border-[#3E6B85]/60 placeholder-slate-400" />
             )}
             <input type="number" placeholder="Monto ($)" value={amount}
               onChange={e => setAmount(e.target.value)}
-              className="bg-white border border-slate-200 text-slate-800 text-xs px-2.5 py-1.5 rounded-lg focus:outline-none focus:border-[#C8922A]/60 placeholder-slate-400 font-mono" />
+              className="bg-white border border-slate-200 text-slate-800 text-xs px-2.5 py-1.5 rounded-lg focus:outline-none focus:border-[#3E6B85]/60 placeholder-slate-400 font-mono" />
             <button onClick={() => fileRef.current?.click()}
               className="flex items-center gap-1.5 bg-white border border-slate-200 text-xs text-slate-500 hover:text-slate-800 px-2.5 py-1.5 rounded-lg transition-colors">
               <Upload className="w-3 h-3" />
@@ -208,11 +208,11 @@ function DocumentSection({ item }: { item: Item }) {
               onChange={e => setFile(e.target.files?.[0] ?? null)} />
           </div>
           <textarea placeholder="Notas..." value={notes} onChange={e => setNotes(e.target.value)} rows={2}
-            className="w-full bg-white border border-slate-200 text-slate-800 text-xs px-2.5 py-1.5 rounded-lg focus:outline-none focus:border-[#C8922A]/60 placeholder-slate-400 resize-none" />
+            className="w-full bg-white border border-slate-200 text-slate-800 text-xs px-2.5 py-1.5 rounded-lg focus:outline-none focus:border-[#3E6B85]/60 placeholder-slate-400 resize-none" />
           <div className="flex gap-2 justify-end">
             <button onClick={() => setShowForm(false)} className="text-xs text-slate-400 hover:text-slate-700 transition-colors">Cancelar</button>
             <button onClick={handleSubmit} disabled={createDoc.isPending}
-              className="px-3 py-1 bg-[var(--brand-gold)] hover:bg-[#E0AD4F] text-white text-xs rounded-lg transition-colors disabled:opacity-50">
+              className="px-3 py-1 bg-[var(--brand-gold)] hover:bg-[#55809B] text-white text-xs rounded-lg transition-colors disabled:opacity-50">
               {createDoc.isPending ? 'Guardando...' : 'Guardar'}
             </button>
           </div>
@@ -231,7 +231,7 @@ function DocumentSection({ item }: { item: Item }) {
               <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded border flex-shrink-0 ${st.color}`}>{st.label}</span>
               <div className="flex-1 min-w-0">
                 <div className="text-xs text-slate-700 truncate">{doc.vendor || doc.name}</div>
-                {doc.amount && <div className="text-[10px] font-mono text-[#C8922A]/80">{formatUSD(doc.amount)}</div>}
+                {doc.amount && <div className="text-[10px] font-mono text-[#3E6B85]/80">{formatUSD(doc.amount)}</div>}
               </div>
               {doc.fileUrl && (
                 <>
@@ -509,6 +509,14 @@ function SubActivityRow({ sub, code, onUpdate, onDelete }: {
 }) {
   const qc = useQueryClient()
   const fileRef = useRef<HTMLInputElement>(null)
+  // Catálogo global de proveedores (mismo del resto del sistema, cacheado)
+  const { data: subProviders = [] } = useQuery<Array<{ id: string; name: string }>>({
+    queryKey: ['providers-global'],
+    queryFn: providersGlobalApi.listAll,
+    staleTime: 60_000,
+  })
+  // Señal de control: hay gasto registrado pero NO hay soporte documental
+  const warnInvoice = (sub.valorEjecutado || 0) > 0 && !sub.invoiceUrl
   const invalidate = () => qc.invalidateQueries({ queryKey: ['phases'] })
   const uploadInvoice = useMutation({
     mutationFn: (file: File) => subactivitiesApi.uploadInvoice(sub.id, file),
@@ -529,7 +537,7 @@ function SubActivityRow({ sub, code, onUpdate, onDelete }: {
           onBlur={e => { const v = e.target.value.trim(); if (v && v !== sub.description) onUpdate({ description: v }) }}
           onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
           className="flex-1 min-w-0 bg-transparent text-[11px] text-slate-700 focus:outline-none border-b border-transparent focus:border-slate-200" />
-        <input type="number" defaultValue={sub.valorEjecutado || ''}
+        <input type="number" min="0" defaultValue={sub.valorEjecutado || ''}
           onBlur={e => { const v = parseFloat(e.target.value) || 0; if (v !== sub.valorEjecutado) onUpdate({ valorEjecutado: v }) }}
           onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
           placeholder="0"
@@ -537,17 +545,26 @@ function SubActivityRow({ sub, code, onUpdate, onDelete }: {
         <button onClick={onDelete} title="Eliminar subactividad"
           className="text-slate-400 hover:text-red-500 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
       </div>
-      {/* Línea 2: fecha · responsable · invoice · observaciones */}
+      {/* Línea 2: fecha · proveedor · responsable · invoice · observaciones */}
       <div className="px-3 pb-1.5 pt-1 flex items-center gap-2 flex-wrap ml-20">
         <input type="date" defaultValue={sub.fecha?.slice(0, 10) ?? ''}
           title="Fecha en que se hizo / pagó"
           onChange={e => onUpdate({ fecha: e.target.value || null })}
           className="bg-white border border-slate-200 text-[10px] text-slate-600 rounded px-1.5 py-0.5 focus:outline-none focus:border-[var(--brand-gold)]" />
+        {/* Proveedor del catálogo global — alimenta el récord en Proveedores */}
+        <select
+          value={sub.providerId ?? ''}
+          onChange={e => onUpdate({ providerId: e.target.value || null })}
+          title="Proveedor / contratista del catálogo — este servicio queda en su récord"
+          className={`max-w-[150px] bg-white border text-[10px] rounded px-1.5 py-0.5 focus:outline-none focus:border-[var(--brand-gold)] ${sub.providerId ? 'border-slate-200 text-slate-700' : 'border-slate-200 text-slate-400'}`}>
+          <option value="">Proveedor…</option>
+          {subProviders.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+        </select>
         <input defaultValue={sub.responsable ?? ''} placeholder="Quién lo hizo"
-          title="Responsable / contratista que ejecutó"
+          title="Responsable / persona que ejecutó (si no es un proveedor del catálogo)"
           onBlur={e => { const v = e.target.value.trim(); if (v !== (sub.responsable ?? '')) onUpdate({ responsable: v || null }) }}
           onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
-          className="w-32 bg-white border border-slate-200 text-[10px] text-slate-600 rounded px-1.5 py-0.5 focus:outline-none focus:border-[var(--brand-gold)] placeholder-slate-300" />
+          className="w-28 bg-white border border-slate-200 text-[10px] text-slate-600 rounded px-1.5 py-0.5 focus:outline-none focus:border-[var(--brand-gold)] placeholder-slate-300" />
         {sub.invoiceUrl ? (
           <span className="flex items-center gap-1">
             <a href={`/api/download?url=${encodeURIComponent(sub.invoiceUrl)}&name=${encodeURIComponent(sub.invoiceName ?? 'invoice')}&inline=1`}
@@ -561,10 +578,15 @@ function SubActivityRow({ sub, code, onUpdate, onDelete }: {
           </span>
         ) : (
           <button onClick={() => fileRef.current?.click()} disabled={uploadInvoice.isPending}
-            title="Adjuntar invoice o documento equivalente (PDF/JPG/PNG)"
-            className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-[var(--brand-gold)] border border-dashed border-slate-300 hover:border-[var(--brand-gold)] rounded px-1.5 py-0.5 transition-colors disabled:opacity-50">
-            <Upload className="w-3 h-3" />
-            {uploadInvoice.isPending ? 'Subiendo…' : 'Invoice'}
+            title={warnInvoice
+              ? '⚠ CONTROL: esta subactividad tiene gasto registrado SIN soporte documental — adjunta el invoice'
+              : 'Adjuntar invoice o documento equivalente (PDF/JPG/PNG)'}
+            className={`flex items-center gap-1 text-[10px] rounded px-1.5 py-0.5 transition-colors disabled:opacity-50 border ${
+              warnInvoice
+                ? 'text-red-600 bg-red-50 border-red-300 hover:bg-red-100 font-semibold animate-pulse'
+                : 'text-slate-400 hover:text-[var(--brand-gold)] border-dashed border-slate-300 hover:border-[var(--brand-gold)]'}`}>
+            {warnInvoice ? <AlertTriangle className="w-3 h-3" /> : <Upload className="w-3 h-3" />}
+            {uploadInvoice.isPending ? 'Subiendo…' : warnInvoice ? 'Falta invoice' : 'Invoice'}
           </button>
         )}
         <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.heic" className="hidden"
@@ -590,7 +612,19 @@ function ItemRow({ item, budgetLines, onUpdate, onOpenPanel, onDelete }: {
   const [newSubDesc, setNewSubDesc] = useState('')
   const [newSubVal, setNewSubVal] = useState('')
   const invalidate = () => qc.invalidateQueries({ queryKey: ['phases'] })
-  const createSub = useMutation({ mutationFn: (d: Record<string, unknown>) => subactivitiesApi.create(item.id, d), onSuccess: () => { setNewSubDesc(''); setNewSubVal(''); invalidate() } })
+  const createSub = useMutation({
+    mutationFn: (d: Record<string, unknown>) => subactivitiesApi.create(item.id, d),
+    onSuccess: (_r, vars: any) => {
+      setNewSubDesc(''); setNewSubVal(''); invalidate()
+      // Señal de control inmediata: se registró gasto sin soporte documental
+      if ((Number(vars?.valorEjecutado) || 0) > 0) {
+        toast('⚠ Subactividad registrada SIN invoice — adjunta el soporte para mantener la trazabilidad', {
+          icon: '📎', duration: 6000,
+          style: { background: '#FEF2F2', color: '#B91C1C', border: '1px solid #FECACA' },
+        })
+      }
+    },
+  })
   const updateSub = useMutation({ mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => subactivitiesApi.update(id, data), onSuccess: invalidate })
   const deleteSub = useMutation({ mutationFn: (id: string) => subactivitiesApi.delete(id), onSuccess: invalidate })
 
@@ -598,7 +632,7 @@ function ItemRow({ item, budgetLines, onUpdate, onOpenPanel, onDelete }: {
   if (isSlot && !item.completado && !item.valorEjecutado) {
     return (
       <tr className="border-b border-slate-200">
-        <td colSpan={9} className="px-4 py-1 text-[10px] text-slate-800 font-mono">{item.itemCode}</td>
+        <td colSpan={10} className="px-4 py-1 text-[10px] text-slate-800 font-mono">{item.itemCode}</td>
       </tr>
     )
   }
@@ -689,7 +723,7 @@ function ItemRow({ item, budgetLines, onUpdate, onOpenPanel, onDelete }: {
         {/* Presupuesto (planeación) — EDITABLE inline: aquí se hace la fase de
             planeación sin salir de Ejecución (sección unificada) */}
         <td className="px-2 py-2.5 w-24 text-right border-l border-slate-100">
-          <input type="number" defaultValue={item.valorPresupuestado || ''}
+          <input type="number" min="0" defaultValue={item.valorPresupuestado || ''}
             onBlur={e => { const v = parseFloat(e.target.value) || 0; if (v !== item.valorPresupuestado) onUpdate(item.id, { valorPresupuestado: v }) }}
             onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
             placeholder="—"
@@ -708,53 +742,58 @@ function ItemRow({ item, budgetLines, onUpdate, onOpenPanel, onDelete }: {
               <span className="text-[8px] px-1 rounded bg-teal-100 text-teal-700">Σ</span>{formatUSD(totalEjec)}
             </button>
           ) : (
-            <input type="number" defaultValue={base || ''}
+            <input type="number" min="0" defaultValue={base || ''}
               onBlur={e => onUpdate(item.id, { valorEjecutadoBase: parseFloat(e.target.value) || 0 })}
               onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
               placeholder="—"
               className="w-full bg-white border border-slate-200 text-[11px] font-mono font-semibold text-right text-slate-900 rounded px-1.5 py-1 focus:outline-none focus:border-[var(--brand-gold)] focus:ring-2 focus:ring-[var(--brand-gold)]/20 placeholder-slate-300" />
           )}
         </td>
-        {/* Desv. — positiva (rojo) = gastado de más; negativa (verde) = por debajo.
-            Se mide contra el budget del lender si hay asociación; si no, contra
-            el presupuesto manual. */}
+        {/* Desv. — SOLO la desviación (positiva roja = gastado de más; negativa
+            verde = ahorro). Se mide contra el budget del lender si hay
+            asociación 🔗; si no, contra el presupuesto manual. */}
         <td className="px-2 py-2.5 w-20 text-right border-l border-slate-100">
-          <div className="flex items-center justify-end gap-1.5">
-            {baseline > 0 && totalEjec > 0 && (
+          <div className="flex items-center justify-end gap-1">
+            {baseline > 0 && totalEjec > 0 ? (
               <span
                 title={item.budgetLine
-                  ? `Desviación vs Construction Budget (${formatUSD(baseline)})${overBaseline ? ' — SOBRE lo presupuestado en el budget' : ''}`
-                  : `Desviación vs presupuesto manual (${formatUSD(baseline)})`}
-                className={`text-[10px] font-mono font-semibold ${desviacion > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-                {desviacion > 0 ? '+' : ''}{formatUSD(desviacion)}
+                  ? `Gastado ${formatUSD(totalEjec)} vs ${formatUSD(baseline)} del Construction Budget${overBaseline ? ' — SOBRE lo presupuestado por el lender' : ''}`
+                  : `Gastado ${formatUSD(totalEjec)} vs ${formatUSD(baseline)} del presupuesto manual`}
+                className={`text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded ${desviacion > 0 ? 'text-red-700 bg-red-50' : 'text-emerald-700 bg-emerald-50'}`}>
+                {desviacion > 0 ? '▲ +' : '▼ '}{formatUSD(Math.abs(desviacion))}
               </span>
+            ) : (
+              <span className="text-[10px] text-slate-300" title="Sin presupuesto o sin gasto aún — no hay desviación que medir">—</span>
             )}
             {overBaseline && item.budgetLine && (
               <AlertTriangle className="w-3 h-3 text-red-500 flex-shrink-0" />
             )}
-            {onDelete && (
-              <button onClick={() => onDelete(item)} title="Eliminar actividad"
-                className="text-slate-300 hover:text-red-500 transition-colors">
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            )}
           </div>
         </td>
         {/* Doc */}
-        <td className="pr-3 pl-1 py-2.5 w-12 text-center border-l border-slate-100">
+        <td className="px-1 py-2.5 w-12 text-center border-l border-slate-100">
           <button onClick={() => onOpenPanel(item)}
-            className={`inline-flex items-center justify-center gap-0.5 text-[10px] font-mono font-semibold transition-colors ${warnDoc ? 'text-[var(--brand-gold)]' : docCount > 0 ? 'text-emerald-600' : 'text-slate-400 hover:text-slate-600'}`}
+            className={`inline-flex items-center justify-center gap-0.5 text-[10px] font-mono font-semibold transition-colors ${warnDoc ? 'text-red-500' : docCount > 0 ? 'text-emerald-600' : 'text-slate-400 hover:text-slate-600'}`}
             title={warnDoc ? '⚠ Sin factura adjunta — súbela en el panel del ítem' : docCount > 0 ? `${docCount} documento(s) adjunto(s)` : 'Adjuntar documento / factura'}>
             {warnDoc ? <AlertTriangle className="w-3.5 h-3.5" /> : <Paperclip className="w-3.5 h-3.5" />}
             {docCount > 0 && <span>{docCount}</span>}
           </button>
+        </td>
+        {/* Eliminar — columna PROPIA, siempre visible */}
+        <td className="pr-3 pl-1 py-2.5 w-10 text-center border-l border-slate-100">
+          {onDelete && (
+            <button onClick={() => onDelete(item)} title="Eliminar esta actividad (pide confirmación)"
+              className="w-6 h-6 inline-flex items-center justify-center rounded-md text-slate-400 bg-slate-50 border border-slate-200 hover:text-white hover:bg-red-500 hover:border-red-500 transition-all">
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
         </td>
       </tr>
 
       {/* Desglose — subactividades (SUMAN al valor base de la actividad) */}
       {expanded && (
         <tr className="bg-slate-50/70">
-          <td colSpan={9} className="p-0">
+          <td colSpan={10} className="p-0">
             <div className="ml-10 mr-4 my-2 rounded-lg border border-slate-200 bg-white">
               <div className="px-3 py-2 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
                 <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
@@ -767,7 +806,7 @@ function ItemRow({ item, budgetLines, onUpdate, onOpenPanel, onDelete }: {
               {/* Valor base de la actividad (se respeta y las subactividades se suman) */}
               <div className="px-3 py-2 flex items-center gap-2 border-b border-slate-100">
                 <span className="text-[11px] text-slate-500 flex-1">Valor de la actividad (base)</span>
-                <input type="number" defaultValue={base || ''}
+                <input type="number" min="0" defaultValue={base || ''}
                   onBlur={e => onUpdate(item.id, { valorEjecutadoBase: parseFloat(e.target.value) || 0 })}
                   onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
                   placeholder="0"
@@ -788,9 +827,9 @@ function ItemRow({ item, budgetLines, onUpdate, onOpenPanel, onDelete }: {
                 <span className="text-[10px] font-mono text-slate-300 w-20 flex-shrink-0">{item.itemCode}.{String(subs.length + 1).padStart(3, '0')}</span>
                 <input value={newSubDesc} onChange={e => setNewSubDesc(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addSub() }}
                   placeholder="Nueva subactividad…" className="flex-1 min-w-0 bg-white border border-slate-200 text-[11px] text-slate-700 rounded px-2 py-1 focus:outline-none focus:border-[var(--brand-gold)] placeholder-slate-400" />
-                <input type="number" value={newSubVal} onChange={e => setNewSubVal(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addSub() }}
+                <input type="number" min="0" value={newSubVal} onChange={e => setNewSubVal(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addSub() }}
                   placeholder="Valor" className="w-28 bg-white border border-slate-200 text-[11px] font-mono text-right text-slate-700 rounded px-1.5 py-1 focus:outline-none focus:border-[var(--brand-gold)] placeholder-slate-400" />
-                <button onClick={addSub} disabled={!newSubDesc.trim() || createSub.isPending} title="Agregar subactividad" className="flex items-center px-1.5 py-1 bg-[var(--brand-gold)] hover:bg-[#E0AD4F] text-white rounded disabled:opacity-40"><Plus className="w-3.5 h-3.5" /></button>
+                <button onClick={addSub} disabled={!newSubDesc.trim() || createSub.isPending} title="Agregar subactividad" className="flex items-center px-1.5 py-1 bg-[var(--brand-gold)] hover:bg-[#55809B] text-white rounded disabled:opacity-40"><Plus className="w-3.5 h-3.5" /></button>
               </div>
             </div>
           </td>
@@ -971,8 +1010,11 @@ function PhaseSection({ phase, budgetLines, budgetDivisions, defaultOpen = false
                 <th className="px-2 py-2 text-right text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-24" title="Presupuesto de planeación (editable)">Presup. ✏</th>
                 <th className="px-2 py-2 text-right text-[10px] font-semibold text-indigo-500 uppercase tracking-wider w-24" title="Presupuesto según Construction Budget (cuando la actividad está asociada)">Budget 🔗</th>
                 <th className="px-2 py-2 text-right text-[10px] font-semibold text-[var(--brand-gold)] uppercase tracking-wider w-24">Ejecutado</th>
-                <th className="px-2 py-2 text-right text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-20" title="Desviación vs budget asociado (si existe) o vs presupuesto manual">Desv.</th>
-                <th className="pr-3 pl-1 py-2 text-center text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-12">Doc</th>
+                <th className="px-2 py-2 text-right text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-20" title="Desviación del gasto: ▲ rojo = gastado de más · ▼ verde = por debajo. Se mide contra el budget asociado 🔗 si existe; si no, contra Presup. ✏">Desv.</th>
+                <th className="px-1 py-2 text-center text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-12">Doc</th>
+                <th className="pr-3 pl-1 py-2 text-center text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-10" title="Eliminar actividad">
+                  <Trash2 className="w-3 h-3 inline-block" />
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -998,7 +1040,7 @@ function PhaseSection({ phase, budgetLines, budgetDivisions, defaultOpen = false
             </form>
           ) : (
             <button onClick={() => setShowNewForm(true)}
-              className="flex items-center gap-2 px-4 py-2 text-xs text-slate-500 hover:text-[var(--brand-gold)] hover:bg-[#C8922A]/5 transition-colors w-full border-t border-slate-100">
+              className="flex items-center gap-2 px-4 py-2 text-xs text-slate-500 hover:text-[var(--brand-gold)] hover:bg-[#3E6B85]/5 transition-colors w-full border-t border-slate-100">
               <Plus className="w-3.5 h-3.5" />Agregar actividad a {phase.code}
             </button>
           )}

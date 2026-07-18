@@ -221,7 +221,7 @@ function PhaseSection({ phase, onUpdate, onCreate, onDelete }: {
                 <th className="pl-5 pr-2 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider w-16">Cód.</th>
                 <th className="px-2 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider">Actividad</th>
                 <th className="px-2 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider w-14">Ud.</th>
-                <th className="px-2 py-1.5 text-right text-[9px] text-[#C8922A]/80 uppercase tracking-wider w-32">Presup. ✏</th>
+                <th className="px-2 py-1.5 text-right text-[9px] text-[#3E6B85]/80 uppercase tracking-wider w-32">Presup. ✏</th>
                 <th className="px-2 py-1.5 text-right text-[9px] text-slate-400 uppercase tracking-wider w-28">Ejecutado</th>
                 <th className="px-2 py-1.5 text-right text-[9px] text-slate-400 uppercase tracking-wider w-24">Desv.</th>
                 <th className="pr-4 pl-2 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider w-24">%</th>
@@ -243,7 +243,7 @@ function PhaseSection({ phase, onUpdate, onCreate, onDelete }: {
           {/* Add activity button */}
           <button
             onClick={() => onCreate(phase.id)}
-            className="flex items-center gap-2 px-5 py-2 text-xs text-slate-400 hover:text-[var(--brand-gold)] hover:bg-[#C8922A]/5 transition-colors w-full border-t border-slate-200/50"
+            className="flex items-center gap-2 px-5 py-2 text-xs text-slate-400 hover:text-[var(--brand-gold)] hover:bg-[#3E6B85]/5 transition-colors w-full border-t border-slate-200/50"
           >
             <Plus className="w-3.5 h-3.5" />
             Agregar actividad imprevista
@@ -382,8 +382,8 @@ export default function Budget({ projectId }: { projectId: string }) {
 
       {/* Tip */}
       <div className="flex items-center gap-2 text-[11px] text-slate-400">
-        <DollarSign className="w-3.5 h-3.5 text-[#C8922A]/50" />
-        Clic en cualquier valor de <span className="text-[#C8922A]/70">Presup. ✏</span> para editarlo. Los cambios se ven inmediatamente en Ejecución.
+        <DollarSign className="w-3.5 h-3.5 text-[#3E6B85]/50" />
+        Clic en cualquier valor de <span className="text-[#3E6B85]/70">Presup. ✏</span> para editarlo. Los cambios se ven inmediatamente en Ejecución.
         Clic en el nombre de la actividad para editarlo también.
       </div>
 
@@ -395,7 +395,7 @@ export default function Budget({ projectId }: { projectId: string }) {
           <div className="w-7 flex-shrink-0" />
           <div className="flex-1 text-[10px] text-slate-400 uppercase tracking-wider">Fase</div>
           <div className="flex items-center gap-4 text-[10px] shrink-0">
-            <span className="text-[#C8922A]/70 uppercase tracking-wider w-28 text-right">Presupuestado</span>
+            <span className="text-[#3E6B85]/70 uppercase tracking-wider w-28 text-right">Presupuestado</span>
             <span className="text-slate-400 uppercase tracking-wider w-28 text-right">Ejecutado</span>
             <span className="text-slate-400 uppercase tracking-wider w-20 text-right">Desviación</span>
             <span className="text-slate-400 uppercase tracking-wider w-20 text-right">% Ejec.</span>

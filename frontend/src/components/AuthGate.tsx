@@ -48,7 +48,7 @@ function RALogoMark({ width = 80, height = 60 }: { width?: number; height?: numb
       <rect x="106" y="66" width="3" height="3" fill="rgba(255,255,255,0.35)"/>
       <rect x="111" y="66" width="3" height="3" fill="rgba(255,255,255,0.35)"/>
       <rect x="0" y="80" width="120" height="1.5" fill="#2D4B52" opacity="0.3"/>
-      <path d="M 8 85 Q 60 72 112 85" stroke="#C8922A" strokeWidth="3" fill="none" strokeLinecap="round"/>
+      <path d="M 8 85 Q 60 72 112 85" stroke="#3E6B85" strokeWidth="3" fill="none" strokeLinecap="round"/>
     </svg>
   )
 }
@@ -133,7 +133,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
         style={{ boxShadow: '0 20px 60px rgba(45,75,82,0.15)', border: '1px solid rgba(45,75,82,0.1)' }}>
 
         {/* Header strip */}
-        <div className="h-1.5" style={{ background: 'linear-gradient(90deg, #2D4B52 0%, #C8922A 100%)' }} />
+        <div className="h-1.5" style={{ background: 'linear-gradient(90deg, #2D4B52 0%, #3E6B85 100%)' }} />
 
         <div className="px-8 py-10">
           {/* Logo */}
@@ -145,7 +145,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
             >
               Restrepo Acosta
             </h1>
-            <p className="text-[10px] uppercase tracking-[0.2em] font-semibold mt-0.5" style={{ color: '#C8922A' }}>
+            <p className="text-[10px] uppercase tracking-[0.2em] font-semibold mt-0.5" style={{ color: '#3E6B85' }}>
               Global Holdings LLC
             </p>
           </div>
@@ -174,8 +174,8 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
                     outline: 'none',
                   }}
                   onFocus={e => {
-                    e.currentTarget.style.border = '1px solid #C8922A'
-                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(200,146,42,0.15)'
+                    e.currentTarget.style.border = '1px solid #3E6B85'
+                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(62,107,133,0.15)'
                   }}
                   onBlur={e => {
                     e.currentTarget.style.border = error
@@ -207,8 +207,8 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
               disabled={loading || !password}
               className="w-full py-3 text-sm font-semibold text-white rounded-xl transition-all disabled:opacity-50"
               style={{
-                background: 'linear-gradient(135deg, #C8922A 0%, #E0AD4F 100%)',
-                boxShadow: '0 4px 14px rgba(200,146,42,0.3)',
+                background: 'linear-gradient(135deg, #3E6B85 0%, #55809B 100%)',
+                boxShadow: '0 4px 14px rgba(62,107,133,0.3)',
               }}
               onMouseEnter={e => !loading && (e.currentTarget.style.transform = 'translateY(-1px)')}
               onMouseLeave={e => (e.currentTarget.style.transform = 'none')}

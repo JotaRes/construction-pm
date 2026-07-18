@@ -14,7 +14,10 @@ router.get('/:projectId/phases', async (req: Request, res: Response) => {
           include: {
             provider: true,
             documents: { select: { id: true, type: true } },
-            subactivities: { orderBy: { order: 'asc' } },
+            subactivities: {
+              orderBy: { order: 'asc' },
+              include: { provider: { select: { id: true, name: true } } },
+            },
             // Línea del Construction Budget asociada (para "Presup. según budget" y Desv.)
             budgetLine: {
               select: {
@@ -40,6 +43,16 @@ router.get('/:projectId/phases', async (req: Request, res: Response) => {
         if (item.valorEjecutadoBase === 0 && derivedBase > 0) {
           item.valorEjecutadoBase = derivedBase
           repairs.push(prisma.item.update({ where: { id: item.id }, data: { valorEjecutadoBase: derivedBase } }))
+        }
+        // Auto-reparación de NEGATIVOS: un presupuesto o ejecutado negativo no
+        // tiene sentido de obra y contamina los KPIs (caso real: "Presupuesto
+        // total -$2"). Se normaliza a 0 una sola vez (idempotente).
+        const fix: Record<string, number> = {}
+        if (item.valorPresupuestado < 0) { item.valorPresupuestado = 0; fix.valorPresupuestado = 0 }
+        if (item.valorEjecutadoBase < 0) { item.valorEjecutadoBase = 0; fix.valorEjecutadoBase = 0 }
+        if (item.valorEjecutado < 0) { item.valorEjecutado = Math.max(0, sumSubs); fix.valorEjecutado = item.valorEjecutado }
+        if (Object.keys(fix).length > 0) {
+          repairs.push(prisma.item.update({ where: { id: item.id }, data: fix }))
         }
       }
     }

@@ -58,7 +58,7 @@ export default function HomeExecutiveDashboard() {
         </div>
         <div className="flex gap-1.5">
           <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full" style={{ background: 'rgba(45,75,82,0.1)', color: 'var(--brand-teal)' }}>Técnico</span>
-          <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full" style={{ background: 'rgba(200,146,42,0.15)', color: 'var(--brand-gold)' }}>Financiero</span>
+          <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full" style={{ background: 'rgba(62,107,133,0.15)', color: 'var(--brand-gold)' }}>Financiero</span>
         </div>
       </div>
 
@@ -118,7 +118,7 @@ export default function HomeExecutiveDashboard() {
                 </div>
                 <div className="flex gap-1 flex-shrink-0">
                   {proj.pendingInspections > 0 && (
-                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex items-center gap-0.5" style={{ background: 'rgba(200,146,42,0.15)', color: 'var(--brand-gold)' }}>
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex items-center gap-0.5" style={{ background: 'rgba(62,107,133,0.15)', color: 'var(--brand-gold)' }}>
                       <AlertTriangle size={9} /> {proj.pendingInspections}
                     </span>
                   )}

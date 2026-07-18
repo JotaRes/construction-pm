@@ -31,7 +31,7 @@ export default function GanttView({ projectId }: { projectId: string }) {
           type: 'task' as const,
           isDisabled: true,
           styles: {
-            progressColor: p.variancePct > 10 ? '#ef4444' : p.status === 'COMPLETA' ? '#22c55e' : '#C8922A',
+            progressColor: p.variancePct > 10 ? '#ef4444' : p.status === 'COMPLETA' ? '#22c55e' : '#3E6B85',
             progressSelectedColor: '#2D4B52',
             backgroundColor: '#cbd5e1',
             backgroundSelectedColor: '#94a3b8',

@@ -138,7 +138,7 @@ export default function Accounts() {
                   <div className="flex items-center gap-2 min-w-0">
                     <div
                       className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{ background: 'rgba(200,146,42,0.12)', color: 'var(--brand-gold)' }}
+                      style={{ background: 'rgba(62,107,133,0.12)', color: 'var(--brand-gold)' }}
                     >
                       <Building2 size={18} />
                     </div>

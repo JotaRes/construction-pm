@@ -50,7 +50,7 @@ router.get('/', async (req: Request, res: Response) => {
     // === MÓDULO TÉCNICO ===
     const projects = await prisma.project.findMany({
       include: {
-        phases: { include: { items: { include: { subactivities: true } } } },
+        phases: { include: { items: { include: { subactivities: { include: { provider: { select: { name: true } } } } } } } },
         draws: true,
         partners: true,
         providers: { include: { quotes: true, documents: true } },
@@ -61,19 +61,23 @@ router.get('/', async (req: Request, res: Response) => {
         budgetLines: true,
       },
     })
-    const [priceRefs, itemDocuments, subcontractorContracts, drawLineContributions, changeOrders, punchListItems] = await Promise.all([
+    const [priceRefs, itemDocuments, subcontractorContracts, drawLineContributions, changeOrders, punchListItems, globalProviders] = await Promise.all([
       prisma.priceRef.findMany(),
       prisma.itemDocument.findMany(),
       prisma.subcontractorContract.findMany({ include: { paymentSchedule: true } }),
       prisma.drawLineContribution.findMany(),
       prisma.changeOrder.findMany(),
       prisma.punchListItem.findMany(),
+      // Proveedores GLOBALES (projectId null): no están anidados en ningún
+      // proyecto — sin esto se perderían en la restauración.
+      prisma.provider.findMany({ where: { projectId: null }, include: { quotes: true, documents: true } }),
     ])
 
     // Snapshot como objeto: se usa para el JSON del ZIP y se incrusta también
     // en el Excel (hoja oculta _RESTORE) para que el .xlsx sea re-importable.
     const techSnapshotObj = {
       projects,
+      globalProviders,
       priceRefs,
       itemDocuments,
       subcontractorContracts,
@@ -81,9 +85,9 @@ router.get('/', async (req: Request, res: Response) => {
       changeOrders,
       punchListItems,
       exportedAt: new Date().toISOString(),
-      // v1.5: items con budgetLineId (enlace al Construction Budget) y
-      // subactividades con fecha/responsable/observaciones/invoice.
-      version: '1.5',
+      // v1.6: proveedores globales incluidos + SubActivity.providerId.
+      // v1.5: items con budgetLineId y subactividades con control administrativo.
+      version: '1.6',
     }
     const techSnapshot = JSON.stringify(techSnapshotObj, null, 2)
 
@@ -271,7 +275,7 @@ router.get('/excel-tech', async (_req: Request, res: Response) => {
   try {
     const projects = await prisma.project.findMany({
       include: {
-        phases: { include: { items: { include: { subactivities: true } } } },
+        phases: { include: { items: { include: { subactivities: { include: { provider: { select: { name: true } } } } } } } },
         draws: true,
         partners: true,
         providers: { include: { quotes: true, documents: true } },
@@ -293,8 +297,10 @@ router.get('/excel-tech', async (_req: Request, res: Response) => {
 
     // Mismo snapshot que el backup ZIP → el Excel descargado desde aquí también
     // es restaurable con fidelidad total (hoja oculta _RESTORE).
+    const globalProviders = await prisma.provider.findMany({ where: { projectId: null }, include: { quotes: true, documents: true } })
     const restoreSnapshot = {
       projects,
+      globalProviders,
       priceRefs,
       itemDocuments,
       subcontractorContracts,
@@ -302,7 +308,7 @@ router.get('/excel-tech', async (_req: Request, res: Response) => {
       changeOrders,
       punchListItems,
       exportedAt: new Date().toISOString(),
-      version: '1.5',
+      version: '1.6',
     }
     const buf = await buildTechExcel({ projects, priceRefs, drawLineContributions, subcontractorContracts, changeOrders, punchListItems, itemDocuments, restoreSnapshot })
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
@@ -393,11 +399,30 @@ router.post('/restore-tech', upload.single('file'), async (req: Request, res: Re
       return r
     }
 
+    // Proveedores GLOBALES primero (v1.6+): Item/SubActivity los referencian por FK
+    for (const gp of snapshot.globalProviders || []) {
+      const { quotes, documents, ...gpRest } = gp
+      await prisma.provider.create({ data: normDates(gpRest) }).catch(() => {})
+      counts.providers++
+      for (const q of quotes || []) { await prisma.providerQuote.create({ data: normDates(q) }).catch(() => {}); counts.providerQuotes++ }
+      for (const doc of documents || []) { await prisma.providerDocument.create({ data: normDates(doc) }).catch(() => {}); counts.providerDocuments++ }
+    }
+
     for (const p of snapshot.projects || []) {
       const { phases, draws, partners, providers, notes, files, inspections, tasks, budgetLines, ...rest } = p
       await prisma.project.create({ data: normDates(rest) })
       counts.projects++
-      // BudgetLines ANTES que los items: Item.budgetLineId referencia BudgetLine (FK)
+      // ORDEN DE DEPENDENCIAS (FKs):
+      // 1) Providers ANTES que items/subactividades (Item.providerId, SubActivity.providerId)
+      // 2) BudgetLines ANTES que items (Item.budgetLineId)
+      // 3) Phases → Items → SubActivities
+      for (const pr of providers || []) {
+        const { quotes, documents, ...prRest } = pr
+        await prisma.provider.create({ data: normDates(prRest) })
+        counts.providers++
+        for (const q of quotes || []) { await prisma.providerQuote.create({ data: normDates(q) }).catch(() => {}); counts.providerQuotes++ }
+        for (const doc of documents || []) { await prisma.providerDocument.create({ data: normDates(doc) }).catch(() => {}); counts.providerDocuments++ }
+      }
       for (const bl of budgetLines || []) { await prisma.budgetLine.create({ data: normDates(bl) }); counts.budgetLines++ }
       for (const ph of phases || []) {
         const { items, ...phRest } = ph
@@ -406,24 +431,18 @@ router.post('/restore-tech', upload.single('file'), async (req: Request, res: Re
         for (const item of items || []) {
           // Las subactividades vienen anidadas en el snapshot (v1.4+): se extraen
           // y se crean por separado — pasarlas anidadas rompía la restauración.
-          const { subactivities, budgetLine, ...itemRest } = item
+          const { subactivities, budgetLine, provider, ...itemRest } = item
           await prisma.item.create({ data: normDates(itemRest) })
           counts.items++
           for (const sub of subactivities || []) {
-            await prisma.subActivity.create({ data: normDates(sub) }).catch(() => {})
+            const { provider: _subProv, ...subRest } = sub
+            await prisma.subActivity.create({ data: normDates(subRest) }).catch(() => {})
             counts.subactivities++
           }
         }
       }
       for (const d of draws || []) { await prisma.draw.create({ data: normDates(d) }); counts.draws++ }
       for (const pa of partners || []) { await prisma.partner.create({ data: normDates(pa) }); counts.partners++ }
-      for (const pr of providers || []) {
-        const { quotes, documents, ...prRest } = pr
-        await prisma.provider.create({ data: normDates(prRest) })
-        counts.providers++
-        for (const q of quotes || []) { await prisma.providerQuote.create({ data: normDates(q) }).catch(() => {}); counts.providerQuotes++ }
-        for (const doc of documents || []) { await prisma.providerDocument.create({ data: normDates(doc) }).catch(() => {}); counts.providerDocuments++ }
-      }
       for (const n of notes || []) { await prisma.note.create({ data: normDates(n) }); counts.notes++ }
       for (const f of files || []) { await prisma.projectFile.create({ data: normDates(f) }); counts.files++ }
       for (const i of inspections || []) { await prisma.inspection.create({ data: normDates(i) }); counts.inspections++ }

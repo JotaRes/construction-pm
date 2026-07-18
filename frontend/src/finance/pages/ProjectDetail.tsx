@@ -62,7 +62,7 @@ export default function ProjectDetail() {
             <div className="flex items-start gap-4">
               <div
                 className="w-14 h-14 rounded-xl flex items-center justify-center"
-                style={{ background: 'rgba(200,146,42,0.12)', color: 'var(--brand-gold)' }}
+                style={{ background: 'rgba(62,107,133,0.12)', color: 'var(--brand-gold)' }}
               >
                 <Briefcase size={28} />
               </div>
@@ -76,7 +76,7 @@ export default function ProjectDetail() {
                     </span>
                   )}
                   {p.line && (
-                    <span className="px-2 py-1 rounded text-xs" style={{ background: 'rgba(200,146,42,0.1)', color: 'var(--brand-gold)' }}>
+                    <span className="px-2 py-1 rounded text-xs" style={{ background: 'rgba(62,107,133,0.1)', color: 'var(--brand-gold)' }}>
                       {p.line}
                     </span>
                   )}

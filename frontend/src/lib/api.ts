@@ -625,4 +625,6 @@ export const providersGlobalApi = {
   createGlobal: (data: Record<string, unknown>) => api.post('/providers', data).then(r => r.data.data),
   billing: (): Promise<Record<string, Record<string, { projectName: string; total: number; count: number }>>> =>
     api.get('/providers/billing').then(r => r.data.data),
+  // Récord completo del proveedor: actividades, subactividades y facturas
+  record: (providerId: string) => api.get(`/providers/${providerId}/record`).then(r => r.data.data),
 }

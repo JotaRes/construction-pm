@@ -525,6 +525,7 @@ export async function buildTechExcel(data: TechExcelData): Promise<Buffer> {
           _fase: `${ph.code} ${ph.name}`,
           _item: `${i.itemCode} — ${i.activity}`,
           _invoice: s.invoiceUrl ? (s.invoiceName || 'Sí') : '',
+          _provider: s.provider?.name ?? '',
         }))
       )
     )
@@ -540,6 +541,7 @@ export async function buildTechExcel(data: TechExcelData): Promise<Buffer> {
         { header: 'Subactividad', key: 'description', width: 34, wrap: true },
         { header: 'Valor ejecutado', key: 'valorEjecutado', width: 15, numFmt: MONEY, total: true },
         { header: 'Fecha', key: 'fecha', width: 13 },
+        { header: 'Proveedor', key: '_provider', width: 20 },
         { header: 'Responsable', key: 'responsable', width: 18 },
         { header: 'Invoice', key: '_invoice', width: 22 },
         { header: 'Observaciones', key: 'observaciones', width: 30, wrap: true },

@@ -65,12 +65,13 @@ router.post('/items/:itemId/subactivities', async (req: Request, res: Response) 
       data: {
         itemId,
         description: (req.body?.description ?? 'Nueva subactividad').toString(),
-        valorEjecutado: Number(req.body?.valorEjecutado ?? 0) || 0,
+        valorEjecutado: Math.max(0, Number(req.body?.valorEjecutado ?? 0) || 0),
         order: count,
         // Control administrativo (opcional al crear)
         fecha: req.body?.fecha ? new Date(req.body.fecha) : null,
         responsable: req.body?.responsable ? String(req.body.responsable) : null,
         observaciones: req.body?.observaciones ? String(req.body.observaciones) : null,
+        providerId: req.body?.providerId ? String(req.body.providerId) : null,
       },
     })
     await recomputeItemExecuted(itemId)
@@ -85,12 +86,22 @@ router.patch('/subactivities/:id', async (req: Request, res: Response) => {
   try {
     const data: Record<string, unknown> = {}
     if (req.body?.description !== undefined) data.description = String(req.body.description)
-    if (req.body?.valorEjecutado !== undefined) data.valorEjecutado = Number(req.body.valorEjecutado) || 0
+    if (req.body?.valorEjecutado !== undefined) data.valorEjecutado = Math.max(0, Number(req.body.valorEjecutado) || 0)
     if (req.body?.order !== undefined) data.order = Number(req.body.order)
     // Control administrativo: fecha de ejecución, quién lo hizo, observaciones
     if (req.body?.fecha !== undefined) data.fecha = req.body.fecha ? new Date(req.body.fecha) : null
     if (req.body?.responsable !== undefined) data.responsable = req.body.responsable ? String(req.body.responsable) : null
     if (req.body?.observaciones !== undefined) data.observaciones = req.body.observaciones ? String(req.body.observaciones) : null
+    // Proveedor del catálogo global (validado) — alimenta el récord por proveedor
+    if (req.body?.providerId !== undefined) {
+      if (req.body.providerId) {
+        const prov = await prisma.provider.findUnique({ where: { id: String(req.body.providerId) }, select: { id: true } })
+        if (!prov) return res.status(400).json({ data: null, error: 'El proveedor no existe' })
+        data.providerId = String(req.body.providerId)
+      } else {
+        data.providerId = null
+      }
+    }
     const sub = await prisma.subActivity.update({ where: { id: req.params.id }, data })
     await recomputeItemExecuted(sub.itemId)
     res.json({ data: sub, error: null })

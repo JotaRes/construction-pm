@@ -247,7 +247,7 @@ export default function DocumentChecklist({ projectId, projectName, projectAddre
           </div>
           <div className="text-right">
             <div className="text-3xl font-bold font-mono" style={{
-              color: completePct >= 100 ? '#059669' : completePct >= 70 ? '#C8922A' : '#dc2626',
+              color: completePct >= 100 ? '#059669' : completePct >= 70 ? '#3E6B85' : '#dc2626',
             }}>{completePct}%</div>
             <div className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>completo</div>
           </div>
@@ -297,7 +297,7 @@ export default function DocumentChecklist({ projectId, projectName, projectAddre
           <button
             onClick={() => setOpenGroup({ ...openGroup, [group.key]: !openGroup[group.key] })}
             className="w-full px-5 py-3 flex items-center justify-between hover:bg-stone-50 transition-colors"
-            style={{ background: 'rgba(200,146,42,0.04)' }}
+            style={{ background: 'rgba(62,107,133,0.04)' }}
           >
             <h3 className="text-sm font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}>
               {openGroup[group.key] ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
@@ -326,7 +326,7 @@ export default function DocumentChecklist({ projectId, projectName, projectAddre
                           {item.required && <span className="text-red-500 ml-1">*</span>}
                           {item.count > 0 && (
                             <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full font-mono"
-                              style={{ background: 'rgba(200,146,42,0.12)', color: 'var(--brand-gold)' }}
+                              style={{ background: 'rgba(62,107,133,0.12)', color: 'var(--brand-gold)' }}
                             >
                               {item.count}
                             </span>

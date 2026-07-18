@@ -51,13 +51,14 @@ router.patch('/:id', async (req: Request, res: Response) => {
     if (esNA !== undefined) data.esNA = esNA
     if (completado !== undefined) data.completado = completado
     if (quantity !== undefined) data.quantity = (quantity === null || quantity === '') ? null : Number(quantity)
-    if (valorPresupuestado !== undefined) data.valorPresupuestado = Number(valorPresupuestado)
+    // Clamp a ≥ 0: valores negativos no tienen sentido de obra y dañan los KPIs
+    if (valorPresupuestado !== undefined) data.valorPresupuestado = Math.max(0, Number(valorPresupuestado) || 0)
     // El valor "ejecutado" que edita el usuario es el VALOR BASE de la actividad.
     // El total (valorEjecutado) se recomputa como base + Σ subactividades.
     const baseIncoming = valorEjecutadoBase !== undefined ? valorEjecutadoBase
       : valorEjecutado !== undefined ? valorEjecutado : undefined
     let recompute = false
-    if (baseIncoming !== undefined) { data.valorEjecutadoBase = Number(baseIncoming); recompute = true }
+    if (baseIncoming !== undefined) { data.valorEjecutadoBase = Math.max(0, Number(baseIncoming) || 0); recompute = true }
     if (providerId !== undefined) data.providerId = providerId || null
     // Asociación actividad ↔ línea del Construction Budget (validada: debe existir)
     if (budgetLineId !== undefined) {

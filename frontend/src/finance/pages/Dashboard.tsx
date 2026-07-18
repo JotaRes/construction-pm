@@ -102,9 +102,9 @@ export default function Dashboard() {
                       <div className="text-[10px] font-mono uppercase tracking-wide" style={{ color: 'var(--brand-teal2)' }}>{a.bank}</div>
                     </div>
                     <span className="badge" style={{
-                      background: 'rgba(200,146,42,0.12)',
+                      background: 'rgba(62,107,133,0.12)',
                       color: 'var(--accent)',
-                      border: '1px solid rgba(200,146,42,0.3)',
+                      border: '1px solid rgba(62,107,133,0.3)',
                     }}>{a.type}</span>
                   </div>
                   <div className={cls(

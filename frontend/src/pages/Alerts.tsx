@@ -5,7 +5,7 @@ import { AlertTriangle, CheckCircle, XCircle, Info, CalendarClock, Search, FileW
 
 const UPCOMING_SEVERITY: Record<UpcomingAlert['severity'], { dot: string; badge: string }> = {
   CRITICAL: { dot: 'bg-red-500', badge: 'bg-red-500/15 text-red-500' },
-  HIGH: { dot: 'bg-[var(--brand-gold)]', badge: 'bg-[#C8922A]/15 text-[var(--brand-gold)]' },
+  HIGH: { dot: 'bg-[var(--brand-gold)]', badge: 'bg-[#3E6B85]/15 text-[var(--brand-gold)]' },
   MEDIUM: { dot: 'bg-slate-400', badge: 'bg-slate-100 text-slate-500' },
 }
 
@@ -74,7 +74,7 @@ function AlertCard({ alert }: { alert: Alert }) {
             <span className={`text-sm font-semibold ${config.text}`}>{alert.title}</span>
             <span className={`text-[10px] uppercase px-2 py-0.5 rounded-full font-medium
               ${alert.level === 'ok' ? 'bg-emerald-500/20 text-emerald-400'
-              : alert.level === 'warning' ? 'bg-[#C8922A]/15 text-[var(--brand-gold)]'
+              : alert.level === 'warning' ? 'bg-[#3E6B85]/15 text-[var(--brand-gold)]'
               : 'bg-red-500/20 text-red-400'}`}>
               {alert.level.toUpperCase()}
             </span>

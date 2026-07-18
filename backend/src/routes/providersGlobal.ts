@@ -81,4 +81,73 @@ router.get('/billing', async (_req: Request, res: Response) => {
   }
 })
 
+// GET /api/providers/:id/record — RÉCORD COMPLETO del proveedor/contratista:
+// historial de servicios y pagos alimentado desde Ejecución.
+// Fuentes: actividades asignadas (Item.providerId), subactividades asignadas
+// (SubActivity.providerId) y facturas registradas (ItemDocument.providerId).
+router.get('/:id/record', async (req: Request, res: Response) => {
+  try {
+    const providerId = req.params.id
+    const [items, subs, invoices] = await Promise.all([
+      prisma.item.findMany({
+        where: { providerId },
+        select: {
+          id: true, itemCode: true, activity: true, estado: true, completado: true,
+          valorEjecutado: true, fechaInicioReal: true, fechaFinReal: true,
+          phase: { select: { code: true, name: true, project: { select: { id: true, name: true } } } },
+        },
+        orderBy: { itemCode: 'asc' },
+      }),
+      prisma.subActivity.findMany({
+        where: { providerId },
+        select: {
+          id: true, description: true, valorEjecutado: true, fecha: true,
+          responsable: true, invoiceUrl: true, invoiceName: true,
+          item: {
+            select: {
+              itemCode: true, activity: true,
+              phase: { select: { code: true, project: { select: { id: true, name: true } } } },
+            },
+          },
+        },
+        orderBy: { fecha: 'desc' },
+      }),
+      prisma.itemDocument.findMany({
+        where: { providerId },
+        select: {
+          id: true, type: true, name: true, amount: true, fileUrl: true, createdAt: true,
+          item: {
+            select: {
+              itemCode: true, activity: true,
+              phase: { select: { project: { select: { id: true, name: true } } } },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ])
+
+    const totalActividades = items.reduce((s, i) => s + (i.valorEjecutado || 0), 0)
+    const totalSubactividades = subs.reduce((s, x) => s + (x.valorEjecutado || 0), 0)
+    const totalFacturado = invoices.filter(d => d.type === 'FACTURA').reduce((s, d) => s + (d.amount || 0), 0)
+
+    res.json({
+      data: {
+        activities: items,
+        subactivities: subs,
+        invoices,
+        totals: {
+          actividades: totalActividades,
+          subactividades: totalSubactividades,
+          facturado: totalFacturado,
+          servicios: items.length + subs.length,
+        },
+      },
+      error: null,
+    })
+  } catch (e) {
+    res.status(500).json({ data: null, error: String(e) })
+  }
+})
+
 export default router

@@ -199,6 +199,10 @@ model SubActivity {
   // Soporte documental (invoice / equivalente) subido a Cloudinary
   invoiceUrl     String?
   invoiceName    String?
+  // Proveedor/contratista del catálogo global — alimenta el récord por
+  // proveedor en la sección Proveedores (historial de servicios y pagos).
+  providerId     String?
+  provider       Provider? @relation("SubActivityProvider", fields: [providerId], references: [id], onDelete: SetNull)
 }
 
 model Draw {
@@ -284,6 +288,7 @@ model Provider {
   documents    ProviderDocument[]
   contracts    SubcontractorContract[]
   invoiceDocs  ItemDocument[] @relation("InvoiceProvider")
+  subactivities SubActivity[] @relation("SubActivityProvider")
 }
 
 model ProviderDocument {

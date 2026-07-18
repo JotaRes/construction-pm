@@ -70,7 +70,7 @@ export default function Projects() {
                     <div className="flex items-center gap-2 min-w-0">
                       <div
                         className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                        style={{ background: 'rgba(200,146,42,0.12)', color: 'var(--brand-gold)' }}
+                        style={{ background: 'rgba(62,107,133,0.12)', color: 'var(--brand-gold)' }}
                       >
                         <Briefcase size={16} />
                       </div>
@@ -85,7 +85,7 @@ export default function Projects() {
                   {/* SPV + Línea + Modelo */}
                   <div className="flex flex-wrap gap-1 mb-3 text-xs">
                     {p.spv?.code && <span className="px-2 py-0.5 rounded font-mono" style={{ background: 'rgba(45,75,82,0.08)', color: 'var(--brand-teal)' }}>{p.spv.code}</span>}
-                    {p.line && <span className="px-2 py-0.5 rounded" style={{ background: 'rgba(200,146,42,0.1)', color: 'var(--brand-gold)' }}>{p.line}</span>}
+                    {p.line && <span className="px-2 py-0.5 rounded" style={{ background: 'rgba(62,107,133,0.1)', color: 'var(--brand-gold)' }}>{p.line}</span>}
                     {p.model && <span className="px-2 py-0.5 rounded" style={{ background: 'rgba(45,75,82,0.04)', color: 'var(--brand-teal2)' }}>{p.model}</span>}
                   </div>
 

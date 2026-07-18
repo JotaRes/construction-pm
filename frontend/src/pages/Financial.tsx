@@ -217,14 +217,14 @@ function ParsePanel({ projectId, cfg, onClose, onApply }: {
         <div className="p-6 space-y-5">
           <div className="flex items-center gap-3 flex-wrap">
             <button onClick={() => fileRef.current?.click()}
-              className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:border-[#C8922A]/40 text-slate-700 text-sm rounded-xl transition-all">
+              className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:border-[#3E6B85]/40 text-slate-700 text-sm rounded-xl transition-all">
               <Upload className="w-4 h-4" />{file ? file.name : 'Seleccionar PDF / imagen'}
             </button>
             <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" className="hidden"
               onChange={e => { setFile(e.target.files?.[0] ?? null); setParsed(null) }} />
             {file && (
               <button onClick={handleParse} disabled={loading}
-                className="px-4 py-2.5 bg-[var(--brand-gold)] hover:bg-[#E0AD4F] text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50">
+                className="px-4 py-2.5 bg-[var(--brand-gold)] hover:bg-[#55809B] text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50">
                 {loading ? 'Procesando...' : cfg.docType === 'OTROS' ? 'Subir archivo' : 'Extraer datos'}
               </button>
             )}
@@ -620,7 +620,7 @@ function SalesProjections({ project, upb, dailyRate, interestSoFar, projectId, b
           </div>
 
           {/* "Si vendo HOY" — snapshot a precio base */}
-          <div className="bg-gradient-to-r from-[#2D4B52]/10 to-[#C8922A]/10 border border-[#2D4B52]/20 rounded-lg p-3 grid grid-cols-2 md:grid-cols-4 gap-2 text-[11px]">
+          <div className="bg-gradient-to-r from-[#2D4B52]/10 to-[#3E6B85]/10 border border-[#2D4B52]/20 rounded-lg p-3 grid grid-cols-2 md:grid-cols-4 gap-2 text-[11px]">
             <div>
               <div className="text-slate-500 uppercase text-[9px]">Si vendo HOY (sin esperar)</div>
               <div className="font-mono font-bold text-sm text-slate-800">{formatUSD(sellToday.saleValue)}</div>
@@ -774,19 +774,19 @@ export default function Financial({ projectId }: { projectId: string }) {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <button onClick={() => setActivePanel(LOI_CFG)}
-            className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 hover:border-[#C8922A]/40 text-slate-700 text-xs font-medium rounded-xl transition-colors">
+            className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 hover:border-[#3E6B85]/40 text-slate-700 text-xs font-medium rounded-xl transition-colors">
             <FileSignature className="w-3.5 h-3.5" />LOI
           </button>
           <button onClick={() => setActivePanel(LOAN_CFG)}
-            className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 hover:border-[#C8922A]/40 text-slate-700 text-xs font-medium rounded-xl transition-colors">
+            className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 hover:border-[#3E6B85]/40 text-slate-700 text-xs font-medium rounded-xl transition-colors">
             <Building2 className="w-3.5 h-3.5" />Aprobación lender
           </button>
           <button onClick={() => setActivePanel(HUD_CFG)}
-            className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 hover:border-[#C8922A]/40 text-slate-700 text-xs font-medium rounded-xl transition-colors">
+            className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 hover:border-[#3E6B85]/40 text-slate-700 text-xs font-medium rounded-xl transition-colors">
             <Receipt className="w-3.5 h-3.5" />HUD
           </button>
           <button onClick={() => setActivePanel(OTROS_CFG)}
-            className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 hover:border-[#C8922A]/40 text-slate-700 text-xs font-medium rounded-xl transition-colors">
+            className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 hover:border-[#3E6B85]/40 text-slate-700 text-xs font-medium rounded-xl transition-colors">
             <FileQuestion className="w-3.5 h-3.5" />Otros
           </button>
         </div>
@@ -834,19 +834,19 @@ export default function Financial({ projectId }: { projectId: string }) {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-white/90">
           <div className="bg-white/5 border border-white/10 rounded-xl p-3">
             <div className="text-[10px] uppercase opacity-60 mb-1">Burn rate / día</div>
-            <div className="text-lg font-bold font-mono text-[#E0AD4F]">{formatUSD(dailyBurn)}</div>
+            <div className="text-lg font-bold font-mono text-[#55809B]">{formatUSD(dailyBurn)}</div>
             <div className="text-[10px] opacity-50 mt-1">UPB × tasa diaria</div>
           </div>
           <div className="bg-white/5 border border-white/10 rounded-xl p-3">
             <div className="text-[10px] uppercase opacity-60 mb-1">Días del préstamo consumidos</div>
-            <div className={`text-lg font-bold font-mono ${consumoLoanPct > 80 ? 'text-red-300' : consumoLoanPct > 60 ? 'text-[#E0AD4F]' : 'text-emerald-300'}`}>
+            <div className={`text-lg font-bold font-mono ${consumoLoanPct > 80 ? 'text-red-300' : consumoLoanPct > 60 ? 'text-[#55809B]' : 'text-emerald-300'}`}>
               {consumoLoanPct.toFixed(0)}%
             </div>
             <div className="text-[10px] opacity-50 mt-1">{diasDesde}d de {diasTotalLoan}d</div>
           </div>
           <div className="bg-white/5 border border-white/10 rounded-xl p-3">
             <div className="text-[10px] uppercase opacity-60 mb-1">Días restantes loan</div>
-            <div className={`text-lg font-bold font-mono ${diasRestantes < 60 ? 'text-red-300' : diasRestantes < 120 ? 'text-[#E0AD4F]' : 'text-white'}`}>
+            <div className={`text-lg font-bold font-mono ${diasRestantes < 60 ? 'text-red-300' : diasRestantes < 120 ? 'text-[#55809B]' : 'text-white'}`}>
               {diasRestantes}d
             </div>
             {loanExpiresOn && (
@@ -858,7 +858,7 @@ export default function Financial({ projectId }: { projectId: string }) {
             <div className={`text-lg font-bold font-mono ${
               diasParaTarget == null ? 'text-white/60' :
               diasParaTarget < 0 ? 'text-red-300' :
-              diasParaTarget < 30 ? 'text-[#E0AD4F]' : 'text-emerald-300'
+              diasParaTarget < 30 ? 'text-[#55809B]' : 'text-emerald-300'
             }`}>
               {diasParaTarget == null ? '—' : `${diasParaTarget}d`}
             </div>
@@ -875,7 +875,7 @@ export default function Financial({ projectId }: { projectId: string }) {
               <DollarSign className="w-3.5 h-3.5 text-[var(--brand-gold)]" />
               <div className="text-[10px] uppercase opacity-60">Costo total de espera (estimado a expiración)</div>
             </div>
-            <div className="text-lg font-bold font-mono text-[#E0AD4F]">{formatUSD(dailyBurn * diasRestantes)}</div>
+            <div className="text-lg font-bold font-mono text-[#55809B]">{formatUSD(dailyBurn * diasRestantes)}</div>
             <div className="text-[10px] opacity-50 mt-1">Si nadie compra antes</div>
           </div>
           <div className="bg-white/5 border border-white/10 rounded-xl p-3">

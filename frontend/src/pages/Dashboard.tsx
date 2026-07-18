@@ -284,7 +284,7 @@ export default function Dashboard({ projectId }: Props) {
                   <div className="text-[10px] text-slate-400">{ins.fase ?? ins.wbs}</div>
                 </div>
                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium
-                  ${ins.estado === 'PROGRAMADA' ? 'bg-[#C8922A]/15 text-[var(--brand-gold)]' : 'bg-slate-100 text-slate-500'}`}>
+                  ${ins.estado === 'PROGRAMADA' ? 'bg-[#3E6B85]/15 text-[var(--brand-gold)]' : 'bg-slate-100 text-slate-500'}`}>
                   {ins.estado}
                 </span>
               </div>

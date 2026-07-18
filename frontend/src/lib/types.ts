@@ -130,6 +130,9 @@ export interface SubActivity {
   observaciones?: string | null
   invoiceUrl?: string | null
   invoiceName?: string | null
+  // Proveedor/contratista del catálogo global (alimenta el récord por proveedor)
+  providerId?: string | null
+  provider?: { id: string; name: string } | null
 }
 
 export interface Phase {

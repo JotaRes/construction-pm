@@ -4,7 +4,7 @@
 
 /* ═══════════════════════════════════════════════════════════════
    RESTREPO ACOSTA · DESIGN SYSTEM v2 — "Structured Authority"
-   Teal #2D4B52 · Gold #C8922A · Cream #EAE5DF
+   Teal #2D4B52 · Gold #3E6B85 · Cream #EAE5DF
    Nivel: Enterprise SaaS top-tier
 ═══════════════════════════════════════════════════════════════ */
 
@@ -14,9 +14,9 @@
   --brand-teal2:   #3A5F68;
   --brand-teal3:   #1A3035;
   --brand-teal-xl: #E8F2F4;
-  --brand-gold:    #C8922A;
-  --brand-gold2:   #E0AD4F;
-  --brand-gold3:   #ECC97A;
+  --brand-gold:    #3E6B85;
+  --brand-gold2:   #55809B;
+  --brand-gold3:   #9DBECE;
   --brand-cream:   #EAE5DF;
   --brand-cream2:  #F4F0EB;
   --brand-cream3:  #FDFCFA;
@@ -25,7 +25,7 @@
   /* Shadows tintadas en brand — no negro neutro */
   --shadow-card:       0 1px 0 rgba(255,255,255,0.92) inset, 0 2px 8px rgba(13,26,29,0.08), 0 12px 28px rgba(13,26,29,0.05);
   --shadow-card-hover: 0 1px 0 rgba(255,255,255,0.96) inset, 0 4px 16px rgba(13,26,29,0.11), 0 24px 52px rgba(13,26,29,0.07);
-  --shadow-gold:       0 2px 6px rgba(200,146,42,0.18), 0 8px 28px rgba(200,146,42,0.30), 0 1px 0 rgba(255,255,255,0.30) inset;
+  --shadow-gold:       0 2px 6px rgba(62,107,133,0.18), 0 8px 28px rgba(62,107,133,0.30), 0 1px 0 rgba(255,255,255,0.30) inset;
   --shadow-teal:       0 2px 6px rgba(45,75,82,0.22), 0 8px 24px rgba(45,75,82,0.26);
   --shadow-sidebar:    6px 0 40px rgba(0,0,0,0.20);
   --shadow-modal:      0 8px 40px rgba(0,0,0,0.20), 0 2px 8px rgba(0,0,0,0.10);
@@ -44,7 +44,7 @@
     background-color: var(--brand-cream2);
     background-image:
       radial-gradient(ellipse 110% 55% at 50% -8%, rgba(45,75,82,.07) 0%, transparent 60%),
-      radial-gradient(ellipse 60% 40% at 100% 100%, rgba(200,146,42,.03) 0%, transparent 55%),
+      radial-gradient(ellipse 60% 40% at 100% 100%, rgba(62,107,133,.03) 0%, transparent 55%),
       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='250' height='250'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)' opacity='.024'/%3E%3C/svg%3E");
     color: var(--brand-dark);
     -webkit-font-smoothing: antialiased;
@@ -79,7 +79,8 @@
   .kpi-card {
     @apply relative overflow-hidden rounded-2xl cursor-default;
     background: linear-gradient(158deg, #ffffff 0%, var(--brand-cream3) 100%);
-    border: 1px solid rgba(45,75,82,0.08);
+    /* Borde más definido: cada tarjeta se lee como un recuadro claro */
+    border: 1px solid rgba(45,75,82,0.14);
     box-shadow: var(--shadow-card);
     padding: 18px 18px 15px;
     transition: transform 0.25s var(--ease), box-shadow 0.25s var(--ease), border-color 0.25s;
@@ -114,9 +115,10 @@
   .kpi-label {
     @apply block;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 9.5px; font-weight: 700;
+    font-size: 10px; font-weight: 700;
     text-transform: uppercase; letter-spacing: 0.13em;
-    color: var(--brand-teal2); margin-bottom: 8px; opacity: 0.75;
+    /* Contraste pleno: las etiquetas deben leerse sin esfuerzo */
+    color: var(--brand-teal2); margin-bottom: 8px; opacity: 0.95;
   }
   .kpi-value {
     font-family: 'DM Serif Display', serif;
@@ -194,7 +196,7 @@
   }
   .btn-brand:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(200,146,42,.20), 0 14px 34px rgba(200,146,42,.36);
+    box-shadow: 0 4px 10px rgba(62,107,133,.20), 0 14px 34px rgba(62,107,133,.36);
   }
   .btn-brand:active { transform: scale(0.97); transition-duration: 60ms; }
   .btn-brand:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
@@ -264,7 +266,7 @@
     animation: badgeIn 0.2s var(--ease) both;
   }
   .badge-done     { @apply bg-emerald-50 text-emerald-700 border border-emerald-200; }
-  .badge-active   { background: rgba(200,146,42,0.1); color: #8A6010; border: 1px solid rgba(200,146,42,0.25); }
+  .badge-active   { background: rgba(62,107,133,0.1); color: #8A6010; border: 1px solid rgba(62,107,133,0.25); }
   .badge-pending  { background: rgba(45,75,82,0.07); color: var(--brand-teal); border: 1px solid rgba(45,75,82,0.14); }
   .badge-critical { @apply bg-red-50 text-red-600 border border-red-200; animation: pulseRed 2.5s ease infinite; }
   .badge-warning  { @apply bg-amber-50 border border-amber-200; color: #b45309; }
@@ -325,11 +327,11 @@
     @apply border-b transition-all duration-100;
     border-color: rgba(45,75,82,0.055);
   }
-  .table-row-base:hover { background: rgba(200,146,42,0.035); }
+  .table-row-base:hover { background: rgba(62,107,133,0.035); }
   .table-row-done   { @apply border-b; border-color: rgba(45,75,82,0.055); background: rgba(5,150,105,0.03); }
   .table-row-done:hover   { background: rgba(5,150,105,0.07); }
-  .table-row-active { @apply border-b; border-color: rgba(45,75,82,0.055); background: rgba(200,146,42,0.04); }
-  .table-row-active:hover { background: rgba(200,146,42,0.08); }
+  .table-row-active { @apply border-b; border-color: rgba(45,75,82,0.055); background: rgba(62,107,133,0.04); }
+  .table-row-active:hover { background: rgba(62,107,133,0.08); }
 
   /* ── Phase headers ── */
   .phase-header {
@@ -342,7 +344,7 @@
   }
   .phase-header:hover {
     box-shadow: var(--shadow-card-hover);
-    border-color: rgba(200,146,42,0.28);
+    border-color: rgba(62,107,133,0.28);
     transform: translateY(-1px);
   }
   .phase-header-done   { border-left: 3px solid #059669; }
@@ -359,7 +361,7 @@
   }
   .input-base::placeholder { color: rgba(45,75,82,0.35); }
   .input-base:hover  { border-color: rgba(45,75,82,0.28); }
-  .input-base:focus  { border-color: var(--brand-gold); box-shadow: var(--shadow-input-focus, 0 0 0 3px rgba(200,146,42,0.18)); }
+  .input-base:focus  { border-color: var(--brand-gold); box-shadow: var(--shadow-input-focus, 0 0 0 3px rgba(62,107,133,0.18)); }
 
   /* ── Financial values ── */
   .val-positive { @apply font-semibold; font-family: 'JetBrains Mono', monospace; color: #059669; }
@@ -383,13 +385,13 @@
 .sidebar-ra::before {
   content: '';
   position: absolute; top: 0; left: 0; right: 0; height: 1px;
-  background: linear-gradient(90deg, transparent 5%, rgba(200,146,42,.55) 40%, rgba(200,146,42,.55) 60%, transparent 95%);
+  background: linear-gradient(90deg, transparent 5%, rgba(62,107,133,.55) 40%, rgba(62,107,133,.55) 60%, transparent 95%);
 }
 /* Gold glow en esquina superior derecha */
 .sidebar-ra::after {
   content: '';
   position: absolute; top: 0; right: 0; width: 90px; height: 90px;
-  background: radial-gradient(ellipse at top right, rgba(200,146,42,.09) 0%, transparent 70%);
+  background: radial-gradient(ellipse at top right, rgba(62,107,133,.09) 0%, transparent 70%);
   pointer-events: none;
 }
 
@@ -427,8 +429,8 @@
 /* Item activo — pill gold completo */
 .sidebar-nav-item.active {
   color: #ffffff; font-weight: 600;
-  background: linear-gradient(135deg, rgba(200,146,42,0.18) 0%, rgba(200,146,42,0.10) 100%);
-  border-color: rgba(200,146,42,0.25);
+  background: linear-gradient(135deg, rgba(62,107,133,0.18) 0%, rgba(62,107,133,0.10) 100%);
+  border-color: rgba(62,107,133,0.25);
   box-shadow: 0 1px 0 rgba(255,255,255,0.05) inset, 0 2px 12px rgba(0,0,0,.12);
 }
 /* Barra gold izquierda con glow */
@@ -437,7 +439,7 @@
   position: absolute; left: -8px; top: 50%; transform: translateY(-50%);
   width: 3px; height: 20px; border-radius: 2px;
   background: linear-gradient(180deg, var(--brand-gold2), var(--brand-gold));
-  box-shadow: 0 0 8px rgba(200,146,42,.60), 0 0 16px rgba(200,146,42,.30);
+  box-shadow: 0 0 8px rgba(62,107,133,.60), 0 0 16px rgba(62,107,133,.30);
 }
 .sidebar-nav-item.active svg { color: var(--brand-gold2); }
 
@@ -454,7 +456,7 @@
 .landing-bg {
   background:
     radial-gradient(ellipse 110% 55% at 50% -8%, rgba(45,75,82,.07) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 40% at 100% 100%, rgba(200,146,42,.03) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 40% at 100% 100%, rgba(62,107,133,.03) 0%, transparent 55%),
     linear-gradient(180deg, var(--brand-cream2) 0%, var(--brand-cream) 100%);
 }
 .module-card {
@@ -531,7 +533,7 @@
   /* .kpi-label y .section-title ya son clases globales — aplican dentro de .fin-app sin re-declarar (evita dependencia circular) */
   .fin-app .kpi-value { @apply kpi-value-data; }
   .fin-app .table-row { @apply transition-colors duration-100; }
-  .fin-app .table-row:hover { background: rgba(200,146,42,0.035); }
+  .fin-app .table-row:hover { background: rgba(62,107,133,0.035); }
   .fin-app .bg-bg-soft\/60 {
     background-color: rgba(255,255,255,0.72) !important;
     backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
@@ -547,7 +549,7 @@
   .fin-app .bg-bg,
   .fin-app .bg-bg-soft       { background-color: var(--brand-cream2) !important; }
   .fin-app .bg-bg-card       { background-color: #ffffff !important; }
-  .fin-app .bg-bg-hover      { background-color: rgba(200,146,42,0.07) !important; }
+  .fin-app .bg-bg-hover      { background-color: rgba(62,107,133,0.07) !important; }
   .fin-app .border-line      { border-color: rgba(45,75,82,0.10) !important; }
   .fin-app .border-line\/50  { border-color: rgba(45,75,82,0.07) !important; }
   .fin-app .border-line\/30  { border-color: rgba(45,75,82,0.05) !important; }
@@ -566,8 +568,8 @@
   .fin-app aside .text-slate-400,
   .fin-app aside .text-slate-500 { color: rgba(244,240,235,0.82) !important; opacity: 1; }
   .fin-app aside a:hover,
-  .fin-app aside .hover\:bg-bg-hover:hover { background-color: rgba(200,146,42,0.15) !important; }
-  .fin-app aside .bg-accent-deep\/15       { background-color: rgba(200,146,42,0.20) !important; }
+  .fin-app aside .hover\:bg-bg-hover:hover { background-color: rgba(62,107,133,0.15) !important; }
+  .fin-app aside .bg-accent-deep\/15       { background-color: rgba(62,107,133,0.20) !important; }
   .fin-app aside .border-accent\/30        { border-color: var(--brand-gold) !important; }
 }
 
@@ -700,7 +702,7 @@ input[type=number] { -moz-appearance: textfield; }
 
   --border:        rgba(45,75,82,0.09);
   --border-strong: rgba(45,75,82,0.18);
-  --border-focus:  rgba(200,146,42,0.5);
+  --border-focus:  rgba(62,107,133,0.5);
 
   --text-primary:   var(--brand-dark, #0D1A1D);
   --text-secondary: rgba(45,75,82,0.55);
@@ -890,7 +892,7 @@ body {
   transition: border-color 0.18s !important;
 }
 .input-base:focus {
-  border-color: var(--border-focus, rgba(200,146,42,0.5)) !important;
+  border-color: var(--border-focus, rgba(62,107,133,0.5)) !important;
   outline: none !important;
 }
 .input-base::placeholder { color: var(--text-muted, rgba(45,75,82,0.35)) !important; }
