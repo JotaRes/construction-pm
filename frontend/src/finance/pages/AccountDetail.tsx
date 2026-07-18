@@ -97,7 +97,7 @@ export default function AccountDetail() {
         <div className="p-6">
           <div className="flex items-start justify-between flex-wrap gap-4">
             <div className="flex items-start gap-4">
-              <div className="w-14 h-14 rounded-xl flex items-center justify-center" style={{ background: 'rgba(62,107,133,0.12)', color: 'var(--brand-gold)' }}>
+              <div className="w-14 h-14 rounded-xl flex items-center justify-center" style={{ background: 'rgba(46,107,180,0.12)', color: 'var(--brand-gold)' }}>
                 <Building2 size={28} />
               </div>
               <div>
@@ -106,7 +106,7 @@ export default function AccountDetail() {
                 <div className="flex items-center gap-2 text-sm mt-1" style={{ color: 'var(--brand-teal2)' }}>
                   <Landmark size={14} /> {account.bank}
                   {account.spv?.name && <span>· {account.spv.name}</span>}
-                  <span className="badge ml-2" style={{ background: 'rgba(62,107,133,0.12)', color: 'var(--brand-gold)', border: '1px solid rgba(62,107,133,0.3)' }}>{account.type}</span>
+                  <span className="badge ml-2" style={{ background: 'rgba(46,107,180,0.12)', color: 'var(--brand-gold)', border: '1px solid rgba(46,107,180,0.3)' }}>{account.type}</span>
                 </div>
               </div>
             </div>
@@ -396,7 +396,7 @@ export default function AccountDetail() {
                               isIngreso && "bg-emerald-50 text-emerald-700 border-emerald-200",
                               isEgreso && "bg-red-50 text-red-700 border-red-200",
                               isTransfer && "border-amber-200",
-                            )} style={isTransfer ? { background: 'rgba(62,107,133,0.1)', color: 'var(--brand-gold)' } : {}}>
+                            )} style={isTransfer ? { background: 'rgba(46,107,180,0.1)', color: 'var(--brand-gold)' } : {}}>
                               <Icon size={10} className="mr-1" />
                               {m._isIncoming ? "Transf. recibida" : m.type === "Interbancario" ? "Transf. enviada" : m.type}
                             </span>

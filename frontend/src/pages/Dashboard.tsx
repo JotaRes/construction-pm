@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { LayoutDashboard } from 'lucide-react'
 import ForecastCard from '../components/ForecastCard'
 import { useNavigate } from 'react-router-dom'
 import { projectsApi } from '../lib/api'
@@ -97,7 +98,7 @@ export default function Dashboard({ projectId }: Props) {
       {/* Header */}
       <div className="flex items-start justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">{project.name}</h1>
+          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><LayoutDashboard className="w-[22px] h-[22px]" strokeWidth={2.2} /></span><span>{project.name}</span></h1>
           <p className="text-sm text-slate-500 mt-0.5">{project.address} · {project.county}</p>
         </div>
         <div className="text-right">
@@ -284,7 +285,7 @@ export default function Dashboard({ projectId }: Props) {
                   <div className="text-[10px] text-slate-400">{ins.fase ?? ins.wbs}</div>
                 </div>
                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium
-                  ${ins.estado === 'PROGRAMADA' ? 'bg-[#3E6B85]/15 text-[var(--brand-gold)]' : 'bg-slate-100 text-slate-500'}`}>
+                  ${ins.estado === 'PROGRAMADA' ? 'bg-[#2E6BB4]/15 text-[var(--brand-gold)]' : 'bg-slate-100 text-slate-500'}`}>
                   {ins.estado}
                 </span>
               </div>

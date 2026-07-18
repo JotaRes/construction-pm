@@ -1,3 +1,4 @@
+import { FileBarChart } from 'lucide-react'
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link } from "react-router-dom";
@@ -60,7 +61,7 @@ export default function Reports() {
     <div className="space-y-5 page-content">
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>Reportes & Trazabilidad</h1>
+          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><FileBarChart className="w-[22px] h-[22px]" strokeWidth={2.2} /></span><span>Reportes & Trazabilidad</span></h1>
           <p className="text-sm mt-1" style={{ color: 'var(--brand-teal2)' }}>
             Análisis ejecutivo · Fuentes y usos · Ratios por proyecto · Historial de operaciones
           </p>

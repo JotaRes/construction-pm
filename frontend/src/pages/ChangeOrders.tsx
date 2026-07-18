@@ -8,10 +8,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { changeOrdersApi, subcontractsApi, type ChangeOrder, type SubContract } from '../lib/api'
 import { useConfirm } from '../components/ConfirmDialog'
-import {
-  FileDiff, Plus, Trash2, CheckCircle2, XCircle, Clock, DollarSign,
-  CalendarPlus, Paperclip, Upload,
-} from 'lucide-react'
+import { FileDiff, Plus, Trash2, CheckCircle2, XCircle, Clock, DollarSign, CalendarPlus, Paperclip, Upload, ClipboardList } from 'lucide-react'
 
 const fmt = (n: number) =>
   n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
@@ -184,11 +181,11 @@ export default function ChangeOrders({ projectId }: { projectId: string }) {
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Change Orders</h1>
+          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><ClipboardList className="w-[22px] h-[22px]" strokeWidth={2.2} /></span><span>Change Orders</span></h1>
           <p className="text-sm text-slate-500 mt-0.5">Control formal de cambios de alcance: costo, días y aprobación</p>
         </div>
         <button onClick={() => setShowForm(s => !s)}
-          className="flex items-center gap-2 px-4 py-2 bg-[var(--brand-gold)] hover:bg-[#55809B] text-white text-sm font-semibold rounded-lg">
+          className="flex items-center gap-2 px-4 py-2 bg-[var(--brand-gold)] hover:bg-[#4A86CF] text-white text-sm font-semibold rounded-lg">
           <Plus className="w-4 h-4" /> Nuevo change order
         </button>
       </div>

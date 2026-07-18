@@ -13,7 +13,7 @@ const fmtDate = (d: string | null) =>
 // diferencia con el badge, no con el color de la barra.
 function statusStyle(s: PhaseSummary['status']) {
   if (s === 'COMPLETA') return { bar: 'bg-emerald-500', badge: 'bg-emerald-500/15 text-emerald-600', label: 'Completa' }
-  if (s === 'EN_CURSO') return { bar: 'bg-emerald-500', badge: 'bg-[#3E6B85]/15 text-[var(--brand-gold)]', label: 'En curso' }
+  if (s === 'EN_CURSO') return { bar: 'bg-emerald-500', badge: 'bg-[#2E6BB4]/15 text-[var(--brand-gold)]', label: 'En curso' }
   return { bar: 'bg-slate-300', badge: 'bg-slate-100 text-slate-500', label: 'Pendiente' }
 }
 
@@ -35,7 +35,7 @@ export default function PhasesDashboard({ projectId }: { projectId: string }) {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-xl font-bold text-slate-900">Control de Fases Constructivas</h1>
+        <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><Layers className="w-[22px] h-[22px]" strokeWidth={2.2} /></span><span>Control de Fases Constructivas</span></h1>
         <p className="text-sm text-slate-500 mt-0.5">
           Avance, fechas reales y presupuesto vs pagado por etapa (Fases 0–9)
         </p>

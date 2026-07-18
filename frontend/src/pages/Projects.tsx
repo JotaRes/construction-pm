@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Building2, MapPin, DollarSign, TrendingUp, ChevronRight, X, Trash2, Upload, FileText, CheckCircle, RefreshCw, Pencil, Camera } from 'lucide-react'
+import { Plus, Building2, MapPin, DollarSign, TrendingUp, ChevronRight, X, Trash2, Upload, FileText, CheckCircle, RefreshCw, Pencil, Camera, FolderKanban } from 'lucide-react'
 import { projectsApi, projectsDeleteApi } from '../lib/api'
 import { useProjectStore } from '../store/projectStore'
 import { formatUSD } from '../lib/calculations'
@@ -102,9 +102,9 @@ function NewProjectModal({ onClose, onCreated }: { onClose: () => void; onCreate
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-5">
 
           {/* ── PASO 1: HUD del lote ── */}
-          <div className="rounded-xl border-2 border-dashed border-[#3E6B85]/40 bg-[#3E6B85]/5 p-4">
+          <div className="rounded-xl border-2 border-dashed border-[#2E6BB4]/40 bg-[#2E6BB4]/5 p-4">
             <div className="flex items-start gap-3">
-              <div className="w-9 h-9 rounded-lg bg-[#3E6B85]/15 flex items-center justify-center flex-shrink-0">
+              <div className="w-9 h-9 rounded-lg bg-[#2E6BB4]/15 flex items-center justify-center flex-shrink-0">
                 <FileText className="w-4 h-4 text-[var(--brand-gold)]" />
               </div>
               <div className="flex-1 min-w-0">
@@ -132,7 +132,7 @@ function NewProjectModal({ onClose, onCreated }: { onClose: () => void; onCreate
                     type="button"
                     onClick={() => fileRef.current?.click()}
                     disabled={hudParsing}
-                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-[var(--brand-gold)] hover:bg-[#55809B] text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
+                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-[var(--brand-gold)] hover:bg-[#4A86CF] text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
                   >
                     {hudParsing
                       ? <><RefreshCw className="w-3 h-3 animate-spin" />Leyendo HUD…</>
@@ -234,7 +234,7 @@ function NewProjectModal({ onClose, onCreated }: { onClose: () => void; onCreate
             <button
               type="submit"
               disabled={mutation.isPending || hudParsing}
-              className="flex-1 px-4 py-2.5 rounded-lg bg-[var(--brand-gold)] hover:bg-[#55809B] text-sm font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-4 py-2.5 rounded-lg bg-[var(--brand-gold)] hover:bg-[#4A86CF] text-sm font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {mutation.isPending ? 'Creando...' : 'Crear proyecto'}
             </button>
@@ -521,7 +521,7 @@ function EditProjectModal({ projectId, onClose }: { projectId: string; onClose: 
               <button
                 type="submit"
                 disabled={mutation.isPending}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-[var(--brand-gold)] hover:bg-[#55809B] text-sm font-semibold text-white transition-colors disabled:opacity-50"
+                className="flex-1 px-4 py-2.5 rounded-lg bg-[var(--brand-gold)] hover:bg-[#4A86CF] text-sm font-semibold text-white transition-colors disabled:opacity-50"
               >
                 {mutation.isPending ? 'Guardando...' : 'Guardar cambios'}
               </button>
@@ -551,7 +551,7 @@ function ProjectCard({ project, isActive, onSelect, onDelete, onEdit, onPhoto }:
       <div className="absolute top-3 right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all z-10">
         <button
           onClick={e => { e.stopPropagation(); onEdit() }}
-          className="p-1.5 rounded-lg text-slate-500 hover:text-[var(--brand-gold)] hover:bg-[#3E6B85]/10 transition-colors"
+          className="p-1.5 rounded-lg text-slate-500 hover:text-[var(--brand-gold)] hover:bg-[#2E6BB4]/10 transition-colors"
           title="Editar información general del proyecto"
         >
           <Pencil className="w-3.5 h-3.5" />
@@ -584,7 +584,7 @@ function ProjectCard({ project, isActive, onSelect, onDelete, onEdit, onPhoto }:
           )}
           <div>
             <div className="flex items-center gap-2 mb-1">
-              {isActive && <span className="text-[9px] font-bold tracking-wider text-[var(--brand-gold)] bg-[#3E6B85]/15 px-2 py-0.5 rounded-full">ACTIVO</span>}
+              {isActive && <span className="text-[9px] font-bold tracking-wider text-[var(--brand-gold)] bg-[#2E6BB4]/15 px-2 py-0.5 rounded-full">ACTIVO</span>}
               <h3 className="text-sm font-bold text-slate-900">{project.name}</h3>
             </div>
             <div className="text-[10px] text-slate-400 font-mono">{project.spv}</div>
@@ -718,12 +718,12 @@ export default function Projects() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Proyectos</h1>
+          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><FolderKanban className="w-[22px] h-[22px]" strokeWidth={2.2} /></span><span>Proyectos</span></h1>
           <p className="text-sm text-slate-500 mt-0.5">{projects.length} proyecto{projects.length !== 1 ? 's' : ''} · Restrepo Acosta Global Holding LLC</p>
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-[var(--brand-gold)] hover:bg-[#55809B] text-sm font-semibold text-white rounded-lg transition-colors"
+          className="flex items-center gap-2 px-4 py-2.5 bg-[var(--brand-gold)] hover:bg-[#4A86CF] text-sm font-semibold text-white rounded-lg transition-colors"
         >
           <Plus className="w-4 h-4" />
           Nuevo proyecto

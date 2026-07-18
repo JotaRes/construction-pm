@@ -5,7 +5,7 @@ import { AlertTriangle, CheckCircle, XCircle, Info, CalendarClock, Search, FileW
 
 const UPCOMING_SEVERITY: Record<UpcomingAlert['severity'], { dot: string; badge: string }> = {
   CRITICAL: { dot: 'bg-red-500', badge: 'bg-red-500/15 text-red-500' },
-  HIGH: { dot: 'bg-[var(--brand-gold)]', badge: 'bg-[#3E6B85]/15 text-[var(--brand-gold)]' },
+  HIGH: { dot: 'bg-[var(--brand-gold)]', badge: 'bg-[#2E6BB4]/15 text-[var(--brand-gold)]' },
   MEDIUM: { dot: 'bg-slate-400', badge: 'bg-slate-100 text-slate-500' },
 }
 
@@ -74,7 +74,7 @@ function AlertCard({ alert }: { alert: Alert }) {
             <span className={`text-sm font-semibold ${config.text}`}>{alert.title}</span>
             <span className={`text-[10px] uppercase px-2 py-0.5 rounded-full font-medium
               ${alert.level === 'ok' ? 'bg-emerald-500/20 text-emerald-400'
-              : alert.level === 'warning' ? 'bg-[#3E6B85]/15 text-[var(--brand-gold)]'
+              : alert.level === 'warning' ? 'bg-[#2E6BB4]/15 text-[var(--brand-gold)]'
               : 'bg-red-500/20 text-red-400'}`}>
               {alert.level.toUpperCase()}
             </span>
@@ -107,7 +107,7 @@ export default function Alerts({ projectId }: { projectId: string }) {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-xl font-bold text-slate-900">Centro de Alertas</h1>
+        <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><AlertTriangle className="w-[22px] h-[22px]" strokeWidth={2.2} /></span><span>Centro de Alertas</span></h1>
         <p className="text-sm text-slate-500 mt-0.5">
           {critical.length > 0 && <span className="text-red-400">{critical.length} crítica{critical.length > 1 ? 's' : ''} · </span>}
           {warning.length > 0 && <span className="text-[var(--brand-gold)]">{warning.length} advertencia{warning.length > 1 ? 's' : ''} · </span>}

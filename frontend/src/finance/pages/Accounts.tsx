@@ -61,7 +61,7 @@ export default function Accounts() {
     <div className="space-y-5 page-content">
       <div className="flex items-end justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>Cuentas bancarias</h1>
+          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><Wallet className="w-[22px] h-[22px]" strokeWidth={2.2} /></span><span>Cuentas bancarias</span></h1>
           <p className="text-sm" style={{ color: 'var(--brand-teal2)' }}>{data.length} cuentas · Saldos calculados automáticamente desde movimientos</p>
         </div>
         <button onClick={() => setCreateOpen(true)} className="btn-primary">
@@ -138,7 +138,7 @@ export default function Accounts() {
                   <div className="flex items-center gap-2 min-w-0">
                     <div
                       className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{ background: 'rgba(62,107,133,0.12)', color: 'var(--brand-gold)' }}
+                      style={{ background: 'rgba(46,107,180,0.12)', color: 'var(--brand-gold)' }}
                     >
                       <Building2 size={18} />
                     </div>

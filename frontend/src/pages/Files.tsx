@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { filesApi, drawsApi, projectsApi, phasesApi, itemsApi, drawParseApi, docParseApi } from '../lib/api'
 import { formatDate, formatUSD } from '../lib/calculations'
 import type { ProjectFile, Draw, Phase } from '../lib/types'
-import { Plus, ExternalLink, Trash2, Upload, FileText, CheckCircle, AlertCircle, ChevronDown, ChevronUp, X } from 'lucide-react'
+import { Plus, ExternalLink, Trash2, Upload, FileText, CheckCircle, AlertCircle, ChevronDown, ChevronUp, X, FolderOpen } from 'lucide-react'
 import axios from 'axios'
 import DocumentChecklist from '../components/DocumentChecklist'
 
@@ -286,7 +286,7 @@ export default function Files({ projectId }: { projectId: string }) {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-bold text-slate-900">Repositorio de Archivos</h1>
+      <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><FolderOpen className="w-[22px] h-[22px]" strokeWidth={2.2} /></span><span>Repositorio de Archivos</span></h1>
 
       {/* === CHECKLIST DOCUMENTAL (nueva sección destacada) === */}
       <DocumentChecklist
@@ -296,7 +296,7 @@ export default function Files({ projectId }: { projectId: string }) {
       />
 
       {/* ── Smart PDF Upload ─────────────────────────────────── */}
-      <div className="bg-white rounded-xl border border-[#3E6B85]/40 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-[#2E6BB4]/40 shadow-sm overflow-hidden">
         <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2">
           <Upload className="w-4 h-4 text-[var(--brand-gold)]" />
           <span className="text-sm font-semibold text-slate-800">Cargar documento y extraer datos</span>
@@ -322,7 +322,7 @@ export default function Files({ projectId }: { projectId: string }) {
           </div>
 
           <button onClick={handleExtract} disabled={!uploadFile || extracting}
-            className="flex items-center gap-2 bg-[var(--brand-gold)] hover:bg-[#55809B] disabled:opacity-40 text-white text-sm font-semibold px-5 py-2 rounded-lg transition-colors">
+            className="flex items-center gap-2 bg-[var(--brand-gold)] hover:bg-[#4A86CF] disabled:opacity-40 text-white text-sm font-semibold px-5 py-2 rounded-lg transition-colors">
             {extracting ? (
               <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Extrayendo datos...</>
             ) : (

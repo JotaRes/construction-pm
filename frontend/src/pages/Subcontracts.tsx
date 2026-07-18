@@ -2,16 +2,13 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { subcontractsApi, providersApi, type SubContract, type SubPayment } from '../lib/api'
 import { useConfirm } from '../components/ConfirmDialog'
-import {
-  HardHat, Plus, Trash2, ChevronDown, CheckCircle2, Clock, AlertCircle, DollarSign,
-  ShieldCheck, ShieldAlert, Upload,
-} from 'lucide-react'
+import { HardHat, Plus, Trash2, ChevronDown, CheckCircle2, Clock, AlertCircle, DollarSign, ShieldCheck, ShieldAlert, Upload, FileSignature } from 'lucide-react'
 
 const fmt = (n: number) =>
   n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
 
 const STATUS_BADGE: Record<SubContract['status'], string> = {
-  ACTIVO: 'bg-[#3E6B85]/15 text-[var(--brand-gold)]',
+  ACTIVO: 'bg-[#2E6BB4]/15 text-[var(--brand-gold)]',
   COMPLETADO: 'bg-emerald-500/15 text-emerald-600',
   CANCELADO: 'bg-slate-100 text-slate-500',
 }
@@ -235,7 +232,7 @@ function ContractCard({ contract, projectId }: { contract: SubContract; projectI
                   className="bg-slate-50 border border-slate-200 text-xs px-2 py-1.5 rounded-lg focus:outline-none focus:border-[var(--brand-gold)]" />
               </div>
               <button type="submit" disabled={!milestone.trim() || !amount || addPaymentMut.isPending}
-                className="px-3 py-1.5 bg-[var(--brand-gold)] hover:bg-[#55809B] text-white text-xs font-semibold rounded-lg disabled:opacity-40">
+                className="px-3 py-1.5 bg-[var(--brand-gold)] hover:bg-[#4A86CF] text-white text-xs font-semibold rounded-lg disabled:opacity-40">
                 Agregar
               </button>
             </form>
@@ -285,11 +282,11 @@ export default function Subcontracts({ projectId }: { projectId: string }) {
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Subcontratistas</h1>
+          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><FileSignature className="w-[22px] h-[22px]" strokeWidth={2.2} /></span><span>Subcontratistas</span></h1>
           <p className="text-sm text-slate-500 mt-0.5">Contratos, alcance y calendario de pagos por hito</p>
         </div>
         <button onClick={() => setShowForm(s => !s)}
-          className="flex items-center gap-2 px-4 py-2 bg-[var(--brand-gold)] hover:bg-[#55809B] text-white text-sm font-semibold rounded-lg">
+          className="flex items-center gap-2 px-4 py-2 bg-[var(--brand-gold)] hover:bg-[#4A86CF] text-white text-sm font-semibold rounded-lg">
           <Plus className="w-4 h-4" /> Nuevo contrato
         </button>
       </div>

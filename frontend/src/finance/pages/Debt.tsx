@@ -1,3 +1,4 @@
+import { Landmark } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link } from "react-router-dom";
@@ -78,7 +79,7 @@ export default function Debt() {
     <div className="space-y-5 page-content">
       <div className="flex items-end justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>Deuda y préstamos</h1>
+          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><Landmark className="w-[22px] h-[22px]" strokeWidth={2.2} /></span><span>Deuda y préstamos</span></h1>
           <p className="text-sm mt-1" style={{ color: 'var(--brand-teal2)' }}>
             {loans.length} préstamos · {autoSyncCount} sincronizados automáticamente desde movimientos
           </p>
@@ -223,7 +224,7 @@ export default function Debt() {
                   </td>
                   <td className="px-3 py-3 text-center">
                     {l.sourceMovementId ? (
-                      <Link to={`/finance/movements/${l.sourceMovementId}`} title="Creado automáticamente desde un movimiento" className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full" style={{ background: 'rgba(62,107,133,0.12)', color: 'var(--brand-gold)' }}>
+                      <Link to={`/finance/movements/${l.sourceMovementId}`} title="Creado automáticamente desde un movimiento" className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full" style={{ background: 'rgba(46,107,180,0.12)', color: 'var(--brand-gold)' }}>
                         <Link2 size={10} /> Auto
                       </Link>
                     ) : (
@@ -305,7 +306,7 @@ function LoanModal({ open, onClose, catalogs }: { open: boolean; onClose: () => 
 
   return (
     <Modal open={open} onClose={onClose} title="Nuevo préstamo manual" size="lg">
-      <div className="mb-3 p-3 rounded-lg flex items-start gap-2" style={{ background: 'rgba(62,107,133,0.08)', border: '1px solid rgba(62,107,133,0.25)' }}>
+      <div className="mb-3 p-3 rounded-lg flex items-start gap-2" style={{ background: 'rgba(46,107,180,0.08)', border: '1px solid rgba(46,107,180,0.25)' }}>
         <Info size={14} style={{ color: 'var(--brand-gold)', flexShrink: 0, marginTop: 2 }} />
         <div className="text-xs" style={{ color: 'var(--brand-teal)' }}>
           <strong>Recomendado:</strong> registra el préstamo desde Movimientos (Ingreso + origen "Préstamo" + Lender). Se creará aquí automáticamente y quedará vinculado al movimiento bancario.

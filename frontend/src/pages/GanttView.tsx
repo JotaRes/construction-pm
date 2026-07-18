@@ -31,7 +31,7 @@ export default function GanttView({ projectId }: { projectId: string }) {
           type: 'task' as const,
           isDisabled: true,
           styles: {
-            progressColor: p.variancePct > 10 ? '#ef4444' : p.status === 'COMPLETA' ? '#22c55e' : '#3E6B85',
+            progressColor: p.variancePct > 10 ? '#ef4444' : p.status === 'COMPLETA' ? '#22c55e' : '#2E6BB4',
             progressSelectedColor: '#2D4B52',
             backgroundColor: '#cbd5e1',
             backgroundSelectedColor: '#94a3b8',
@@ -46,7 +46,7 @@ export default function GanttView({ projectId }: { projectId: string }) {
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Cronograma Gantt</h1>
+          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><GanttChart className="w-[22px] h-[22px]" strokeWidth={2.2} /></span><span>Cronograma Gantt</span></h1>
           <p className="text-sm text-slate-500 mt-0.5">Secuencia de fases en el tiempo según fechas reales</p>
         </div>
         <div className="flex gap-0.5 bg-white rounded-lg p-0.5 border border-slate-200">

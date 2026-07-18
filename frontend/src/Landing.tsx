@@ -32,7 +32,7 @@ function RALogoMark({ width = 96, height = 72 }: { width?: number; height?: numb
       {/* Destello interior torre derecha */}
       <polygon points="46,28 46,38 52,35 52,25" fill="rgba(255,255,255,0.07)"/>
       {/* Arco gold — la firma de la marca */}
-      <path d="M 5,68 Q 42,50 82,61" stroke="#3E6B85" strokeWidth="5.5" fill="none" strokeLinecap="round" filter="url(#ra-glow)"/>
+      <path d="M 5,68 Q 42,50 82,61" stroke="#2E6BB4" strokeWidth="5.5" fill="none" strokeLinecap="round" filter="url(#ra-glow)"/>
       {/* Arco shimmer encima */}
       <path d="M 5,68 Q 42,50 82,61" stroke="rgba(236,201,122,0.4)" strokeWidth="2" fill="none" strokeLinecap="round"/>
     </svg>
@@ -279,7 +279,7 @@ export default function Landing() {
                 style={{
                   background: 'linear-gradient(135deg, var(--brand-gold) 0%, var(--brand-gold2) 100%)',
                   color: 'white',
-                  boxShadow: '0 4px 14px rgba(62,107,133,0.25)',
+                  boxShadow: '0 4px 14px rgba(46,107,180,0.25)',
                 }}
               >
                 {downloading ? (

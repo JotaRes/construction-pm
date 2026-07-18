@@ -1,3 +1,4 @@
+import { FolderKanban } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { useState } from "react";
@@ -29,7 +30,7 @@ export default function Projects() {
     <div className="space-y-5 page-content">
       <div className="flex items-end justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>Proyectos</h1>
+          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><FolderKanban className="w-[22px] h-[22px]" strokeWidth={2.2} /></span><span>Proyectos</span></h1>
           <p className="text-sm" style={{ color: 'var(--brand-teal2)' }}>{projects.length} proyectos en el portafolio</p>
         </div>
         <button className="btn-primary" onClick={() => setOpen(true)}><Plus size={14} /> Nuevo proyecto</button>
@@ -70,7 +71,7 @@ export default function Projects() {
                     <div className="flex items-center gap-2 min-w-0">
                       <div
                         className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                        style={{ background: 'rgba(62,107,133,0.12)', color: 'var(--brand-gold)' }}
+                        style={{ background: 'rgba(46,107,180,0.12)', color: 'var(--brand-gold)' }}
                       >
                         <Briefcase size={16} />
                       </div>
@@ -85,7 +86,7 @@ export default function Projects() {
                   {/* SPV + Línea + Modelo */}
                   <div className="flex flex-wrap gap-1 mb-3 text-xs">
                     {p.spv?.code && <span className="px-2 py-0.5 rounded font-mono" style={{ background: 'rgba(45,75,82,0.08)', color: 'var(--brand-teal)' }}>{p.spv.code}</span>}
-                    {p.line && <span className="px-2 py-0.5 rounded" style={{ background: 'rgba(62,107,133,0.1)', color: 'var(--brand-gold)' }}>{p.line}</span>}
+                    {p.line && <span className="px-2 py-0.5 rounded" style={{ background: 'rgba(46,107,180,0.1)', color: 'var(--brand-gold)' }}>{p.line}</span>}
                     {p.model && <span className="px-2 py-0.5 rounded" style={{ background: 'rgba(45,75,82,0.04)', color: 'var(--brand-teal2)' }}>{p.model}</span>}
                   </div>
 

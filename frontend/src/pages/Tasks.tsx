@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { tasksApi } from '../lib/api'
 import type { Task, TaskPriority } from '../lib/types'
-import { Plus, Trash2, CheckSquare, Square, ChevronDown, Calendar, Flag, User, AlertCircle, Mail, CheckCircle2 } from 'lucide-react'
+import { Plus, Trash2, CheckSquare, Square, ChevronDown, Calendar, Flag, User, AlertCircle, Mail, CheckCircle2, ListChecks } from 'lucide-react'
 import { useConfirm } from '../components/ConfirmDialog'
 
 const PRIORITIES: { value: TaskPriority; label: string; color: string; dot: string; bg: string }[] = [
@@ -238,7 +238,7 @@ export default function Tasks({ projectId }: { projectId: string }) {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Tareas y Notas</h1>
+          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><ListChecks className="w-[22px] h-[22px]" strokeWidth={2.2} /></span><span>Tareas y Notas</span></h1>
           <p className="text-sm text-slate-500 mt-0.5">
             {pendingCount} pendientes
             {urgentCount > 0 && <span className="text-red-500 font-medium"> · {urgentCount} urgentes</span>}
@@ -354,7 +354,7 @@ export default function Tasks({ projectId }: { projectId: string }) {
           </div>
         )}
         <button type="submit" disabled={!newTitle.trim() || createMut.isPending}
-          className="flex items-center gap-2 px-4 py-2 bg-[var(--brand-gold)] hover:bg-[#55809B] text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-40">
+          className="flex items-center gap-2 px-4 py-2 bg-[var(--brand-gold)] hover:bg-[#4A86CF] text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-40">
           <Plus className="w-4 h-4" />Agregar {newTipo === 'NOTA' ? 'nota' : 'tarea'}
         </button>
       </form>

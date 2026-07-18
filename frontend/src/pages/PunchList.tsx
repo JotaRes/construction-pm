@@ -7,10 +7,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { punchListApi, type PunchItem } from '../lib/api'
 import { useConfirm } from '../components/ConfirmDialog'
-import {
-  ClipboardCheck, Plus, Trash2, Camera, CheckCircle2, RotateCcw,
-  AlertTriangle, MapPin, User, Paperclip,
-} from 'lucide-react'
+import { ClipboardCheck, Plus, Trash2, Camera, CheckCircle2, RotateCcw, AlertTriangle, MapPin, User, Paperclip, CheckSquare } from 'lucide-react'
 
 const SEV_META: Record<PunchItem['severity'], { label: string; cls: string }> = {
   ALTA: { label: 'Alta', cls: 'bg-red-500/10 text-red-500' },
@@ -151,11 +148,11 @@ export default function PunchList({ projectId }: { projectId: string }) {
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Punch List</h1>
+          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><CheckSquare className="w-[22px] h-[22px]" strokeWidth={2.2} /></span><span>Punch List</span></h1>
           <p className="text-sm text-slate-500 mt-0.5">Cierre de obra: defecto → responsable → evidencia → verificado</p>
         </div>
         <button onClick={() => setShowForm(s => !s)}
-          className="flex items-center gap-2 px-4 py-2 bg-[var(--brand-gold)] hover:bg-[#55809B] text-white text-sm font-semibold rounded-lg">
+          className="flex items-center gap-2 px-4 py-2 bg-[var(--brand-gold)] hover:bg-[#4A86CF] text-white text-sm font-semibold rounded-lg">
           <Plus className="w-4 h-4" /> Nuevo ítem
         </button>
       </div>

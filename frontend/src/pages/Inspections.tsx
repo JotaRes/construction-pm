@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { inspectionsApi } from '../lib/api'
 import type { Inspection, InspectionEstado } from '../lib/types'
-import { CheckCircle2, AlertTriangle, Plus, X } from 'lucide-react'
+import { CheckCircle2, AlertTriangle, Plus, X, ClipboardCheck } from 'lucide-react'
 
 // ── T2: checklist de prerequisitos por inspección ──────────────
 // Regla de obra: NO llamar inspección sin checklist cerrado. Una reprobación
@@ -82,7 +82,7 @@ export default function Inspections({ projectId }: { projectId: string }) {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Tracker de Inspecciones</h1>
+          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><ClipboardCheck className="w-[22px] h-[22px]" strokeWidth={2.2} /></span><span>Tracker de Inspecciones</span></h1>
           <p className="text-sm text-slate-500 mt-0.5">
             Permit BR26-000029 · Inspector Oconee: (864) 718-1005
             · <span className="text-emerald-400">{aprobadas} aprobadas</span>
@@ -91,7 +91,7 @@ export default function Inspections({ projectId }: { projectId: string }) {
         </div>
       </div>
 
-      <div className="bg-[#3E6B85]/10 border border-amber-500/30 rounded-lg px-4 py-3 text-xs text-[var(--brand-teal)]">
+      <div className="bg-[#2E6BB4]/10 border border-amber-500/30 rounded-lg px-4 py-3 text-xs text-[var(--brand-teal)]">
         ⚠️ Re-inspección cuesta $50–100 y retrasa la obra mínimo 3–7 días hábiles. No llamar inspección sin estar 100% listos.
         Regla: No se avanza sin inspección aprobada de fase anterior.
       </div>

@@ -20,8 +20,8 @@ const MODULES: Record<ModuleName, {
     label: 'Técnico',
     icon: Building2,
     background: 'linear-gradient(135deg, #2D4B52 0%, #3A5F68 100%)',
-    color: '#55809B',
-    iconBg: 'rgba(62,107,133,0.22)',
+    color: '#4A86CF',
+    iconBg: 'rgba(46,107,180,0.22)',
     hover: 'linear-gradient(135deg, #355760 0%, #436c77 100%)',
   },
   finance: {

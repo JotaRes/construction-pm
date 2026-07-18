@@ -1,3 +1,4 @@
+import { ArrowLeftRight } from 'lucide-react'
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -125,7 +126,7 @@ export default function Movements() {
     <div className="space-y-4 page-content">
       <div className="flex items-end justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>Movimientos</h1>
+          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><ArrowLeftRight className="w-[22px] h-[22px]" strokeWidth={2.2} /></span><span>Movimientos</span></h1>
           <p className="text-sm" style={{ color: 'var(--brand-teal2)' }}>
             {data?.total || 0} registros · <span className="text-emerald-600 font-semibold">{usd(totals.ing, { compact: true })}</span> ingresos · <span className="text-red-600 font-semibold">{usd(totals.egr, { compact: true })}</span> egresos · Neto <span className={cls("font-semibold", totals.neto >= 0 ? "text-emerald-600" : "text-red-600")}>{usd(totals.neto, { compact: true })}</span>
           </p>
@@ -200,7 +201,7 @@ export default function Movements() {
                   outline: 'none',
                   boxShadow: '0 1px 3px rgba(45,75,82,0.05)',
                 }}
-                onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--brand-gold)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(62,107,133,0.15)'; }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--brand-gold)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(46,107,180,0.15)'; }}
                 onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(45,75,82,0.15)'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(45,75,82,0.05)'; }}
               />
             </div>
