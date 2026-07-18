@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { drawsApi, drawParseApi, constructionBudgetApi, projectsApi, phasesApi, type DrawLineApproval, type DrawsValidation } from '../lib/api'
+import { drawsApi, drawParseApi, constructionBudgetApi, projectsApi, type DrawLineApproval, type DrawsValidation } from '../lib/api'
 import { formatUSD, formatDate } from '../lib/calculations'
-import type { Draw, DrawEstado, Phase } from '../lib/types'
-import { Upload, FileText, CheckCircle, X, AlertTriangle, Mail, MessageCircle, Download, Trash2, Table2, TrendingDown, ChevronDown, RefreshCw, ClipboardCheck, Landmark } from 'lucide-react'
+import type { Draw, DrawEstado } from '../lib/types'
+import { Upload, FileText, CheckCircle, X, AlertTriangle, Mail, MessageCircle, Download, Trash2, Table2, TrendingDown, ChevronDown, RefreshCw, Landmark } from 'lucide-react'
 import { useConfirm } from '../components/ConfirmDialog'
 import toast from 'react-hot-toast'
 
@@ -781,118 +781,6 @@ function LenderExcelPanel({ projectId }: { projectId: string }) {
   )
 }
 
-/* ── PRE-DRAW CHECK ─────────────────────────────────────────────
-   Protocolo de draw review automatizado. Antes de solicitar un draw:
-   1. ¿El avance físico soporta lo que se va a pedir? (draws vs avance)
-   2. ¿Hay gasto sin soporte documental? (facturas de actividades)
-   3. ¿Hay sobrecosto vs el budget del lender? (asociaciones actividad↔budget)
-   4. ¿El desglose (subactividades) tiene sus invoices?
-   Si algo falla → se muestra ANTES de pedir el desembolso, no después. */
-function PreDrawCheck({ phases, initialHoldback, totalWired }: {
-  phases: Phase[]
-  initialHoldback: number
-  totalWired: number
-}) {
-  const [open, setOpen] = useState(true)
-
-  const allItems = phases.flatMap(p => p.items.filter(i => !i.esNA))
-  if (allItems.length === 0) return null
-
-  // 1. Avance físico vs % del holdback ya girado
-  const done = allItems.filter(i => i.completado).length
-  const avancePct = allItems.length > 0 ? (done / allItems.length) * 100 : 0
-  const giradoPct = initialHoldback > 0 ? (totalWired / initialHoldback) * 100 : 0
-  const desfase = giradoPct - avancePct
-  const avanceOk = initialHoldback === 0 || desfase <= 10
-
-  // 2. Actividades con gasto/completadas sin factura
-  const sinFactura = allItems.filter(i =>
-    (i.valorEjecutado > 0 || i.completado) && !(i.documents ?? []).some(d => d.type === 'FACTURA'))
-
-  // 3. Sobrecosto vs budget del lender (agrupado por línea asociada)
-  const byLine = new Map<string, { code: string; budget: number; ejec: number }>()
-  for (const i of allItems) {
-    if (i.budgetLineId && i.budgetLine) {
-      const cur = byLine.get(i.budgetLineId) ?? { code: i.budgetLine.itemCode, budget: i.budgetLine.valorInicial, ejec: 0 }
-      cur.ejec += i.valorEjecutado
-      byLine.set(i.budgetLineId, cur)
-    }
-  }
-  const overLines = Array.from(byLine.values()).filter(l => l.budget > 0 && l.ejec > l.budget)
-  const totalOver = overLines.reduce((s, l) => s + (l.ejec - l.budget), 0)
-
-  // 4. Subactividades con gasto sin invoice
-  const subsSinInvoice = allItems.flatMap(i =>
-    (i.subactivities ?? []).filter(s => s.valorEjecutado > 0 && !s.invoiceUrl))
-
-  const checks: Array<{ ok: boolean; label: string; detail: string }> = [
-    {
-      ok: avanceOk,
-      label: 'Avance físico vs desembolsos',
-      detail: initialHoldback > 0
-        ? `${avancePct.toFixed(0)}% físico · ${giradoPct.toFixed(0)}% del holdback girado${!avanceOk ? ` — los draws van ${desfase.toFixed(0)} pts por DELANTE de la obra` : ''}`
-        : 'sin holdback cargado — se omite',
-    },
-    {
-      ok: sinFactura.length === 0,
-      label: 'Soportes de actividades (facturas)',
-      detail: sinFactura.length === 0
-        ? 'todo gasto tiene factura adjunta'
-        : `${sinFactura.length} actividad(es) con gasto sin factura: ${sinFactura.slice(0, 3).map(i => i.itemCode).join(', ')}${sinFactura.length > 3 ? '…' : ''}`,
-    },
-    {
-      ok: overLines.length === 0,
-      label: 'Gasto vs Construction Budget (asociado)',
-      detail: byLine.size === 0
-        ? 'sin asociaciones al budget aún — asócialas en Presupuesto & Ejecución'
-        : overLines.length === 0
-          ? `${byLine.size} línea(s) asociada(s), ninguna sobre-ejecutada`
-          : `${overLines.length} línea(s) superada(s) por ${formatUSD(totalOver)}: ${overLines.slice(0, 3).map(l => l.code).join(', ')}${overLines.length > 3 ? '…' : ''}`,
-    },
-    {
-      ok: subsSinInvoice.length === 0,
-      label: 'Invoices del desglose (subactividades)',
-      detail: subsSinInvoice.length === 0
-        ? 'todas las subactividades con gasto tienen invoice'
-        : `${subsSinInvoice.length} subactividad(es) con gasto sin invoice`,
-    },
-  ]
-  const failing = checks.filter(c => !c.ok).length
-  const ready = failing === 0
-
-  return (
-    <div className={`rounded-xl border ${ready ? 'border-emerald-200 bg-emerald-50/40' : 'border-amber-300 bg-amber-50/50'}`}>
-      <button onClick={() => setOpen(o => !o)} className="w-full flex items-center gap-2.5 px-4 py-3">
-        <ClipboardCheck className={`w-4 h-4 flex-shrink-0 ${ready ? 'text-emerald-600' : 'text-amber-600'}`} />
-        <span className="text-sm font-semibold text-slate-800 flex-1 text-left">Chequeo Pre-Draw</span>
-        <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
-          ready ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-800'}`}>
-          {ready ? '✓ Listo para solicitar' : `${failing} punto(s) por resolver`}
-        </span>
-        <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
-      {open && (
-        <div className="px-4 pb-3 space-y-1.5">
-          {checks.map((c, i) => (
-            <div key={i} className="flex items-start gap-2 text-xs">
-              {c.ok
-                ? <CheckCircle className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0 mt-0.5" />
-                : <AlertTriangle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0 mt-0.5" />}
-              <span className={`font-medium ${c.ok ? 'text-slate-600' : 'text-slate-800'}`}>{c.label}:</span>
-              <span className={c.ok ? 'text-slate-400' : 'text-amber-800'}>{c.detail}</span>
-            </div>
-          ))}
-          {!ready && (
-            <p className="text-[11px] text-amber-800/80 pt-1 border-t border-amber-200/60">
-              Un draw sin soporte físico o documental puede ser rechazado por el inspector del lender, y una línea sobre-ejecutada sale de tu caja — resuélvelo antes de solicitar.
-            </p>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
 export default function Draws({ projectId }: { projectId: string }) {
   const queryClient = useQueryClient()
   const confirm = useConfirm()
@@ -912,14 +800,6 @@ export default function Draws({ projectId }: { projectId: string }) {
   const { data: budgetLines = [] } = useQuery<BudgetLine[]>({
     queryKey: ['construction-budget', projectId],
     queryFn: () => constructionBudgetApi.list(projectId),
-  })
-
-  // Fases + items: alimentan el Chequeo Pre-Draw (avance físico, soportes,
-  // sobrecostos vs budget asociado) — misma fuente que Presupuesto & Ejecución.
-  const { data: phases = [] } = useQuery<Phase[]>({
-    queryKey: ['phases', projectId],
-    queryFn: () => phasesApi.list(projectId),
-    staleTime: 30_000,
   })
 
   const budgetTotal = budgetLines.reduce((s, b) => s + (b.valorInicial || 0), 0)
@@ -1087,9 +967,6 @@ export default function Draws({ projectId }: { projectId: string }) {
 
       {/* Excel general del lender — carga y validación (parte superior) */}
       <LenderExcelPanel projectId={projectId} />
-
-      {/* Chequeo Pre-Draw: protocolo de draw review automatizado */}
-      <PreDrawCheck phases={phases} initialHoldback={initialHoldback} totalWired={totalWired} />
 
       {/* ── KPI row ── */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
