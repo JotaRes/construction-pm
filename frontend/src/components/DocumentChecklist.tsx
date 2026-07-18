@@ -233,11 +233,11 @@ export default function DocumentChecklist({ projectId, projectName, projectAddre
 
       {/* RESUMEN */}
       <div className="bg-white rounded-2xl p-5"
-        style={{ border: '1px solid rgba(45,75,82,0.1)', boxShadow: '0 1px 4px rgba(45,75,82,0.06)' }}
+        style={{ border: '1px solid rgba(29,29,31,0.1)', boxShadow: '0 1px 4px rgba(29,29,31,0.06)' }}
       >
         <div className="flex items-start justify-between flex-wrap gap-3 mb-4">
           <div>
-            <h2 className="text-base font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>
+            <h2 className="text-base font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}>
               <FolderOpen size={18} style={{ color: 'var(--brand-gold)' }} /> Checklist documental del proyecto
             </h2>
             <p className="text-xs mt-1" style={{ color: 'var(--brand-teal2)' }}>
@@ -247,14 +247,14 @@ export default function DocumentChecklist({ projectId, projectName, projectAddre
           </div>
           <div className="text-right">
             <div className="text-3xl font-bold font-mono" style={{
-              color: completePct >= 100 ? '#059669' : completePct >= 70 ? '#2E6BB4' : '#dc2626',
+              color: completePct >= 100 ? '#059669' : completePct >= 70 ? '#0071E3' : '#dc2626',
             }}>{completePct}%</div>
             <div className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>completo</div>
           </div>
         </div>
 
         {/* Barra de progreso */}
-        <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(45,75,82,0.1)' }}>
+        <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(29,29,31,0.1)' }}>
           <div
             className="h-full transition-all"
             style={{
@@ -292,12 +292,12 @@ export default function DocumentChecklist({ projectId, projectName, projectAddre
         <div
           key={group.key}
           className="bg-white rounded-2xl overflow-hidden"
-          style={{ border: '1px solid rgba(45,75,82,0.1)', boxShadow: '0 1px 4px rgba(45,75,82,0.06)' }}
+          style={{ border: '1px solid rgba(29,29,31,0.1)', boxShadow: '0 1px 4px rgba(29,29,31,0.06)' }}
         >
           <button
             onClick={() => setOpenGroup({ ...openGroup, [group.key]: !openGroup[group.key] })}
             className="w-full px-5 py-3 flex items-center justify-between hover:bg-stone-50 transition-colors"
-            style={{ background: 'rgba(46,107,180,0.04)' }}
+            style={{ background: 'rgba(0,113,227,0.04)' }}
           >
             <h3 className="text-sm font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}>
               {openGroup[group.key] ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
@@ -308,7 +308,7 @@ export default function DocumentChecklist({ projectId, projectName, projectAddre
             </div>
           </button>
           {openGroup[group.key] && (
-            <div className="divide-y" style={{ borderColor: 'rgba(45,75,82,0.06)' }}>
+            <div className="divide-y" style={{ borderColor: 'rgba(29,29,31,0.06)' }}>
               {group.items.map((item) => (
                 <div key={item.key} className="px-5 py-3">
                   <div className="flex items-start justify-between gap-3 mb-2">
@@ -326,7 +326,7 @@ export default function DocumentChecklist({ projectId, projectName, projectAddre
                           {item.required && <span className="text-red-500 ml-1">*</span>}
                           {item.count > 0 && (
                             <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full font-mono"
-                              style={{ background: 'rgba(46,107,180,0.12)', color: 'var(--brand-gold)' }}
+                              style={{ background: 'rgba(0,113,227,0.12)', color: 'var(--brand-gold)' }}
                             >
                               {item.count}
                             </span>

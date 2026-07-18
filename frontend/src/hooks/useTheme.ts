@@ -11,7 +11,7 @@ export function useTheme() {
     document.documentElement.setAttribute('data-theme', 'light')
     try { localStorage.removeItem('ra-theme') } catch {}
     const metaTheme = document.querySelector('meta[name="theme-color"]')
-    if (metaTheme) metaTheme.setAttribute('content', '#2D4B52')
+    if (metaTheme) metaTheme.setAttribute('content', '#1D1D1F')
   }, [])
 
   return { theme: 'light' as Theme, toggle: () => {}, isDark: false }

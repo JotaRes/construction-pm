@@ -11,12 +11,12 @@ function RALogoMark({ width = 96, height = 72 }: { width?: number; height?: numb
     <svg width={width} height={height} viewBox="0 0 90 80" fill="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="ra-lt" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#2D4B52"/>
-          <stop offset="100%" stopColor="#1A3035"/>
+          <stop offset="0%" stopColor="#1D1D1F"/>
+          <stop offset="100%" stopColor="#1D1D1F"/>
         </linearGradient>
         <linearGradient id="ra-rt" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#3A5F68"/>
-          <stop offset="100%" stopColor="#2D4B52"/>
+          <stop offset="0%" stopColor="#48484A"/>
+          <stop offset="100%" stopColor="#1D1D1F"/>
         </linearGradient>
         <filter id="ra-glow">
           <feGaussianBlur stdDeviation="1.2" result="blur"/>
@@ -32,7 +32,7 @@ function RALogoMark({ width = 96, height = 72 }: { width?: number; height?: numb
       {/* Destello interior torre derecha */}
       <polygon points="46,28 46,38 52,35 52,25" fill="rgba(255,255,255,0.07)"/>
       {/* Arco gold — la firma de la marca */}
-      <path d="M 5,68 Q 42,50 82,61" stroke="#2E6BB4" strokeWidth="5.5" fill="none" strokeLinecap="round" filter="url(#ra-glow)"/>
+      <path d="M 5,68 Q 42,50 82,61" stroke="#0071E3" strokeWidth="5.5" fill="none" strokeLinecap="round" filter="url(#ra-glow)"/>
       {/* Arco shimmer encima */}
       <path d="M 5,68 Q 42,50 82,61" stroke="rgba(236,201,122,0.4)" strokeWidth="2" fill="none" strokeLinecap="round"/>
     </svg>
@@ -83,7 +83,7 @@ export default function Landing() {
         <div className="flex items-center gap-3">
           <RALogoMark width={44} height={33} />
           <div>
-            <div className="text-sm font-bold tracking-wide" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>
+            <div className="text-sm font-bold tracking-wide" style={{ color: 'var(--brand-teal)' }}>
               Restrepo Acosta
             </div>
             <div className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--brand-gold)' }}>
@@ -94,7 +94,7 @@ export default function Landing() {
         <button
           onClick={logout}
           className="text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
-          style={{ color: 'var(--brand-teal)', border: '1px solid rgba(45,75,82,0.2)' }}
+          style={{ color: 'var(--brand-teal)', border: '1px solid rgba(29,29,31,0.2)' }}
         >
           Cerrar sesión
         </button>
@@ -110,7 +110,7 @@ export default function Landing() {
             </div>
             <h1
               className="text-2xl md:text-3xl font-bold mb-1 leading-tight"
-              style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif', letterSpacing: '0.04em' }}
+              style={{ color: 'var(--brand-teal)', letterSpacing: '0.04em' }}
             >
               Restrepo Acosta
             </h1>
@@ -131,7 +131,7 @@ export default function Landing() {
           <div className="text-center mb-4">
             <div
               className="inline-block text-[11px] uppercase tracking-[0.18em] px-4 py-1 rounded-full"
-              style={{ background: 'rgba(45,75,82,0.07)', color: 'var(--brand-teal2)' }}
+              style={{ background: 'rgba(29,29,31,0.07)', color: 'var(--brand-teal2)' }}
             >
               Entrar a los módulos
             </div>
@@ -251,13 +251,13 @@ export default function Landing() {
               className="rounded-2xl p-5 flex items-center gap-4 flex-wrap"
               style={{
                 background: 'rgba(255,255,255,0.6)',
-                border: '1px solid rgba(45,75,82,0.12)',
+                border: '1px solid rgba(29,29,31,0.12)',
                 backdropFilter: 'blur(8px)',
               }}
             >
               <div
                 className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{ background: 'var(--brand-teal)', boxShadow: '0 4px 12px rgba(45,75,82,0.2)' }}
+                style={{ background: 'var(--brand-teal)', boxShadow: '0 4px 12px rgba(29,29,31,0.2)' }}
               >
                 <Download size={20} color="var(--brand-gold2)" />
               </div>
@@ -279,7 +279,7 @@ export default function Landing() {
                 style={{
                   background: 'linear-gradient(135deg, var(--brand-gold) 0%, var(--brand-gold2) 100%)',
                   color: 'white',
-                  boxShadow: '0 4px 14px rgba(46,107,180,0.25)',
+                  boxShadow: '0 4px 14px rgba(0,113,227,0.25)',
                 }}
               >
                 {downloading ? (

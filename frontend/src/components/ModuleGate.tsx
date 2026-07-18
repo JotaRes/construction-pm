@@ -64,7 +64,7 @@ export default function ModuleGate({ moduleName, moduleLabel, children }: Props)
     ? 'linear-gradient(135deg, #2A1E3F 0%, #3E2C5C 100%)'
     : isFinance
     ? 'linear-gradient(135deg, #0F2027 0%, #1B3640 100%)'
-    : 'linear-gradient(135deg, var(--brand-teal) 0%, #3A5F68 100%)'
+    : 'linear-gradient(135deg, var(--brand-teal) 0%, #48484A 100%)'
 
   return (
     <div
@@ -74,8 +74,8 @@ export default function ModuleGate({ moduleName, moduleLabel, children }: Props)
       <div
         className="w-full max-w-sm rounded-3xl overflow-hidden bg-white"
         style={{
-          boxShadow: '0 20px 60px rgba(45,75,82,0.15)',
-          border: '1px solid rgba(45,75,82,0.1)',
+          boxShadow: '0 20px 60px rgba(29,29,31,0.15)',
+          border: '1px solid rgba(29,29,31,0.1)',
         }}
       >
         {/* Header con gradiente brand */}
@@ -85,13 +85,13 @@ export default function ModuleGate({ moduleName, moduleLabel, children }: Props)
           <div className="flex flex-col items-center mb-6">
             <div
               className="w-14 h-14 rounded-2xl flex items-center justify-center mb-3"
-              style={{ background: bg, boxShadow: `0 4px 16px ${isFinance ? 'rgba(13,148,136,0.4)' : 'rgba(45,75,82,0.4)'}` }}
+              style={{ background: bg, boxShadow: `0 4px 16px ${isFinance ? 'rgba(13,148,136,0.4)' : 'rgba(29,29,31,0.4)'}` }}
             >
               <ShieldCheck size={26} color="white" />
             </div>
             <h1
               className="text-lg font-bold tracking-wide text-center"
-              style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif', letterSpacing: '0.04em' }}
+              style={{ color: 'var(--brand-teal)', letterSpacing: '0.04em' }}
             >
               {moduleLabel}
             </h1>
@@ -115,7 +115,7 @@ export default function ModuleGate({ moduleName, moduleLabel, children }: Props)
                 <Lock
                   size={16}
                   className="absolute left-3 top-1/2 -translate-y-1/2"
-                  style={{ color: 'rgba(45,75,82,0.4)' }}
+                  style={{ color: 'rgba(29,29,31,0.4)' }}
                 />
                 <input
                   type="password"
@@ -127,7 +127,7 @@ export default function ModuleGate({ moduleName, moduleLabel, children }: Props)
                   style={{
                     background: 'var(--brand-cream)',
                     color: 'var(--brand-teal)',
-                    border: `1px solid ${error ? '#dc2626' : 'rgba(45,75,82,0.2)'}`,
+                    border: `1px solid ${error ? '#dc2626' : 'rgba(29,29,31,0.2)'}`,
                     outline: 'none',
                   }}
                 />
@@ -143,14 +143,14 @@ export default function ModuleGate({ moduleName, moduleLabel, children }: Props)
               className="w-full py-3 text-sm font-semibold text-white rounded-xl transition-all disabled:opacity-50"
               style={{
                 background: bg,
-                boxShadow: '0 4px 14px rgba(45,75,82,0.25)',
+                boxShadow: '0 4px 14px rgba(29,29,31,0.25)',
               }}
             >
               {loading ? 'Verificando…' : `Ingresar a ${moduleLabel}`}
             </button>
           </form>
 
-          <div className="mt-6 pt-4 text-center" style={{ borderTop: '1px solid rgba(45,75,82,0.08)' }}>
+          <div className="mt-6 pt-4 text-center" style={{ borderTop: '1px solid rgba(29,29,31,0.08)' }}>
             <Link
               to="/"
               className="text-xs font-semibold inline-flex items-center gap-1 hover:underline"
@@ -162,7 +162,7 @@ export default function ModuleGate({ moduleName, moduleLabel, children }: Props)
         </div>
 
         <div className="px-8 pb-6 text-center">
-          <p className="text-[10px]" style={{ color: 'rgba(45,75,82,0.4)' }}>
+          <p className="text-[10px]" style={{ color: 'rgba(29,29,31,0.4)' }}>
             Acceso protegido · Sesión válida hasta cerrar el navegador
           </p>
         </div>

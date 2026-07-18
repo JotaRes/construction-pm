@@ -182,7 +182,7 @@ export default function Catalogs() {
 
       <div className="card overflow-hidden">
         {/* Tabs */}
-        <div className="px-2 py-2 flex gap-1 overflow-x-auto" style={{ borderBottom: '1px solid rgba(45,75,82,0.1)', background: 'var(--brand-cream2)' }}>
+        <div className="px-2 py-2 flex gap-1 overflow-x-auto" style={{ borderBottom: '1px solid rgba(29,29,31,0.1)', background: 'var(--brand-cream2)' }}>
           {tabKeys.map((key) => {
             const t = TAB_CONFIG[key];
             const Icon = t.icon;
@@ -201,7 +201,7 @@ export default function Catalogs() {
               >
                 <Icon size={13} /> {t.label}
                 <span className="text-[10px] px-1.5 py-0.5 rounded" style={{
-                  background: active ? 'rgba(255,255,255,0.2)' : 'rgba(45,75,82,0.08)',
+                  background: active ? 'rgba(255,255,255,0.2)' : 'rgba(29,29,31,0.08)',
                   color: active ? 'rgba(255,255,255,0.85)' : 'var(--brand-teal2)',
                 }}>{count}</span>
               </button>
@@ -212,7 +212,7 @@ export default function Catalogs() {
         {/* Tabla */}
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead style={{ background: 'rgba(45,75,82,0.04)' }}>
+            <thead style={{ background: 'rgba(29,29,31,0.04)' }}>
               <tr className="text-xs uppercase tracking-wider" style={{ color: 'var(--brand-teal2)' }}>
                 {current.columns.map((c) => <th key={c.key} className="px-4 py-3 text-left font-semibold">{c.label}</th>)}
                 <th className="px-4 py-3"></th>
@@ -225,7 +225,7 @@ export default function Catalogs() {
                   No hay registros en {current.label.toLowerCase()}. Usa el botón "Agregar" arriba para crear el primero.
                 </td></tr>
               ) : rows.map((row: any) => (
-                <tr key={row.id} className="table-row" style={{ borderBottom: '1px solid rgba(45,75,82,0.06)' }}>
+                <tr key={row.id} className="table-row" style={{ borderBottom: '1px solid rgba(29,29,31,0.06)' }}>
                   {current.columns.map((c) => (
                     <td key={c.key} className="px-4 py-3 font-medium" style={{ color: 'var(--brand-teal)' }}>
                       {row[c.key] ?? <span style={{ opacity: 0.4 }}>—</span>}
@@ -375,7 +375,7 @@ function CatalogModal({
             )}
           </div>
         ))}
-        <div className="md:col-span-2 flex justify-end gap-2 pt-3" style={{ borderTop: '1px solid rgba(45,75,82,0.1)' }}>
+        <div className="md:col-span-2 flex justify-end gap-2 pt-3" style={{ borderTop: '1px solid rgba(29,29,31,0.1)' }}>
           <button type="button" className="btn-secondary" onClick={onClose}>Cancelar</button>
           <button type="submit" className="btn-primary" disabled={mut.isPending}>
             {mut.isPending ? "Guardando…" : editing ? "Guardar cambios" : "Crear"}

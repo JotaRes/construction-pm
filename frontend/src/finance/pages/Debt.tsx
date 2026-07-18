@@ -146,7 +146,7 @@ export default function Debt() {
                 <BarChart data={lenderData} layout="vertical" margin={{ left: 80 }}>
                   <XAxis type="number" tick={{ fontSize: 10, fill: "var(--brand-teal3)" }} tickFormatter={(v) => usd(v, { compact: true })} />
                   <YAxis dataKey="name" type="category" tick={{ fontSize: 10, fill: "var(--inf)" }} width={140} />
-                  <Tooltip contentStyle={{ background: "#fff", border: "1px solid rgba(45,75,82,0.15)", borderRadius: 8 }} formatter={(v: any) => usd(v as number)} />
+                  <Tooltip contentStyle={{ background: "#fff", border: "1px solid rgba(29,29,31,0.15)", borderRadius: 8 }} formatter={(v: any) => usd(v as number)} />
                   <Bar dataKey="value" fill="var(--accent)" />
                 </BarChart>
               </ResponsiveContainer>
@@ -164,7 +164,7 @@ export default function Debt() {
                     {classData.map((d, i) => <Cell key={i} fill={CLASS_COLOR[d.name] || "var(--text-muted)"} />)}
                   </Pie>
                   <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Tooltip contentStyle={{ background: "#fff", border: "1px solid rgba(45,75,82,0.15)", borderRadius: 8 }} formatter={(v: any) => usd(v as number)} />
+                  <Tooltip contentStyle={{ background: "#fff", border: "1px solid rgba(29,29,31,0.15)", borderRadius: 8 }} formatter={(v: any) => usd(v as number)} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -174,14 +174,14 @@ export default function Debt() {
 
       {/* Tabla */}
       <div className="card overflow-hidden">
-        <div className="px-5 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(45,75,82,0.1)', background: 'var(--brand-cream2)' }}>
-          <h2 className="text-sm font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>
+        <div className="px-5 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(29,29,31,0.1)', background: 'var(--brand-cream2)' }}>
+          <h2 className="text-sm font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}>
             <Banknote size={15} style={{ color: 'var(--brand-gold)' }} /> Listado de préstamos
           </h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead style={{ background: 'rgba(45,75,82,0.04)' }}>
+            <thead style={{ background: 'rgba(29,29,31,0.04)' }}>
               <tr className="text-xs uppercase tracking-wider" style={{ color: 'var(--brand-teal2)' }}>
                 <th className="px-3 py-3 text-left font-semibold">Fecha</th>
                 <th className="px-3 py-3 text-left font-semibold">Lender</th>
@@ -205,7 +205,7 @@ export default function Debt() {
                   </td>
                 </tr>
               ) : loans.map((l: any) => (
-                <tr key={l.id} className="table-row" style={{ borderBottom: '1px solid rgba(45,75,82,0.06)' }}>
+                <tr key={l.id} className="table-row" style={{ borderBottom: '1px solid rgba(29,29,31,0.06)' }}>
                   <td className="px-3 py-3 text-xs font-mono whitespace-nowrap" style={{ color: 'var(--brand-teal2)' }}>
                     <Calendar size={11} className="inline mr-1" /> {dateShort(l.date)}
                   </td>
@@ -224,7 +224,7 @@ export default function Debt() {
                   </td>
                   <td className="px-3 py-3 text-center">
                     {l.sourceMovementId ? (
-                      <Link to={`/finance/movements/${l.sourceMovementId}`} title="Creado automáticamente desde un movimiento" className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full" style={{ background: 'rgba(46,107,180,0.12)', color: 'var(--brand-gold)' }}>
+                      <Link to={`/finance/movements/${l.sourceMovementId}`} title="Creado automáticamente desde un movimiento" className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full" style={{ background: 'rgba(0,113,227,0.12)', color: 'var(--brand-gold)' }}>
                         <Link2 size={10} /> Auto
                       </Link>
                     ) : (
@@ -306,7 +306,7 @@ function LoanModal({ open, onClose, catalogs }: { open: boolean; onClose: () => 
 
   return (
     <Modal open={open} onClose={onClose} title="Nuevo préstamo manual" size="lg">
-      <div className="mb-3 p-3 rounded-lg flex items-start gap-2" style={{ background: 'rgba(46,107,180,0.08)', border: '1px solid rgba(46,107,180,0.25)' }}>
+      <div className="mb-3 p-3 rounded-lg flex items-start gap-2" style={{ background: 'rgba(0,113,227,0.08)', border: '1px solid rgba(0,113,227,0.25)' }}>
         <Info size={14} style={{ color: 'var(--brand-gold)', flexShrink: 0, marginTop: 2 }} />
         <div className="text-xs" style={{ color: 'var(--brand-teal)' }}>
           <strong>Recomendado:</strong> registra el préstamo desde Movimientos (Ingreso + origen "Préstamo" + Lender). Se creará aquí automáticamente y quedará vinculado al movimiento bancario.
@@ -335,7 +335,7 @@ function LoanModal({ open, onClose, catalogs }: { open: boolean; onClose: () => 
         <div><label className="label">Inicio</label><input type="date" className="input w-full" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} /></div>
         <div><label className="label">Vencimiento</label><input type="date" className="input w-full" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} /></div>
         <div className="md:col-span-2"><label className="label">Notas</label><textarea className="input w-full" rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
-        <div className="md:col-span-2 flex justify-end gap-2 pt-3" style={{ borderTop: '1px solid rgba(45,75,82,0.1)' }}>
+        <div className="md:col-span-2 flex justify-end gap-2 pt-3" style={{ borderTop: '1px solid rgba(29,29,31,0.1)' }}>
           <button type="button" className="btn-secondary" onClick={onClose}>Cancelar</button>
           <button type="submit" className="btn-primary" disabled={mut.isPending}>{mut.isPending ? "Guardando…" : "Crear préstamo"}</button>
         </div>

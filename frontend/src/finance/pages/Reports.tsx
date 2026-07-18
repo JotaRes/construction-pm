@@ -78,7 +78,7 @@ export default function Reports() {
 
       {/* Tabs */}
       <div className="card overflow-hidden">
-        <div className="flex" style={{ borderBottom: '1px solid rgba(45,75,82,0.1)', background: 'var(--brand-cream2)' }}>
+        <div className="flex" style={{ borderBottom: '1px solid rgba(29,29,31,0.1)', background: 'var(--brand-cream2)' }}>
           {[
             { key: "flow", label: "Flujo de caja", icon: Activity },
             { key: "ratios", label: "Ratios por proyecto", icon: Briefcase },
@@ -117,10 +117,10 @@ export default function Reports() {
                 <div className="h-64">
                   <ResponsiveContainer>
                     <BarChart data={sources.sources.slice(0, 8)} layout="vertical" margin={{ left: 100 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(45,75,82,0.1)" />
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(29,29,31,0.1)" />
                       <XAxis type="number" tick={{ fontSize: 10, fill: "var(--brand-teal3)" }} tickFormatter={(v) => usd(v, { compact: true })} />
                       <YAxis dataKey="label" type="category" tick={{ fontSize: 10, fill: "var(--inf)" }} width={150} />
-                      <Tooltip contentStyle={{ background: "#fff", border: "1px solid rgba(45,75,82,0.15)", borderRadius: 8 }} formatter={(v: any) => usd(v)} />
+                      <Tooltip contentStyle={{ background: "#fff", border: "1px solid rgba(29,29,31,0.15)", borderRadius: 8 }} formatter={(v: any) => usd(v)} />
                       <Bar dataKey="amount" fill="var(--ok)" />
                     </BarChart>
                   </ResponsiveContainer>
@@ -138,10 +138,10 @@ export default function Reports() {
                 <div className="h-64">
                   <ResponsiveContainer>
                     <BarChart data={sources.uses.slice(0, 8)} layout="vertical" margin={{ left: 100 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(45,75,82,0.1)" />
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(29,29,31,0.1)" />
                       <XAxis type="number" tick={{ fontSize: 10, fill: "var(--brand-teal3)" }} tickFormatter={(v) => usd(v, { compact: true })} />
                       <YAxis dataKey="label" type="category" tick={{ fontSize: 10, fill: "var(--inf)" }} width={150} />
-                      <Tooltip contentStyle={{ background: "#fff", border: "1px solid rgba(45,75,82,0.15)", borderRadius: 8 }} formatter={(v: any) => usd(v)} />
+                      <Tooltip contentStyle={{ background: "#fff", border: "1px solid rgba(29,29,31,0.15)", borderRadius: 8 }} formatter={(v: any) => usd(v)} />
                       <Bar dataKey="amount" fill="var(--err)" />
                     </BarChart>
                   </ResponsiveContainer>
@@ -162,10 +162,10 @@ export default function Reports() {
             <div className="h-72">
               <ResponsiveContainer>
                 <LineChart data={cashflow?.months || []}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(45,75,82,0.1)" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(29,29,31,0.1)" />
                   <XAxis dataKey="month" tick={{ fontSize: 11, fill: "var(--inf)" }} tickFormatter={(m) => ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"][m - 1]} />
                   <YAxis tick={{ fontSize: 10, fill: "var(--brand-teal3)" }} tickFormatter={(v) => usd(v, { compact: true })} />
-                  <Tooltip contentStyle={{ background: "#fff", border: "1px solid rgba(45,75,82,0.15)", borderRadius: 8 }} formatter={(v: any) => usd(v)} />
+                  <Tooltip contentStyle={{ background: "#fff", border: "1px solid rgba(29,29,31,0.15)", borderRadius: 8 }} formatter={(v: any) => usd(v)} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                   <Line type="monotone" dataKey="ingresos" stroke="var(--ok)" strokeWidth={2} name="Ingresos" />
                   <Line type="monotone" dataKey="egresos" stroke="var(--err)" strokeWidth={2} name="Egresos" />
@@ -180,8 +180,8 @@ export default function Reports() {
       {/* === TAB: Ratios === */}
       {tab === "ratios" && (
         <div className="card overflow-hidden">
-          <div className="px-5 py-3" style={{ borderBottom: '1px solid rgba(45,75,82,0.1)', background: 'var(--brand-cream2)' }}>
-            <h2 className="text-sm font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>
+          <div className="px-5 py-3" style={{ borderBottom: '1px solid rgba(29,29,31,0.1)', background: 'var(--brand-cream2)' }}>
+            <h2 className="text-sm font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}>
               <Briefcase size={15} style={{ color: 'var(--brand-gold)' }} /> Ratios financieros por proyecto
             </h2>
             <p className="text-xs mt-1" style={{ color: 'var(--brand-teal2)' }}>
@@ -193,7 +193,7 @@ export default function Reports() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead style={{ background: 'rgba(45,75,82,0.04)' }}>
+                <thead style={{ background: 'rgba(29,29,31,0.04)' }}>
                   <tr className="text-xs uppercase tracking-wider" style={{ color: 'var(--brand-teal2)' }}>
                     <th className="px-3 py-3 text-left font-semibold">Proyecto</th>
                     <th className="px-3 py-3 text-right font-semibold">ARV</th>
@@ -210,7 +210,7 @@ export default function Reports() {
                   {ratios.projects.map((p: any) => {
                     const lightColor = (l: string) => l === "green" ? "🟢" : l === "yellow" ? "🟡" : "🔴";
                     return (
-                      <tr key={p.id} className="table-row" style={{ borderBottom: '1px solid rgba(45,75,82,0.06)' }}>
+                      <tr key={p.id} className="table-row" style={{ borderBottom: '1px solid rgba(29,29,31,0.06)' }}>
                         <td className="px-3 py-3">
                           <Link to={`/finance/projects/${p.id}`} className="font-semibold hover:underline" style={{ color: 'var(--brand-teal)' }}>{p.name}</Link>
                           <div className="text-[10px] font-mono mt-0.5" style={{ color: 'var(--brand-teal2)' }}>{p.code} · {p.spv}</div>
@@ -247,8 +247,8 @@ export default function Reports() {
       {/* === TAB: Audit log === */}
       {tab === "audit" && (
         <div className="card overflow-hidden">
-          <div className="px-5 py-3" style={{ borderBottom: '1px solid rgba(45,75,82,0.1)', background: 'var(--brand-cream2)' }}>
-            <h2 className="text-sm font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>
+          <div className="px-5 py-3" style={{ borderBottom: '1px solid rgba(29,29,31,0.1)', background: 'var(--brand-cream2)' }}>
+            <h2 className="text-sm font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}>
               <History size={15} style={{ color: 'var(--brand-gold)' }} /> Historial de operaciones
             </h2>
             <p className="text-xs mt-1" style={{ color: 'var(--brand-teal2)' }}>
@@ -260,7 +260,7 @@ export default function Reports() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead style={{ background: 'rgba(45,75,82,0.04)' }}>
+                <thead style={{ background: 'rgba(29,29,31,0.04)' }}>
                   <tr className="text-xs uppercase tracking-wider" style={{ color: 'var(--brand-teal2)' }}>
                     <th className="px-3 py-3 text-left font-semibold">Fecha</th>
                     <th className="px-3 py-3 text-left font-semibold">Acción</th>
@@ -274,7 +274,7 @@ export default function Reports() {
                     const Icon = ACTION_ICON[log.action] || FileText;
                     const colorClass = ACTION_COLOR[log.action] || "text-stone-600 bg-stone-50 border-stone-200";
                     return (
-                      <tr key={log.id} className="table-row" style={{ borderBottom: '1px solid rgba(45,75,82,0.06)' }}>
+                      <tr key={log.id} className="table-row" style={{ borderBottom: '1px solid rgba(29,29,31,0.06)' }}>
                         <td className="px-3 py-3 text-xs font-mono whitespace-nowrap" style={{ color: 'var(--brand-teal2)' }}>
                           {dateShort(log.createdAt)} {new Date(log.createdAt).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })}
                         </td>

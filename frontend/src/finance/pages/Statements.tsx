@@ -107,7 +107,7 @@ export default function Statements() {
           </label>
         </div>
 
-        <div className="mt-4 p-3 rounded-lg" style={{ background: 'var(--brand-cream2)', border: '1px solid rgba(45,75,82,0.08)' }}>
+        <div className="mt-4 p-3 rounded-lg" style={{ background: 'var(--brand-cream2)', border: '1px solid rgba(29,29,31,0.08)' }}>
           <div className="text-xs font-semibold mb-1" style={{ color: 'var(--brand-teal)' }}>Formatos y columnas soportadas:</div>
           <ul className="text-xs space-y-0.5" style={{ color: 'var(--brand-teal2)' }}>
             <li>✓ <span className="font-mono">CSV</span> · <span className="font-mono">.xlsx</span> · <span className="font-mono">.xls</span> · <span className="font-mono">.pdf</span></li>
@@ -149,15 +149,15 @@ export default function Statements() {
 
       {/* Lista de extractos cargados */}
       <div className="card overflow-hidden">
-        <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(45,75,82,0.1)', background: 'var(--brand-cream2)' }}>
-          <h2 className="text-base font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>
+        <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(29,29,31,0.1)', background: 'var(--brand-cream2)' }}>
+          <h2 className="text-base font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}>
             <FileText size={16} style={{ color: 'var(--brand-gold)' }} /> Extractos cargados
           </h2>
           <span className="text-xs font-semibold" style={{ color: 'var(--brand-teal2)' }}>{data?.length || 0} archivos</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead style={{ background: 'rgba(45,75,82,0.04)' }}>
+            <thead style={{ background: 'rgba(29,29,31,0.04)' }}>
               <tr className="text-xs uppercase tracking-wider" style={{ color: 'var(--brand-teal2)' }}>
                 <th className="px-4 py-3 text-left font-semibold">Archivo</th>
                 <th className="px-4 py-3 text-left font-semibold">Cuenta</th>
@@ -173,7 +173,7 @@ export default function Statements() {
                   Aún no hay extractos cargados. Sube tu primer archivo arriba.
                 </td></tr>
               ) : data.map((s: any) => (
-                <tr key={s.id} className="table-row" style={{ borderBottom: '1px solid rgba(45,75,82,0.06)' }}>
+                <tr key={s.id} className="table-row" style={{ borderBottom: '1px solid rgba(29,29,31,0.06)' }}>
                   <td className="px-4 py-3 flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}>
                     <FileSpreadsheet size={14} style={{ color: 'var(--brand-gold)' }} />
                     <span className="font-medium">{s.filename}</span>

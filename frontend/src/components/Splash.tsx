@@ -43,7 +43,7 @@ export default function Splash() {
       {/* Brand name */}
       <div style={{ textAlign: 'center' }}>
         <div style={{
-          fontFamily: "'Fraunces', Georgia, serif",
+          fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif",
           fontSize: 28, fontWeight: 300,
           letterSpacing: '-0.03em',
           color: 'rgba(240,236,228,0.92)',

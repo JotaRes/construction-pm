@@ -221,7 +221,7 @@ function PhaseSection({ phase, onUpdate, onCreate, onDelete }: {
                 <th className="pl-5 pr-2 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider w-16">Cód.</th>
                 <th className="px-2 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider">Actividad</th>
                 <th className="px-2 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider w-14">Ud.</th>
-                <th className="px-2 py-1.5 text-right text-[9px] text-[#2E6BB4]/80 uppercase tracking-wider w-32">Presup. ✏</th>
+                <th className="px-2 py-1.5 text-right text-[9px] text-[#0071E3]/80 uppercase tracking-wider w-32">Presup. ✏</th>
                 <th className="px-2 py-1.5 text-right text-[9px] text-slate-400 uppercase tracking-wider w-28">Ejecutado</th>
                 <th className="px-2 py-1.5 text-right text-[9px] text-slate-400 uppercase tracking-wider w-24">Desv.</th>
                 <th className="pr-4 pl-2 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider w-24">%</th>
@@ -243,7 +243,7 @@ function PhaseSection({ phase, onUpdate, onCreate, onDelete }: {
           {/* Add activity button */}
           <button
             onClick={() => onCreate(phase.id)}
-            className="flex items-center gap-2 px-5 py-2 text-xs text-slate-400 hover:text-[var(--brand-gold)] hover:bg-[#2E6BB4]/5 transition-colors w-full border-t border-slate-200/50"
+            className="flex items-center gap-2 px-5 py-2 text-xs text-slate-400 hover:text-[var(--brand-gold)] hover:bg-[#0071E3]/5 transition-colors w-full border-t border-slate-200/50"
           >
             <Plus className="w-3.5 h-3.5" />
             Agregar actividad imprevista
@@ -361,17 +361,17 @@ export default function Budget({ projectId }: { projectId: string }) {
           <div className="flex items-center gap-1.5 text-[10px] text-slate-400 uppercase tracking-wider mb-1.5">
             <TrendingUp className="w-3 h-3" />Draws wired
           </div>
-          <div className="text-xl font-bold font-mono text-violet-300">{formatUSD(totalDrawn)}</div>
+          <div className="text-xl font-bold font-mono text-[var(--accent)]">{formatUSD(totalDrawn)}</div>
           <div className="text-[10px] text-slate-400 mt-1 font-mono">{wiredDraws.length} draw{wiredDraws.length !== 1 ? 's' : ''} desembolsado{wiredDraws.length !== 1 ? 's' : ''}</div>
         </div>
       </div>
 
       {/* Draw vs Execution clarification */}
       {totalDrawn > 0 && (
-        <div className="flex items-start gap-2.5 bg-violet-500/8 border border-violet-500/20 rounded-xl px-4 py-3">
-          <AlertTriangle className="w-4 h-4 text-violet-400 flex-shrink-0 mt-0.5" />
+        <div className="flex items-start gap-2.5 bg-[var(--accent-soft)] border border-[var(--accent-border)] rounded-xl px-4 py-3">
+          <AlertTriangle className="w-4 h-4 text-[var(--accent)] flex-shrink-0 mt-0.5" />
           <div className="text-xs text-slate-500 leading-relaxed">
-            <span className="text-violet-300 font-semibold">Draws wired ({formatUSD(totalDrawn)})</span>
+            <span className="text-[var(--accent)] font-semibold">Draws wired ({formatUSD(totalDrawn)})</span>
             {' '}= dinero desembolsado por el lender a tu cuenta.{' '}
             <span className="text-[var(--brand-teal)] font-semibold">Ejecutado ({formatUSD(totalEjec)})</span>
             {' '}= costo real registrado por ítem de obra.
@@ -382,8 +382,8 @@ export default function Budget({ projectId }: { projectId: string }) {
 
       {/* Tip */}
       <div className="flex items-center gap-2 text-[11px] text-slate-400">
-        <DollarSign className="w-3.5 h-3.5 text-[#2E6BB4]/50" />
-        Clic en cualquier valor de <span className="text-[#2E6BB4]/70">Presup. ✏</span> para editarlo. Los cambios se ven inmediatamente en Ejecución.
+        <DollarSign className="w-3.5 h-3.5 text-[#0071E3]/50" />
+        Clic en cualquier valor de <span className="text-[#0071E3]/70">Presup. ✏</span> para editarlo. Los cambios se ven inmediatamente en Ejecución.
         Clic en el nombre de la actividad para editarlo también.
       </div>
 
@@ -395,7 +395,7 @@ export default function Budget({ projectId }: { projectId: string }) {
           <div className="w-7 flex-shrink-0" />
           <div className="flex-1 text-[10px] text-slate-400 uppercase tracking-wider">Fase</div>
           <div className="flex items-center gap-4 text-[10px] shrink-0">
-            <span className="text-[#2E6BB4]/70 uppercase tracking-wider w-28 text-right">Presupuestado</span>
+            <span className="text-[#0071E3]/70 uppercase tracking-wider w-28 text-right">Presupuestado</span>
             <span className="text-slate-400 uppercase tracking-wider w-28 text-right">Ejecutado</span>
             <span className="text-slate-400 uppercase tracking-wider w-20 text-right">Desviación</span>
             <span className="text-slate-400 uppercase tracking-wider w-20 text-right">% Ejec.</span>

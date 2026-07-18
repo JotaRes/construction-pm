@@ -67,7 +67,7 @@ export default function Import() {
       <div className="card p-5">
         <div className="flex items-center gap-2 mb-3">
           <Download size={18} style={{ color: 'var(--brand-gold)' }} />
-          <h2 className="text-base font-bold" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>Exportar datos</h2>
+          <h2 className="text-base font-bold" style={{ color: 'var(--brand-teal)' }}>Exportar datos</h2>
         </div>
         <p className="text-sm mb-4" style={{ color: 'var(--brand-teal2)' }}>
           Descarga toda la información financiera para respaldo, análisis externo o migración. Ambos formatos son <strong>re-importables</strong>: si reseteas o pierdes datos, puedes cargarlos de vuelta y recuperar el estado exacto.
@@ -75,7 +75,7 @@ export default function Import() {
 
         <div className="grid md:grid-cols-2 gap-3">
           {/* Excel */}
-          <div className="rounded-xl p-4 transition-all hover:shadow-md" style={{ background: 'var(--brand-cream2)', border: '1px solid rgba(45,75,82,0.08)' }}>
+          <div className="rounded-xl p-4 transition-all hover:shadow-md" style={{ background: 'var(--brand-cream2)', border: '1px solid rgba(29,29,31,0.08)' }}>
             <div className="flex items-start gap-3 mb-3">
               <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(16,185,129,0.12)', color: '#059669' }}>
                 <FileSpreadsheet size={20} />
@@ -96,9 +96,9 @@ export default function Import() {
           </div>
 
           {/* JSON / ZIP */}
-          <div className="rounded-xl p-4 transition-all hover:shadow-md" style={{ background: 'var(--brand-cream2)', border: '1px solid rgba(45,75,82,0.08)' }}>
+          <div className="rounded-xl p-4 transition-all hover:shadow-md" style={{ background: 'var(--brand-cream2)', border: '1px solid rgba(29,29,31,0.08)' }}>
             <div className="flex items-start gap-3 mb-3">
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(46,107,180,0.12)', color: 'var(--brand-gold)' }}>
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(0,113,227,0.12)', color: 'var(--brand-gold)' }}>
                 <Archive size={20} />
               </div>
               <div>
@@ -122,7 +122,7 @@ export default function Import() {
       <div className="card p-5">
         <div className="flex items-center gap-2 mb-3">
           <RefreshCw size={18} style={{ color: 'var(--brand-gold)' }} />
-          <h2 className="text-base font-bold" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>Restaurar desde backup</h2>
+          <h2 className="text-base font-bold" style={{ color: 'var(--brand-teal)' }}>Restaurar desde backup</h2>
         </div>
         <p className="text-sm mb-3" style={{ color: 'var(--brand-teal2)' }}>
           Carga un archivo de backup previo (ZIP o JSON) para restaurar tu sistema al estado exacto cuando lo descargaste.
@@ -142,10 +142,10 @@ export default function Import() {
       <div className="card p-5">
         <div className="flex items-center gap-2 mb-3">
           <Upload size={18} style={{ color: 'var(--brand-gold)' }} />
-          <h2 className="text-base font-bold" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>Importar Excel maestro</h2>
+          <h2 className="text-base font-bold" style={{ color: 'var(--brand-teal)' }}>Importar Excel maestro</h2>
         </div>
         <p className="text-sm mb-3" style={{ color: 'var(--brand-teal2)' }}>
-          Carga las hojas <code className="px-1.5 py-0.5 rounded" style={{ background: 'rgba(46,107,180,0.1)', color: 'var(--brand-gold)' }}>MOV 2025</code>, <code className="px-1.5 py-0.5 rounded" style={{ background: 'rgba(46,107,180,0.1)', color: 'var(--brand-gold)' }}>MOV 2026</code>, <code className="px-1.5 py-0.5 rounded" style={{ background: 'rgba(46,107,180,0.1)', color: 'var(--brand-gold)' }}>CAPITALIZACION</code> y <code className="px-1.5 py-0.5 rounded" style={{ background: 'rgba(46,107,180,0.1)', color: 'var(--brand-gold)' }}>PROYECTOS</code> de tu archivo "DOC FINANCIERO".
+          Carga las hojas <code className="px-1.5 py-0.5 rounded" style={{ background: 'rgba(0,113,227,0.1)', color: 'var(--brand-gold)' }}>MOV 2025</code>, <code className="px-1.5 py-0.5 rounded" style={{ background: 'rgba(0,113,227,0.1)', color: 'var(--brand-gold)' }}>MOV 2026</code>, <code className="px-1.5 py-0.5 rounded" style={{ background: 'rgba(0,113,227,0.1)', color: 'var(--brand-gold)' }}>CAPITALIZACION</code> y <code className="px-1.5 py-0.5 rounded" style={{ background: 'rgba(0,113,227,0.1)', color: 'var(--brand-gold)' }}>PROYECTOS</code> de tu archivo "DOC FINANCIERO".
         </p>
 
         <label className="flex items-center gap-2 text-sm p-3 rounded-lg mb-3 cursor-pointer" style={{ background: 'var(--brand-cream2)' }}>
@@ -171,7 +171,7 @@ export default function Import() {
         </div>
 
         {result && (
-          <div className="mt-4 p-4 rounded-lg" style={{ background: 'var(--brand-cream2)', border: '1px solid rgba(45,75,82,0.08)' }}>
+          <div className="mt-4 p-4 rounded-lg" style={{ background: 'var(--brand-cream2)', border: '1px solid rgba(29,29,31,0.08)' }}>
             <div className="text-sm font-semibold mb-2" style={{ color: 'var(--brand-teal)' }}>✓ Importación exitosa</div>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs" style={{ color: 'var(--brand-teal2)' }}>
               <div>Movimientos: <strong style={{ color: 'var(--brand-teal)' }}>{result.movements}</strong></div>
@@ -188,7 +188,7 @@ export default function Import() {
       <div className="card p-5" style={{ borderColor: 'rgba(220,38,38,0.3)', borderWidth: 2 }}>
         <div className="flex items-center gap-2 mb-2">
           <ShieldAlert size={18} className="text-red-600" />
-          <h2 className="text-base font-bold text-red-600" style={{ fontFamily: 'Georgia, serif' }}>Zona peligrosa: Reset completo</h2>
+          <h2 className="text-base font-bold text-red-600">Zona peligrosa: Reset completo</h2>
         </div>
         <p className="text-sm mb-4" style={{ color: 'var(--brand-teal2)' }}>
           Borra <strong>TODOS</strong> los datos del módulo financiero. <strong className="text-red-600">No se puede deshacer.</strong>
@@ -281,7 +281,7 @@ function ResetPasswordModal({ open, onClose, onConfirm, isPending }: { open: boo
             </p>
           </div>
 
-          <div className="flex justify-end gap-2 pt-3" style={{ borderTop: '1px solid rgba(45,75,82,0.1)' }}>
+          <div className="flex justify-end gap-2 pt-3" style={{ borderTop: '1px solid rgba(29,29,31,0.1)' }}>
             <button className="btn-secondary" onClick={handleClose}>Cancelar</button>
             <button className="btn-danger" onClick={handleNext} disabled={!pwd}>Continuar</button>
           </div>
@@ -294,7 +294,7 @@ function ResetPasswordModal({ open, onClose, onConfirm, isPending }: { open: boo
               <strong>Última confirmación:</strong> ¿Estás 100% seguro? Esta es tu última oportunidad para cancelar.
             </div>
           </div>
-          <div className="flex justify-end gap-2 pt-3" style={{ borderTop: '1px solid rgba(45,75,82,0.1)' }}>
+          <div className="flex justify-end gap-2 pt-3" style={{ borderTop: '1px solid rgba(29,29,31,0.1)' }}>
             <button className="btn-secondary" onClick={handleClose}>Cancelar</button>
             <button className="btn-danger" onClick={handleConfirm} disabled={isPending}>
               {isPending ? "Borrando…" : "Sí, BORRAR TODO ahora"}
@@ -326,7 +326,7 @@ function RestoreModal({
   return (
     <Modal open={open} onClose={handleClose} title="Restaurar desde backup" size="md">
       <div className="space-y-4">
-        <div className="flex items-start gap-2 p-3 rounded-lg" style={{ background: 'rgba(46,107,180,0.08)', border: '1px solid rgba(46,107,180,0.25)' }}>
+        <div className="flex items-start gap-2 p-3 rounded-lg" style={{ background: 'rgba(0,113,227,0.08)', border: '1px solid rgba(0,113,227,0.25)' }}>
           <AlertTriangle size={16} style={{ color: 'var(--brand-gold)' }} className="flex-shrink-0 mt-0.5" />
           <div className="text-sm" style={{ color: 'var(--brand-teal)' }}>
             <strong>El restore BORRA todos los datos actuales</strong> antes de cargar el backup. Se recomienda descargar un backup ZIP del estado actual primero (por si quieres deshacer).
@@ -348,7 +348,7 @@ function RestoreModal({
             className="w-full px-3 py-3 rounded-lg flex items-center gap-2 transition-all"
             style={{
               background: file ? 'rgba(16,185,129,0.08)' : 'var(--brand-cream2)',
-              border: `1.5px solid ${file ? 'rgba(16,185,129,0.3)' : 'rgba(45,75,82,0.15)'}`,
+              border: `1.5px solid ${file ? 'rgba(16,185,129,0.3)' : 'rgba(29,29,31,0.15)'}`,
             }}
           >
             {file ? (
@@ -378,7 +378,7 @@ function RestoreModal({
           />
         </div>
 
-        <div className="flex justify-end gap-2 pt-3" style={{ borderTop: '1px solid rgba(45,75,82,0.1)' }}>
+        <div className="flex justify-end gap-2 pt-3" style={{ borderTop: '1px solid rgba(29,29,31,0.1)' }}>
           <button className="btn-secondary" onClick={handleClose}>Cancelar</button>
           <button
             className="btn-primary"

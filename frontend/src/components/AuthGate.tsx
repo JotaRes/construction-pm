@@ -5,21 +5,21 @@ import { Lock, Eye, EyeOff, AlertCircle } from 'lucide-react'
 function RALogoMark({ width = 80, height = 60 }: { width?: number; height?: number }) {
   return (
     <svg width={width} height={height} viewBox="0 0 120 90" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="4" y="58" width="14" height="22" fill="#2D4B52" opacity="0.55"/>
+      <rect x="4" y="58" width="14" height="22" fill="#1D1D1F" opacity="0.55"/>
       <rect x="7" y="63" width="3" height="3" fill="rgba(255,255,255,0.35)"/>
       <rect x="12" y="63" width="3" height="3" fill="rgba(255,255,255,0.35)"/>
       <rect x="7" y="70" width="3" height="3" fill="rgba(255,255,255,0.35)"/>
       <rect x="12" y="70" width="3" height="3" fill="rgba(255,255,255,0.35)"/>
-      <rect x="20" y="42" width="20" height="38" fill="#2D4B52" opacity="0.78"/>
+      <rect x="20" y="42" width="20" height="38" fill="#1D1D1F" opacity="0.78"/>
       <rect x="23" y="47" width="5" height="5" fill="rgba(255,255,255,0.35)"/>
       <rect x="31" y="47" width="5" height="5" fill="rgba(255,255,255,0.35)"/>
       <rect x="23" y="56" width="5" height="5" fill="rgba(255,255,255,0.35)"/>
       <rect x="31" y="56" width="5" height="5" fill="rgba(255,255,255,0.35)"/>
       <rect x="23" y="65" width="5" height="5" fill="rgba(255,255,255,0.35)"/>
       <rect x="31" y="65" width="5" height="5" fill="rgba(255,255,255,0.35)"/>
-      <rect x="43" y="6" width="34" height="74" fill="#2D4B52"/>
-      <rect x="59" y="0" width="2.5" height="8" fill="#2D4B52"/>
-      <rect x="56" y="6" width="8" height="3" fill="#2D4B52"/>
+      <rect x="43" y="6" width="34" height="74" fill="#1D1D1F"/>
+      <rect x="59" y="0" width="2.5" height="8" fill="#1D1D1F"/>
+      <rect x="56" y="6" width="8" height="3" fill="#1D1D1F"/>
       <rect x="47" y="13" width="6" height="6" fill="rgba(255,255,255,0.38)"/>
       <rect x="67" y="13" width="6" height="6" fill="rgba(255,255,255,0.38)"/>
       <rect x="47" y="24" width="6" height="6" fill="rgba(255,255,255,0.38)"/>
@@ -33,7 +33,7 @@ function RALogoMark({ width = 80, height = 60 }: { width?: number; height?: numb
       <rect x="58" y="13" width="4" height="6" fill="rgba(255,255,255,0.2)"/>
       <rect x="58" y="24" width="4" height="6" fill="rgba(255,255,255,0.2)"/>
       <rect x="58" y="35" width="4" height="6" fill="rgba(255,255,255,0.2)"/>
-      <rect x="80" y="38" width="20" height="42" fill="#2D4B52" opacity="0.78"/>
+      <rect x="80" y="38" width="20" height="42" fill="#1D1D1F" opacity="0.78"/>
       <rect x="83" y="43" width="5" height="5" fill="rgba(255,255,255,0.35)"/>
       <rect x="91" y="43" width="5" height="5" fill="rgba(255,255,255,0.35)"/>
       <rect x="83" y="52" width="5" height="5" fill="rgba(255,255,255,0.35)"/>
@@ -42,13 +42,13 @@ function RALogoMark({ width = 80, height = 60 }: { width?: number; height?: numb
       <rect x="91" y="61" width="5" height="5" fill="rgba(255,255,255,0.35)"/>
       <rect x="83" y="70" width="5" height="5" fill="rgba(255,255,255,0.35)"/>
       <rect x="91" y="70" width="5" height="5" fill="rgba(255,255,255,0.35)"/>
-      <rect x="103" y="54" width="14" height="26" fill="#2D4B52" opacity="0.55"/>
+      <rect x="103" y="54" width="14" height="26" fill="#1D1D1F" opacity="0.55"/>
       <rect x="106" y="59" width="3" height="3" fill="rgba(255,255,255,0.35)"/>
       <rect x="111" y="59" width="3" height="3" fill="rgba(255,255,255,0.35)"/>
       <rect x="106" y="66" width="3" height="3" fill="rgba(255,255,255,0.35)"/>
       <rect x="111" y="66" width="3" height="3" fill="rgba(255,255,255,0.35)"/>
-      <rect x="0" y="80" width="120" height="1.5" fill="#2D4B52" opacity="0.3"/>
-      <path d="M 8 85 Q 60 72 112 85" stroke="#2E6BB4" strokeWidth="3" fill="none" strokeLinecap="round"/>
+      <rect x="0" y="80" width="120" height="1.5" fill="#1D1D1F" opacity="0.3"/>
+      <path d="M 8 85 Q 60 72 112 85" stroke="#0071E3" strokeWidth="3" fill="none" strokeLinecap="round"/>
     </svg>
   )
 }
@@ -130,10 +130,10 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     <div className="flex items-center justify-center h-screen" style={{ background: 'var(--brand-cream)' }}>
       {/* Card */}
       <div className="w-full max-w-sm mx-4 bg-white rounded-3xl overflow-hidden"
-        style={{ boxShadow: '0 20px 60px rgba(45,75,82,0.15)', border: '1px solid rgba(45,75,82,0.1)' }}>
+        style={{ boxShadow: '0 20px 60px rgba(29,29,31,0.15)', border: '1px solid rgba(29,29,31,0.1)' }}>
 
         {/* Header strip */}
-        <div className="h-1.5" style={{ background: 'linear-gradient(90deg, #2D4B52 0%, #2E6BB4 100%)' }} />
+        <div className="h-1.5" style={{ background: 'linear-gradient(90deg, #1D1D1F 0%, #0071E3 100%)' }} />
 
         <div className="px-8 py-10">
           {/* Logo */}
@@ -141,11 +141,11 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
             <RALogoMark width={100} height={75} />
             <h1
               className="text-xl font-bold tracking-wide text-center mt-3"
-              style={{ color: '#2D4B52', fontFamily: 'Georgia, serif', letterSpacing: '0.04em' }}
+              style={{ color: '#1D1D1F', letterSpacing: '0.04em' }}
             >
               Restrepo Acosta
             </h1>
-            <p className="text-[10px] uppercase tracking-[0.2em] font-semibold mt-0.5" style={{ color: '#2E6BB4' }}>
+            <p className="text-[10px] uppercase tracking-[0.2em] font-semibold mt-0.5" style={{ color: '#0071E3' }}>
               Global Holdings LLC
             </p>
           </div>
@@ -154,12 +154,12 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wider"
-                style={{ color: '#2D4B52' }}>
+                style={{ color: '#1D1D1F' }}>
                 Contraseña de acceso
               </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
-                  style={{ color: 'rgba(45,75,82,0.4)' }} />
+                  style={{ color: 'rgba(29,29,31,0.4)' }} />
                 <input
                   type={showPwd ? 'text' : 'password'}
                   value={password}
@@ -168,19 +168,19 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
                   autoFocus
                   className="w-full pl-10 pr-10 py-3 rounded-xl text-sm font-mono transition-all"
                   style={{
-                    border: error ? '1px solid #ef4444' : '1px solid rgba(45,75,82,0.2)',
+                    border: error ? '1px solid #ef4444' : '1px solid rgba(29,29,31,0.2)',
                     background: 'var(--brand-cream)',
                     color: '#1A2E32',
                     outline: 'none',
                   }}
                   onFocus={e => {
-                    e.currentTarget.style.border = '1px solid #2E6BB4'
-                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(46,107,180,0.15)'
+                    e.currentTarget.style.border = '1px solid #0071E3'
+                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(0,113,227,0.15)'
                   }}
                   onBlur={e => {
                     e.currentTarget.style.border = error
                       ? '1px solid #ef4444'
-                      : '1px solid rgba(45,75,82,0.2)'
+                      : '1px solid rgba(29,29,31,0.2)'
                     e.currentTarget.style.boxShadow = 'none'
                   }}
                 />
@@ -188,7 +188,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
                   type="button"
                   onClick={() => setShowPwd(s => !s)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 transition-opacity hover:opacity-70"
-                  style={{ color: 'rgba(45,75,82,0.4)' }}
+                  style={{ color: 'rgba(29,29,31,0.4)' }}
                 >
                   {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -207,8 +207,8 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
               disabled={loading || !password}
               className="w-full py-3 text-sm font-semibold text-white rounded-xl transition-all disabled:opacity-50"
               style={{
-                background: 'linear-gradient(135deg, #2E6BB4 0%, #4A86CF 100%)',
-                boxShadow: '0 4px 14px rgba(46,107,180,0.3)',
+                background: 'linear-gradient(135deg, #0071E3 0%, #0077ED 100%)',
+                boxShadow: '0 4px 14px rgba(0,113,227,0.3)',
               }}
               onMouseEnter={e => !loading && (e.currentTarget.style.transform = 'translateY(-1px)')}
               onMouseLeave={e => (e.currentTarget.style.transform = 'none')}
@@ -220,7 +220,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
 
         {/* Footer */}
         <div className="px-8 pb-6 text-center">
-          <p className="text-[10px]" style={{ color: 'rgba(45,75,82,0.35)' }}>
+          <p className="text-[10px]" style={{ color: 'rgba(29,29,31,0.35)' }}>
             Sistema privado · Acceso restringido
           </p>
         </div>

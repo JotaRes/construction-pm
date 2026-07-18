@@ -97,16 +97,16 @@ export default function AccountDetail() {
         <div className="p-6">
           <div className="flex items-start justify-between flex-wrap gap-4">
             <div className="flex items-start gap-4">
-              <div className="w-14 h-14 rounded-xl flex items-center justify-center" style={{ background: 'rgba(46,107,180,0.12)', color: 'var(--brand-gold)' }}>
+              <div className="w-14 h-14 rounded-xl flex items-center justify-center" style={{ background: 'rgba(0,113,227,0.12)', color: 'var(--brand-gold)' }}>
                 <Building2 size={28} />
               </div>
               <div>
                 <div className="text-xs font-mono uppercase tracking-wider mb-1" style={{ color: 'var(--brand-teal2)' }}>{account.code}</div>
-                <h1 className="text-2xl font-bold" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>{account.name}</h1>
+                <h1 className="text-2xl font-bold" style={{ color: 'var(--brand-teal)' }}>{account.name}</h1>
                 <div className="flex items-center gap-2 text-sm mt-1" style={{ color: 'var(--brand-teal2)' }}>
                   <Landmark size={14} /> {account.bank}
                   {account.spv?.name && <span>· {account.spv.name}</span>}
-                  <span className="badge ml-2" style={{ background: 'rgba(46,107,180,0.12)', color: 'var(--brand-gold)', border: '1px solid rgba(46,107,180,0.3)' }}>{account.type}</span>
+                  <span className="badge ml-2" style={{ background: 'rgba(0,113,227,0.12)', color: 'var(--brand-gold)', border: '1px solid rgba(0,113,227,0.3)' }}>{account.type}</span>
                 </div>
               </div>
             </div>
@@ -122,7 +122,7 @@ export default function AccountDetail() {
             </div>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-3 mt-6 pt-6" style={{ borderTop: '1px solid rgba(45,75,82,0.1)' }}>
+          <div className="grid md:grid-cols-3 gap-3 mt-6 pt-6" style={{ borderTop: '1px solid rgba(29,29,31,0.1)' }}>
             <div className="flex items-center gap-3 p-3 rounded-lg" style={{ background: 'var(--brand-cream2)' }}>
               <Hash size={16} style={{ color: 'var(--brand-gold)' }} />
               <div>
@@ -182,9 +182,9 @@ export default function AccountDetail() {
 
       {/* === PANEL EXTRACTOS BANCARIOS (integrado) === */}
       <div className="card overflow-hidden">
-        <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(45,75,82,0.1)', background: 'linear-gradient(135deg, var(--brand-cream2) 0%, #ffffff 100%)' }}>
+        <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(29,29,31,0.1)', background: 'linear-gradient(135deg, var(--brand-cream2) 0%, #ffffff 100%)' }}>
           <div>
-            <h2 className="text-base font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>
+            <h2 className="text-base font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}>
               <FileSpreadsheet size={16} style={{ color: 'var(--brand-gold)' }} /> Extractos bancarios de esta cuenta
             </h2>
             <p className="text-xs mt-0.5" style={{ color: 'var(--brand-teal2)' }}>
@@ -209,7 +209,7 @@ export default function AccountDetail() {
           <div className={cls(
             "px-5 py-3 flex items-start gap-2",
             uploadResult.ok ? "bg-emerald-50" : "bg-red-50"
-          )} style={{ borderBottom: '1px solid rgba(45,75,82,0.08)' }}>
+          )} style={{ borderBottom: '1px solid rgba(29,29,31,0.08)' }}>
             {uploadResult.ok ? (
               <CheckCircle2 size={16} className="text-emerald-600 flex-shrink-0 mt-0.5" />
             ) : (
@@ -225,7 +225,7 @@ export default function AccountDetail() {
         <div className="px-5 py-4">
           {!account.statements || account.statements.length === 0 ? (
             <div className="text-center py-6">
-              <FileText size={32} className="mx-auto mb-2" style={{ color: 'rgba(45,75,82,0.3)' }} />
+              <FileText size={32} className="mx-auto mb-2" style={{ color: 'rgba(29,29,31,0.3)' }} />
               <p className="text-sm font-medium mb-1" style={{ color: 'var(--brand-teal)' }}>Aún no has subido extractos para esta cuenta</p>
               <p className="text-xs" style={{ color: 'var(--brand-teal2)' }}>
                 Soporta CSV · Excel (.xlsx, .xls) · PDF. Compatible con Ocean Bank, Chase, BoA, Wells Fargo.
@@ -234,7 +234,7 @@ export default function AccountDetail() {
           ) : (
             <div className="grid md:grid-cols-2 gap-2">
               {account.statements.map((s: any) => (
-                <div key={s.id} className="p-3 rounded-lg flex items-center justify-between gap-3" style={{ background: 'var(--brand-cream2)', border: '1px solid rgba(45,75,82,0.08)' }}>
+                <div key={s.id} className="p-3 rounded-lg flex items-center justify-between gap-3" style={{ background: 'var(--brand-cream2)', border: '1px solid rgba(29,29,31,0.08)' }}>
                   <div className="flex items-center gap-2 min-w-0">
                     <FileSpreadsheet size={16} style={{ color: 'var(--brand-gold)' }} className="flex-shrink-0" />
                     <div className="min-w-0">
@@ -271,7 +271,7 @@ export default function AccountDetail() {
         {/* === Resumen de conciliación === */}
         {reconData && reconData.counts.totalLines > 0 && (
           <div className="px-5 pb-5">
-            <div className="rounded-xl p-4" style={{ background: 'var(--brand-cream2)', border: '1px solid rgba(45,75,82,0.08)' }}>
+            <div className="rounded-xl p-4" style={{ background: 'var(--brand-cream2)', border: '1px solid rgba(29,29,31,0.08)' }}>
               <div className="flex items-center gap-2 mb-3">
                 <Info size={15} style={{ color: 'var(--brand-gold)' }} />
                 <h3 className="text-sm font-bold" style={{ color: 'var(--brand-teal)' }}>Resumen de conciliación</h3>
@@ -324,7 +324,7 @@ export default function AccountDetail() {
 
       {/* === TABS: Movimientos / Comparativa === */}
       <div className="card overflow-hidden">
-        <div className="flex" style={{ borderBottom: '1px solid rgba(45,75,82,0.1)', background: 'var(--brand-cream2)' }}>
+        <div className="flex" style={{ borderBottom: '1px solid rgba(29,29,31,0.1)', background: 'var(--brand-cream2)' }}>
           <button
             onClick={() => setTab("movements")}
             className="px-5 py-3 text-sm font-bold transition-all"
@@ -356,7 +356,7 @@ export default function AccountDetail() {
         {tab === "movements" ? (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead style={{ background: 'rgba(45,75,82,0.04)' }}>
+              <thead style={{ background: 'rgba(29,29,31,0.04)' }}>
                 <tr className="text-xs uppercase tracking-wider" style={{ color: 'var(--brand-teal2)' }}>
                   <th className="px-4 py-3 text-left font-semibold">Fecha</th>
                   <th className="px-4 py-3 text-left font-semibold">Tipo</th>
@@ -384,7 +384,7 @@ export default function AccountDetail() {
                       const isMatched = m.matchStatus === "matched";
 
                       return (
-                        <tr key={`${m.id}-${m._isIncoming ? 'in' : 'out'}`} className="table-row" style={{ borderBottom: '1px solid rgba(45,75,82,0.06)' }}>
+                        <tr key={`${m.id}-${m._isIncoming ? 'in' : 'out'}`} className="table-row" style={{ borderBottom: '1px solid rgba(29,29,31,0.06)' }}>
                           <td className="px-4 py-3 text-xs font-mono whitespace-nowrap" style={{ color: 'var(--brand-teal2)' }}>
                             <div className="flex items-center gap-1">
                               <Calendar size={11} /> {dateShort(m.date)}
@@ -396,7 +396,7 @@ export default function AccountDetail() {
                               isIngreso && "bg-emerald-50 text-emerald-700 border-emerald-200",
                               isEgreso && "bg-red-50 text-red-700 border-red-200",
                               isTransfer && "border-amber-200",
-                            )} style={isTransfer ? { background: 'rgba(46,107,180,0.1)', color: 'var(--brand-gold)' } : {}}>
+                            )} style={isTransfer ? { background: 'rgba(0,113,227,0.1)', color: 'var(--brand-gold)' } : {}}>
                               <Icon size={10} className="mr-1" />
                               {m._isIncoming ? "Transf. recibida" : m.type === "Interbancario" ? "Transf. enviada" : m.type}
                             </span>
@@ -444,7 +444,7 @@ export default function AccountDetail() {
           // === TAB: Comparativa vs extracto ===
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead style={{ background: 'rgba(45,75,82,0.04)' }}>
+              <thead style={{ background: 'rgba(29,29,31,0.04)' }}>
                 <tr className="text-xs uppercase tracking-wider" style={{ color: 'var(--brand-teal2)' }}>
                   <th className="px-4 py-3 text-left font-semibold">Fecha</th>
                   <th className="px-4 py-3 text-left font-semibold">Descripción extracto</th>
@@ -472,7 +472,7 @@ export default function AccountDetail() {
                    }))]
                     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                     .map((l: any) => (
-                      <tr key={l.id} className="table-row" style={{ borderBottom: '1px solid rgba(45,75,82,0.06)' }}>
+                      <tr key={l.id} className="table-row" style={{ borderBottom: '1px solid rgba(29,29,31,0.06)' }}>
                         <td className="px-4 py-3 text-xs font-mono" style={{ color: 'var(--brand-teal2)' }}>{dateShort(l.date)}</td>
                         <td className="px-4 py-3" style={{ color: 'var(--brand-teal)' }}>{l.description}</td>
                         <td className="px-4 py-3 text-center">

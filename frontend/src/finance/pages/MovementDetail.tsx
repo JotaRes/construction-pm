@@ -390,7 +390,7 @@ export default function MovementDetail() {
         </div>
 
         {/* Flags / badges */}
-        <div className="mt-5 pt-4 flex items-center gap-2 flex-wrap" style={{ borderTop: '1px solid rgba(45,75,82,0.1)' }}>
+        <div className="mt-5 pt-4 flex items-center gap-2 flex-wrap" style={{ borderTop: '1px solid rgba(29,29,31,0.1)' }}>
           {m.isIntercompany && (
             <span className="badge bg-amber-50 text-amber-700 border border-amber-200 text-xs">
               <Link2 size={11} className="mr-1" /> Intercompany
@@ -430,7 +430,7 @@ export default function MovementDetail() {
       {/* === SOPORTES === */}
       <div className="card p-5">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-base font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>
+          <h2 className="text-base font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}>
             <FileText size={16} style={{ color: 'var(--brand-gold)' }} /> Soportes documentales
           </h2>
           <label className="btn-primary cursor-pointer text-xs">

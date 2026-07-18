@@ -196,18 +196,18 @@ export default function Movements() {
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm transition-all"
                 style={{
                   background: '#ffffff',
-                  border: '1.5px solid rgba(45,75,82,0.15)',
+                  border: '1.5px solid rgba(29,29,31,0.15)',
                   color: 'var(--brand-teal)',
                   outline: 'none',
-                  boxShadow: '0 1px 3px rgba(45,75,82,0.05)',
+                  boxShadow: '0 1px 3px rgba(29,29,31,0.05)',
                 }}
-                onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--brand-gold)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(46,107,180,0.15)'; }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(45,75,82,0.15)'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(45,75,82,0.05)'; }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--brand-gold)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(0,113,227,0.15)'; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(29,29,31,0.15)'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(29,29,31,0.05)'; }}
               />
             </div>
 
             {/* Chips de filtros rápidos: Tipo */}
-            <div className="flex items-center gap-1 p-1 rounded-xl" style={{ background: '#ffffff', border: '1px solid rgba(45,75,82,0.1)' }}>
+            <div className="flex items-center gap-1 p-1 rounded-xl" style={{ background: '#ffffff', border: '1px solid rgba(29,29,31,0.1)' }}>
               {[
                 { val: "", label: "Todos", icon: null },
                 { val: "Ingreso", label: "Ingreso", icon: ArrowDownLeft, color: '#059669' },
@@ -223,7 +223,7 @@ export default function Movements() {
                     className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-1.5 whitespace-nowrap"
                     style={
                       active
-                        ? { background: t.color || 'var(--brand-teal)', color: 'white', boxShadow: '0 2px 8px rgba(45,75,82,0.15)' }
+                        ? { background: t.color || 'var(--brand-teal)', color: 'white', boxShadow: '0 2px 8px rgba(29,29,31,0.15)' }
                         : { background: 'transparent', color: 'var(--brand-teal2)' }
                     }
                   >
@@ -241,7 +241,7 @@ export default function Movements() {
               style={
                 filtersOpen
                   ? { background: 'var(--brand-teal)', color: 'white' }
-                  : { background: '#ffffff', color: 'var(--brand-teal)', border: '1.5px solid rgba(45,75,82,0.15)' }
+                  : { background: '#ffffff', color: 'var(--brand-teal)', border: '1.5px solid rgba(29,29,31,0.15)' }
               }
             >
               <SlidersHorizontal size={14} />
@@ -269,7 +269,7 @@ export default function Movements() {
 
         {/* Filtros avanzados — colapsables */}
         {filtersOpen && (
-          <div className="p-4 grid md:grid-cols-2 lg:grid-cols-4 gap-3" style={{ borderTop: '1px solid rgba(45,75,82,0.08)', background: '#ffffff' }}>
+          <div className="p-4 grid md:grid-cols-2 lg:grid-cols-4 gap-3" style={{ borderTop: '1px solid rgba(29,29,31,0.08)', background: '#ffffff' }}>
             <FilterField icon={<Calendar size={13} />} label="Desde">
               <input
                 type="date"

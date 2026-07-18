@@ -108,7 +108,7 @@ export default function Accounts() {
       {/* Estado vacío */}
       {data.length === 0 && (
         <div className="card p-12 text-center">
-          <Building2 size={48} className="mx-auto mb-3" style={{ color: 'rgba(45,75,82,0.3)' }} />
+          <Building2 size={48} className="mx-auto mb-3" style={{ color: 'rgba(29,29,31,0.3)' }} />
           <h3 className="text-lg font-bold mb-2" style={{ color: 'var(--brand-teal)' }}>No hay cuentas bancarias registradas</h3>
           <p className="text-sm mb-4" style={{ color: 'var(--brand-teal2)' }}>Crea tu primera cuenta para comenzar a registrar movimientos.</p>
           <button onClick={() => setCreateOpen(true)} className="btn-primary mx-auto">
@@ -138,7 +138,7 @@ export default function Accounts() {
                   <div className="flex items-center gap-2 min-w-0">
                     <div
                       className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{ background: 'rgba(46,107,180,0.12)', color: 'var(--brand-gold)' }}
+                      style={{ background: 'rgba(0,113,227,0.12)', color: 'var(--brand-gold)' }}
                     >
                       <Building2 size={18} />
                     </div>
@@ -198,7 +198,7 @@ export default function Accounts() {
                     className="rounded-xl px-4 py-4 mb-3 transition-all hover:shadow-md cursor-pointer"
                     style={{
                       background: 'linear-gradient(135deg, var(--brand-cream2) 0%, #ffffff 100%)',
-                      border: '1px solid rgba(45,75,82,0.1)',
+                      border: '1px solid rgba(29,29,31,0.1)',
                     }}
                   >
                     <div className="text-[10px] uppercase tracking-wider font-semibold mb-1" style={{ color: 'var(--brand-teal2)' }}>Saldo actual</div>
@@ -229,7 +229,7 @@ export default function Accounts() {
 
                 {/* Detalles bancarios — claros y bien visibles */}
                 <div className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2 px-2 py-1.5 rounded" style={{ background: 'rgba(45,75,82,0.04)' }}>
+                  <div className="flex items-center gap-2 px-2 py-1.5 rounded" style={{ background: 'rgba(29,29,31,0.04)' }}>
                     <Hash size={13} style={{ color: 'var(--brand-gold)' }} className="flex-shrink-0" />
                     <span className="text-xs font-semibold min-w-[70px]" style={{ color: 'var(--brand-teal2)' }}># Cuenta</span>
                     {isEditing ? (
@@ -240,7 +240,7 @@ export default function Accounts() {
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 px-2 py-1.5 rounded" style={{ background: 'rgba(45,75,82,0.04)' }}>
+                  <div className="flex items-center gap-2 px-2 py-1.5 rounded" style={{ background: 'rgba(29,29,31,0.04)' }}>
                     <Hash size={13} style={{ color: 'var(--brand-gold)' }} className="flex-shrink-0" />
                     <span className="text-xs font-semibold min-w-[70px]" style={{ color: 'var(--brand-teal2)' }}>Routing</span>
                     {isEditing ? (
@@ -251,7 +251,7 @@ export default function Accounts() {
                       </span>
                     )}
                   </div>
-                  <div className="flex items-start gap-2 px-2 py-1.5 rounded" style={{ background: 'rgba(45,75,82,0.04)' }}>
+                  <div className="flex items-start gap-2 px-2 py-1.5 rounded" style={{ background: 'rgba(29,29,31,0.04)' }}>
                     <MapPin size={13} style={{ color: 'var(--brand-gold)' }} className="flex-shrink-0 mt-0.5" />
                     <span className="text-xs font-semibold min-w-[70px] mt-0.5" style={{ color: 'var(--brand-teal2)' }}>Dirección</span>
                     {isEditing ? (
@@ -265,7 +265,7 @@ export default function Accounts() {
                 </div>
 
                 {/* Footer */}
-                <div className="mt-3 pt-3 flex items-center justify-between text-[11px]" style={{ borderTop: '1px solid rgba(45,75,82,0.08)', color: 'var(--brand-teal2)' }}>
+                <div className="mt-3 pt-3 flex items-center justify-between text-[11px]" style={{ borderTop: '1px solid rgba(29,29,31,0.08)', color: 'var(--brand-teal2)' }}>
                   <span>{movCount} movimiento{movCount !== 1 ? "s" : ""}</span>
                   <Link to={`/finance/accounts/${a.id}`} className="font-semibold flex items-center gap-1 hover:underline" style={{ color: 'var(--brand-gold)' }}>
                     Ver movimientos <ChevronRight size={12} />
@@ -362,7 +362,7 @@ function CreateAccountModal({ open, onClose }: { open: boolean; onClose: () => v
           <label className="label">Notas</label>
           <textarea className="input w-full" rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
         </div>
-        <div className="md:col-span-2 flex justify-end gap-2 mt-2 pt-3" style={{ borderTop: '1px solid rgba(45,75,82,0.1)' }}>
+        <div className="md:col-span-2 flex justify-end gap-2 mt-2 pt-3" style={{ borderTop: '1px solid rgba(29,29,31,0.1)' }}>
           <button type="button" className="btn-secondary" onClick={onClose}>Cancelar</button>
           <button type="submit" className="btn-primary" disabled={mut.isPending}>{mut.isPending ? "Creando…" : "Crear cuenta"}</button>
         </div>

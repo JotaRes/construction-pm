@@ -296,7 +296,7 @@ export default function Files({ projectId }: { projectId: string }) {
       />
 
       {/* ── Smart PDF Upload ─────────────────────────────────── */}
-      <div className="bg-white rounded-xl border border-[#2E6BB4]/40 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-[#0071E3]/40 shadow-sm overflow-hidden">
         <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2">
           <Upload className="w-4 h-4 text-[var(--brand-gold)]" />
           <span className="text-sm font-semibold text-slate-800">Cargar documento y extraer datos</span>
@@ -322,7 +322,7 @@ export default function Files({ projectId }: { projectId: string }) {
           </div>
 
           <button onClick={handleExtract} disabled={!uploadFile || extracting}
-            className="flex items-center gap-2 bg-[var(--brand-gold)] hover:bg-[#4A86CF] disabled:opacity-40 text-white text-sm font-semibold px-5 py-2 rounded-lg transition-colors">
+            className="flex items-center gap-2 bg-[var(--brand-gold)] hover:bg-[#0077ED] disabled:opacity-40 text-white text-sm font-semibold px-5 py-2 rounded-lg transition-colors">
             {extracting ? (
               <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Extrayendo datos...</>
             ) : (
@@ -386,7 +386,7 @@ export default function Files({ projectId }: { projectId: string }) {
                     </span>
                   )}
                   <button onClick={handleApply} disabled={applying}
-                    className="flex items-center gap-2 bg-[var(--brand-teal)] hover:bg-[#3A5F68] disabled:opacity-40 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors">
+                    className="flex items-center gap-2 bg-[var(--brand-teal)] hover:bg-[#48484A] disabled:opacity-40 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors">
                     {applying ? 'Aplicando...' : '↺ Re-aplicar'}
                   </button>
                 </div>
@@ -410,7 +410,7 @@ export default function Files({ projectId }: { projectId: string }) {
           </select>
         </div>
         <button onClick={() => name && url && createMut.mutate()} disabled={!name || !url}
-          className="flex items-center gap-2 bg-[var(--brand-teal)] hover:bg-[#3A5F68] disabled:opacity-40 text-white text-sm px-4 py-2 rounded-lg transition-colors">
+          className="flex items-center gap-2 bg-[var(--brand-teal)] hover:bg-[#48484A] disabled:opacity-40 text-white text-sm px-4 py-2 rounded-lg transition-colors">
           <Plus className="w-4 h-4" /> Agregar referencia
         </button>
       </div>

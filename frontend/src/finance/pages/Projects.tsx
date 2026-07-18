@@ -38,7 +38,7 @@ export default function Projects() {
 
       {projects.length === 0 ? (
         <div className="card p-12 text-center">
-          <Briefcase size={48} className="mx-auto mb-3" style={{ color: 'rgba(45,75,82,0.3)' }} />
+          <Briefcase size={48} className="mx-auto mb-3" style={{ color: 'rgba(29,29,31,0.3)' }} />
           <h3 className="text-lg font-bold mb-2" style={{ color: 'var(--brand-teal)' }}>Aún no hay proyectos</h3>
           <p className="text-sm mb-4" style={{ color: 'var(--brand-teal2)' }}>Crea tu primer proyecto para comenzar.</p>
           <button onClick={() => setOpen(true)} className="btn-primary mx-auto">
@@ -71,7 +71,7 @@ export default function Projects() {
                     <div className="flex items-center gap-2 min-w-0">
                       <div
                         className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                        style={{ background: 'rgba(46,107,180,0.12)', color: 'var(--brand-gold)' }}
+                        style={{ background: 'rgba(0,113,227,0.12)', color: 'var(--brand-gold)' }}
                       >
                         <Briefcase size={16} />
                       </div>
@@ -85,9 +85,9 @@ export default function Projects() {
 
                   {/* SPV + Línea + Modelo */}
                   <div className="flex flex-wrap gap-1 mb-3 text-xs">
-                    {p.spv?.code && <span className="px-2 py-0.5 rounded font-mono" style={{ background: 'rgba(45,75,82,0.08)', color: 'var(--brand-teal)' }}>{p.spv.code}</span>}
-                    {p.line && <span className="px-2 py-0.5 rounded" style={{ background: 'rgba(46,107,180,0.1)', color: 'var(--brand-gold)' }}>{p.line}</span>}
-                    {p.model && <span className="px-2 py-0.5 rounded" style={{ background: 'rgba(45,75,82,0.04)', color: 'var(--brand-teal2)' }}>{p.model}</span>}
+                    {p.spv?.code && <span className="px-2 py-0.5 rounded font-mono" style={{ background: 'rgba(29,29,31,0.08)', color: 'var(--brand-teal)' }}>{p.spv.code}</span>}
+                    {p.line && <span className="px-2 py-0.5 rounded" style={{ background: 'rgba(0,113,227,0.1)', color: 'var(--brand-gold)' }}>{p.line}</span>}
+                    {p.model && <span className="px-2 py-0.5 rounded" style={{ background: 'rgba(29,29,31,0.04)', color: 'var(--brand-teal2)' }}>{p.model}</span>}
                   </div>
 
                   {p.address && (
@@ -121,7 +121,7 @@ export default function Projects() {
                   </div>
 
                   {/* Footer */}
-                  <div className="flex items-center justify-between pt-3" style={{ borderTop: '1px solid rgba(45,75,82,0.08)' }}>
+                  <div className="flex items-center justify-between pt-3" style={{ borderTop: '1px solid rgba(29,29,31,0.08)' }}>
                     <div className="flex items-center gap-3 text-[11px]" style={{ color: 'var(--brand-teal2)' }}>
                       <span>{p._count?.movements || 0} movs</span>
                       <span>{p._count?.loans || 0} loans</span>
@@ -238,7 +238,7 @@ function ProjectModal({ open, onClose, catalogs }: { open: boolean; onClose: () 
           <label className="label">Costo esperado USD</label>
           <input type="number" step="0.01" className="input w-full" value={form.expectedCost} onChange={(e) => setForm({ ...form, expectedCost: +e.target.value })} />
         </div>
-        <div className="md:col-span-2 flex justify-end gap-2 pt-3" style={{ borderTop: '1px solid rgba(45,75,82,0.1)' }}>
+        <div className="md:col-span-2 flex justify-end gap-2 pt-3" style={{ borderTop: '1px solid rgba(29,29,31,0.1)' }}>
           <button type="button" className="btn-secondary" onClick={onClose}>Cancelar</button>
           <button type="submit" className="btn-primary" disabled={mut.isPending}>{mut.isPending ? "Creando…" : "Crear proyecto"}</button>
         </div>

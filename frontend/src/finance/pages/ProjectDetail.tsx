@@ -62,26 +62,26 @@ export default function ProjectDetail() {
             <div className="flex items-start gap-4">
               <div
                 className="w-14 h-14 rounded-xl flex items-center justify-center"
-                style={{ background: 'rgba(46,107,180,0.12)', color: 'var(--brand-gold)' }}
+                style={{ background: 'rgba(0,113,227,0.12)', color: 'var(--brand-gold)' }}
               >
                 <Briefcase size={28} />
               </div>
               <div>
                 <div className="text-xs font-mono uppercase tracking-wider mb-1" style={{ color: 'var(--brand-teal2)' }}>{p.code}</div>
-                <h1 className="text-3xl font-bold" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>{p.name}</h1>
+                <h1 className="text-3xl font-bold" style={{ color: 'var(--brand-teal)' }}>{p.name}</h1>
                 <div className="flex items-center gap-2 flex-wrap text-sm mt-2">
                   {full.spv?.name && (
-                    <span className="px-2 py-1 rounded font-mono text-xs" style={{ background: 'rgba(45,75,82,0.08)', color: 'var(--brand-teal)' }}>
+                    <span className="px-2 py-1 rounded font-mono text-xs" style={{ background: 'rgba(29,29,31,0.08)', color: 'var(--brand-teal)' }}>
                       <Layers size={12} className="inline mr-1" /> {full.spv.name}
                     </span>
                   )}
                   {p.line && (
-                    <span className="px-2 py-1 rounded text-xs" style={{ background: 'rgba(46,107,180,0.1)', color: 'var(--brand-gold)' }}>
+                    <span className="px-2 py-1 rounded text-xs" style={{ background: 'rgba(0,113,227,0.1)', color: 'var(--brand-gold)' }}>
                       {p.line}
                     </span>
                   )}
                   {p.model && (
-                    <span className="px-2 py-1 rounded text-xs" style={{ background: 'rgba(45,75,82,0.04)', color: 'var(--brand-teal2)' }}>
+                    <span className="px-2 py-1 rounded text-xs" style={{ background: 'rgba(29,29,31,0.04)', color: 'var(--brand-teal2)' }}>
                       {p.model}
                     </span>
                   )}
@@ -161,7 +161,7 @@ export default function ProjectDetail() {
 
       {/* === ANÁLISIS PROYECTADO: VENTA VS COSTO === */}
       <div className="card p-5">
-        <h2 className="text-base font-bold mb-4 flex items-center gap-2" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>
+        <h2 className="text-base font-bold mb-4 flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}>
           <Target size={16} style={{ color: 'var(--brand-gold)' }} /> Proyección venta vs. costo
         </h2>
         <div className="grid md:grid-cols-3 gap-4">
@@ -177,7 +177,7 @@ export default function ProjectDetail() {
               {pct(pctEjecutado)} del esperado ({usd(p.expectedCost, { compact: true })})
             </div>
             {/* Barra de progreso */}
-            <div className="mt-2 h-2 rounded-full overflow-hidden" style={{ background: 'rgba(45,75,82,0.1)' }}>
+            <div className="mt-2 h-2 rounded-full overflow-hidden" style={{ background: 'rgba(29,29,31,0.1)' }}>
               <div
                 className={cls(
                   "h-full transition-all",
@@ -249,8 +249,8 @@ export default function ProjectDetail() {
 
       {/* === MOVIMIENTOS ASOCIADOS === */}
       <div className="card overflow-hidden">
-        <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(45,75,82,0.1)', background: 'var(--brand-cream2)' }}>
-          <h2 className="text-base font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>
+        <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(29,29,31,0.1)', background: 'var(--brand-cream2)' }}>
+          <h2 className="text-base font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}>
             <Activity size={16} style={{ color: 'var(--brand-gold)' }} /> Movimientos del proyecto
           </h2>
           <span className="text-xs font-semibold" style={{ color: 'var(--brand-teal2)' }}>
@@ -259,7 +259,7 @@ export default function ProjectDetail() {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead style={{ background: 'rgba(45,75,82,0.04)' }}>
+            <thead style={{ background: 'rgba(29,29,31,0.04)' }}>
               <tr className="text-xs uppercase tracking-wider" style={{ color: 'var(--brand-teal2)' }}>
                 <th className="px-4 py-3 text-left font-semibold">Fecha</th>
                 <th className="px-4 py-3 text-left font-semibold">Tipo</th>
@@ -275,7 +275,7 @@ export default function ProjectDetail() {
                   Sin movimientos asociados a este proyecto todavía.
                 </td></tr>
               ) : full.movements.map((m: any) => (
-                <tr key={m.id} className="table-row" style={{ borderBottom: '1px solid rgba(45,75,82,0.06)' }}>
+                <tr key={m.id} className="table-row" style={{ borderBottom: '1px solid rgba(29,29,31,0.06)' }}>
                   <td className="px-4 py-3 text-xs font-mono whitespace-nowrap" style={{ color: 'var(--brand-teal2)' }}>
                     <Calendar size={11} className="inline mr-1" /> {dateShort(m.date)}
                   </td>
@@ -308,7 +308,7 @@ export default function ProjectDetail() {
       {/* === CAPITAL Y DEUDA === */}
       <div className="grid lg:grid-cols-2 gap-4">
         <div className="card p-5">
-          <h2 className="text-base font-bold mb-3 flex items-center gap-2" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>
+          <h2 className="text-base font-bold mb-3 flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}>
             <Wallet size={16} style={{ color: 'var(--brand-gold)' }} /> Equity inyectado
           </h2>
           {data.capitalContribs.length === 0 ? (
@@ -331,7 +331,7 @@ export default function ProjectDetail() {
         </div>
 
         <div className="card p-5">
-          <h2 className="text-base font-bold mb-3 flex items-center gap-2" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>
+          <h2 className="text-base font-bold mb-3 flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}>
             <Banknote size={16} style={{ color: 'var(--brand-gold)' }} /> Préstamos asociados
           </h2>
           {data.loans.length === 0 ? (
@@ -364,7 +364,7 @@ export default function ProjectDetail() {
       {/* === DOCUMENTOS === */}
       <div className="card p-5">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-base font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>
+          <h2 className="text-base font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}>
             <FileText size={16} style={{ color: 'var(--brand-gold)' }} /> Documentos
           </h2>
           <label className="btn-primary cursor-pointer text-xs">

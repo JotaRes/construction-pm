@@ -25,7 +25,7 @@ export default function CashflowDashboard() {
     <div className="space-y-5">
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: "var(--brand-teal)", fontFamily: "Georgia, serif" }}>
+          <h1 className="text-2xl font-bold" style={{ color: "var(--brand-teal)" }}>
             Flujo de Caja Consolidado
           </h1>
           <p className="text-sm mt-1" style={{ color: "var(--brand-teal2)" }}>

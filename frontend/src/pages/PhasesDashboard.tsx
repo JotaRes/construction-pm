@@ -13,7 +13,7 @@ const fmtDate = (d: string | null) =>
 // diferencia con el badge, no con el color de la barra.
 function statusStyle(s: PhaseSummary['status']) {
   if (s === 'COMPLETA') return { bar: 'bg-emerald-500', badge: 'bg-emerald-500/15 text-emerald-600', label: 'Completa' }
-  if (s === 'EN_CURSO') return { bar: 'bg-emerald-500', badge: 'bg-[#2E6BB4]/15 text-[var(--brand-gold)]', label: 'En curso' }
+  if (s === 'EN_CURSO') return { bar: 'bg-emerald-500', badge: 'bg-[#0071E3]/15 text-[var(--brand-gold)]', label: 'En curso' }
   return { bar: 'bg-slate-300', badge: 'bg-slate-100 text-slate-500', label: 'Pendiente' }
 }
 

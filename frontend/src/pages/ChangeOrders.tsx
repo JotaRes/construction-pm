@@ -185,7 +185,7 @@ export default function ChangeOrders({ projectId }: { projectId: string }) {
           <p className="text-sm text-slate-500 mt-0.5">Control formal de cambios de alcance: costo, días y aprobación</p>
         </div>
         <button onClick={() => setShowForm(s => !s)}
-          className="flex items-center gap-2 px-4 py-2 bg-[var(--brand-gold)] hover:bg-[#4A86CF] text-white text-sm font-semibold rounded-lg">
+          className="flex items-center gap-2 px-4 py-2 bg-[var(--brand-gold)] hover:bg-[#0077ED] text-white text-sm font-semibold rounded-lg">
           <Plus className="w-4 h-4" /> Nuevo change order
         </button>
       </div>

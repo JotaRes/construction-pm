@@ -93,7 +93,7 @@ export default function Dashboard() {
                   className="rounded-xl p-3 transition-all hover:shadow-md"
                   style={{
                     background: 'var(--brand-cream2)',
-                    border: '1px solid rgba(45,75,82,0.1)',
+                    border: '1px solid rgba(29,29,31,0.1)',
                   }}
                 >
                   <div className="flex items-start justify-between mb-2 gap-2">
@@ -102,9 +102,9 @@ export default function Dashboard() {
                       <div className="text-[10px] font-mono uppercase tracking-wide" style={{ color: 'var(--brand-teal2)' }}>{a.bank}</div>
                     </div>
                     <span className="badge" style={{
-                      background: 'rgba(46,107,180,0.12)',
+                      background: 'rgba(0,113,227,0.12)',
                       color: 'var(--accent)',
-                      border: '1px solid rgba(46,107,180,0.3)',
+                      border: '1px solid rgba(0,113,227,0.3)',
                     }}>{a.type}</span>
                   </div>
                   <div className={cls(
@@ -121,7 +121,7 @@ export default function Dashboard() {
               ))}
             </div>
             {/* Totales */}
-            <div className="grid grid-cols-3 gap-3 pt-4" style={{ borderTop: '1px solid rgba(45,75,82,0.1)' }}>
+            <div className="grid grid-cols-3 gap-3 pt-4" style={{ borderTop: '1px solid rgba(29,29,31,0.1)' }}>
               <div className="text-center">
                 <div className="text-[10px] uppercase tracking-wider font-semibold mb-1" style={{ color: 'var(--brand-teal2)' }}>Ingresos totales</div>
                 <div className="text-lg font-bold font-mono text-emerald-600">{usd(k.totalIngresos ?? 0, { compact: true })}</div>
@@ -173,11 +173,11 @@ export default function Dashboard() {
                     <stop offset="100%" stopColor="var(--accent)" stopOpacity={0.02} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(45,75,82,0.1)" />
-                <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#3A5F68" }} interval={9} />
-                <YAxis tick={{ fontSize: 10, fill: "#3A5F68" }} tickFormatter={(v) => usd(v, { compact: true })} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(29,29,31,0.1)" />
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#48484A" }} interval={9} />
+                <YAxis tick={{ fontSize: 10, fill: "#48484A" }} tickFormatter={(v) => usd(v, { compact: true })} />
                 <Tooltip
-                  contentStyle={{ background: "#fff", border: "1px solid rgba(45,75,82,0.15)", borderRadius: 8 }}
+                  contentStyle={{ background: "#fff", border: "1px solid rgba(29,29,31,0.15)", borderRadius: 8 }}
                   formatter={(v: any) => usd(v as number)}
                   labelFormatter={(d) => `📅 ${d}`}
                 />
@@ -303,7 +303,7 @@ export default function Dashboard() {
                       <Link to={`/finance/projects/${p.id}`} className="font-medium hover:underline" style={{ color: 'var(--brand-teal)' }}>{p.name}</Link>
                     </td>
                     <td className="py-2 px-2 text-xs" style={{ color: 'var(--brand-teal2)' }}>{p.line || "—"}</td>
-                    <td className="py-2 px-2"><span className="badge" style={{ background: 'rgba(45,75,82,0.08)', color: 'var(--brand-teal)' }}>{p.status}</span></td>
+                    <td className="py-2 px-2"><span className="badge" style={{ background: 'rgba(29,29,31,0.08)', color: 'var(--brand-teal)' }}>{p.status}</span></td>
                     <td className="py-2 px-2 text-right text-emerald-600 font-mono">{usd(p.ingresos, { compact: true })}</td>
                     <td className="py-2 px-2 text-right text-red-600 font-mono">{usd(p.egresos, { compact: true })}</td>
                     <td className={cls("py-2 px-2 text-right font-mono font-semibold", p.neto >= 0 ? "text-emerald-600" : "text-red-600")}>{usd(p.neto, { compact: true })}</td>
@@ -323,7 +323,7 @@ export default function Dashboard() {
             <>
               <div className="space-y-2">
                 {data.equityByPartner.map((p: any) => (
-                  <div key={p.code} className="rounded-lg p-3" style={{ background: 'var(--brand-cream2)', border: '1px solid rgba(45,75,82,0.08)' }}>
+                  <div key={p.code} className="rounded-lg p-3" style={{ background: 'var(--brand-cream2)', border: '1px solid rgba(29,29,31,0.08)' }}>
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium" style={{ color: 'var(--brand-teal)' }}>{p.name}</span>
                       <span className="font-mono font-semibold text-emerald-600">{usd(p.total, { compact: true })}</span>
@@ -341,7 +341,7 @@ export default function Dashboard() {
                       {equityVsDebt.map((_, i) => <Cell key={i} fill={i === 0 ? "var(--ok)" : "var(--err)"} />)}
                     </Pie>
                     <Legend wrapperStyle={{ fontSize: 11 }} />
-                    <Tooltip contentStyle={{ background: "#fff", border: "1px solid rgba(45,75,82,0.15)", borderRadius: 8 }} formatter={(v: any) => usd(v as number)} />
+                    <Tooltip contentStyle={{ background: "#fff", border: "1px solid rgba(29,29,31,0.15)", borderRadius: 8 }} formatter={(v: any) => usd(v as number)} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -361,7 +361,7 @@ export default function Dashboard() {
                   {corpVsProject.map((_, i) => <Cell key={i} fill={COLORS[i]} />)}
                 </Pie>
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Tooltip contentStyle={{ background: "#fff", border: "1px solid rgba(45,75,82,0.15)", borderRadius: 8 }} formatter={(v: any) => usd(v as number)} />
+                <Tooltip contentStyle={{ background: "#fff", border: "1px solid rgba(29,29,31,0.15)", borderRadius: 8 }} formatter={(v: any) => usd(v as number)} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -372,9 +372,9 @@ export default function Dashboard() {
           <div className="h-56">
             <ResponsiveContainer>
               <BarChart data={data.topCategories.slice(0, 8)} layout="vertical" margin={{ left: 80 }}>
-                <XAxis type="number" tick={{ fontSize: 10, fill: "#3A5F68" }} tickFormatter={(v) => usd(v, { compact: true })} />
+                <XAxis type="number" tick={{ fontSize: 10, fill: "#48484A" }} tickFormatter={(v) => usd(v, { compact: true })} />
                 <YAxis dataKey="name" type="category" tick={{ fontSize: 10, fill: "var(--inf)" }} width={140} />
-                <Tooltip contentStyle={{ background: "#fff", border: "1px solid rgba(45,75,82,0.15)", borderRadius: 8 }} formatter={(v: any) => usd(v as number)} />
+                <Tooltip contentStyle={{ background: "#fff", border: "1px solid rgba(29,29,31,0.15)", borderRadius: 8 }} formatter={(v: any) => usd(v as number)} />
                 <Bar dataKey="amount" fill="var(--accent)" />
               </BarChart>
             </ResponsiveContainer>
@@ -389,8 +389,8 @@ export default function Dashboard() {
           <ResponsiveContainer>
             <BarChart data={data.byLine}>
               <XAxis dataKey="line" tick={{ fontSize: 11, fill: "var(--inf)" }} />
-              <YAxis tick={{ fontSize: 10, fill: "#3A5F68" }} tickFormatter={(v) => usd(v, { compact: true })} />
-              <Tooltip contentStyle={{ background: "#fff", border: "1px solid rgba(45,75,82,0.15)", borderRadius: 8 }} formatter={(v: any) => usd(v as number)} />
+              <YAxis tick={{ fontSize: 10, fill: "#48484A" }} tickFormatter={(v) => usd(v, { compact: true })} />
+              <Tooltip contentStyle={{ background: "#fff", border: "1px solid rgba(29,29,31,0.15)", borderRadius: 8 }} formatter={(v: any) => usd(v as number)} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
               <Bar dataKey="ingresos" fill="var(--ok)" name="Ingresos" />
               <Bar dataKey="egresos" fill="var(--err)" name="Egresos" />

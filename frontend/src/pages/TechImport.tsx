@@ -46,24 +46,24 @@ export default function TechImport() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>Importar / Backup — Módulo Técnico</h1>
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--brand-teal)' }}>Importar / Backup — Módulo Técnico</h1>
         <p className="text-sm mt-1" style={{ color: 'var(--brand-teal2)' }}>
           Exporta proyectos, fases, ítems, draws, providers, notes, files y inspecciones · Restaura desde backup · Reset completo
         </p>
       </div>
 
       {/* EXPORTAR */}
-      <div className="bg-white rounded-2xl p-5" style={{ border: '1px solid rgba(45,75,82,0.1)', boxShadow: '0 1px 4px rgba(45,75,82,0.06)' }}>
+      <div className="bg-white rounded-2xl p-5" style={{ border: '1px solid rgba(29,29,31,0.1)', boxShadow: '0 1px 4px rgba(29,29,31,0.06)' }}>
         <div className="flex items-center gap-2 mb-3">
           <Download size={18} style={{ color: 'var(--brand-gold)' }} />
-          <h2 className="text-base font-bold" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>Exportar datos</h2>
+          <h2 className="text-base font-bold" style={{ color: 'var(--brand-teal)' }}>Exportar datos</h2>
         </div>
         <p className="text-sm mb-4" style={{ color: 'var(--brand-teal2)' }}>
           Descarga toda la información del módulo técnico. Ambos formatos son <strong>re-importables</strong>: si reseteas o pierdes datos, puedes cargarlos de vuelta y recuperar el estado exacto.
         </p>
 
         <div className="grid md:grid-cols-2 gap-3">
-          <div className="rounded-xl p-4 transition-all hover:shadow-md" style={{ background: 'var(--brand-cream2)', border: '1px solid rgba(45,75,82,0.08)' }}>
+          <div className="rounded-xl p-4 transition-all hover:shadow-md" style={{ background: 'var(--brand-cream2)', border: '1px solid rgba(29,29,31,0.08)' }}>
             <div className="flex items-start gap-3 mb-3">
               <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(16,185,129,0.12)', color: '#059669' }}>
                 <FileSpreadsheet size={20} />
@@ -84,9 +84,9 @@ export default function TechImport() {
             </button>
           </div>
 
-          <div className="rounded-xl p-4 transition-all hover:shadow-md" style={{ background: 'var(--brand-cream2)', border: '1px solid rgba(45,75,82,0.08)' }}>
+          <div className="rounded-xl p-4 transition-all hover:shadow-md" style={{ background: 'var(--brand-cream2)', border: '1px solid rgba(29,29,31,0.08)' }}>
             <div className="flex items-start gap-3 mb-3">
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(46,107,180,0.12)', color: 'var(--brand-gold)' }}>
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(0,113,227,0.12)', color: 'var(--brand-gold)' }}>
                 <Archive size={20} />
               </div>
               <div>
@@ -108,10 +108,10 @@ export default function TechImport() {
       </div>
 
       {/* RESTAURAR */}
-      <div className="bg-white rounded-2xl p-5" style={{ border: '1px solid rgba(45,75,82,0.1)', boxShadow: '0 1px 4px rgba(45,75,82,0.06)' }}>
+      <div className="bg-white rounded-2xl p-5" style={{ border: '1px solid rgba(29,29,31,0.1)', boxShadow: '0 1px 4px rgba(29,29,31,0.06)' }}>
         <div className="flex items-center gap-2 mb-3">
           <RefreshCw size={18} style={{ color: 'var(--brand-gold)' }} />
-          <h2 className="text-base font-bold" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>Restaurar desde backup</h2>
+          <h2 className="text-base font-bold" style={{ color: 'var(--brand-teal)' }}>Restaurar desde backup</h2>
         </div>
         <p className="text-sm mb-3" style={{ color: 'var(--brand-teal2)' }}>
           Carga un backup ZIP o el JSON técnico para restaurar tus proyectos al estado exacto cuando lo descargaste.
@@ -130,7 +130,7 @@ export default function TechImport() {
       <div className="bg-white rounded-2xl p-5" style={{ borderColor: 'rgba(220,38,38,0.3)', borderWidth: 2 }}>
         <div className="flex items-center gap-2 mb-2">
           <ShieldAlert size={18} className="text-red-600" />
-          <h2 className="text-base font-bold text-red-600" style={{ fontFamily: 'Georgia, serif' }}>Zona peligrosa: Reset completo del módulo técnico</h2>
+          <h2 className="text-base font-bold text-red-600">Zona peligrosa: Reset completo del módulo técnico</h2>
         </div>
         <p className="text-sm mb-4" style={{ color: 'var(--brand-teal2)' }}>
           Borra <strong>TODOS</strong> los datos del módulo técnico: proyectos, fases, ítems, draws, providers, notas, archivos, inspecciones. <strong className="text-red-600">No se puede deshacer.</strong>
@@ -181,8 +181,8 @@ function ResetPasswordModal({ open, onClose, onConfirm, isPending }: { open: boo
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={handleClose}>
       <div className="bg-white rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom: '1px solid rgba(45,75,82,0.1)', background: 'var(--brand-cream2)' }}>
-          <h3 className="text-base font-bold text-red-600" style={{ fontFamily: 'Georgia, serif' }}>⚠ Confirmar reset técnico</h3>
+        <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom: '1px solid rgba(29,29,31,0.1)', background: 'var(--brand-cream2)' }}>
+          <h3 className="text-base font-bold text-red-600">⚠ Confirmar reset técnico</h3>
           <button onClick={handleClose} className="p-1 rounded-lg hover:bg-stone-100"><X size={18} /></button>
         </div>
         <div className="p-5 space-y-4">
@@ -205,15 +205,15 @@ function ResetPasswordModal({ open, onClose, onConfirm, isPending }: { open: boo
                 <input
                   type="password" autoFocus
                   className="w-full px-3 py-2 rounded-lg text-sm border"
-                  style={{ borderColor: 'rgba(45,75,82,0.2)' }}
+                  style={{ borderColor: 'rgba(29,29,31,0.2)' }}
                   value={pwd}
                   onChange={(e) => setPwd(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter' && pwd) setStep(2) }}
                   placeholder="••••••••"
                 />
               </div>
-              <div className="flex justify-end gap-2 pt-3" style={{ borderTop: '1px solid rgba(45,75,82,0.1)' }}>
-                <button onClick={handleClose} className="px-3 py-1.5 rounded-lg text-sm border" style={{ borderColor: 'rgba(45,75,82,0.2)' }}>Cancelar</button>
+              <div className="flex justify-end gap-2 pt-3" style={{ borderTop: '1px solid rgba(29,29,31,0.1)' }}>
+                <button onClick={handleClose} className="px-3 py-1.5 rounded-lg text-sm border" style={{ borderColor: 'rgba(29,29,31,0.2)' }}>Cancelar</button>
                 <button onClick={() => setStep(2)} disabled={!pwd} className="px-3 py-1.5 rounded-lg text-sm font-semibold text-white bg-red-600 disabled:opacity-50">Continuar</button>
               </div>
             </>
@@ -225,8 +225,8 @@ function ResetPasswordModal({ open, onClose, onConfirm, isPending }: { open: boo
                   <strong>Última confirmación:</strong> ¿Estás 100% seguro? Esta es tu última oportunidad para cancelar.
                 </div>
               </div>
-              <div className="flex justify-end gap-2 pt-3" style={{ borderTop: '1px solid rgba(45,75,82,0.1)' }}>
-                <button onClick={handleClose} className="px-3 py-1.5 rounded-lg text-sm border" style={{ borderColor: 'rgba(45,75,82,0.2)' }}>Cancelar</button>
+              <div className="flex justify-end gap-2 pt-3" style={{ borderTop: '1px solid rgba(29,29,31,0.1)' }}>
+                <button onClick={handleClose} className="px-3 py-1.5 rounded-lg text-sm border" style={{ borderColor: 'rgba(29,29,31,0.2)' }}>Cancelar</button>
                 <button onClick={() => onConfirm(pwd)} disabled={isPending} className="px-3 py-1.5 rounded-lg text-sm font-semibold text-white bg-red-600">
                   {isPending ? 'Borrando…' : 'Sí, BORRAR TODO ahora'}
                 </button>
@@ -249,12 +249,12 @@ function RestoreModal({ open, onClose, file, setFile, fileRef, onConfirm, isPend
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={handleClose}>
       <div className="bg-white rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom: '1px solid rgba(45,75,82,0.1)', background: 'var(--brand-cream2)' }}>
-          <h3 className="text-base font-bold" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>Restaurar módulo técnico</h3>
+        <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom: '1px solid rgba(29,29,31,0.1)', background: 'var(--brand-cream2)' }}>
+          <h3 className="text-base font-bold" style={{ color: 'var(--brand-teal)' }}>Restaurar módulo técnico</h3>
           <button onClick={handleClose} className="p-1 rounded-lg hover:bg-stone-100"><X size={18} /></button>
         </div>
         <div className="p-5 space-y-4">
-          <div className="flex items-start gap-2 p-3 rounded-lg" style={{ background: 'rgba(46,107,180,0.08)', border: '1px solid rgba(46,107,180,0.25)' }}>
+          <div className="flex items-start gap-2 p-3 rounded-lg" style={{ background: 'rgba(0,113,227,0.08)', border: '1px solid rgba(0,113,227,0.25)' }}>
             <AlertTriangle size={16} style={{ color: 'var(--brand-gold)' }} className="flex-shrink-0 mt-0.5" />
             <div className="text-sm" style={{ color: 'var(--brand-teal)' }}>
               <strong>El restore BORRA todos los datos técnicos actuales</strong> antes de cargar el backup. Descarga un backup ZIP del estado actual primero (por si quieres deshacer).
@@ -266,7 +266,7 @@ function RestoreModal({ open, onClose, file, setFile, fileRef, onConfirm, isPend
             <input ref={fileRef} type="file" accept=".json,.zip,.xlsx" className="hidden" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
             <button type="button" onClick={() => fileRef.current?.click()}
               className="w-full px-3 py-3 rounded-lg flex items-center gap-2 transition-all"
-              style={{ background: file ? 'rgba(16,185,129,0.08)' : 'var(--brand-cream2)', border: `1.5px solid ${file ? 'rgba(16,185,129,0.3)' : 'rgba(45,75,82,0.15)'}` }}>
+              style={{ background: file ? 'rgba(16,185,129,0.08)' : 'var(--brand-cream2)', border: `1.5px solid ${file ? 'rgba(16,185,129,0.3)' : 'rgba(29,29,31,0.15)'}` }}>
               {file ? (
                 <>
                   <CheckCircle2 size={16} className="text-emerald-600" />
@@ -285,14 +285,14 @@ function RestoreModal({ open, onClose, file, setFile, fileRef, onConfirm, isPend
           <div>
             <label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'var(--brand-teal)' }}><Lock size={12} /> Contraseña</label>
             <input type="password" className="w-full px-3 py-2 rounded-lg text-sm border"
-              style={{ borderColor: 'rgba(45,75,82,0.2)' }}
+              style={{ borderColor: 'rgba(29,29,31,0.2)' }}
               value={pwd} onChange={(e) => setPwd(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter' && file && pwd) onConfirm(pwd) }}
               placeholder="••••••••" />
           </div>
 
-          <div className="flex justify-end gap-2 pt-3" style={{ borderTop: '1px solid rgba(45,75,82,0.1)' }}>
-            <button onClick={handleClose} className="px-3 py-1.5 rounded-lg text-sm border" style={{ borderColor: 'rgba(45,75,82,0.2)' }}>Cancelar</button>
+          <div className="flex justify-end gap-2 pt-3" style={{ borderTop: '1px solid rgba(29,29,31,0.1)' }}>
+            <button onClick={handleClose} className="px-3 py-1.5 rounded-lg text-sm border" style={{ borderColor: 'rgba(29,29,31,0.2)' }}>Cancelar</button>
             <button onClick={() => onConfirm(pwd)} disabled={!file || !pwd || isPending}
               className="px-3 py-1.5 rounded-lg text-sm font-semibold text-white disabled:opacity-50"
               style={{ background: 'linear-gradient(135deg, var(--brand-gold) 0%, var(--brand-gold2) 100%)' }}>

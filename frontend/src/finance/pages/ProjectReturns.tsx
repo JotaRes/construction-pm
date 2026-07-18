@@ -18,7 +18,7 @@ export default function ProjectReturns() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold" style={{ color: "var(--brand-teal)", fontFamily: "Georgia, serif" }}>
+        <h1 className="text-2xl font-bold" style={{ color: "var(--brand-teal)" }}>
           Retorno por Proyecto
         </h1>
         <p className="text-sm mt-1" style={{ color: "var(--brand-teal2)" }}>

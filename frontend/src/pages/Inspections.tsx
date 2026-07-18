@@ -91,7 +91,7 @@ export default function Inspections({ projectId }: { projectId: string }) {
         </div>
       </div>
 
-      <div className="bg-[#2E6BB4]/10 border border-amber-500/30 rounded-lg px-4 py-3 text-xs text-[var(--brand-teal)]">
+      <div className="bg-[#0071E3]/10 border border-amber-500/30 rounded-lg px-4 py-3 text-xs text-[var(--brand-teal)]">
         ⚠️ Re-inspección cuesta $50–100 y retrasa la obra mínimo 3–7 días hábiles. No llamar inspección sin estar 100% listos.
         Regla: No se avanza sin inspección aprobada de fase anterior.
       </div>

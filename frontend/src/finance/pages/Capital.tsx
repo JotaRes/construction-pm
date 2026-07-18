@@ -136,10 +136,10 @@ export default function Capital() {
                   Bancarizado: p.bankContrib,
                   "No-bancarizado": p.nonBankContrib,
                 }))}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(45,75,82,0.1)" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(29,29,31,0.1)" />
                   <XAxis dataKey="name" tick={{ fontSize: 11, fill: "var(--inf)" }} />
                   <YAxis tick={{ fontSize: 10, fill: "var(--brand-teal3)" }} tickFormatter={(v) => usd(v, { compact: true })} />
-                  <Tooltip contentStyle={{ background: "#fff", border: "1px solid rgba(45,75,82,0.15)", borderRadius: 8 }} formatter={(v: any) => usd(v as number)} />
+                  <Tooltip contentStyle={{ background: "#fff", border: "1px solid rgba(29,29,31,0.15)", borderRadius: 8 }} formatter={(v: any) => usd(v as number)} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                   <Bar dataKey="Bancarizado" stackId="a" fill="var(--inf)" />
                   <Bar dataKey="No-bancarizado" stackId="a" fill="var(--accent)" />
@@ -161,10 +161,10 @@ export default function Capital() {
             <div className="h-64">
               <ResponsiveContainer>
                 <LineChart data={series}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(45,75,82,0.1)" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(29,29,31,0.1)" />
                   <XAxis dataKey="month" tick={{ fontSize: 10, fill: "var(--brand-teal3)" }} />
                   <YAxis tick={{ fontSize: 10, fill: "var(--brand-teal3)" }} tickFormatter={(v) => usd(v, { compact: true })} />
-                  <Tooltip contentStyle={{ background: "#fff", border: "1px solid rgba(45,75,82,0.15)", borderRadius: 8 }} formatter={(v: any) => usd(v as number)} />
+                  <Tooltip contentStyle={{ background: "#fff", border: "1px solid rgba(29,29,31,0.15)", borderRadius: 8 }} formatter={(v: any) => usd(v as number)} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                   {partners.map((p: any, i: number) => (
                     <Line key={p.partner.id} type="monotone" dataKey={p.partner.code} stroke={PARTNER_COLORS[i % PARTNER_COLORS.length]} strokeWidth={2} dot={false} />
@@ -179,13 +179,13 @@ export default function Capital() {
       {/* Resumen por socio (tabla) */}
       {partners.length > 0 && (
         <div className="card overflow-hidden">
-          <div className="px-5 py-3" style={{ borderBottom: '1px solid rgba(45,75,82,0.1)', background: 'var(--brand-cream2)' }}>
-            <h2 className="text-sm font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>
+          <div className="px-5 py-3" style={{ borderBottom: '1px solid rgba(29,29,31,0.1)', background: 'var(--brand-cream2)' }}>
+            <h2 className="text-sm font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}>
               <Users size={15} style={{ color: 'var(--brand-gold)' }} /> Totales por socio
             </h2>
           </div>
           <table className="w-full text-sm">
-            <thead style={{ background: 'rgba(45,75,82,0.04)' }}>
+            <thead style={{ background: 'rgba(29,29,31,0.04)' }}>
               <tr className="text-xs uppercase tracking-wider" style={{ color: 'var(--brand-teal2)' }}>
                 <th className="px-4 py-3 text-left font-semibold">Socio</th>
                 <th className="px-4 py-3 text-right font-semibold">Bancarizado</th>
@@ -199,7 +199,7 @@ export default function Capital() {
                 const totalP = p.bankContrib + p.nonBankContrib;
                 const pct = totalEquity > 0 ? (totalP / totalEquity) * 100 : 0;
                 return (
-                  <tr key={p.partner.id} className="table-row" style={{ borderBottom: '1px solid rgba(45,75,82,0.06)' }}>
+                  <tr key={p.partner.id} className="table-row" style={{ borderBottom: '1px solid rgba(29,29,31,0.06)' }}>
                     <td className="px-4 py-3">
                       <div className="font-semibold" style={{ color: 'var(--brand-teal)' }}>{p.partner.fullName}</div>
                       <div className="text-[10px] font-mono" style={{ color: 'var(--brand-teal2)' }}>{p.partner.code}</div>
@@ -218,8 +218,8 @@ export default function Capital() {
 
       {/* Lista de aportes bancarizados (todo auto) */}
       <div className="card overflow-hidden">
-        <div className="px-5 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(45,75,82,0.1)', background: 'var(--brand-cream2)' }}>
-          <h2 className="text-sm font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>
+        <div className="px-5 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(29,29,31,0.1)', background: 'var(--brand-cream2)' }}>
+          <h2 className="text-sm font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}>
             <Zap size={15} style={{ color: 'var(--brand-gold)' }} /> Aportes bancarizados (auto desde Movimientos)
           </h2>
           <Link to="/finance/movements" className="text-xs font-semibold flex items-center gap-1 hover:underline" style={{ color: 'var(--brand-gold)' }}>
@@ -228,7 +228,7 @@ export default function Capital() {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead style={{ background: 'rgba(45,75,82,0.04)' }}>
+            <thead style={{ background: 'rgba(29,29,31,0.04)' }}>
               <tr className="text-xs uppercase tracking-wider" style={{ color: 'var(--brand-teal2)' }}>
                 <th className="px-3 py-3 text-left font-semibold">Fecha</th>
                 <th className="px-3 py-3 text-left font-semibold">Socio</th>
@@ -244,7 +244,7 @@ export default function Capital() {
                   Sin aportes bancarizados. Ve a <Link to="/finance/movements" className="font-semibold hover:underline" style={{ color: 'var(--brand-gold)' }}>Movimientos</Link> y crea un Ingreso con origen "Aporte Socios" → aparecerá aquí automáticamente.
                 </td></tr>
               ) : data.contribs.map((c: any) => (
-                <tr key={c.id} className="table-row" style={{ borderBottom: '1px solid rgba(45,75,82,0.06)' }}>
+                <tr key={c.id} className="table-row" style={{ borderBottom: '1px solid rgba(29,29,31,0.06)' }}>
                   <td className="px-3 py-3 text-xs font-mono" style={{ color: 'var(--brand-teal2)' }}>
                     <Calendar size={11} className="inline mr-1" /> {dateShort(c.date)}
                   </td>
@@ -277,15 +277,15 @@ export default function Capital() {
 
       {/* Lista de aportes no-bancarizados */}
       <div className="card overflow-hidden">
-        <div className="px-5 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(45,75,82,0.1)', background: 'var(--brand-cream2)' }}>
-          <h2 className="text-sm font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}>
+        <div className="px-5 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(29,29,31,0.1)', background: 'var(--brand-cream2)' }}>
+          <h2 className="text-sm font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}>
             <HandCoins size={15} style={{ color: 'var(--brand-gold)' }} /> Aportes NO-bancarizados (manuales)
           </h2>
           <span className="text-[11px]" style={{ color: 'var(--brand-teal2)' }}>Pagos directos en especie, gastos no canalizados por cuenta</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead style={{ background: 'rgba(45,75,82,0.04)' }}>
+            <thead style={{ background: 'rgba(29,29,31,0.04)' }}>
               <tr className="text-xs uppercase tracking-wider" style={{ color: 'var(--brand-teal2)' }}>
                 <th className="px-3 py-3 text-left font-semibold">Fecha</th>
                 <th className="px-3 py-3 text-left font-semibold">Socio</th>
@@ -301,7 +301,7 @@ export default function Capital() {
                   Sin aportes no-bancarizados. Usa el botón <strong>"Aporte NO-bancarizado"</strong> arriba para registrar pagos directos o gastos en especie.
                 </td></tr>
               ) : data.nonBank.map((c: any) => (
-                <tr key={c.id} className="table-row" style={{ borderBottom: '1px solid rgba(45,75,82,0.06)' }}>
+                <tr key={c.id} className="table-row" style={{ borderBottom: '1px solid rgba(29,29,31,0.06)' }}>
                   <td className="px-3 py-3 text-xs font-mono" style={{ color: 'var(--brand-teal2)' }}>{dateShort(c.date)}</td>
                   <td className="px-3 py-3">
                     <div className="font-semibold text-sm" style={{ color: 'var(--brand-teal)' }}>{c.partner?.fullName}</div>
@@ -376,7 +376,7 @@ function NonBankModal({ open, onClose, catalogs }: { open: boolean; onClose: () 
 
   return (
     <Modal open={open} onClose={onClose} title="Nuevo aporte NO-bancarizado" size="md">
-      <div className="mb-3 p-3 rounded-lg flex items-start gap-2" style={{ background: 'var(--brand-cream2)', border: '1px solid rgba(45,75,82,0.1)' }}>
+      <div className="mb-3 p-3 rounded-lg flex items-start gap-2" style={{ background: 'var(--brand-cream2)', border: '1px solid rgba(29,29,31,0.1)' }}>
         <Info size={14} style={{ color: 'var(--brand-gold)', flexShrink: 0, marginTop: 2 }} />
         <div className="text-xs" style={{ color: 'var(--brand-teal)' }}>
           Solo registra aquí <strong>aportes que NO pasaron por cuenta bancaria</strong> (especie, pagos directos a terceros, gastos cubiertos personalmente). Los bancarizados se sincronizan automáticamente desde la sección <Link to="/finance/movements" className="font-semibold hover:underline" style={{ color: 'var(--brand-gold)' }}>Movimientos</Link>.
@@ -415,7 +415,7 @@ function NonBankModal({ open, onClose, catalogs }: { open: boolean; onClose: () 
           <label className="label">Notas</label>
           <textarea className="input w-full" rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
         </div>
-        <div className="flex justify-end gap-2 pt-3" style={{ borderTop: '1px solid rgba(45,75,82,0.1)' }}>
+        <div className="flex justify-end gap-2 pt-3" style={{ borderTop: '1px solid rgba(29,29,31,0.1)' }}>
           <button type="button" className="btn-secondary" onClick={onClose}>Cancelar</button>
           <button type="submit" className="btn-primary" disabled={mutation.isPending}>{mutation.isPending ? "Guardando…" : "Registrar aporte"}</button>
         </div>

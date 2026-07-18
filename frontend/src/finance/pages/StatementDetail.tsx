@@ -10,7 +10,7 @@ const STATUS_BADGE: Record<string, string> = {
   matched_exact: "bg-positive/10 text-positive border-positive/30",
   matched_approx: "bg-accent/10 text-accent border-accent/30",
   matched_manual: "bg-blue-500/10 text-blue-300 border-blue-500/30",
-  created: "bg-purple-500/10 text-purple-300 border-purple-500/30",
+  created: "bg-[var(--accent-soft)] text-[var(--accent)] border-[var(--accent-border)]",
 };
 
 export default function StatementDetail() {

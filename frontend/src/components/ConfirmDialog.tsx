@@ -65,7 +65,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
         >
           <div
             className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl"
-            style={{ border: '1px solid rgba(45,75,82,0.15)' }}
+            style={{ border: '1px solid rgba(29,29,31,0.15)' }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header con barra de color según tipo */}
@@ -84,7 +84,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
                 <div
                   className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
                   style={{
-                    background: isDestructive ? 'rgba(220,38,38,0.1)' : 'rgba(46,107,180,0.12)',
+                    background: isDestructive ? 'rgba(220,38,38,0.1)' : 'rgba(0,113,227,0.12)',
                     color: isDestructive ? '#dc2626' : 'var(--brand-gold)',
                   }}
                 >
@@ -93,7 +93,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
                 <div className="flex-1 min-w-0 pt-1">
                   <h3
                     className="text-base font-bold"
-                    style={{ color: 'var(--brand-teal)', fontFamily: 'Georgia, serif' }}
+                    style={{ color: 'var(--brand-teal)' }}
                   >
                     {opts.title}
                   </h3>
@@ -120,7 +120,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
                   style={{
                     background: isDestructive ? 'rgba(220,38,38,0.05)' : 'var(--brand-cream2)',
                     color: 'var(--brand-teal2)',
-                    border: `1px solid ${isDestructive ? 'rgba(220,38,38,0.15)' : 'rgba(45,75,82,0.08)'}`,
+                    border: `1px solid ${isDestructive ? 'rgba(220,38,38,0.15)' : 'rgba(29,29,31,0.08)'}`,
                   }}
                 >
                   {opts.detail}
@@ -141,7 +141,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
                     onKeyDown={(e) => { if (e.key === 'Enter' && canConfirm) close(true) }}
                     className="w-full px-3 py-2 rounded-lg text-sm border focus:outline-none"
                     style={{
-                      borderColor: 'rgba(45,75,82,0.2)',
+                      borderColor: 'rgba(29,29,31,0.2)',
                       fontFamily: 'monospace',
                     }}
                     placeholder={opts.typeToConfirm}
@@ -150,14 +150,14 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
               )}
 
               {/* Botones */}
-              <div className="flex justify-end gap-2 pt-3" style={{ borderTop: '1px solid rgba(45,75,82,0.08)' }}>
+              <div className="flex justify-end gap-2 pt-3" style={{ borderTop: '1px solid rgba(29,29,31,0.08)' }}>
                 <button
                   onClick={() => close(false)}
                   className="px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
                   style={{
                     color: 'var(--brand-teal)',
                     background: 'transparent',
-                    border: '1px solid rgba(45,75,82,0.15)',
+                    border: '1px solid rgba(29,29,31,0.15)',
                   }}
                 >
                   {opts.cancelText || 'Cancelar'}
@@ -170,7 +170,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
                     background: isDestructive
                       ? 'linear-gradient(135deg, #dc2626 0%, #ef4444 100%)'
                       : 'linear-gradient(135deg, var(--brand-gold) 0%, var(--brand-gold2) 100%)',
-                    boxShadow: isDestructive ? '0 4px 14px rgba(220,38,38,0.25)' : '0 4px 14px rgba(46,107,180,0.25)',
+                    boxShadow: isDestructive ? '0 4px 14px rgba(220,38,38,0.25)' : '0 4px 14px rgba(0,113,227,0.25)',
                   }}
                   autoFocus={!needsType}
                 >
