@@ -1,13 +1,13 @@
 import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { phasesApi, itemsApi, itemDocumentsApi, projectsApi, providersGlobalApi, subactivitiesApi } from '../lib/api'
+import { phasesApi, itemsApi, itemDocumentsApi, projectsApi, providersGlobalApi, subactivitiesApi, constructionBudgetApi, drawsApi } from '../lib/api'
 import { formatUSD } from '../lib/calculations'
-import type { Phase, Item, ItemEstado, ItemDocument } from '../lib/types'
+import type { Phase, Item, ItemEstado, ItemDocument, BudgetLineLite, SubActivity, Draw } from '../lib/types'
 import {
   ChevronDown, ChevronRight, X, Calendar, User, FileText,
   Plus, Trash2, Paperclip, Upload, AlertTriangle,
   ExternalLink, Download, Mail, MessageCircle, Eraser, EyeOff, Eye,
-  ChevronsDown, ChevronsUp,
+  ChevronsDown, ChevronsUp, Link2, Landmark, Pencil,
 } from 'lucide-react'
 import { useConfirm } from '../components/ConfirmDialog'
 import MiniDonut from '../components/MiniDonut'
@@ -268,8 +268,9 @@ function DocumentSection({ item }: { item: Item }) {
   )
 }
 
-function ItemPanel({ item, onUpdate, onClose }: {
+function ItemPanel({ item, budgetLines = [], onUpdate, onClose }: {
   item: Item
+  budgetLines?: BudgetLineLite[]
   onUpdate: (id: string, data: Record<string, unknown>) => void
   onClose: () => void
 }) {
@@ -330,6 +331,31 @@ function ItemPanel({ item, onUpdate, onClose }: {
             </select>
             <p className="text-[10px] text-slate-400 mt-1">Del catálogo general. Las facturas que adjuntes abajo pueden usar este u otro proveedor.</p>
           </div>
+
+          {/* Asociación al Construction Budget — también editable desde el panel */}
+          {budgetLines.length > 0 && (
+            <div>
+              <div className="flex items-center gap-1.5 text-[10px] text-slate-400 uppercase tracking-wider mb-2">
+                <Link2 className="w-3 h-3" />Asociación al Construction Budget
+              </div>
+              <select
+                value={item.budgetLineId ?? ''}
+                onChange={e => onUpdate(item.id, { budgetLineId: e.target.value || null })}
+                className="w-full bg-white border border-slate-200 text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)] text-slate-700">
+                <option value="">Sin asociar (se controla con el presupuesto manual)</option>
+                {budgetLines.map(bl => (
+                  <option key={bl.id} value={bl.id}>
+                    {bl.divCode} · {bl.itemCode} — {bl.description.slice(0, 45)} · {formatUSD(bl.valorInicial)}
+                  </option>
+                ))}
+              </select>
+              {item.budgetLine && (
+                <p className="text-[10px] text-slate-400 mt-1">
+                  La desviación de esta actividad se mide contra <b className="font-mono">{formatUSD(item.budgetLine.valorInicial)}</b> del budget del lender.
+                </p>
+              )}
+            </div>
+          )}
 
           <div>
             <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-2">Valores</div>
@@ -417,8 +443,144 @@ function ItemPanel({ item, onUpdate, onClose }: {
   )
 }
 
-function ItemRow({ item, onUpdate, onOpenPanel, onDelete }: {
+/* ── Celda: asociación actividad ↔ línea del Construction Budget ─────────
+   Permite amarrar el gasto real de una actividad a lo presupuestado en el
+   budget del lender, aunque los nombres no coincidan. Fases que no existen
+   en el budget (adquisición, financiamiento, seguros…) simplemente no se
+   asocian y se controlan con el presupuesto manual. */
+function BudgetLinkCell({ item, budgetLines, onUpdate }: {
   item: Item
+  budgetLines: BudgetLineLite[]
+  onUpdate: (id: string, data: Record<string, unknown>) => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const linked = item.budgetLine ?? null
+
+  if (editing) {
+    // Agrupar líneas por división para un selector legible
+    const byDiv = new Map<string, BudgetLineLite[]>()
+    for (const bl of budgetLines) {
+      const key = `${bl.divCode} — ${bl.divName}`
+      if (!byDiv.has(key)) byDiv.set(key, [])
+      byDiv.get(key)!.push(bl)
+    }
+    return (
+      <select
+        autoFocus
+        defaultValue={item.budgetLineId ?? ''}
+        onBlur={() => setEditing(false)}
+        onChange={e => { onUpdate(item.id, { budgetLineId: e.target.value || null }); setEditing(false) }}
+        className="w-full max-w-[220px] bg-white border border-[var(--brand-gold)] text-[10px] text-slate-700 rounded px-1 py-1 focus:outline-none">
+        <option value="">Sin asociar al budget</option>
+        {Array.from(byDiv.entries()).map(([div, lines]) => (
+          <optgroup key={div} label={div}>
+            {lines.map(bl => (
+              <option key={bl.id} value={bl.id}>
+                {bl.itemCode} · {bl.description.slice(0, 40)} · {formatUSD(bl.valorInicial)}
+              </option>
+            ))}
+          </optgroup>
+        ))}
+      </select>
+    )
+  }
+
+  return (
+    <button
+      onClick={() => setEditing(true)}
+      title={linked
+        ? `Asociado al budget: ${linked.itemCode} — ${linked.description} (${formatUSD(linked.valorInicial)}). Clic para cambiar o quitar.`
+        : 'Asociar esta actividad a una línea del Construction Budget'}
+      className={`w-full flex items-center justify-end gap-1 text-[11px] font-mono transition-colors ${
+        linked ? 'text-indigo-600 hover:text-indigo-800' : 'text-slate-300 hover:text-[var(--brand-gold)]'
+      }`}>
+      <Link2 className="w-3 h-3 flex-shrink-0" />
+      {linked ? formatUSD(linked.valorInicial) : '—'}
+    </button>
+  )
+}
+
+/* ── Fila de subactividad: valor + fecha + responsable + invoice + obs ── */
+function SubActivityRow({ sub, code, onUpdate, onDelete }: {
+  sub: SubActivity
+  code: string
+  onUpdate: (data: Record<string, unknown>) => void
+  onDelete: () => void
+}) {
+  const qc = useQueryClient()
+  const fileRef = useRef<HTMLInputElement>(null)
+  const invalidate = () => qc.invalidateQueries({ queryKey: ['phases'] })
+  const uploadInvoice = useMutation({
+    mutationFn: (file: File) => subactivitiesApi.uploadInvoice(sub.id, file),
+    onSuccess: () => { invalidate(); toast.success('Invoice adjuntado') },
+    onError: (e: any) => toast.error(e?.response?.data?.error || 'Error al subir el invoice'),
+  })
+  const removeInvoice = useMutation({
+    mutationFn: () => subactivitiesApi.deleteInvoice(sub.id),
+    onSuccess: invalidate,
+  })
+
+  return (
+    <div className="border-b border-slate-50 last:border-0">
+      {/* Línea 1: código · descripción · valor · eliminar */}
+      <div className="px-3 pt-1.5 flex items-center gap-2">
+        <span className="text-[10px] font-mono text-[var(--brand-gold)] w-20 flex-shrink-0">{code}</span>
+        <input defaultValue={sub.description}
+          onBlur={e => { const v = e.target.value.trim(); if (v && v !== sub.description) onUpdate({ description: v }) }}
+          onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+          className="flex-1 min-w-0 bg-transparent text-[11px] text-slate-700 focus:outline-none border-b border-transparent focus:border-slate-200" />
+        <input type="number" defaultValue={sub.valorEjecutado || ''}
+          onBlur={e => { const v = parseFloat(e.target.value) || 0; if (v !== sub.valorEjecutado) onUpdate({ valorEjecutado: v }) }}
+          onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+          placeholder="0"
+          className="w-28 bg-slate-50 border border-slate-200 text-[11px] font-mono text-right text-slate-800 rounded px-1.5 py-1 focus:outline-none focus:border-[var(--brand-gold)]" />
+        <button onClick={onDelete} title="Eliminar subactividad"
+          className="text-slate-400 hover:text-red-500 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+      </div>
+      {/* Línea 2: fecha · responsable · invoice · observaciones */}
+      <div className="px-3 pb-1.5 pt-1 flex items-center gap-2 flex-wrap ml-20">
+        <input type="date" defaultValue={sub.fecha?.slice(0, 10) ?? ''}
+          title="Fecha en que se hizo / pagó"
+          onChange={e => onUpdate({ fecha: e.target.value || null })}
+          className="bg-white border border-slate-200 text-[10px] text-slate-600 rounded px-1.5 py-0.5 focus:outline-none focus:border-[var(--brand-gold)]" />
+        <input defaultValue={sub.responsable ?? ''} placeholder="Quién lo hizo"
+          title="Responsable / contratista que ejecutó"
+          onBlur={e => { const v = e.target.value.trim(); if (v !== (sub.responsable ?? '')) onUpdate({ responsable: v || null }) }}
+          onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+          className="w-32 bg-white border border-slate-200 text-[10px] text-slate-600 rounded px-1.5 py-0.5 focus:outline-none focus:border-[var(--brand-gold)] placeholder-slate-300" />
+        {sub.invoiceUrl ? (
+          <span className="flex items-center gap-1">
+            <a href={`/api/download?url=${encodeURIComponent(sub.invoiceUrl)}&name=${encodeURIComponent(sub.invoiceName ?? 'invoice')}&inline=1`}
+              target="_blank" rel="noreferrer" title={`Ver invoice: ${sub.invoiceName ?? ''}`}
+              className="flex items-center gap-1 text-[10px] text-emerald-600 hover:text-emerald-800 bg-emerald-50 border border-emerald-200 rounded px-1.5 py-0.5">
+              <Paperclip className="w-3 h-3" />
+              <span className="max-w-[110px] truncate">{sub.invoiceName ?? 'Invoice'}</span>
+            </a>
+            <button onClick={() => removeInvoice.mutate()} title="Quitar invoice"
+              className="text-slate-300 hover:text-red-500"><X className="w-3 h-3" /></button>
+          </span>
+        ) : (
+          <button onClick={() => fileRef.current?.click()} disabled={uploadInvoice.isPending}
+            title="Adjuntar invoice o documento equivalente (PDF/JPG/PNG)"
+            className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-[var(--brand-gold)] border border-dashed border-slate-300 hover:border-[var(--brand-gold)] rounded px-1.5 py-0.5 transition-colors disabled:opacity-50">
+            <Upload className="w-3 h-3" />
+            {uploadInvoice.isPending ? 'Subiendo…' : 'Invoice'}
+          </button>
+        )}
+        <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.heic" className="hidden"
+          onChange={e => { const f = e.target.files?.[0]; if (f) uploadInvoice.mutate(f); e.target.value = '' }} />
+        <input defaultValue={sub.observaciones ?? ''} placeholder="Observaciones…"
+          onBlur={e => { const v = e.target.value.trim(); if (v !== (sub.observaciones ?? '')) onUpdate({ observaciones: v || null }) }}
+          onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+          className="flex-1 min-w-[120px] bg-white border border-slate-200 text-[10px] text-slate-600 rounded px-1.5 py-0.5 focus:outline-none focus:border-[var(--brand-gold)] placeholder-slate-300" />
+      </div>
+    </div>
+  )
+}
+
+function ItemRow({ item, budgetLines, onUpdate, onOpenPanel, onDelete }: {
+  item: Item
+  budgetLines: BudgetLineLite[]
   onUpdate: (id: string, data: Record<string, unknown>) => void
   onOpenPanel: (item: Item) => void
   onDelete?: (item: Item) => void
@@ -436,7 +598,7 @@ function ItemRow({ item, onUpdate, onOpenPanel, onDelete }: {
   if (isSlot && !item.completado && !item.valorEjecutado) {
     return (
       <tr className="border-b border-slate-200">
-        <td colSpan={8} className="px-4 py-1 text-[10px] text-slate-800 font-mono">{item.itemCode}</td>
+        <td colSpan={9} className="px-4 py-1 text-[10px] text-slate-800 font-mono">{item.itemCode}</td>
       </tr>
     )
   }
@@ -447,7 +609,12 @@ function ItemRow({ item, onUpdate, onOpenPanel, onDelete }: {
   // Base = valor propio de la actividad, DERIVADO del total real (robusto: no
   // depende de que valorEjecutadoBase esté bien poblado en la BD).
   const base = Math.max(0, totalEjec - sumSubs)
-  const desviacion = totalEjec - item.valorPresupuestado
+  // Baseline de control: si la actividad está asociada al Construction Budget,
+  // la desviación se mide contra el budget del lender; si no, contra el
+  // presupuesto manual de planeación.
+  const baseline = item.budgetLine ? item.budgetLine.valorInicial : item.valorPresupuestado
+  const desviacion = totalEjec - baseline
+  const overBaseline = baseline > 0 && totalEjec > baseline
   const docCount = item.documents?.length ?? 0
   const hasFactura = item.documents?.some(d => d.type === 'FACTURA') ?? false
   const warnDoc = (totalEjec > 0 || item.completado) && !hasFactura
@@ -519,9 +686,19 @@ function ItemRow({ item, onUpdate, onOpenPanel, onDelete }: {
             })}
           </div>
         </td>
-        {/* Budget */}
+        {/* Presupuesto (planeación) — EDITABLE inline: aquí se hace la fase de
+            planeación sin salir de Ejecución (sección unificada) */}
         <td className="px-2 py-2.5 w-24 text-right border-l border-slate-100">
-          <span className="text-[11px] font-mono text-slate-600">{formatUSD(item.valorPresupuestado)}</span>
+          <input type="number" defaultValue={item.valorPresupuestado || ''}
+            onBlur={e => { const v = parseFloat(e.target.value) || 0; if (v !== item.valorPresupuestado) onUpdate(item.id, { valorPresupuestado: v }) }}
+            onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+            placeholder="—"
+            title="Presupuesto de planeación (editable)"
+            className="w-full bg-transparent border border-transparent hover:border-slate-200 text-[11px] font-mono text-right text-slate-600 rounded px-1.5 py-1 focus:outline-none focus:bg-white focus:border-[var(--brand-gold)] placeholder-slate-300 transition-colors" />
+        </td>
+        {/* Presup. según Construction Budget (cuando la actividad está asociada) */}
+        <td className="px-2 py-2.5 w-24 text-right border-l border-slate-100">
+          <BudgetLinkCell item={item} budgetLines={budgetLines} onUpdate={onUpdate} />
         </td>
         {/* Ejecutado — total (base + subactividades) */}
         <td className="px-2 py-2.5 w-24 text-right border-l border-slate-100">
@@ -538,15 +715,27 @@ function ItemRow({ item, onUpdate, onOpenPanel, onDelete }: {
               className="w-full bg-white border border-slate-200 text-[11px] font-mono font-semibold text-right text-slate-900 rounded px-1.5 py-1 focus:outline-none focus:border-[var(--brand-gold)] focus:ring-2 focus:ring-[var(--brand-gold)]/20 placeholder-slate-300" />
           )}
         </td>
-        {/* Desv. */}
+        {/* Desv. — positiva (rojo) = gastado de más; negativa (verde) = por debajo.
+            Se mide contra el budget del lender si hay asociación; si no, contra
+            el presupuesto manual. */}
         <td className="px-2 py-2.5 w-20 text-right border-l border-slate-100">
           <div className="flex items-center justify-end gap-1.5">
-            {item.valorPresupuestado > 0 && totalEjec > 0 && (
-              <span className={`text-[10px] font-mono font-semibold ${desviacion > 0 ? 'text-red-600' : 'text-emerald-600'}`}>{desviacion > 0 ? '+' : ''}{formatUSD(desviacion)}</span>
+            {baseline > 0 && totalEjec > 0 && (
+              <span
+                title={item.budgetLine
+                  ? `Desviación vs Construction Budget (${formatUSD(baseline)})${overBaseline ? ' — SOBRE lo presupuestado en el budget' : ''}`
+                  : `Desviación vs presupuesto manual (${formatUSD(baseline)})`}
+                className={`text-[10px] font-mono font-semibold ${desviacion > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                {desviacion > 0 ? '+' : ''}{formatUSD(desviacion)}
+              </span>
+            )}
+            {overBaseline && item.budgetLine && (
+              <AlertTriangle className="w-3 h-3 text-red-500 flex-shrink-0" />
             )}
             {onDelete && (
-              <button onClick={() => onDelete(item)} title="Eliminar actividad" className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-red-500">
-                <Trash2 className="w-3 h-3" />
+              <button onClick={() => onDelete(item)} title="Eliminar actividad"
+                className="text-slate-300 hover:text-red-500 transition-colors">
+                <Trash2 className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
@@ -565,7 +754,7 @@ function ItemRow({ item, onUpdate, onOpenPanel, onDelete }: {
       {/* Desglose — subactividades (SUMAN al valor base de la actividad) */}
       {expanded && (
         <tr className="bg-slate-50/70">
-          <td colSpan={8} className="p-0">
+          <td colSpan={9} className="p-0">
             <div className="ml-10 mr-4 my-2 rounded-lg border border-slate-200 bg-white">
               <div className="px-3 py-2 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
                 <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
@@ -584,21 +773,15 @@ function ItemRow({ item, onUpdate, onOpenPanel, onDelete }: {
                   placeholder="0"
                   className="w-28 bg-slate-50 border border-slate-200 text-[11px] font-mono text-right text-slate-800 rounded px-1.5 py-1 focus:outline-none focus:border-[var(--brand-gold)]" />
               </div>
-              {/* Subactividades existentes */}
+              {/* Subactividades existentes — con fecha, responsable, invoice y observaciones */}
               {subs.map((sub, idx) => (
-                <div key={sub.id} className="px-3 py-1.5 flex items-center gap-2 border-b border-slate-50 last:border-0">
-                  <span className="text-[10px] font-mono text-[var(--brand-gold)] w-20 flex-shrink-0">{item.itemCode}.{String(idx + 1).padStart(3, '0')}</span>
-                  <input defaultValue={sub.description}
-                    onBlur={e => { const v = e.target.value.trim(); if (v && v !== sub.description) updateSub.mutate({ id: sub.id, data: { description: v } }) }}
-                    onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
-                    className="flex-1 min-w-0 bg-transparent text-[11px] text-slate-700 focus:outline-none border-b border-transparent focus:border-slate-200" />
-                  <input type="number" defaultValue={sub.valorEjecutado || ''}
-                    onBlur={e => { const v = parseFloat(e.target.value) || 0; if (v !== sub.valorEjecutado) updateSub.mutate({ id: sub.id, data: { valorEjecutado: v } }) }}
-                    onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
-                    placeholder="0"
-                    className="w-28 bg-slate-50 border border-slate-200 text-[11px] font-mono text-right text-slate-800 rounded px-1.5 py-1 focus:outline-none focus:border-[var(--brand-gold)]" />
-                  <button onClick={() => deleteSub.mutate(sub.id)} title="Eliminar subactividad" className="text-slate-300 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
-                </div>
+                <SubActivityRow
+                  key={sub.id}
+                  sub={sub}
+                  code={`${item.itemCode}.${String(idx + 1).padStart(3, '0')}`}
+                  onUpdate={data => updateSub.mutate({ id: sub.id, data })}
+                  onDelete={() => deleteSub.mutate(sub.id)}
+                />
               ))}
               {/* Agregar subactividad */}
               <div className="px-3 py-2 flex items-center gap-2 bg-slate-50/50">
@@ -617,18 +800,37 @@ function ItemRow({ item, onUpdate, onOpenPanel, onDelete }: {
   )
 }
 
-function PhaseSection({ phase, defaultOpen = false, onUpdate, onOpenPanel, onCreate, onDelete }: {
+function PhaseSection({ phase, budgetLines, budgetDivisions, defaultOpen = false, onUpdate, onOpenPanel, onCreate, onDelete, onRenamePhase, onSetPhaseBudgetLink }: {
   defaultOpen?: boolean
   phase: Phase
+  budgetLines: BudgetLineLite[]
+  budgetDivisions: Array<{ divCode: string; divName: string; total: number }>
   onUpdate: (id: string, data: Record<string, unknown>) => void
   onOpenPanel: (item: Item) => void
   onCreate: (phaseId: string, activity?: string) => void
   onDelete: (item: Item) => void
+  onRenamePhase: (phaseId: string, name: string) => void
+  onSetPhaseBudgetLink: (phaseId: string, budgetDivCode: string | null) => void
 }) {
   // FASE 1: colapsadas por defecto para una vista más limpia y amigable
   const [open, setOpen] = useState(defaultOpen)
   const [showNewForm, setShowNewForm] = useState(false)
   const [newName, setNewName] = useState('')
+  const [editingName, setEditingName] = useState(false)
+  const [showDivPicker, setShowDivPicker] = useState(false)
+
+  // Enlace FASE ↔ divisiones del Construction Budget (para fases completas,
+  // p.ej. Foundation ↔ DIV 03; las fases sin budget — adquisición, seguros,
+  // financiamiento — simplemente no se asocian).
+  const linkedDivCodes = (phase.budgetDivCode ?? '').split(',').map(s => s.trim()).filter(Boolean)
+  const linkedDivs = budgetDivisions.filter(d => linkedDivCodes.includes(d.divCode))
+  const phaseLenderBudget = linkedDivs.reduce((s, d) => s + d.total, 0)
+  const toggleDiv = (divCode: string) => {
+    const next = linkedDivCodes.includes(divCode)
+      ? linkedDivCodes.filter(c => c !== divCode)
+      : [...linkedDivCodes, divCode]
+    onSetPhaseBudgetLink(phase.id, next.length ? next.join(',') : null)
+  }
   const activeItems = phase.items.filter(i => !i.esNA)
   const doneItems = activeItems.filter(i => i.completado)
   const pct = activeItems.length === 0 ? 0 : (doneItems.length / activeItems.length) * 100
@@ -641,10 +843,39 @@ function PhaseSection({ phase, defaultOpen = false, onUpdate, onOpenPanel, onCre
   const phaseClass = `w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 bg-white/90 rounded-xl border ${borderColor} border-slate-200/40 hover:border-slate-200 transition-colors`
   return (
     <div className="mb-2.5">
-      <button onClick={() => setOpen(o => !o)} className={phaseClass}>
+      <div onClick={() => setOpen(o => !o)} role="button" tabIndex={0}
+        onKeyDown={e => { if (e.key === 'Enter' && !editingName) setOpen(o => !o) }}
+        className={`${phaseClass} cursor-pointer`}>
         {open ? <ChevronDown className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />}
         <span className="text-[10px] font-mono text-[var(--brand-gold)] w-7 flex-shrink-0">{phase.code}</span>
-        <span className="text-sm font-semibold text-slate-800 flex-1 text-left leading-tight min-w-0 truncate">{phase.name}</span>
+        {/* Nombre de fase EDITABLE: alinéalo con tu Construction Budget en cada
+            nuevo proyecto sin tocar código ni estructura */}
+        {editingName ? (
+          <input
+            autoFocus
+            defaultValue={phase.name}
+            onClick={e => e.stopPropagation()}
+            onBlur={e => {
+              const v = e.target.value.trim()
+              if (v && v !== phase.name) onRenamePhase(phase.id, v)
+              setEditingName(false)
+            }}
+            onKeyDown={e => {
+              if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+              if (e.key === 'Escape') setEditingName(false)
+            }}
+            className="flex-1 min-w-0 bg-white border border-[var(--brand-gold)] text-sm font-semibold text-slate-800 rounded px-2 py-0.5 focus:outline-none" />
+        ) : (
+          <span className="flex items-center gap-1.5 flex-1 min-w-0 text-left group/name">
+            <span className="text-sm font-semibold text-slate-800 leading-tight truncate">{phase.name}</span>
+            <button
+              onClick={e => { e.stopPropagation(); setEditingName(true) }}
+              title="Renombrar fase (para alinearla con tu Construction Budget)"
+              className="opacity-0 group-hover/name:opacity-100 text-slate-300 hover:text-[var(--brand-gold)] transition-all flex-shrink-0">
+              <Pencil className="w-3 h-3" />
+            </button>
+          </span>
+        )}
         {phaseOver && (
           <span className="flex items-center gap-1 text-[9px] font-bold text-red-600 bg-red-50 border border-red-200 rounded-full px-1.5 py-0.5 flex-shrink-0"
             title={`Ejecutado ${formatUSD(ejecutado)} supera el presupuesto de la fase ${formatUSD(budget)}`}>
@@ -663,9 +894,65 @@ function PhaseSection({ phase, defaultOpen = false, onUpdate, onOpenPanel, onCre
             <div className={`h-full rounded-full bar-fill ${pct > 0 ? 'bg-emerald-500' : 'bg-slate-200'}`} style={{ width: `${pct}%` }} />
           </div>
         </div>
-      </button>
+      </div>
       {open && (
         <div className="mt-0.5 bg-slate-50/60 rounded-b-xl border border-slate-200/30 border-t-0 overflow-hidden">
+          {/* Enlace FASE ↔ divisiones del Construction Budget (opcional) */}
+          {budgetDivisions.length > 0 && (
+            <div className="px-4 py-2 border-b border-slate-200/60 bg-white/60">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="flex items-center gap-1 text-[10px] font-semibold text-indigo-500 uppercase tracking-wider">
+                  <Link2 className="w-3 h-3" />Budget de la fase
+                </span>
+                {linkedDivs.length > 0 ? (
+                  <>
+                    {linkedDivs.map(d => (
+                      <span key={d.divCode} className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-50 border border-indigo-200 text-indigo-700 font-mono">
+                        {d.divCode} · {formatUSD(d.total)}
+                      </span>
+                    ))}
+                    <span className={`text-[11px] font-mono font-semibold ${ejecutado > phaseLenderBudget ? 'text-red-600' : 'text-slate-600'}`}
+                      title="Total presupuestado por el lender para las divisiones asociadas a esta fase, vs lo ejecutado">
+                      = {formatUSD(phaseLenderBudget)} · ejec. {formatUSD(ejecutado)}
+                      {phaseLenderBudget > 0 && (
+                        <> · Δ {ejecutado - phaseLenderBudget > 0 ? '+' : ''}{formatUSD(ejecutado - phaseLenderBudget)}</>
+                      )}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-[10px] text-slate-400 italic">sin asociar — esta fase se controla con el presupuesto manual</span>
+                )}
+                <button onClick={() => setShowDivPicker(v => !v)}
+                  className="ml-auto text-[10px] text-slate-400 hover:text-[var(--brand-gold)] underline decoration-dotted">
+                  {showDivPicker ? 'cerrar' : linkedDivs.length > 0 ? 'editar asociación' : 'asociar divisiones del budget'}
+                </button>
+              </div>
+              {showDivPicker && (
+                <div className="flex items-center gap-1.5 flex-wrap mt-2">
+                  {budgetDivisions.map(d => {
+                    const active = linkedDivCodes.includes(d.divCode)
+                    return (
+                      <button key={d.divCode} onClick={() => toggleDiv(d.divCode)}
+                        title={`${d.divName} — ${formatUSD(d.total)}`}
+                        className={`text-[10px] px-2 py-1 rounded-lg border font-mono transition-all ${
+                          active
+                            ? 'bg-indigo-500 border-indigo-500 text-white'
+                            : 'bg-white border-slate-200 text-slate-500 hover:border-indigo-300 hover:text-indigo-600'}`}>
+                        {d.divCode} · {d.divName.slice(0, 18)}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+          {/* Alerta: la fase supera el budget del LENDER asociado */}
+          {phaseLenderBudget > 0 && ejecutado > phaseLenderBudget && (
+            <div className="flex items-center gap-2 px-4 py-2 bg-red-50 border-b border-red-200 text-[11px] text-red-700 font-medium">
+              <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+              Esta fase ({formatUSD(ejecutado)}) supera el budget del lender asociado ({formatUSD(phaseLenderBudget)}) por <b className="font-mono">{formatUSD(ejecutado - phaseLenderBudget)}</b> — la diferencia sale de caja propia.
+            </div>
+          )}
           {/* Alerta de sobrecosto de la fase — presupuesto de obra vs ejecutado (misma fuente, ítem a ítem) */}
           {phaseOver && (
             <div className="flex items-center gap-2 px-4 py-2 bg-red-50 border-b border-red-200 text-[11px] text-red-700 font-medium">
@@ -674,22 +961,23 @@ function PhaseSection({ phase, defaultOpen = false, onUpdate, onOpenPanel, onCre
             </div>
           )}
           <div className="overflow-x-auto">
-          <table className="w-full min-w-[680px]">
+          <table className="w-full min-w-[780px]">
             <thead>
               <tr className="border-b-2 border-slate-300 bg-slate-100">
                 <th className="pl-4 pr-2 py-2 text-left text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-16">St.</th>
                 <th className="px-2 py-2 text-left text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-16">Cód.</th>
                 <th className="px-2 py-2 text-left text-[10px] font-semibold text-slate-600 uppercase tracking-wider">Actividad</th>
                 <th className="px-2 py-2 text-left text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-24">Estado</th>
-                <th className="px-2 py-2 text-right text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-24">Budget</th>
+                <th className="px-2 py-2 text-right text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-24" title="Presupuesto de planeación (editable)">Presup. ✏</th>
+                <th className="px-2 py-2 text-right text-[10px] font-semibold text-indigo-500 uppercase tracking-wider w-24" title="Presupuesto según Construction Budget (cuando la actividad está asociada)">Budget 🔗</th>
                 <th className="px-2 py-2 text-right text-[10px] font-semibold text-[var(--brand-gold)] uppercase tracking-wider w-24">Ejecutado</th>
-                <th className="px-2 py-2 text-right text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-20">Desv.</th>
+                <th className="px-2 py-2 text-right text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-20" title="Desviación vs budget asociado (si existe) o vs presupuesto manual">Desv.</th>
                 <th className="pr-3 pl-1 py-2 text-center text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-12">Doc</th>
               </tr>
             </thead>
             <tbody>
               {phase.items.map(item => (
-                <ItemRow key={item.id} item={item} onUpdate={onUpdate} onOpenPanel={onOpenPanel}
+                <ItemRow key={item.id} item={item} budgetLines={budgetLines} onUpdate={onUpdate} onOpenPanel={onOpenPanel}
                   onDelete={onDelete} />
               ))}
             </tbody>
@@ -734,6 +1022,28 @@ export default function Execution({ projectId }: { projectId: string }) {
     queryFn: () => phasesApi.list(projectId),
   })
 
+  // Datos financieros del proyecto: para "saldo pendiente por girar del lender"
+  const { data: project } = useQuery<any>({
+    queryKey: ['project', projectId],
+    queryFn: () => projectsApi.get(projectId),
+    staleTime: 60_000,
+  })
+  const { data: draws = [] } = useQuery<Draw[]>({
+    queryKey: ['draws', projectId],
+    queryFn: () => drawsApi.list(projectId),
+    staleTime: 60_000,
+  })
+  // Líneas del Construction Budget: para la asociación actividad ↔ budget
+  const { data: budgetLinesRaw = [] } = useQuery<any[]>({
+    queryKey: ['construction-budget', projectId],
+    queryFn: () => constructionBudgetApi.list(projectId),
+    staleTime: 60_000,
+  })
+  const budgetLines: BudgetLineLite[] = budgetLinesRaw.map((b: any) => ({
+    id: b.id, divCode: b.divCode, divName: b.divName, itemCode: b.itemCode,
+    description: b.description, valorInicial: b.valorInicial, valorAprobado: b.valorAprobado,
+  }))
+
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => itemsApi.patch(id, data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['phases', projectId] }),
@@ -751,6 +1061,13 @@ export default function Execution({ projectId }: { projectId: string }) {
     onError: (e: any) => toast.error(e?.response?.data?.error || 'Error al eliminar la actividad'),
   })
 
+  // Renombrar fase (alineación con el Construction Budget de cada proyecto)
+  const renamePhaseMutation = useMutation({
+    mutationFn: ({ phaseId, name }: { phaseId: string; name: string }) => phasesApi.rename(projectId, phaseId, name),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['phases', projectId] }); toast.success('Fase renombrada') },
+    onError: (e: any) => toast.error(e?.response?.data?.error || 'Error al renombrar la fase'),
+  })
+
   // Eliminar CUALQUIER actividad (nueva o precargada) con confirmación explícita.
   // Las precargadas advierten más fuerte: son parte de la plantilla de control.
   const handleDeleteItem = async (item: Item) => {
@@ -765,6 +1082,42 @@ export default function Execution({ projectId }: { projectId: string }) {
       confirmText: 'Sí, eliminar',
     })
     if (ok) deleteMutation.mutate(item.id)
+  }
+
+  // Divisiones del Construction Budget (para el enlace por FASE)
+  const { data: budgetDivisions = [] } = useQuery<Array<{ divCode: string; divName: string; total: number }>>({
+    queryKey: ['budget-divisions', projectId],
+    queryFn: () => phasesApi.budgetDivisions(projectId),
+    staleTime: 60_000,
+  })
+
+  // Enlace fase ↔ divisiones del budget
+  const setPhaseBudgetLink = useMutation({
+    mutationFn: ({ phaseId, budgetDivCode }: { phaseId: string; budgetDivCode: string | null }) =>
+      phasesApi.setBudgetLink(projectId, phaseId, budgetDivCode),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['phases', projectId] }),
+    onError: (e: any) => toast.error(e?.response?.data?.error || 'Error al asociar el budget'),
+  })
+
+  // Borrar SOLO los valores presupuestados (paridad con la antigua página Presupuesto)
+  const resetBudget = useMutation({
+    mutationFn: () => projectsApi.resetBudget(projectId),
+    onSuccess: (r: any) => {
+      queryClient.invalidateQueries({ queryKey: ['phases', projectId] })
+      toast.success(r?.message || 'Presupuesto reseteado — la ejecución no se tocó')
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.error || 'Error'),
+  })
+  const handleClearBudget = async () => {
+    const ok = await confirm({
+      title: 'Borrar todos los valores presupuestados',
+      message: '¿Seguro que quieres borrar TODOS los valores presupuestados?',
+      detail: 'Esta acción resetea el presupuesto manual (Presup. ✏) de TODOS los items a 0. La ejecución, las asociaciones al budget y la estructura NO se tocan. Esta acción no se puede deshacer.',
+      destructive: true,
+      confirmText: 'Sí, borrar presupuesto',
+      typeToConfirm: 'BORRAR PRESUPUESTO',
+    })
+    if (ok) resetBudget.mutate()
   }
 
   // Borrar TODOS los datos de ejecución vía endpoint backend (batch atómico)
@@ -791,7 +1144,14 @@ export default function Execution({ projectId }: { projectId: string }) {
 
   const handleUpdate = (id: string, data: Record<string, unknown>) => {
     updateMutation.mutate({ id, data })
-    if (panelItem?.id === id) setPanelItem(prev => prev ? { ...prev, ...data } as Item : null)
+    if (panelItem?.id === id) {
+      // Mantener coherente el objeto budgetLine del panel al cambiar la asociación
+      const extra: Record<string, unknown> = {}
+      if ('budgetLineId' in data) {
+        extra.budgetLine = data.budgetLineId ? (budgetLines.find(b => b.id === data.budgetLineId) ?? null) : null
+      }
+      setPanelItem(prev => prev ? { ...prev, ...data, ...extra } as Item : null)
+    }
   }
 
   const filteredPhases = phases.map(phase => ({
@@ -815,6 +1175,31 @@ export default function Execution({ projectId }: { projectId: string }) {
   const overBudget = grandPresupuestado > 0 && grandEjecutado > grandPresupuestado
   const deltaVsBudget = grandEjecutado - grandPresupuestado
 
+  // Desviación SOLO de las actividades asociadas al Construction Budget.
+  // Agrupado por línea del budget: el presupuesto de cada línea cuenta UNA vez
+  // aunque varias actividades apunten a la misma línea.
+  const linkedByLine = new Map<string, { budget: number; ejec: number }>()
+  for (const p of phases) {
+    for (const i of p.items) {
+      if (i.budgetLineId && i.budgetLine) {
+        const cur = linkedByLine.get(i.budgetLineId) ?? { budget: i.budgetLine.valorInicial, ejec: 0 }
+        cur.ejec += i.valorEjecutado
+        linkedByLine.set(i.budgetLineId, cur)
+      }
+    }
+  }
+  const linkedBudgetTotal = Array.from(linkedByLine.values()).reduce((s, x) => s + x.budget, 0)
+  const linkedEjecTotal = Array.from(linkedByLine.values()).reduce((s, x) => s + x.ejec, 0)
+  const linkedDelta = linkedEjecTotal - linkedBudgetTotal
+  const linkedCount = phases.reduce((s, p) => s + p.items.filter(i => i.budgetLineId).length, 0)
+  const linkedOver = linkedByLine.size > 0 && linkedDelta > 0
+
+  // Saldo pendiente por girar del LENDER = holdback de construcción − Σ draws
+  // wired (netWire). Si el proyecto no maneja holdback, cae al loan amount.
+  const wiredTotal = draws.filter(d => d.estado === 'WIRED').reduce((s, d) => s + (d.netWire || 0), 0)
+  const lenderBase = project ? (project.holdback > 0 ? project.holdback : (project.loanAmount || 0)) : 0
+  const saldoLender = lenderBase > 0 ? lenderBase - wiredTotal : null
+
   if (isLoading) return <div className="text-slate-500 text-sm animate-pulse">Cargando ejecución...</div>
 
   return (
@@ -822,7 +1207,7 @@ export default function Execution({ projectId }: { projectId: string }) {
       <div className="space-y-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           <div>
-            <h1 className="text-xl font-bold text-slate-900">Control de Ejecución</h1>
+            <h1 className="text-xl font-bold text-slate-900">Presupuesto & Ejecución</h1>
             <div className="flex items-center gap-3 mt-1">
               <span className="text-sm text-slate-500">{doneTotal.length}/{totalItems.length} ítems</span>
               <div className="flex items-center gap-2">
@@ -853,6 +1238,16 @@ export default function Execution({ projectId }: { projectId: string }) {
               {expandAll ? <ChevronsUp className="w-3.5 h-3.5" /> : <ChevronsDown className="w-3.5 h-3.5" />}
               {expandAll ? 'Colapsar' : 'Expandir'} todo
             </button>
+            {/* Borrar SOLO el presupuesto manual (paridad con la antigua página Presupuesto) */}
+            <button
+              onClick={handleClearBudget}
+              disabled={resetBudget.isPending}
+              className="flex items-center gap-1.5 px-3 py-2 bg-white border border-amber-300 hover:bg-amber-50 text-amber-700 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
+              title="Borrar todos los valores presupuestados (la ejecución no se toca)"
+            >
+              <Eraser className="w-3.5 h-3.5" />
+              {resetBudget.isPending ? 'Borrando…' : 'Borrar presupuesto'}
+            </button>
             {/* Borrar todos los datos de ejecución */}
             <button
               onClick={handleClearAll}
@@ -866,26 +1261,51 @@ export default function Execution({ projectId }: { projectId: string }) {
           </div>
         </div>
 
-        {/* Totales de ejecución — fuente única: presupuesto de obra vs ejecutado real */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {/* ── Panel gerencial: 6 indicadores clave del proyecto ──
+            Presupuesto · Ejecutado · Saldo por girar (lender) · Desv. total ·
+            Desv. asociados al budget · Avance físico */}
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
           <div className="kpi-card">
-            <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Presupuesto (obra)</div>
+            <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Presupuesto total</div>
             <div className="text-lg font-bold font-mono text-slate-800">{formatUSD(grandPresupuestado)}</div>
-            <div className="text-[10px] text-slate-400 mt-1">Σ ítems de todas las fases</div>
+            <div className="text-[10px] text-slate-400 mt-1">Σ planeación de todas las fases</div>
           </div>
           <div className="kpi-card">
-            <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Total Ejecutado</div>
+            <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Total ejecutado</div>
             <div className="text-lg font-bold font-mono text-[var(--brand-teal)]">{formatUSD(grandEjecutado)}</div>
             <div className="mt-2 h-1.5 bg-slate-100 rounded-full overflow-hidden">
               <div className="h-full bg-emerald-500 rounded-full bar-fill" style={{ width: `${grandPresupuestado > 0 ? Math.min(100, (grandEjecutado / grandPresupuestado) * 100) : 0}%` }} />
             </div>
+            <div className="text-[10px] text-slate-400 mt-1">{grandPresupuestado > 0 ? `${((grandEjecutado / grandPresupuestado) * 100).toFixed(1)}% del presupuesto` : '—'}</div>
+          </div>
+          <div className={`kpi-card ${saldoLender !== null && saldoLender < 0 ? 'kpi-card-red border-red-300 bg-red-50/60' : ''}`}>
+            <div className="flex items-center gap-1 text-[10px] text-slate-400 uppercase tracking-wider mb-1">
+              <Landmark className="w-3 h-3" />Saldo por girar (lender)
+            </div>
+            <div className={`text-lg font-bold font-mono ${saldoLender !== null && saldoLender < 0 ? 'text-red-600' : 'text-indigo-600'}`}>
+              {saldoLender !== null ? formatUSD(saldoLender) : '—'}
+            </div>
+            <div className="text-[10px] text-slate-400 mt-1" title="Holdback de construcción menos draws desembolsados (wired)">
+              {saldoLender !== null ? `${formatUSD(lenderBase)} − ${formatUSD(wiredTotal)} wired` : 'sin datos del lender'}
+            </div>
           </div>
           <div className={`kpi-card ${overBudget ? 'kpi-card-red border-red-300 bg-red-50/60' : 'kpi-card-green'}`}>
-            <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Desviación</div>
+            <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Desv. total</div>
             <div className={`text-lg font-bold font-mono ${overBudget ? 'text-red-600' : 'text-emerald-600'}`}>
               {grandPresupuestado > 0 ? `${deltaVsBudget > 0 ? '+' : ''}${formatUSD(deltaVsBudget)}` : '—'}
             </div>
             <div className="text-[10px] text-slate-400 mt-1">{overBudget ? 'sobre presupuesto de obra' : 'bajo presupuesto de obra'}</div>
+          </div>
+          <div className={`kpi-card ${linkedOver ? 'kpi-card-red border-red-300 bg-red-50/60' : ''}`}>
+            <div className="flex items-center gap-1 text-[10px] text-slate-400 uppercase tracking-wider mb-1">
+              <Link2 className="w-3 h-3" />Desv. vs budget
+            </div>
+            <div className={`text-lg font-bold font-mono ${linkedOver ? 'text-red-600' : linkedByLine.size > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>
+              {linkedByLine.size > 0 ? `${linkedDelta > 0 ? '+' : ''}${formatUSD(linkedDelta)}` : '—'}
+            </div>
+            <div className="text-[10px] text-slate-400 mt-1" title="Solo actividades asociadas a líneas del Construction Budget">
+              {linkedCount > 0 ? `${linkedCount} actividad(es) asociada(s)` : 'asocia actividades con 🔗'}
+            </div>
           </div>
           <div className="kpi-card flex items-center gap-3">
             <MiniDonut pct={pctGeneral} size={56} />
@@ -895,6 +1315,15 @@ export default function Execution({ projectId }: { projectId: string }) {
             </div>
           </div>
         </div>
+        {/* Alerta gerencial: actividades asociadas al budget del lender por encima de lo presupuestado */}
+        {linkedOver && (
+          <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+            <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0" />
+            <span className="text-sm text-red-600 font-medium">
+              Las actividades asociadas al Construction Budget ({formatUSD(linkedEjecTotal)}) superan lo presupuestado por el lender ({formatUSD(linkedBudgetTotal)}) por {formatUSD(linkedDelta)}. Revisa antes del próximo draw.
+            </span>
+          </div>
+        )}
         {overBudget && (
           <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
             <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0" />
@@ -908,11 +1337,15 @@ export default function Execution({ projectId }: { projectId: string }) {
           <PhaseSection
             key={`${phase.id}-${expandTrigger}`}
             phase={phase}
+            budgetLines={budgetLines}
+            budgetDivisions={budgetDivisions}
             defaultOpen={expandAll}
             onUpdate={handleUpdate}
             onOpenPanel={setPanelItem}
             onCreate={(phaseId, activity) => createMutation.mutate({ phaseId, activity })}
             onDelete={item => handleDeleteItem(item)}
+            onRenamePhase={(phaseId, name) => renamePhaseMutation.mutate({ phaseId, name })}
+            onSetPhaseBudgetLink={(phaseId, budgetDivCode) => setPhaseBudgetLink.mutate({ phaseId, budgetDivCode })}
           />
         ))}
         {filteredPhases.length === 0 && (
@@ -933,7 +1366,7 @@ export default function Execution({ projectId }: { projectId: string }) {
           </div>
         )}
       </div>
-      {panelItem && <ItemPanel item={panelItem} onUpdate={handleUpdate} onClose={() => setPanelItem(null)} />}
+      {panelItem && <ItemPanel item={panelItem} budgetLines={budgetLines} onUpdate={handleUpdate} onClose={() => setPanelItem(null)} />}
     </>
   )
 }

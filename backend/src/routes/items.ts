@@ -41,7 +41,7 @@ router.patch('/:id', async (req: Request, res: Response) => {
     const {
       activity, description, responsable, unit, esNA, completado,
       valorPresupuestado, valorEjecutado, valorEjecutadoBase, providerId, estado,
-      fechaInicioReal, fechaFinReal, observaciones, order, quantity,
+      fechaInicioReal, fechaFinReal, observaciones, order, quantity, budgetLineId,
     } = req.body
     const data: Record<string, unknown> = {}
     if (activity !== undefined) data.activity = activity
@@ -59,6 +59,16 @@ router.patch('/:id', async (req: Request, res: Response) => {
     let recompute = false
     if (baseIncoming !== undefined) { data.valorEjecutadoBase = Number(baseIncoming); recompute = true }
     if (providerId !== undefined) data.providerId = providerId || null
+    // Asociación actividad ↔ línea del Construction Budget (validada: debe existir)
+    if (budgetLineId !== undefined) {
+      if (budgetLineId) {
+        const bl = await prisma.budgetLine.findUnique({ where: { id: String(budgetLineId) }, select: { id: true } })
+        if (!bl) return res.status(400).json({ data: null, error: 'La línea del budget no existe' })
+        data.budgetLineId = String(budgetLineId)
+      } else {
+        data.budgetLineId = null
+      }
+    }
     if (estado !== undefined) data.estado = estado
     if (fechaInicioReal !== undefined) data.fechaInicioReal = fechaInicioReal ? new Date(fechaInicioReal) : null
     if (fechaFinReal !== undefined) data.fechaFinReal = fechaFinReal ? new Date(fechaFinReal) : null
@@ -69,7 +79,16 @@ router.patch('/:id', async (req: Request, res: Response) => {
     if (recompute) await recomputeItemExecuted(req.params.id)
     const item = await prisma.item.findUnique({
       where: { id: req.params.id },
-      include: { provider: true, subactivities: { orderBy: { order: 'asc' } } },
+      include: {
+        provider: true,
+        subactivities: { orderBy: { order: 'asc' } },
+        budgetLine: {
+          select: {
+            id: true, divCode: true, divName: true, itemCode: true,
+            description: true, valorInicial: true, valorAprobado: true,
+          },
+        },
+      },
     })
     res.json({ data: item, error: null })
   } catch (e) {

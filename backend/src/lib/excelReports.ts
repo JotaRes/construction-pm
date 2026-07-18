@@ -320,6 +320,42 @@ export interface TechExcelData {
   subcontractorContracts: any[] // con paymentSchedule
   changeOrders?: any[]   // R3
   punchListItems?: any[] // R3
+  itemDocuments?: any[]  // R4: soportes (facturas/cotizaciones) de actividades
+  // R4: snapshot completo para RESTAURACIÓN EXACTA. Si viene, se incrusta como
+  // JSON en una hoja oculta "_RESTORE" — así el MISMO Excel presentable sirve
+  // para recargar el sistema con fidelidad total (IDs y relaciones intactos).
+  restoreSnapshot?: any
+}
+
+// Celdas de Excel aceptan máx. 32,767 caracteres → el JSON se parte en trozos.
+const RESTORE_SHEET = '_RESTORE'
+const RESTORE_CHUNK = 30000
+
+function addRestoreSheet(wb: ExcelJS.Workbook, snapshot: any) {
+  const json = JSON.stringify(snapshot) // compacto (sin pretty-print)
+  const ws = wb.addWorksheet(RESTORE_SHEET)
+  ws.getCell('A1').value = 'NO EDITAR — datos de restauración exacta del sistema (JSON). Hoja oculta.'
+  for (let i = 0, row = 2; i < json.length; i += RESTORE_CHUNK, row++) {
+    ws.getCell(`A${row}`).value = json.slice(i, i + RESTORE_CHUNK)
+  }
+  ws.state = 'veryHidden' // no aparece en las pestañas de Excel
+}
+
+// Lee el snapshot embebido en un .xlsx generado por buildTechExcel.
+// Devuelve null si el archivo no trae hoja _RESTORE (Excel viejo o externo).
+export async function readRestoreSnapshotFromXlsx(buffer: Buffer): Promise<any | null> {
+  const wb = new ExcelJS.Workbook()
+  await wb.xlsx.load(buffer as any)
+  const ws = wb.getWorksheet(RESTORE_SHEET)
+  if (!ws) return null
+  let json = ''
+  for (let r = 2; r <= ws.rowCount; r++) {
+    const v = ws.getCell(`A${r}`).value
+    if (typeof v === 'string') json += v
+    else if (v !== null && v !== undefined) json += String(v)
+  }
+  if (!json.trim()) return null
+  return JSON.parse(json)
 }
 
 export async function buildTechExcel(data: TechExcelData): Promise<Buffer> {
@@ -438,9 +474,11 @@ export async function buildTechExcel(data: TechExcelData): Promise<Buffer> {
   })
 
   // ── Fases & Items ──
+  // Mapa id → línea del budget para mostrar la asociación actividad ↔ Construction Budget
+  const budgetLineById = new Map(allBudget.map((b: any) => [b.id, b]))
   addTableSheet(wb, {
     name: 'Fases e Items',
-    title: 'Fases e Items de obra',
+    title: 'Fases e Items de obra (Presupuesto & Ejecución unificados)',
     columns: [
       { header: 'Proyecto', key: '_proj', width: 22 },
       { header: 'Fase', key: '_fase', width: 22 },
@@ -449,7 +487,10 @@ export async function buildTechExcel(data: TechExcelData): Promise<Buffer> {
       { header: 'Estado', key: 'estado', width: 14 },
       { header: 'Responsable', key: 'responsable', width: 18 },
       { header: 'Presupuestado', key: 'valorPresupuestado', width: 14, numFmt: MONEY, total: true },
+      { header: 'Budget asociado', key: '_budgetRef', width: 26, wrap: true },
+      { header: 'Presup. budget', key: '_budgetVal', width: 14, numFmt: MONEY },
       { header: 'Ejecutado', key: 'valorEjecutado', width: 14, numFmt: MONEY, total: true },
+      { header: 'Desviación', key: '_desv', width: 13, numFmt: MONEY },
       { header: 'Inicio real', key: 'fechaInicioReal', width: 13 },
       { header: 'Fin real', key: 'fechaFinReal', width: 13 },
       { header: 'Completado', key: 'completado', width: 12 },
@@ -457,10 +498,79 @@ export async function buildTechExcel(data: TechExcelData): Promise<Buffer> {
     ],
     rows: projects.flatMap((p) =>
       (p.phases || []).flatMap((ph: any) =>
-        (ph.items || []).map((i: any) => ({ ...i, _proj: p.name, _fase: `${ph.code} ${ph.name}` }))
+        (ph.items || []).map((i: any) => {
+          const bl: any = i.budgetLineId ? budgetLineById.get(i.budgetLineId) : null
+          const budgetVal = bl ? num(bl.valorInicial) : null
+          const baseline = budgetVal ?? num(i.valorPresupuestado)
+          return {
+            ...i,
+            _proj: p.name,
+            _fase: `${ph.code} ${ph.name}`,
+            _budgetRef: bl ? `${bl.itemCode} — ${bl.description}` : '',
+            _budgetVal: budgetVal,
+            _desv: baseline > 0 ? num(i.valorEjecutado) - baseline : null,
+          }
+        })
       )
     ),
   })
+
+  // ── Subactividades (desglose de cada actividad) ──
+  const subActRows = projects.flatMap((p) =>
+    (p.phases || []).flatMap((ph: any) =>
+      (ph.items || []).flatMap((i: any) =>
+        (i.subactivities || []).map((s: any) => ({
+          ...s,
+          _proj: p.name,
+          _fase: `${ph.code} ${ph.name}`,
+          _item: `${i.itemCode} — ${i.activity}`,
+          _invoice: s.invoiceUrl ? (s.invoiceName || 'Sí') : '',
+        }))
+      )
+    )
+  )
+  if (subActRows.length) {
+    addTableSheet(wb, {
+      name: 'Subactividades',
+      title: 'Subactividades — desglose de gasto por actividad',
+      columns: [
+        { header: 'Proyecto', key: '_proj', width: 22 },
+        { header: 'Fase', key: '_fase', width: 22 },
+        { header: 'Actividad', key: '_item', width: 32, wrap: true },
+        { header: 'Subactividad', key: 'description', width: 34, wrap: true },
+        { header: 'Valor ejecutado', key: 'valorEjecutado', width: 15, numFmt: MONEY, total: true },
+        { header: 'Fecha', key: 'fecha', width: 13 },
+        { header: 'Responsable', key: 'responsable', width: 18 },
+        { header: 'Invoice', key: '_invoice', width: 22 },
+        { header: 'Observaciones', key: 'observaciones', width: 30, wrap: true },
+      ],
+      rows: subActRows,
+    })
+  }
+
+  // ── Documentos de actividades (facturas / cotizaciones / soportes) ──
+  const itemDocs = data.itemDocuments ?? []
+  if (itemDocs.length) {
+    const itemById = new Map(allItems.map((i: any) => [i.id, i]))
+    addTableSheet(wb, {
+      name: 'Docs actividades',
+      title: 'Documentos por actividad (facturas, cotizaciones, soportes)',
+      columns: [
+        { header: 'Actividad', key: '_item', width: 34, wrap: true },
+        { header: 'Tipo', key: 'type', width: 13 },
+        { header: 'Nombre', key: 'name', width: 28, wrap: true },
+        { header: 'Proveedor', key: 'vendor', width: 20 },
+        { header: 'Monto', key: 'amount', width: 14, numFmt: MONEY, total: true },
+        { header: 'Notas', key: 'notes', width: 28, wrap: true },
+        { header: 'Fecha', key: 'createdAt', width: 13 },
+        { header: 'URL', key: 'fileUrl', width: 55 },
+      ],
+      rows: itemDocs.map((d: any) => {
+        const it: any = itemById.get(d.itemId)
+        return { ...d, _item: it ? `${it.itemCode} — ${it.activity}` : d.itemId }
+      }),
+    })
+  }
 
   // ── Draws ──
   addTableSheet(wb, {
@@ -641,6 +751,9 @@ export async function buildTechExcel(data: TechExcelData): Promise<Buffer> {
       rows: punchListItems.map((i: any) => ({ ...i, _proj: projName.get(i.projectId) ?? i.projectId })),
     })
   }
+
+  // ── Hoja oculta de restauración exacta (si se pasó el snapshot) ──
+  if (data.restoreSnapshot) addRestoreSheet(wb, data.restoreSnapshot)
 
   return toBuffer(wb)
 }

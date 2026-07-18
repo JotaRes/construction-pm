@@ -61,6 +61,29 @@ Producción: https://restrepoacosta.onrender.com · clave: env var `APP_PASSWORD
 - `.github/workflows/backup.yml` — backup diario 06:00 UTC como artifact (90 días retención). Requiere secret `APP_PASSWORD` en GitHub.
 - `.git/hooks/pre-commit` (local) — bloquea commits con provider sqlite o credenciales conocidas
 
+## Presupuesto & Ejecución UNIFICADOS (desde julio 2026)
+
+- La página `Budget.tsx` ya NO está en la navegación: `/tech/budget` redirige a `/tech/execution`.
+  `Execution.tsx` es la sección unificada — columna `Presup. ✏` editable inline. No re-separar.
+- **Asociación actividad ↔ Construction Budget**: `Item.budgetLineId → BudgetLine` (SetNull).
+  La columna `Desv.` y las alertas se miden contra `budgetLine.valorInicial` cuando hay
+  asociación; contra `valorPresupuestado` (manual) cuando no. Los KPIs "Desv. vs budget"
+  agrupan POR LÍNEA (el presupuesto de una línea cuenta una vez aunque varias actividades
+  apunten a ella) — mantener esa lógica en cualquier cálculo nuevo.
+- `Phase.name` es renombrable vía `PATCH /projects/:id/phases/:phaseId` (campo `name`).
+- `SubActivity` tiene control administrativo: `fecha`, `responsable`, `observaciones`,
+  `invoiceUrl/invoiceName` (upload en `POST /subactivities/:id/invoice`, Cloudinary).
+- **Excel técnico re-importable**: `buildTechExcel` incrusta el snapshot JSON completo en la
+  hoja oculta `_RESTORE` (troceado a 30k chars/celda). `POST /api/backup/restore-tech` acepta
+  `.xlsx` además de `.json/.zip` leyéndola con `readRestoreSnapshotFromXlsx`. Si tocas el
+  snapshot, NO rompas este círculo: el Excel debe seguir restaurando con fidelidad total.
+- En el restore, las **budgetLines se crean ANTES que los items** (FK `budgetLineId`) y las
+  subactividades se extraen del item anidado y se crean por separado. No revertir ese orden.
+- `Draws.tsx` tiene el **Chequeo Pre-Draw** (`PreDrawCheck`): avance físico vs % girado,
+  facturas faltantes, sobrecosto vs budget asociado, invoices de subactividades.
+- Alertas relacionadas en `routes/alerts.ts`: `budget-link-overrun` y
+  `subactivity-missing-invoices`.
+
 ## Pendientes conocidos / Ideas
 
 - Bundle frontend > 500KB → considerar code-split de Recharts via dynamic import

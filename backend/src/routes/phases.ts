@@ -15,6 +15,13 @@ router.get('/:projectId/phases', async (req: Request, res: Response) => {
             provider: true,
             documents: { select: { id: true, type: true } },
             subactivities: { orderBy: { order: 'asc' } },
+            // Línea del Construction Budget asociada (para "Presup. según budget" y Desv.)
+            budgetLine: {
+              select: {
+                id: true, divCode: true, divName: true, itemCode: true,
+                description: true, valorInicial: true, valorAprobado: true,
+              },
+            },
           },
         },
       },
@@ -130,11 +137,17 @@ router.get('/:projectId/phases-summary', async (req: Request, res: Response) => 
 
 // Enlace fase ↔ budget: setear qué divCode(s) del Construction Budget mapean a
 // una fase (coma-separados). Habilita la comparativa ejecutado vs presupuestado.
+// También permite renombrar la fase (alineación con el Construction Budget de
+// cada nuevo proyecto) sin tocar código, orden ni items.
 router.patch('/:projectId/phases/:phaseId', async (req: Request, res: Response) => {
   try {
     const data: Record<string, unknown> = {}
     if (req.body?.budgetDivCode !== undefined) {
       data.budgetDivCode = req.body.budgetDivCode ? String(req.body.budgetDivCode) : null
+    }
+    if (req.body?.name !== undefined) {
+      const name = String(req.body.name).trim()
+      if (name) data.name = name
     }
     const phase = await prisma.phase.update({ where: { id: req.params.phaseId }, data })
     res.json({ data: phase, error: null })

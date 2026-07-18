@@ -263,7 +263,7 @@ function RestoreModal({ open, onClose, file, setFile, fileRef, onConfirm, isPend
 
           <div>
             <label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'var(--brand-teal)' }}>Archivo de backup *</label>
-            <input ref={fileRef} type="file" accept=".json,.zip" className="hidden" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+            <input ref={fileRef} type="file" accept=".json,.zip,.xlsx" className="hidden" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
             <button type="button" onClick={() => fileRef.current?.click()}
               className="w-full px-3 py-3 rounded-lg flex items-center gap-2 transition-all"
               style={{ background: file ? 'rgba(16,185,129,0.08)' : 'var(--brand-cream2)', border: `1.5px solid ${file ? 'rgba(16,185,129,0.3)' : 'rgba(45,75,82,0.15)'}` }}>
@@ -276,7 +276,7 @@ function RestoreModal({ open, onClose, file, setFile, fileRef, onConfirm, isPend
               ) : (
                 <>
                   <Upload size={16} style={{ color: 'var(--brand-gold)' }} />
-                  <span className="text-sm" style={{ color: 'var(--brand-teal2)' }}>Seleccionar archivo .json o .zip</span>
+                  <span className="text-sm" style={{ color: 'var(--brand-teal2)' }}>Seleccionar archivo .xlsx, .json o .zip</span>
                 </>
               )}
             </button>

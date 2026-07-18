@@ -11,7 +11,6 @@ import { projectsApi } from './lib/api'
 import Layout from './components/layout/Layout'
 import Dashboard from './pages/Dashboard'
 import Execution from './pages/Execution'
-import Budget from './pages/Budget'
 import Draws from './pages/Draws'
 import Inspections from './pages/Inspections'
 import Alerts from './pages/Alerts'
@@ -75,7 +74,9 @@ function TechModule() {
         <Route path="subcontracts" element={<Subcontracts projectId={activeProjectId} />} />
         <Route path="change-orders" element={<ChangeOrders projectId={activeProjectId} />} />
         <Route path="punch-list" element={<PunchList projectId={activeProjectId} />} />
-        <Route path="budget" element={<Budget projectId={activeProjectId} />} />
+        {/* Presupuesto está UNIFICADO dentro de Ejecución (columna Presup. editable).
+            Se mantiene la ruta vieja como redirección para no romper enlaces guardados. */}
+        <Route path="budget" element={<Navigate to="/tech/execution" replace />} />
         <Route path="draws" element={<Draws projectId={activeProjectId} />} />
         <Route path="inspections" element={<Inspections projectId={activeProjectId} />} />
         <Route path="alerts" element={<Alerts projectId={activeProjectId} />} />

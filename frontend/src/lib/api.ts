@@ -72,6 +72,9 @@ export const phasesApi = {
     api.get(`/projects/${projectId}/budget-divisions`).then(r => r.data.data),
   setBudgetLink: (projectId: string, phaseId: string, budgetDivCode: string | null) =>
     api.patch(`/projects/${projectId}/phases/${phaseId}`, { budgetDivCode }).then(r => r.data.data),
+  // Renombrar fase (alineación con el Construction Budget de cada proyecto)
+  rename: (projectId: string, phaseId: string, name: string) =>
+    api.patch(`/projects/${projectId}/phases/${phaseId}`, { name }).then(r => r.data.data),
 }
 
 export interface PhaseSummary {
@@ -105,6 +108,13 @@ export const subactivitiesApi = {
   create: (itemId: string, data: Record<string, unknown>) => api.post(`/items/${itemId}/subactivities`, data).then(r => r.data.data),
   update: (id: string, data: Record<string, unknown>) => api.patch(`/subactivities/${id}`, data).then(r => r.data.data),
   delete: (id: string) => api.delete(`/subactivities/${id}`).then(r => r.data.data),
+  // Invoice / soporte documental de la subactividad
+  uploadInvoice: (id: string, file: File) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    return api.post(`/subactivities/${id}/invoice`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data.data)
+  },
+  deleteInvoice: (id: string) => api.delete(`/subactivities/${id}/invoice`).then(r => r.data.data),
 }
 
 export const drawsApi = {

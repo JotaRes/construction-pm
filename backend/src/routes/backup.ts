@@ -5,7 +5,7 @@ import path from 'path'
 import fs from 'fs'
 import multer from 'multer'
 import AdmZip from 'adm-zip'
-import { buildTechExcel, buildFinanceExcel } from '../lib/excelReports'
+import { buildTechExcel, buildFinanceExcel, readRestoreSnapshotFromXlsx } from '../lib/excelReports'
 import { buildSnapshot as buildFinanceSnapshot } from '../finance/routes/backup'
 import { collectTechTargets, collectFinanceTargets, collectAdminTargets, appendBinaries, manifestToCsv } from '../lib/backupBinaries'
 
@@ -70,27 +70,28 @@ router.get('/', async (req: Request, res: Response) => {
       prisma.punchListItem.findMany(),
     ])
 
-    const techSnapshot = JSON.stringify(
-      {
-        projects,
-        priceRefs,
-        itemDocuments,
-        subcontractorContracts,
-        drawLineContributions,
-        changeOrders,
-        punchListItems,
-        exportedAt: new Date().toISOString(),
-        version: '1.4',
-      },
-      null,
-      2
-    )
+    // Snapshot como objeto: se usa para el JSON del ZIP y se incrusta también
+    // en el Excel (hoja oculta _RESTORE) para que el .xlsx sea re-importable.
+    const techSnapshotObj = {
+      projects,
+      priceRefs,
+      itemDocuments,
+      subcontractorContracts,
+      drawLineContributions,
+      changeOrders,
+      punchListItems,
+      exportedAt: new Date().toISOString(),
+      // v1.5: items con budgetLineId (enlace al Construction Budget) y
+      // subactividades con fecha/responsable/observaciones/invoice.
+      version: '1.5',
+    }
+    const techSnapshot = JSON.stringify(techSnapshotObj, null, 2)
 
     archive.append(techSnapshot, { name: 'data/tech-database.json' })
 
     // === DASHBOARDS EXCEL (plan B de control, legible para cualquiera) ===
     try {
-      const techXlsx = await buildTechExcel({ projects, priceRefs, drawLineContributions, subcontractorContracts, changeOrders, punchListItems })
+      const techXlsx = await buildTechExcel({ projects, priceRefs, drawLineContributions, subcontractorContracts, changeOrders, punchListItems, itemDocuments, restoreSnapshot: techSnapshotObj })
       archive.append(techXlsx, { name: 'excel/reporte-tecnico.xlsx' })
     } catch (err) {
       console.error('Backup tech excel failed:', err)
@@ -281,15 +282,29 @@ router.get('/excel-tech', async (_req: Request, res: Response) => {
         budgetLines: true,
       },
     })
-    const [priceRefs, drawLineContributions, subcontractorContracts, changeOrders, punchListItems] = await Promise.all([
+    const [priceRefs, drawLineContributions, subcontractorContracts, changeOrders, punchListItems, itemDocuments] = await Promise.all([
       prisma.priceRef.findMany(),
       prisma.drawLineContribution.findMany(),
       prisma.subcontractorContract.findMany({ include: { paymentSchedule: true } }),
       prisma.changeOrder.findMany(),
       prisma.punchListItem.findMany(),
+      prisma.itemDocument.findMany(),
     ])
 
-    const buf = await buildTechExcel({ projects, priceRefs, drawLineContributions, subcontractorContracts, changeOrders, punchListItems })
+    // Mismo snapshot que el backup ZIP → el Excel descargado desde aquí también
+    // es restaurable con fidelidad total (hoja oculta _RESTORE).
+    const restoreSnapshot = {
+      projects,
+      priceRefs,
+      itemDocuments,
+      subcontractorContracts,
+      drawLineContributions,
+      changeOrders,
+      punchListItems,
+      exportedAt: new Date().toISOString(),
+      version: '1.5',
+    }
+    const buf = await buildTechExcel({ projects, priceRefs, drawLineContributions, subcontractorContracts, changeOrders, punchListItems, itemDocuments, restoreSnapshot })
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     res.setHeader('Content-Disposition', `attachment; filename="reporte-tecnico-${new Date().toISOString().slice(0, 10)}.xlsx"`)
     res.send(buf)
@@ -324,8 +339,17 @@ router.post('/restore-tech', upload.single('file'), async (req: Request, res: Re
         return res.status(400).json({ data: null, error: 'El ZIP no contiene data/tech-database.json' })
       }
       snapshot = JSON.parse(entry.getData().toString('utf8'))
+    } else if (filename.endsWith('.xlsx')) {
+      // Excel del sistema: trae el snapshot exacto en la hoja oculta _RESTORE.
+      snapshot = await readRestoreSnapshotFromXlsx(req.file.buffer)
+      if (!snapshot) {
+        return res.status(400).json({
+          data: null,
+          error: 'Este Excel no contiene datos de restauración (hoja _RESTORE). Solo los Excel generados por el sistema a partir de esta versión son restaurables — usa un backup ZIP o JSON para archivos anteriores.',
+        })
+      }
     } else {
-      return res.status(400).json({ data: null, error: `Formato no soportado: ${filename}. Use .json o .zip` })
+      return res.status(400).json({ data: null, error: `Formato no soportado: ${filename}. Use .xlsx, .json o .zip` })
     }
 
     if (!snapshot || typeof snapshot !== 'object') {
@@ -336,6 +360,7 @@ router.post('/restore-tech', upload.single('file'), async (req: Request, res: Re
     }
 
     // Wipe técnico — orden hijo→padre para respetar las foreign keys
+    await prisma.subActivity.deleteMany({}).catch(() => {})
     await prisma.itemDocument.deleteMany({})
     await prisma.changeOrder.deleteMany({}).catch(() => {})
     await prisma.punchListItem.deleteMany({}).catch(() => {})
@@ -357,9 +382,9 @@ router.post('/restore-tech', upload.single('file'), async (req: Request, res: Re
     await prisma.project.deleteMany({})
     await prisma.priceRef.deleteMany({})
 
-    const counts: any = { projects: 0, phases: 0, items: 0, draws: 0, partners: 0, providers: 0, providerQuotes: 0, providerDocuments: 0, notes: 0, files: 0, inspections: 0, tasks: 0, budgetLines: 0, priceRefs: 0, itemDocuments: 0, drawLineContributions: 0, subcontractorContracts: 0, subcontractorPayments: 0 }
+    const counts: any = { projects: 0, phases: 0, items: 0, subactivities: 0, draws: 0, partners: 0, providers: 0, providerQuotes: 0, providerDocuments: 0, notes: 0, files: 0, inspections: 0, tasks: 0, budgetLines: 0, priceRefs: 0, itemDocuments: 0, drawLineContributions: 0, subcontractorContracts: 0, subcontractorPayments: 0 }
 
-    const datesFields = ['settlementDate', 'permitIssued', 'permitExpires', 'targetCompletionDate', 'startDate', 'createdAt', 'updatedAt', 'fechaInicioReal', 'fechaFinReal', 'fechaSolicitud', 'fechaInspeccion', 'fechaWire']
+    const datesFields = ['settlementDate', 'permitIssued', 'permitExpires', 'targetCompletionDate', 'startDate', 'createdAt', 'updatedAt', 'fechaInicioReal', 'fechaFinReal', 'fechaSolicitud', 'fechaInspeccion', 'fechaWire', 'fecha']
     const normDates = (o: any) => {
       const r: any = { ...o }
       for (const f of datesFields) {
@@ -372,13 +397,22 @@ router.post('/restore-tech', upload.single('file'), async (req: Request, res: Re
       const { phases, draws, partners, providers, notes, files, inspections, tasks, budgetLines, ...rest } = p
       await prisma.project.create({ data: normDates(rest) })
       counts.projects++
+      // BudgetLines ANTES que los items: Item.budgetLineId referencia BudgetLine (FK)
+      for (const bl of budgetLines || []) { await prisma.budgetLine.create({ data: normDates(bl) }); counts.budgetLines++ }
       for (const ph of phases || []) {
         const { items, ...phRest } = ph
         await prisma.phase.create({ data: normDates(phRest) })
         counts.phases++
         for (const item of items || []) {
-          await prisma.item.create({ data: normDates(item) })
+          // Las subactividades vienen anidadas en el snapshot (v1.4+): se extraen
+          // y se crean por separado — pasarlas anidadas rompía la restauración.
+          const { subactivities, budgetLine, ...itemRest } = item
+          await prisma.item.create({ data: normDates(itemRest) })
           counts.items++
+          for (const sub of subactivities || []) {
+            await prisma.subActivity.create({ data: normDates(sub) }).catch(() => {})
+            counts.subactivities++
+          }
         }
       }
       for (const d of draws || []) { await prisma.draw.create({ data: normDates(d) }); counts.draws++ }
@@ -394,7 +428,6 @@ router.post('/restore-tech', upload.single('file'), async (req: Request, res: Re
       for (const f of files || []) { await prisma.projectFile.create({ data: normDates(f) }); counts.files++ }
       for (const i of inspections || []) { await prisma.inspection.create({ data: normDates(i) }); counts.inspections++ }
       for (const t of tasks || []) { await prisma.task.create({ data: normDates(t) }); counts.tasks++ }
-      for (const bl of budgetLines || []) { await prisma.budgetLine.create({ data: normDates(bl) }); counts.budgetLines++ }
     }
 
     for (const pr of snapshot.priceRefs || []) { await prisma.priceRef.create({ data: normDates(pr) }); counts.priceRefs++ }
@@ -442,13 +475,13 @@ router.delete('/wipe-tech', async (req: Request, res: Response) => {
     if (pwd !== RESTORE_PASSWORD) {
       return res.status(403).json({ data: null, error: 'Contraseña incorrecta. El reseteo fue bloqueado por seguridad.' })
     }
+    await prisma.subActivity.deleteMany({}).catch(() => {})
     await prisma.itemDocument.deleteMany({})
     await prisma.changeOrder.deleteMany({}).catch(() => {})
     await prisma.punchListItem.deleteMany({}).catch(() => {})
     await prisma.subcontractorPayment.deleteMany({}).catch(() => {})
     await prisma.subcontractorContract.deleteMany({}).catch(() => {})
     await prisma.drawLineContribution.deleteMany({}).catch(() => {})
-    await prisma.budgetLine.deleteMany({})
     await prisma.task.deleteMany({})
     await prisma.inspection.deleteMany({})
     await prisma.projectFile.deleteMany({})
@@ -459,6 +492,7 @@ router.delete('/wipe-tech', async (req: Request, res: Response) => {
     await prisma.partner.deleteMany({})
     await prisma.draw.deleteMany({})
     await prisma.item.deleteMany({})
+    await prisma.budgetLine.deleteMany({})
     await prisma.phase.deleteMany({})
     await prisma.project.deleteMany({})
     await prisma.priceRef.deleteMany({})

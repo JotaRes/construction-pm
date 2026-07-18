@@ -170,6 +170,12 @@ model Item {
   fechaFinReal       DateTime?
   observaciones      String?
   order              Int
+  // Asociación actividad ↔ línea del Construction Budget (opcional).
+  // Permite comparar el gasto real de la actividad contra lo presupuestado en el
+  // budget del lender aunque los nombres no coincidan. SetNull: si se borra la
+  // línea del budget, la actividad queda sin asociar pero NO se pierde.
+  budgetLineId       String?
+  budgetLine         BudgetLine?    @relation("ItemBudgetLink", fields: [budgetLineId], references: [id], onDelete: SetNull)
   documents          ItemDocument[]
   subactivities      SubActivity[]
 }
@@ -186,6 +192,13 @@ model SubActivity {
   valorEjecutado Float    @default(0)
   order          Int      @default(0)
   createdAt      DateTime @default(now())
+  // Control administrativo por subactividad (cronograma + auditoría):
+  fecha          DateTime? // cuándo se ejecutó / pagó
+  responsable    String?   // quién lo hizo (persona o contratista)
+  observaciones  String?
+  // Soporte documental (invoice / equivalente) subido a Cloudinary
+  invoiceUrl     String?
+  invoiceName    String?
 }
 
 model Draw {
@@ -359,6 +372,9 @@ model BudgetLine {
   order           Int     @default(0)
   contributions   DrawLineContribution[]
   changeOrders    ChangeOrder[]
+  // Actividades de Ejecución asociadas a esta línea del budget (seguimiento
+  // presupuesto-lender vs gasto real, aunque los nombres no coincidan).
+  linkedItems     Item[]  @relation("ItemBudgetLink")
 }
 
 model Task {

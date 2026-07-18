@@ -9,7 +9,7 @@ router.get('/:projectId/alerts', async (req: Request, res: Response) => {
       where: { id: req.params.projectId },
       include: {
         draws: true,
-        phases: { include: { items: { include: { documents: true } } } },
+        phases: { include: { items: { include: { documents: true, budgetLine: true, subactivities: true } } } },
         providers: { include: { contracts: { select: { id: true, status: true } } } },
         changeOrders: true,
       },
@@ -133,6 +133,51 @@ router.get('/:projectId/alerts', async (req: Request, res: Response) => {
         message: `${itemsSinFactura.length} actividad(es) ejecutada(s) sin factura adjunta`,
         action: 'Adjuntar la factura en cada actividad (columna Doc en EJECUCIÓN).',
         source: 'EJECUCIÓN — soportes',
+      })
+    }
+
+    // 6b. SOBRECOSTO VS CONSTRUCTION BUDGET (asociaciones actividad ↔ budget).
+    // Agrupado por línea del budget: su presupuesto cuenta UNA vez aunque varias
+    // actividades apunten a la misma línea. Crítico para el draw: si gastaste más
+    // de lo que el lender presupuestó, el draw no lo va a cubrir.
+    const allItemsWithLink = project.phases.flatMap(p => p.items).filter(i => i.budgetLineId && i.budgetLine)
+    const byLine = new Map<string, { code: string; desc: string; budget: number; ejec: number }>()
+    for (const i of allItemsWithLink) {
+      const bl = i.budgetLine!
+      const cur = byLine.get(bl.id) ?? { code: bl.itemCode, desc: bl.description, budget: bl.valorInicial, ejec: 0 }
+      cur.ejec += i.valorEjecutado
+      byLine.set(bl.id, cur)
+    }
+    const overLines = Array.from(byLine.values()).filter(l => l.budget > 0 && l.ejec > l.budget)
+    if (overLines.length > 0) {
+      const totalOver = overLines.reduce((s, l) => s + (l.ejec - l.budget), 0)
+      alerts.push({
+        id: 'budget-link-overrun',
+        level: 'critical',
+        title: 'Sobrecosto vs Construction Budget (lender)',
+        message: `${overLines.length} línea(s) del budget superada(s) por $${totalOver.toLocaleString('en-US', { maximumFractionDigits: 0 })}: ` +
+          overLines.slice(0, 3).map(l => `${l.code} +$${(l.ejec - l.budget).toLocaleString('en-US', { maximumFractionDigits: 0 })}`).join(' · ') +
+          (overLines.length > 3 ? ` (+${overLines.length - 3} más)` : ''),
+        action: 'El lender NO cubre sobrecostos: la diferencia sale de tu caja. Revisar antes del próximo draw y evaluar change order.',
+        source: 'EJECUCIÓN — asociaciones al Construction Budget',
+      })
+    }
+
+    // 6c. SUBACTIVIDADES CON GASTO SIN INVOICE — trazabilidad del desglose.
+    const subsSinInvoice = project.phases
+      .flatMap(p => p.items.filter(i => !i.esNA))
+      .flatMap(i => (i.subactivities ?? []).filter(s => s.valorEjecutado > 0 && !s.invoiceUrl)
+        .map(s => ({ item: i.itemCode, desc: s.description })))
+    if (subsSinInvoice.length > 0) {
+      alerts.push({
+        id: 'subactivity-missing-invoices',
+        level: 'warning',
+        title: 'Subactividades con gasto sin invoice',
+        message: `${subsSinInvoice.length} subactividad(es) con valor ejecutado sin soporte: ` +
+          subsSinInvoice.slice(0, 3).map(s => `${s.item} · ${s.desc.slice(0, 25)}`).join(' · ') +
+          (subsSinInvoice.length > 3 ? ` (+${subsSinInvoice.length - 3} más)` : ''),
+        action: 'Adjuntar el invoice en el desglose de la actividad (botón Invoice en cada subactividad).',
+        source: 'EJECUCIÓN — subactividades',
       })
     }
 

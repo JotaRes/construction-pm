@@ -79,6 +79,17 @@ export interface ItemDocument {
   createdAt: string
 }
 
+// Línea del Construction Budget (versión ligera para la asociación en Ejecución)
+export interface BudgetLineLite {
+  id: string
+  divCode: string
+  divName: string
+  itemCode: string
+  description: string
+  valorInicial: number
+  valorAprobado: number
+}
+
 export interface Item {
   id: string
   phaseId: string
@@ -100,6 +111,9 @@ export interface Item {
   fechaFinReal: string | null
   observaciones: string | null
   order: number
+  // Asociación opcional con una línea del Construction Budget
+  budgetLineId?: string | null
+  budgetLine?: BudgetLineLite | null
   documents?: { id: string; type: string }[]
   subactivities?: SubActivity[]
 }
@@ -110,6 +124,12 @@ export interface SubActivity {
   description: string
   valorEjecutado: number
   order: number
+  // Control administrativo
+  fecha?: string | null
+  responsable?: string | null
+  observaciones?: string | null
+  invoiceUrl?: string | null
+  invoiceName?: string | null
 }
 
 export interface Phase {
@@ -119,6 +139,8 @@ export interface Phase {
   name: string
   groupName: string
   order: number
+  // Enlace fase ↔ Construction Budget: divCode(s) coma-separados, editable
+  budgetDivCode?: string | null
   items: Item[]
 }
 

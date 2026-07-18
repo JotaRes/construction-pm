@@ -1,7 +1,7 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
-  LayoutDashboard, CheckSquare, DollarSign, TrendingUp,
+  LayoutDashboard, DollarSign, TrendingUp,
   AlertTriangle, Users, Folder, Search, BarChart3, Building2,
   ChevronDown, FolderKanban, ListChecks, FileSpreadsheet, Tag, LogOut,
   Archive, Menu, X, Download, Layers, GanttChart, HardHat,
@@ -27,8 +27,7 @@ const navGroups = [
   {
     label: 'Ejecución',
     items: [
-      { to: '/tech/budget',     icon: DollarSign,      label: 'Presupuesto' },
-      { to: '/tech/execution',  icon: CheckSquare,     label: 'Ejecución' },
+      { to: '/tech/execution',  icon: DollarSign,      label: 'Presupuesto & Ejecución' },
       { to: '/tech/phases',     icon: Layers,          label: 'Fases' },
       { to: '/tech/construction-budget', icon: FileSpreadsheet, label: 'Const. Budget' },
       { to: '/tech/draws',      icon: TrendingUp,      label: 'Draws' },
@@ -186,7 +185,7 @@ function getPageTitle(pathname: string): { title: string; sub: string } {
   const subs: Record<string, string> = {
     '/tech/projects': 'Portafolio de proyectos',
     '/tech/dashboard': 'Vista general del proyecto activo',
-    '/tech/execution': 'Control de ejecución en campo',
+    '/tech/execution': 'Planeación de presupuesto + control de ejecución en campo',
     '/tech/budget': 'Presupuesto y control de costos',
     '/tech/construction-budget': 'Presupuesto de construcción detallado',
     '/tech/draws': 'Solicitudes de desembolso',
