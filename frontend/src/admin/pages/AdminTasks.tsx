@@ -15,7 +15,7 @@ const PRIORITIES = [
 
 const STATUSES = [
   { value: "pendiente", label: "Pendiente", Icon: Circle, color: "#f59e0b" },
-  { value: "en_progreso", label: "En progreso", Icon: Clock, color: "#3b82f6" },
+  { value: "en_progreso", label: "En progreso", Icon: Clock, color: "#7A93A6" },
   { value: "completada", label: "Completada", Icon: CheckCircle2, color: "#22c55e" },
 ] as const;
 
@@ -101,7 +101,7 @@ export default function AdminTasks() {
         <div className="flex-1 min-w-0">
           <div className="text-[13px] font-medium truncate" style={{ color: "var(--text-primary)", textDecoration: t.status === "completada" ? "line-through" : undefined }}>{t.title}</div>
           <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-            {t.company && <Link to={`/admin/companies/${t.company.id}`} className="flex items-center gap-1 text-[10px]" style={{ color: "#8b5cf6" }}><Building2 size={10} /> {t.company.name}</Link>}
+            {t.company && <Link to={`/admin/companies/${t.company.id}`} className="flex items-center gap-1 text-[10px]" style={{ color: "#3E5A70" }}><Building2 size={10} /> {t.company.name}</Link>}
             {t.dueDate && <span className={cls("flex items-center gap-1 text-[10px]")} style={{ color: overdue ? "#ef4444" : "var(--text-muted)" }}><Calendar size={10} />{overdue ? "VENCIDA · " : ""}{fmtDate(t.dueDate)}</span>}
             {t.description && <span className="text-[10px] truncate max-w-[280px]" style={{ color: "var(--text-muted)" }}>{t.description}</span>}
           </div>

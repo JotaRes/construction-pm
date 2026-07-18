@@ -83,13 +83,13 @@ export default function Dashboard({ projectId }: Props) {
   }))
 
   const holdbackPieData = [
-    { name: 'Desembolsado', value: kpis.totalDrawn, color: '#0071E3' },
+    { name: 'Desembolsado', value: kpis.totalDrawn, color: '#3E5A70' },
     { name: 'Saldo Holdback', value: kpis.saldoHoldback, color: '#D2D2D7' },
   ]
 
   const progressByGroup = [
-    { name: 'Pre-Obra', value: phases.filter(p => p.groupName === 'PRE-OBRA').reduce((s, p) => s + p.avancePct, 0) / Math.max(phases.filter(p => p.groupName === 'PRE-OBRA').length, 1), fill: '#A7CCF3' },
-    { name: 'Obra', value: phases.filter(p => p.groupName === 'OBRA').reduce((s, p) => s + p.avancePct, 0) / Math.max(phases.filter(p => p.groupName === 'OBRA').length, 1), fill: '#0071E3' },
+    { name: 'Pre-Obra', value: phases.filter(p => p.groupName === 'PRE-OBRA').reduce((s, p) => s + p.avancePct, 0) / Math.max(phases.filter(p => p.groupName === 'PRE-OBRA').length, 1), fill: '#AEC2D1' },
+    { name: 'Obra', value: phases.filter(p => p.groupName === 'OBRA').reduce((s, p) => s + p.avancePct, 0) / Math.max(phases.filter(p => p.groupName === 'OBRA').length, 1), fill: '#3E5A70' },
     { name: 'Cierre', value: phases.filter(p => p.groupName === 'CIERRE').reduce((s, p) => s + p.avancePct, 0) / Math.max(phases.filter(p => p.groupName === 'CIERRE').length, 1), fill: '#1D9A57' },
   ]
 
@@ -119,7 +119,7 @@ export default function Dashboard({ projectId }: Props) {
         {/* Main donut */}
         <div className="kpi-card col-span-1 flex flex-col items-center justify-center gap-2 cursor-pointer hover:scale-[1.02] transition-transform"
           onClick={() => navigate('/tech/execution')}>
-          <DonutGauge pct={kpis.avanceGeneral} color="#0071E3" size={90} />
+          <DonutGauge pct={kpis.avanceGeneral} color="#3E5A70" size={90} />
           <div className="text-center">
             <div className="text-xs text-slate-400 uppercase tracking-wide">Avance General</div>
             <div className="text-[10px] text-slate-400 mt-0.5">{formatPct(kpis.tiempoTranscurrido)} tiempo</div>
@@ -221,7 +221,7 @@ export default function Dashboard({ projectId }: Props) {
                 tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
               <Tooltip content={(p) => <MoneyTooltip {...p} />} />
               <Bar dataKey="Budget" fill="var(--bg-surface-3)" radius={[3,3,0,0]} />
-              <Bar dataKey="Ejecutado" fill="#0071E3" radius={[3,3,0,0]} />
+              <Bar dataKey="Ejecutado" fill="#3E5A70" radius={[3,3,0,0]} />
             </BarChart>
           </ResponsiveContainer>
           <div className="flex gap-4 mt-2 text-[10px] text-slate-400">
@@ -242,8 +242,8 @@ export default function Dashboard({ projectId }: Props) {
                 <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
                 <Tooltip formatter={(val: number) => [formatUSD(val), '']} />
-                <Bar dataKey="elegible" name="Elegible" fill="#A7CCF3" radius={[3,3,0,0]} />
-                <Bar dataKey="amount" name="Net Wire" fill="#0071E3" radius={[3,3,0,0]} />
+                <Bar dataKey="elegible" name="Elegible" fill="#AEC2D1" radius={[3,3,0,0]} />
+                <Bar dataKey="amount" name="Net Wire" fill="#3E5A70" radius={[3,3,0,0]} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -285,7 +285,7 @@ export default function Dashboard({ projectId }: Props) {
                   <div className="text-[10px] text-slate-400">{ins.fase ?? ins.wbs}</div>
                 </div>
                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium
-                  ${ins.estado === 'PROGRAMADA' ? 'bg-[#0071E3]/15 text-[var(--brand-gold)]' : 'bg-slate-100 text-slate-500'}`}>
+                  ${ins.estado === 'PROGRAMADA' ? 'bg-[#3E5A70]/15 text-[var(--brand-gold)]' : 'bg-slate-100 text-slate-500'}`}>
                   {ins.estado}
                 </span>
               </div>

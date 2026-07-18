@@ -217,7 +217,7 @@ export default function CompanyDetail() {
           <Link to="/admin/orgchart" className="fin-btn-icon mt-1" title="Volver al organigrama"><ArrowLeft size={14} /></Link>
           <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
             style={{ background: isHolding ? "linear-gradient(135deg,#2A1E3F,#3E2C5C)" : "rgba(139,92,246,0.12)" }}>
-            {isHolding ? <Landmark size={20} color="#c4b5fd" /> : <Building2 size={20} color="#8b5cf6" />}
+            {isHolding ? <Landmark size={20} color="#C6952F" /> : <Building2 size={20} color="#3E5A70" />}
           </div>
           <div className="min-w-0">
             <div className="fin-page-title truncate">{c.name}</div>
@@ -225,7 +225,7 @@ export default function CompanyDetail() {
               <span className="badge-active" style={{ fontSize: 10 }}>{ROLE_LABELS[c.role] ?? c.role}</span>
               <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>{STATUS_LABELS[c.status] ?? c.status}</span>
               {c.finSpv && (
-                <Link to="/finance" className="flex items-center gap-1 text-[11px]" style={{ color: "#0d9488" }} title="Ver en el módulo financiero">
+                <Link to="/finance" className="flex items-center gap-1 text-[11px]" style={{ color: "#3E5A70" }} title="Ver en el módulo financiero">
                   <Wallet size={11} /> SPV {c.finSpv.code}
                 </Link>
               )}

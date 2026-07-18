@@ -250,7 +250,7 @@ export default function Layout({ projectId, children }: Props) {
             <svg width="14" height="13" viewBox="0 0 90 80" fill="none">
               <polygon points="12,74 12,18 41,6 41,74" fill="rgba(255,255,255,0.9)"/>
               <polygon points="46,74 46,28 67,20 67,74" fill="rgba(255,255,255,0.7)"/>
-              <path d="M 5,68 Q 42,50 82,61" stroke="rgba(255,220,160,0.9)" strokeWidth="6" fill="none" strokeLinecap="round"/>
+              <path d="M 5,68 Q 42,50 82,61" stroke="#D9AE52" strokeWidth="6" fill="none" strokeLinecap="round"/>
             </svg>
           </div>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 400, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
@@ -295,7 +295,7 @@ export default function Layout({ projectId, children }: Props) {
               <svg width="15" height="14" viewBox="0 0 90 80" fill="none">
                 <polygon points="12,74 12,18 41,6 41,74" fill="rgba(255,255,255,0.9)"/>
                 <polygon points="46,74 46,28 67,20 67,74" fill="rgba(255,255,255,0.7)"/>
-                <path d="M 5,68 Q 42,50 82,61" stroke="rgba(255,220,160,0.9)" strokeWidth="6.5" fill="none" strokeLinecap="round"/>
+                <path d="M 5,68 Q 42,50 82,61" stroke="#D9AE52" strokeWidth="6.5" fill="none" strokeLinecap="round"/>
               </svg>
             </div>
             <div>

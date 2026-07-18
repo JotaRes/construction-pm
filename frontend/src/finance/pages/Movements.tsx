@@ -201,7 +201,7 @@ export default function Movements() {
                   outline: 'none',
                   boxShadow: '0 1px 3px rgba(29,29,31,0.05)',
                 }}
-                onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--brand-gold)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(0,113,227,0.15)'; }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--brand-gold)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(62,90,112,0.15)'; }}
                 onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(29,29,31,0.15)'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(29,29,31,0.05)'; }}
               />
             </div>

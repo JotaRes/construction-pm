@@ -35,13 +35,13 @@ function CompanyCard({ c, isHolding = false }: { c: any; isHolding?: boolean }) 
             className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
             style={{ background: isHolding ? "rgba(196,181,253,0.15)" : "rgba(139,92,246,0.12)" }}
           >
-            {isHolding ? <Landmark size={15} color="#c4b5fd" /> : <Building2 size={15} color="#8b5cf6" />}
+            {isHolding ? <Landmark size={15} color="#C6952F" /> : <Building2 size={15} color="#3E5A70" />}
           </div>
           <div className="min-w-0">
             <div className="text-sm font-semibold truncate" style={{ color: isHolding ? "#fff" : "var(--text-primary)" }}>
               {c.name}
             </div>
-            <div className="text-[10px] uppercase tracking-wider" style={{ color: isHolding ? "#c4b5fd" : "var(--text-muted)" }}>
+            <div className="text-[10px] uppercase tracking-wider" style={{ color: isHolding ? "#C6952F" : "var(--text-muted)" }}>
               {ROLE_LABELS[c.role] ?? c.role}
               {c.finSpv ? ` · SPV ${c.finSpv.code}` : ""}
             </div>
@@ -140,7 +140,7 @@ export default function OrgChart() {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
           {[
             { label: "Cumplimiento global", value: `${dash.globalCompliancePct}%`, tone: dash.globalCompliancePct >= 85 ? "#22c55e" : dash.globalCompliancePct >= 60 ? "#f59e0b" : "#ef4444" },
-            { label: "Empresas", value: dash.totalCompanies, tone: "#8b5cf6" },
+            { label: "Empresas", value: dash.totalCompanies, tone: "#3E5A70" },
             { label: "Documentos", value: dash.totalDocuments, tone: "var(--text-primary)" },
             { label: "Tareas pendientes", value: dash.pendingTasks, tone: "#f59e0b" },
             { label: "Alertas críticas", value: dash.alertCounts?.criticas ?? 0, tone: "#ef4444" },

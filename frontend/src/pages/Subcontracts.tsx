@@ -8,7 +8,7 @@ const fmt = (n: number) =>
   n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
 
 const STATUS_BADGE: Record<SubContract['status'], string> = {
-  ACTIVO: 'bg-[#0071E3]/15 text-[var(--brand-gold)]',
+  ACTIVO: 'bg-[#3E5A70]/15 text-[var(--brand-gold)]',
   COMPLETADO: 'bg-emerald-500/15 text-emerald-600',
   CANCELADO: 'bg-slate-100 text-slate-500',
 }
@@ -232,7 +232,7 @@ function ContractCard({ contract, projectId }: { contract: SubContract; projectI
                   className="bg-slate-50 border border-slate-200 text-xs px-2 py-1.5 rounded-lg focus:outline-none focus:border-[var(--brand-gold)]" />
               </div>
               <button type="submit" disabled={!milestone.trim() || !amount || addPaymentMut.isPending}
-                className="px-3 py-1.5 bg-[var(--brand-gold)] hover:bg-[#0077ED] text-white text-xs font-semibold rounded-lg disabled:opacity-40">
+                className="px-3 py-1.5 bg-[var(--brand-gold)] hover:bg-[#4A6880] text-white text-xs font-semibold rounded-lg disabled:opacity-40">
                 Agregar
               </button>
             </form>
@@ -286,7 +286,7 @@ export default function Subcontracts({ projectId }: { projectId: string }) {
           <p className="text-sm text-slate-500 mt-0.5">Contratos, alcance y calendario de pagos por hito</p>
         </div>
         <button onClick={() => setShowForm(s => !s)}
-          className="flex items-center gap-2 px-4 py-2 bg-[var(--brand-gold)] hover:bg-[#0077ED] text-white text-sm font-semibold rounded-lg">
+          className="flex items-center gap-2 px-4 py-2 bg-[var(--brand-gold)] hover:bg-[#4A6880] text-white text-sm font-semibold rounded-lg">
           <Plus className="w-4 h-4" /> Nuevo contrato
         </button>
       </div>

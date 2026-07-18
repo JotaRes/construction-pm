@@ -16,7 +16,7 @@ import { Link } from "react-router-dom";
 // Paleta DS v2.1 — usa CSS vars como fills => las gráficas reaccionan a dark/light en vivo
 const COLORS = [
   "var(--inf)", "var(--accent)", "var(--ok)", "var(--brand-teal3)",
-  "var(--warn)", "var(--err)", "#8b5cf6", "#3b82f6",
+  "var(--warn)", "var(--err)", "#3E5A70", "#7A93A6",
 ];
 
 export default function Dashboard() {
@@ -102,9 +102,9 @@ export default function Dashboard() {
                       <div className="text-[10px] font-mono uppercase tracking-wide" style={{ color: 'var(--brand-teal2)' }}>{a.bank}</div>
                     </div>
                     <span className="badge" style={{
-                      background: 'rgba(0,113,227,0.12)',
+                      background: 'rgba(62,90,112,0.12)',
                       color: 'var(--accent)',
-                      border: '1px solid rgba(0,113,227,0.3)',
+                      border: '1px solid rgba(62,90,112,0.3)',
                     }}>{a.type}</span>
                   </div>
                   <div className={cls(

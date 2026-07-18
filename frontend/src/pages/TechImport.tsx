@@ -86,7 +86,7 @@ export default function TechImport() {
 
           <div className="rounded-xl p-4 transition-all hover:shadow-md" style={{ background: 'var(--brand-cream2)', border: '1px solid rgba(29,29,31,0.08)' }}>
             <div className="flex items-start gap-3 mb-3">
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(0,113,227,0.12)', color: 'var(--brand-gold)' }}>
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(62,90,112,0.12)', color: 'var(--brand-gold)' }}>
                 <Archive size={20} />
               </div>
               <div>
@@ -254,7 +254,7 @@ function RestoreModal({ open, onClose, file, setFile, fileRef, onConfirm, isPend
           <button onClick={handleClose} className="p-1 rounded-lg hover:bg-stone-100"><X size={18} /></button>
         </div>
         <div className="p-5 space-y-4">
-          <div className="flex items-start gap-2 p-3 rounded-lg" style={{ background: 'rgba(0,113,227,0.08)', border: '1px solid rgba(0,113,227,0.25)' }}>
+          <div className="flex items-start gap-2 p-3 rounded-lg" style={{ background: 'rgba(62,90,112,0.08)', border: '1px solid rgba(62,90,112,0.25)' }}>
             <AlertTriangle size={16} style={{ color: 'var(--brand-gold)' }} className="flex-shrink-0 mt-0.5" />
             <div className="text-sm" style={{ color: 'var(--brand-teal)' }}>
               <strong>El restore BORRA todos los datos técnicos actuales</strong> antes de cargar el backup. Descarga un backup ZIP del estado actual primero (por si quieres deshacer).

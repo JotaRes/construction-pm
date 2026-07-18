@@ -213,14 +213,14 @@ function ParsePanel({ projectId, cfg, onClose, onApply }: {
         <div className="p-6 space-y-5">
           <div className="flex items-center gap-3 flex-wrap">
             <button onClick={() => fileRef.current?.click()}
-              className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:border-[#0071E3]/40 text-slate-700 text-sm rounded-xl transition-all">
+              className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:border-[#3E5A70]/40 text-slate-700 text-sm rounded-xl transition-all">
               <Upload className="w-4 h-4" />{file ? file.name : 'Seleccionar PDF / imagen'}
             </button>
             <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" className="hidden"
               onChange={e => { setFile(e.target.files?.[0] ?? null); setParsed(null) }} />
             {file && (
               <button onClick={handleParse} disabled={loading}
-                className="px-4 py-2.5 bg-[var(--brand-gold)] hover:bg-[#0077ED] text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50">
+                className="px-4 py-2.5 bg-[var(--brand-gold)] hover:bg-[#4A6880] text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50">
                 {loading ? 'Procesando...' : cfg.docType === 'OTROS' ? 'Subir archivo' : 'Extraer datos'}
               </button>
             )}
@@ -616,7 +616,7 @@ function SalesProjections({ project, upb, dailyRate, interestSoFar, projectId, b
           </div>
 
           {/* "Si vendo HOY" — snapshot a precio base */}
-          <div className="bg-gradient-to-r from-[#1D1D1F]/10 to-[#0071E3]/10 border border-[#1D1D1F]/20 rounded-lg p-3 grid grid-cols-2 md:grid-cols-4 gap-2 text-[11px]">
+          <div className="bg-gradient-to-r from-[#1D1D1F]/10 to-[#3E5A70]/10 border border-[#1D1D1F]/20 rounded-lg p-3 grid grid-cols-2 md:grid-cols-4 gap-2 text-[11px]">
             <div>
               <div className="text-slate-500 uppercase text-[9px]">Si vendo HOY (sin esperar)</div>
               <div className="font-mono font-bold text-sm text-slate-800">{formatUSD(sellToday.saleValue)}</div>
@@ -770,19 +770,19 @@ export default function Financial({ projectId }: { projectId: string }) {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <button onClick={() => setActivePanel(LOI_CFG)}
-            className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 hover:border-[#0071E3]/40 text-slate-700 text-xs font-medium rounded-xl transition-colors">
+            className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 hover:border-[#3E5A70]/40 text-slate-700 text-xs font-medium rounded-xl transition-colors">
             <FileSignature className="w-3.5 h-3.5" />LOI
           </button>
           <button onClick={() => setActivePanel(LOAN_CFG)}
-            className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 hover:border-[#0071E3]/40 text-slate-700 text-xs font-medium rounded-xl transition-colors">
+            className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 hover:border-[#3E5A70]/40 text-slate-700 text-xs font-medium rounded-xl transition-colors">
             <Building2 className="w-3.5 h-3.5" />Aprobación lender
           </button>
           <button onClick={() => setActivePanel(HUD_CFG)}
-            className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 hover:border-[#0071E3]/40 text-slate-700 text-xs font-medium rounded-xl transition-colors">
+            className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 hover:border-[#3E5A70]/40 text-slate-700 text-xs font-medium rounded-xl transition-colors">
             <Receipt className="w-3.5 h-3.5" />HUD
           </button>
           <button onClick={() => setActivePanel(OTROS_CFG)}
-            className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 hover:border-[#0071E3]/40 text-slate-700 text-xs font-medium rounded-xl transition-colors">
+            className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 hover:border-[#3E5A70]/40 text-slate-700 text-xs font-medium rounded-xl transition-colors">
             <FileQuestion className="w-3.5 h-3.5" />Otros
           </button>
         </div>
@@ -828,33 +828,33 @@ export default function Financial({ projectId }: { projectId: string }) {
           <h2 className="text-sm font-bold uppercase tracking-wider">CFO Dashboard — Análisis para toma de decisión</h2>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-slate-800">
-          <div className="bg-[#F5F5F7] rounded-xl p-3">
+          <div className="bg-[#F4F1EB] rounded-xl p-3">
             <div className="text-[10px] uppercase opacity-60 mb-1">Burn rate / día</div>
-            <div className="text-lg font-bold font-mono text-[#0077ED]">{formatUSD(dailyBurn)}</div>
+            <div className="text-lg font-bold font-mono text-[#4A6880]">{formatUSD(dailyBurn)}</div>
             <div className="text-[10px] opacity-50 mt-1">UPB × tasa diaria</div>
           </div>
-          <div className="bg-[#F5F5F7] rounded-xl p-3">
+          <div className="bg-[#F4F1EB] rounded-xl p-3">
             <div className="text-[10px] uppercase opacity-60 mb-1">Días del préstamo consumidos</div>
-            <div className={`text-lg font-bold font-mono ${consumoLoanPct > 80 ? 'text-red-600' : consumoLoanPct > 60 ? 'text-[#0077ED]' : 'text-emerald-600'}`}>
+            <div className={`text-lg font-bold font-mono ${consumoLoanPct > 80 ? 'text-red-600' : consumoLoanPct > 60 ? 'text-[#4A6880]' : 'text-emerald-600'}`}>
               {consumoLoanPct.toFixed(0)}%
             </div>
             <div className="text-[10px] opacity-50 mt-1">{diasDesde}d de {diasTotalLoan}d</div>
           </div>
-          <div className="bg-[#F5F5F7] rounded-xl p-3">
+          <div className="bg-[#F4F1EB] rounded-xl p-3">
             <div className="text-[10px] uppercase opacity-60 mb-1">Días restantes loan</div>
-            <div className={`text-lg font-bold font-mono ${diasRestantes < 60 ? 'text-red-600' : diasRestantes < 120 ? 'text-[#0077ED]' : 'text-slate-900'}`}>
+            <div className={`text-lg font-bold font-mono ${diasRestantes < 60 ? 'text-red-600' : diasRestantes < 120 ? 'text-[#4A6880]' : 'text-slate-900'}`}>
               {diasRestantes}d
             </div>
             {loanExpiresOn && (
               <div className="text-[10px] opacity-50 mt-1">Vence {formatDate(loanExpiresOn.toISOString())}</div>
             )}
           </div>
-          <div className="bg-[#F5F5F7] rounded-xl p-3">
+          <div className="bg-[#F4F1EB] rounded-xl p-3">
             <div className="text-[10px] uppercase opacity-60 mb-1">Días al target completion</div>
             <div className={`text-lg font-bold font-mono ${
               diasParaTarget == null ? 'text-slate-400' :
               diasParaTarget < 0 ? 'text-red-600' :
-              diasParaTarget < 30 ? 'text-[#0077ED]' : 'text-emerald-600'
+              diasParaTarget < 30 ? 'text-[#4A6880]' : 'text-emerald-600'
             }`}>
               {diasParaTarget == null ? '—' : `${diasParaTarget}d`}
             </div>
@@ -866,15 +866,15 @@ export default function Financial({ projectId }: { projectId: string }) {
 
         {/* Decisión: ¿extender vs vender vs refinanciar? */}
         <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="bg-[#F5F5F7] rounded-xl p-3">
+          <div className="bg-[#F4F1EB] rounded-xl p-3">
             <div className="flex items-center gap-2 mb-1">
               <DollarSign className="w-3.5 h-3.5 text-[var(--brand-gold)]" />
               <div className="text-[10px] uppercase opacity-60">Costo total de espera (estimado a expiración)</div>
             </div>
-            <div className="text-lg font-bold font-mono text-[#0077ED]">{formatUSD(dailyBurn * diasRestantes)}</div>
+            <div className="text-lg font-bold font-mono text-[#4A6880]">{formatUSD(dailyBurn * diasRestantes)}</div>
             <div className="text-[10px] opacity-50 mt-1">Si nadie compra antes</div>
           </div>
-          <div className="bg-[#F5F5F7] rounded-xl p-3">
+          <div className="bg-[#F4F1EB] rounded-xl p-3">
             <div className="flex items-center gap-2 mb-1">
               <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
               <div className="text-[10px] uppercase opacity-60">Si vendo HOY (estimado)</div>
@@ -884,7 +884,7 @@ export default function Financial({ projectId }: { projectId: string }) {
             </div>
             <div className="text-[10px] opacity-50 mt-1">ROI {roi.toFixed(1)}% · Margen {margen.toFixed(1)}%</div>
           </div>
-          <div className="bg-[#F5F5F7] rounded-xl p-3">
+          <div className="bg-[#F4F1EB] rounded-xl p-3">
             <div className="flex items-center gap-2 mb-1">
               <Calendar className="w-3.5 h-3.5 text-[var(--brand-gold)]" />
               <div className="text-[10px] uppercase opacity-60">LOI activo</div>

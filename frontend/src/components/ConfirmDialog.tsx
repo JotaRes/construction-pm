@@ -84,7 +84,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
                 <div
                   className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
                   style={{
-                    background: isDestructive ? 'rgba(220,38,38,0.1)' : 'rgba(0,113,227,0.12)',
+                    background: isDestructive ? 'rgba(220,38,38,0.1)' : 'rgba(62,90,112,0.12)',
                     color: isDestructive ? '#dc2626' : 'var(--brand-gold)',
                   }}
                 >
@@ -170,7 +170,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
                     background: isDestructive
                       ? 'linear-gradient(135deg, #dc2626 0%, #ef4444 100%)'
                       : 'linear-gradient(135deg, var(--brand-gold) 0%, var(--brand-gold2) 100%)',
-                    boxShadow: isDestructive ? '0 4px 14px rgba(220,38,38,0.25)' : '0 4px 14px rgba(0,113,227,0.25)',
+                    boxShadow: isDestructive ? '0 4px 14px rgba(220,38,38,0.25)' : '0 4px 14px rgba(62,90,112,0.25)',
                   }}
                   autoFocus={!needsType}
                 >

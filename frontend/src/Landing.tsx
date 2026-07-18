@@ -11,12 +11,12 @@ function RALogoMark({ width = 96, height = 72 }: { width?: number; height?: numb
     <svg width={width} height={height} viewBox="0 0 90 80" fill="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="ra-lt" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#1D1D1F"/>
-          <stop offset="100%" stopColor="#1D1D1F"/>
+          <stop offset="0%" stopColor="#33495C"/>
+          <stop offset="100%" stopColor="#33495C"/>
         </linearGradient>
         <linearGradient id="ra-rt" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#48484A"/>
-          <stop offset="100%" stopColor="#1D1D1F"/>
+          <stop offset="0%" stopColor="#4E6478"/>
+          <stop offset="100%" stopColor="#33495C"/>
         </linearGradient>
         <filter id="ra-glow">
           <feGaussianBlur stdDeviation="1.2" result="blur"/>
@@ -32,7 +32,7 @@ function RALogoMark({ width = 96, height = 72 }: { width?: number; height?: numb
       {/* Destello interior torre derecha */}
       <polygon points="46,28 46,38 52,35 52,25" fill="rgba(255,255,255,0.07)"/>
       {/* Arco azul — la firma de la marca (acento único del sistema) */}
-      <path d="M 5,68 Q 42,50 82,61" stroke="#0071E3" strokeWidth="5.5" fill="none" strokeLinecap="round"/>
+      <path d="M 5,68 Q 42,50 82,61" stroke="#C6952F" strokeWidth="5.5" fill="none" strokeLinecap="round"/>
     </svg>
   )
 }
@@ -166,7 +166,7 @@ export default function Landing() {
               >
                 <div
                   className="w-14 h-14 rounded-2xl flex items-center justify-center mb-6"
-                  style={{ background: '#F5F5F7' }}
+                  style={{ background: '#F4F1EB' }}
                 >
                   <Icon size={24} strokeWidth={1.8} color="#1D1D1F" />
                 </div>
@@ -177,7 +177,7 @@ export default function Landing() {
                 <p className="text-sm leading-relaxed mb-6" style={{ color: '#48484A' }}>
                   {desc}
                 </p>
-                <div className="flex items-center gap-2 text-sm font-medium" style={{ color: '#0071E3' }}>
+                <div className="flex items-center gap-2 text-sm font-medium" style={{ color: '#3E5A70' }}>
                   Entrar al módulo
                   <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
                 </div>
@@ -197,7 +197,7 @@ export default function Landing() {
             >
               <div
                 className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{ background: '#F5F5F7' }}
+                style={{ background: '#F4F1EB' }}
               >
                 <Download size={20} strokeWidth={1.8} color="#1D1D1F" />
               </div>
@@ -217,7 +217,7 @@ export default function Landing() {
                 disabled={downloading}
                 className="text-sm font-medium px-4 py-2 rounded-lg transition-all disabled:opacity-60 flex items-center gap-2"
                 style={{
-                  background: '#0071E3',
+                  background: '#3E5A70',
                   color: 'white',
                 }}
               >

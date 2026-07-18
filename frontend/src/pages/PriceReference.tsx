@@ -119,7 +119,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   'Roofing': 'bg-red-500/20 text-red-300',
   'Exterior Finishes': 'bg-yellow-500/20 text-yellow-300',
   'Windows & Doors': 'bg-sky-500/20 text-sky-300',
-  'Plumbing': 'bg-[#0071E3]/20 text-blue-300',
+  'Plumbing': 'bg-[#3E5A70]/20 text-blue-300',
   'HVAC': 'bg-cyan-500/20 text-cyan-300',
   'Electrical': 'bg-yellow-400/25 text-yellow-200',
   'Insulation': 'bg-pink-500/20 text-pink-300',
@@ -129,7 +129,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   'Fixtures & Hardware': 'bg-[var(--accent-soft)] text-[var(--accent)]',
   'Painting': 'bg-[var(--accent-soft)] text-[var(--accent)]',
   'Landscaping': 'bg-green-500/20 text-green-300',
-  'General Conditions': 'bg-[#0071E3]/10 text-[var(--brand-gold)]',
+  'General Conditions': 'bg-[#3E5A70]/10 text-[var(--brand-gold)]',
   'Otro': 'bg-slate-200 text-slate-500',
 }
 
@@ -233,7 +233,7 @@ function CategorySection({
                 <th className="px-3 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider w-16">Unidad</th>
                 <th className="px-3 py-1.5 text-right text-[9px] text-slate-400 uppercase tracking-wider w-24">Precio Bajo</th>
                 <th className="px-3 py-1.5 text-right text-[9px] text-slate-400 uppercase tracking-wider w-24">Precio Alto</th>
-                <th className="px-3 py-1.5 text-right text-[9px] text-[#0071E3]/60 uppercase tracking-wider w-24">Promedio</th>
+                <th className="px-3 py-1.5 text-right text-[9px] text-[#3E5A70]/60 uppercase tracking-wider w-24">Promedio</th>
                 <th className="px-3 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider w-32">Fuente</th>
                 <th className="px-3 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider w-24">Región</th>
                 <th className="w-8" />
@@ -260,7 +260,7 @@ function CategorySection({
                       <Num value={ref.priceHigh} onSave={v => onUpdate(ref.id, { priceHigh: v })} />
                     </td>
                     <td className="px-3 py-2 text-right">
-                      <span className={`text-xs font-mono ${mid > 0 ? 'text-[#0071E3]/80' : 'text-slate-500'}`}>
+                      <span className={`text-xs font-mono ${mid > 0 ? 'text-[#3E5A70]/80' : 'text-slate-500'}`}>
                         {mid > 0 ? formatUSD(mid) : '—'}
                       </span>
                     </td>
@@ -314,7 +314,7 @@ function AddPriceForm({ onSave, onClose }: { onSave: (data: Record<string, unkno
           <select
             value={form.category}
             onChange={e => set('category', e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs px-2 py-1.5 rounded-lg focus:outline-none focus:border-[#0071E3]/60"
+            className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs px-2 py-1.5 rounded-lg focus:outline-none focus:border-[#3E5A70]/60"
           >
             {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
@@ -326,43 +326,43 @@ function AddPriceForm({ onSave, onClose }: { onSave: (data: Record<string, unkno
             value={form.description}
             onChange={e => set('description', e.target.value)}
             placeholder="Ej: Framing 2x6 walls"
-            className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs px-2 py-1.5 rounded-lg focus:outline-none focus:border-[#0071E3]/60 placeholder-slate-400"
+            className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs px-2 py-1.5 rounded-lg focus:outline-none focus:border-[#3E5A70]/60 placeholder-slate-400"
           />
         </div>
         <div>
           <label className="block text-[10px] text-slate-400 uppercase tracking-wider mb-1">Código (opcional)</label>
           <input type="text" value={form.code} onChange={e => set('code', e.target.value)}
             placeholder="03.01"
-            className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs px-2 py-1.5 rounded-lg focus:outline-none focus:border-[#0071E3]/60 placeholder-slate-400" />
+            className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs px-2 py-1.5 rounded-lg focus:outline-none focus:border-[#3E5A70]/60 placeholder-slate-400" />
         </div>
         <div>
           <label className="block text-[10px] text-slate-400 uppercase tracking-wider mb-1">Unidad</label>
           <input type="text" value={form.unit} onChange={e => set('unit', e.target.value)}
             placeholder="SF / LF / EA / LS"
-            className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs px-2 py-1.5 rounded-lg focus:outline-none focus:border-[#0071E3]/60 placeholder-slate-400" />
+            className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs px-2 py-1.5 rounded-lg focus:outline-none focus:border-[#3E5A70]/60 placeholder-slate-400" />
         </div>
         <div>
           <label className="block text-[10px] text-slate-400 uppercase tracking-wider mb-1">Precio Bajo</label>
           <input type="number" value={form.priceLow} onChange={e => set('priceLow', e.target.value)}
             placeholder="0.00"
-            className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs px-2 py-1.5 rounded-lg focus:outline-none focus:border-[#0071E3]/60 font-mono placeholder-slate-400" />
+            className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs px-2 py-1.5 rounded-lg focus:outline-none focus:border-[#3E5A70]/60 font-mono placeholder-slate-400" />
         </div>
         <div>
           <label className="block text-[10px] text-slate-400 uppercase tracking-wider mb-1">Precio Alto</label>
           <input type="number" value={form.priceHigh} onChange={e => set('priceHigh', e.target.value)}
             placeholder="0.00"
-            className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs px-2 py-1.5 rounded-lg focus:outline-none focus:border-[#0071E3]/60 font-mono placeholder-slate-400" />
+            className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs px-2 py-1.5 rounded-lg focus:outline-none focus:border-[#3E5A70]/60 font-mono placeholder-slate-400" />
         </div>
         <div>
           <label className="block text-[10px] text-slate-400 uppercase tracking-wider mb-1">Fuente</label>
           <input type="text" value={form.source} onChange={e => set('source', e.target.value)}
             placeholder="Contratista ABC / RS Means 2024"
-            className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs px-2 py-1.5 rounded-lg focus:outline-none focus:border-[#0071E3]/60 placeholder-slate-400" />
+            className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs px-2 py-1.5 rounded-lg focus:outline-none focus:border-[#3E5A70]/60 placeholder-slate-400" />
         </div>
         <div>
           <label className="block text-[10px] text-slate-400 uppercase tracking-wider mb-1">Región</label>
           <input type="text" value={form.region} onChange={e => set('region', e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs px-2 py-1.5 rounded-lg focus:outline-none focus:border-[#0071E3]/60" />
+            className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs px-2 py-1.5 rounded-lg focus:outline-none focus:border-[#3E5A70]/60" />
         </div>
       </div>
       <div className="flex gap-2 justify-end">
@@ -379,7 +379,7 @@ function AddPriceForm({ onSave, onClose }: { onSave: (data: Record<string, unkno
             })
             onClose()
           }}
-          className="px-4 py-1.5 bg-[var(--brand-gold)] hover:bg-[#0077ED] text-white text-xs font-medium rounded-lg transition-colors"
+          className="px-4 py-1.5 bg-[var(--brand-gold)] hover:bg-[#4A6880] text-white text-xs font-medium rounded-lg transition-colors"
         >
           Guardar
         </button>
@@ -473,7 +473,7 @@ export default function PriceReference() {
           {view === 'manual' && (
             <button
               onClick={() => setShowAdd(v => !v)}
-              className="flex items-center gap-2 px-4 py-2 bg-[var(--brand-gold)] hover:bg-[#0077ED] text-white text-sm font-medium rounded-xl transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-[var(--brand-gold)] hover:bg-[#4A6880] text-white text-sm font-medium rounded-xl transition-colors"
             >
               <Plus className="w-4 h-4" />
               Agregar precio
@@ -483,7 +483,7 @@ export default function PriceReference() {
       </div>
 
       {view === 'auto' && (
-        <div className="section-card p-3 flex items-start gap-2" style={{ background: 'rgba(0,113,227,0.05)' }}>
+        <div className="section-card p-3 flex items-start gap-2" style={{ background: 'rgba(62,90,112,0.05)' }}>
           <Calculator className="w-4 h-4 text-[var(--brand-gold)] flex-shrink-0 mt-0.5" />
           <p className="text-[11px] text-slate-600">Calculado en vivo desde tus presupuestos y ejecución de todos los proyectos: costo promedio por actividad y precio por unidad ($/pie², $/yarda³, $/lineal...) donde hayas cargado la cantidad. Se actualiza solo.</p>
         </div>
@@ -525,14 +525,14 @@ export default function PriceReference() {
             placeholder="Buscar por descripción, categoría, fuente..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 text-xs text-slate-800 rounded-xl focus:outline-none focus:border-[#0071E3]/60 placeholder-slate-400"
+            className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 text-xs text-slate-800 rounded-xl focus:outline-none focus:border-[#3E5A70]/60 placeholder-slate-400"
           />
         </div>
         <div className="flex flex-wrap gap-1.5">
           <button
             onClick={() => setFilterCat('ALL')}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
-              ${filterCat === 'ALL' ? 'bg-[#0071E3]/10 text-[var(--brand-teal)] border border-amber-500/40' : 'text-slate-500 hover:text-slate-800 bg-white/50'}`}
+              ${filterCat === 'ALL' ? 'bg-[#3E5A70]/10 text-[var(--brand-teal)] border border-amber-500/40' : 'text-slate-500 hover:text-slate-800 bg-white/50'}`}
           >
             Todas
           </button>
@@ -541,7 +541,7 @@ export default function PriceReference() {
               key={c}
               onClick={() => setFilterCat(filterCat === c ? 'ALL' : c)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
-                ${filterCat === c ? 'bg-[#0071E3]/10 text-[var(--brand-teal)] border border-amber-500/40' : 'text-slate-500 hover:text-slate-800 bg-white/50'}`}
+                ${filterCat === c ? 'bg-[#3E5A70]/10 text-[var(--brand-teal)] border border-amber-500/40' : 'text-slate-500 hover:text-slate-800 bg-white/50'}`}
             >
               {c}
             </button>
@@ -557,7 +557,7 @@ export default function PriceReference() {
           <p className="text-xs mt-1">Agrega cotizaciones, valores de mercado o referencias de RS Means.</p>
           <button
             onClick={() => setShowAdd(true)}
-            className="mt-4 px-4 py-2 bg-[#0071E3]/10 text-[var(--brand-gold)] border border-amber-500/30 rounded-xl text-sm hover:bg-blue-600/30 transition-colors"
+            className="mt-4 px-4 py-2 bg-[#3E5A70]/10 text-[var(--brand-gold)] border border-amber-500/30 rounded-xl text-sm hover:bg-blue-600/30 transition-colors"
           >
             + Agregar primer precio
           </button>

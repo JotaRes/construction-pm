@@ -6,7 +6,7 @@ import { AdminAPI } from "../lib/api";
 const SEVERITY_META: Record<string, { label: string; card: string; color: string }> = {
   critica: { label: "Crítica", card: "alert-card-critical", color: "#ef4444" },
   alta:    { label: "Alta",    card: "alert-card-warning",  color: "#f59e0b" },
-  media:   { label: "Media",   card: "alert-card-info",     color: "#3b82f6" },
+  media:   { label: "Media",   card: "alert-card-info",     color: "#7A93A6" },
 };
 
 const KIND_ICON: Record<string, typeof AlertTriangle> = {
@@ -25,7 +25,7 @@ export default function AdminAlerts() {
 
   const kpis = dash ? [
     { label: "Cumplimiento global", value: `${dash.globalCompliancePct}%`, tone: dash.globalCompliancePct >= 85 ? "#22c55e" : dash.globalCompliancePct >= 60 ? "#f59e0b" : "#ef4444" },
-    { label: "Empresas", value: dash.totalCompanies, tone: "#8b5cf6" },
+    { label: "Empresas", value: dash.totalCompanies, tone: "#3E5A70" },
     { label: "Documentos", value: dash.totalDocuments, tone: "var(--text-primary)" },
     { label: "Tareas pendientes", value: dash.pendingTasks, tone: "#f59e0b" },
     { label: "Alertas críticas", value: dash.alertCounts?.criticas ?? 0, tone: "#ef4444" },

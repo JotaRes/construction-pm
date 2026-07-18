@@ -84,6 +84,20 @@ Producción: https://restrepoacosta.onrender.com · clave: env var `APP_PASSWORD
 - Alertas relacionadas en `routes/alerts.ts`: `budget-link-overrun` y
   `subactivity-missing-invoices`.
 
+## Identidad visual FIJA (desde julio 2026 — validada con el logo corporativo)
+
+Paleta oficial (única fuente: bloque de tokens en `frontend/src/index.css`):
+- **Petróleo** `#33495C` (torres del logo) · acento interactivo `#3E5A70` · hover `#4A6880`
+- **Oro** `#C6952F` (arco del logo; `#D9AE52` sobre fondos oscuros) — SOLO firma de marca:
+  arco del logo, regla del page-head, icono activo del sidebar. Nunca botones ni masas.
+- **Marfil** `#F4F1EB` fondo general · superficies blancas · tinta `#1D1D1F`
+- Semánticos: ok `#1D9A57` · warn `#C9820B` · err `#D93025`
+- Tipografía: stack del sistema (SF Pro). PROHIBIDO: serifas, morados/violetas,
+  gradientes decorativos, naranjas terracota.
+- El logo (torres + arco) vive como SVG en Splash, Landing (`RALogoMark`), Layout
+  técnico, `RAMark` (finance) y ModuleGate — si se cambia, cambiar en los cinco.
+- NO reintroducir azul Apple #0071E3: fue reemplazado por decisión del usuario.
+
 ## Pendientes conocidos / Ideas
 
 - Bundle frontend > 500KB → considerar code-split de Recharts via dynamic import

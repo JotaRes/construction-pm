@@ -98,7 +98,7 @@ export default function Import() {
           {/* JSON / ZIP */}
           <div className="rounded-xl p-4 transition-all hover:shadow-md" style={{ background: 'var(--brand-cream2)', border: '1px solid rgba(29,29,31,0.08)' }}>
             <div className="flex items-start gap-3 mb-3">
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(0,113,227,0.12)', color: 'var(--brand-gold)' }}>
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(62,90,112,0.12)', color: 'var(--brand-gold)' }}>
                 <Archive size={20} />
               </div>
               <div>
@@ -145,7 +145,7 @@ export default function Import() {
           <h2 className="text-base font-bold" style={{ color: 'var(--brand-teal)' }}>Importar Excel maestro</h2>
         </div>
         <p className="text-sm mb-3" style={{ color: 'var(--brand-teal2)' }}>
-          Carga las hojas <code className="px-1.5 py-0.5 rounded" style={{ background: 'rgba(0,113,227,0.1)', color: 'var(--brand-gold)' }}>MOV 2025</code>, <code className="px-1.5 py-0.5 rounded" style={{ background: 'rgba(0,113,227,0.1)', color: 'var(--brand-gold)' }}>MOV 2026</code>, <code className="px-1.5 py-0.5 rounded" style={{ background: 'rgba(0,113,227,0.1)', color: 'var(--brand-gold)' }}>CAPITALIZACION</code> y <code className="px-1.5 py-0.5 rounded" style={{ background: 'rgba(0,113,227,0.1)', color: 'var(--brand-gold)' }}>PROYECTOS</code> de tu archivo "DOC FINANCIERO".
+          Carga las hojas <code className="px-1.5 py-0.5 rounded" style={{ background: 'rgba(62,90,112,0.1)', color: 'var(--brand-gold)' }}>MOV 2025</code>, <code className="px-1.5 py-0.5 rounded" style={{ background: 'rgba(62,90,112,0.1)', color: 'var(--brand-gold)' }}>MOV 2026</code>, <code className="px-1.5 py-0.5 rounded" style={{ background: 'rgba(62,90,112,0.1)', color: 'var(--brand-gold)' }}>CAPITALIZACION</code> y <code className="px-1.5 py-0.5 rounded" style={{ background: 'rgba(62,90,112,0.1)', color: 'var(--brand-gold)' }}>PROYECTOS</code> de tu archivo "DOC FINANCIERO".
         </p>
 
         <label className="flex items-center gap-2 text-sm p-3 rounded-lg mb-3 cursor-pointer" style={{ background: 'var(--brand-cream2)' }}>
@@ -326,7 +326,7 @@ function RestoreModal({
   return (
     <Modal open={open} onClose={handleClose} title="Restaurar desde backup" size="md">
       <div className="space-y-4">
-        <div className="flex items-start gap-2 p-3 rounded-lg" style={{ background: 'rgba(0,113,227,0.08)', border: '1px solid rgba(0,113,227,0.25)' }}>
+        <div className="flex items-start gap-2 p-3 rounded-lg" style={{ background: 'rgba(62,90,112,0.08)', border: '1px solid rgba(62,90,112,0.25)' }}>
           <AlertTriangle size={16} style={{ color: 'var(--brand-gold)' }} className="flex-shrink-0 mt-0.5" />
           <div className="text-sm" style={{ color: 'var(--brand-teal)' }}>
             <strong>El restore BORRA todos los datos actuales</strong> antes de cargar el backup. Se recomienda descargar un backup ZIP del estado actual primero (por si quieres deshacer).

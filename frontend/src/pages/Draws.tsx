@@ -256,7 +256,7 @@ function DrawCard({ draw, budgetTotal, budgetExecuted, newAmount, onUpdate, onDe
       <div className="flex items-center gap-3 px-4 py-3">
         <button onClick={() => setOpen(o => !o)} className="flex-1 flex items-center gap-3 text-left">
           <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold font-mono
-            ${draw.estado === 'WIRED' ? 'bg-emerald-500/20 text-emerald-400' : draw.estado === 'PENDING' ? 'bg-[#0071E3]/15 text-[var(--brand-gold)]' : 'bg-slate-200 text-slate-400'}`}>
+            ${draw.estado === 'WIRED' ? 'bg-emerald-500/20 text-emerald-400' : draw.estado === 'PENDING' ? 'bg-[#3E5A70]/15 text-[var(--brand-gold)]' : 'bg-slate-200 text-slate-400'}`}>
             {draw.drawNumber}
           </div>
           <div>
@@ -469,7 +469,7 @@ function PdfParsePanel({ projectId, draws, onClose, onApply }: {
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-3">
               <button onClick={() => fileRef.current?.click()}
-                className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:border-[#0071E3]/40 text-slate-700 hover:text-slate-900 text-sm rounded-xl transition-all">
+                className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:border-[#3E5A70]/40 text-slate-700 hover:text-slate-900 text-sm rounded-xl transition-all">
                 <Upload className="w-4 h-4" />
                 {file ? file.name : 'Seleccionar archivo'}
               </button>
@@ -479,7 +479,7 @@ function PdfParsePanel({ projectId, draws, onClose, onApply }: {
                 onChange={e => { setFile(e.target.files?.[0] ?? null); setParsed(null); setImageUrl(null); setIsExcelResult(false) }} />
               {file && (
                 <button onClick={handleParse} disabled={loading}
-                  className="px-4 py-2.5 bg-[var(--brand-gold)] btn-animated hover:bg-[#0077ED] text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50">
+                  className="px-4 py-2.5 bg-[var(--brand-gold)] btn-animated hover:bg-[#4A6880] text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50">
                   {loading ? 'Procesando...' : isImageFile(file) ? 'Subir imagen' : isExcelFile(file) ? 'Extraer datos del Excel' : 'Extraer datos'}
                 </button>
               )}
@@ -608,7 +608,7 @@ function PdfParsePanel({ projectId, draws, onClose, onApply }: {
               </div>
 
               <button onClick={handleApply} disabled={!targetDraw}
-                className="w-full py-2.5 bg-[var(--brand-gold)] btn-animated hover:bg-[#0077ED] disabled:opacity-40 text-white text-sm font-semibold rounded-xl transition-colors">
+                className="w-full py-2.5 bg-[var(--brand-gold)] btn-animated hover:bg-[#4A6880] disabled:opacity-40 text-white text-sm font-semibold rounded-xl transition-colors">
                 Guardar datos en Draw #{draws.find(d => d.id === targetDraw)?.drawNumber ?? '—'}
               </button>
             </>
@@ -1078,7 +1078,7 @@ export default function Draws({ projectId }: { projectId: string }) {
             {addDrawMutation.isPending ? 'Agregando...' : 'Agregar draw'}
           </button>
           <button onClick={() => setShowParse(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-[var(--brand-gold)] btn-animated hover:bg-[#0077ED] text-white text-sm font-medium rounded-xl transition-colors">
+            className="flex items-center gap-2 px-4 py-2 bg-[var(--brand-gold)] btn-animated hover:bg-[#4A6880] text-white text-sm font-medium rounded-xl transition-colors">
             <Upload className="w-4 h-4" />
             Cargar Draw PDF
           </button>
@@ -1150,7 +1150,7 @@ export default function Draws({ projectId }: { projectId: string }) {
                     <th className="px-4 py-2 text-left text-[10px] text-slate-400 uppercase tracking-wider">Fecha Wire</th>
                     <th className="px-4 py-2 text-right text-[10px] text-slate-400 uppercase tracking-wider">Solicitado</th>
                     <th className="px-4 py-2 text-right text-[10px] text-emerald-600/70 uppercase tracking-wider">Aprobado (Net Wire)</th>
-                    <th className="px-4 py-2 text-right text-[10px] text-[#0071E3]/80 uppercase tracking-wider">Saldo holdback</th>
+                    <th className="px-4 py-2 text-right text-[10px] text-[#3E5A70]/80 uppercase tracking-wider">Saldo holdback</th>
                     <th className="px-4 py-2 text-center text-[10px] text-slate-400 uppercase tracking-wider w-20">% Cons.</th>
                   </tr>
                 </thead>

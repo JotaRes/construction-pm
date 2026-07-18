@@ -312,7 +312,7 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
               Carga el PDF del lender para extraer los items con sus valores iniciales
             </div>
           </div>
-          <label className="inline-flex items-center gap-2 px-6 py-3 bg-[var(--brand-gold)] hover:bg-[#0077ED] text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer">
+          <label className="inline-flex items-center gap-2 px-6 py-3 bg-[var(--brand-gold)] hover:bg-[#4A6880] text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer">
             <Upload className="w-4 h-4" />
             {importPdfMut.isPending ? 'Importando PDF…' : 'Cargar Construction Budget (PDF)'}
             <input
@@ -358,7 +358,7 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
             <Download className="w-3.5 h-3.5" />
             Descargar budget
           </button>
-          <label className="flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg border border-[var(--brand-gold)] bg-[var(--brand-gold)] text-white hover:bg-[#0077ED] transition-colors cursor-pointer"
+          <label className="flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg border border-[var(--brand-gold)] bg-[var(--brand-gold)] text-white hover:bg-[#4A6880] transition-colors cursor-pointer"
             title="Reemplaza el budget cargado por el de un PDF nuevo del lender">
             <FileUp className="w-3.5 h-3.5" />
             {importPdfMut.isPending ? 'Importando…' : 'Cambiar budget (PDF)'}

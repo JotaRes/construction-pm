@@ -35,7 +35,7 @@ export default function Splash() {
         <svg width="26" height="24" viewBox="0 0 90 80" fill="none">
           <polygon points="12,74 12,18 41,6 41,74" fill="rgba(255,255,255,0.92)"/>
           <polygon points="46,74 46,28 67,20 67,74" fill="rgba(255,255,255,0.55)"/>
-          <path d="M 5,68 Q 42,50 82,61" stroke="rgba(255,255,255,0.85)"
+          <path d="M 5,68 Q 42,50 82,61" stroke="#D9AE52"
             strokeWidth="5.5" fill="none" strokeLinecap="round"/>
         </svg>
       </div>
@@ -70,7 +70,7 @@ export default function Splash() {
       }}>
         <div style={{
           height: '100%',
-          background: '#0071E3',
+          background: '#D9AE52',
           borderRadius: 1,
           animation: 'ra-splash-load 1.9s ease-in-out forwards',
         }} />

@@ -10,7 +10,7 @@
  * cualquiera puede leerlas con "ver código fuente".
  */
 import { useState, useEffect, ReactNode } from 'react'
-import { Lock, ArrowLeft, ShieldCheck } from 'lucide-react'
+import { Lock, ArrowLeft } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import axios from 'axios'
 
@@ -57,14 +57,10 @@ export default function ModuleGate({ moduleName, moduleLabel, children }: Props)
 
   if (unlocked) return <>{children}</>
 
-  const isFinance = moduleName === 'finance'
-  const isAdmin = moduleName === 'admin'
-  const accent = isAdmin ? '#8b5cf6' : isFinance ? '#0d9488' : 'var(--brand-gold)'
-  const bg = isAdmin
-    ? 'linear-gradient(135deg, #2A1E3F 0%, #3E2C5C 100%)'
-    : isFinance
-    ? 'linear-gradient(135deg, #0F2027 0%, #1B3640 100%)'
-    : 'linear-gradient(135deg, var(--brand-teal) 0%, #48484A 100%)'
+  // Identidad corporativa ÚNICA para los tres módulos (sistema fijo):
+  // petróleo del logo + arco dorado. La diferencia la da el nombre del módulo.
+  const accent = 'var(--accent)'
+  const bg = '#33495C'
 
   return (
     <div
@@ -85,9 +81,14 @@ export default function ModuleGate({ moduleName, moduleLabel, children }: Props)
           <div className="flex flex-col items-center mb-6">
             <div
               className="w-14 h-14 rounded-2xl flex items-center justify-center mb-3"
-              style={{ background: bg, boxShadow: `0 4px 16px ${isFinance ? 'rgba(13,148,136,0.4)' : 'rgba(29,29,31,0.4)'}` }}
+              style={{ background: bg, boxShadow: '0 4px 16px rgba(51,73,92,0.35)' }}
             >
-              <ShieldCheck size={26} color="white" />
+              {/* Logo corporativo: torres + arco dorado */}
+              <svg width="26" height="24" viewBox="0 0 90 80" fill="none">
+                <polygon points="12,74 12,18 41,6 41,74" fill="rgba(255,255,255,0.92)"/>
+                <polygon points="46,74 46,28 67,20 67,74" fill="rgba(255,255,255,0.6)"/>
+                <path d="M 5,68 Q 42,50 82,61" stroke="#D9AE52" strokeWidth="6" fill="none" strokeLinecap="round"/>
+              </svg>
             </div>
             <h1
               className="text-lg font-bold tracking-wide text-center"
