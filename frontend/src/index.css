@@ -1617,3 +1617,61 @@ thead tr { background: #FAFAFC !important; }
 /* Scrollbar neutro */
 ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.18); border: 2px solid #F5F5F7; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.30); }
+
+/* ════════════════════════════════════════════════════════════════
+   V5 — "LEDGER CELLS" (jul-2026) · Armonización final de tablas
+   Celdas demarcadas tenuemente (cubículos legibles), tipografía
+   unificada, entrada animada de desgloses. Tokens fijos del sistema.
+   ════════════════════════════════════════════════════════════════ */
+
+/* Toda cifra en tablas alinea (tabular-nums — regla no negociable) */
+:is(.tech-app, .fin-app) table { font-variant-numeric: tabular-nums; }
+
+/* Cubículos: separación vertical finísima entre celdas (las filas ya
+   tienen su hairline horizontal). Suficiente para guiar el ojo,
+   invisible como decoración. */
+:is(.tech-app, .fin-app) tbody td + td { border-left: 1px solid rgba(0,0,0,0.035); }
+
+/* Zebra sutilísima: filas pares apenas un tono más profundas */
+:is(.tech-app, .fin-app) tbody tr:nth-child(even):not(:hover) { background-color: rgba(0,0,0,0.013); }
+
+/* Cabeceras de tabla: una sola voz tipográfica */
+:is(.tech-app, .fin-app) thead th {
+  font-size: 10.5px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.08em;
+  color: #6E6E73 !important;
+  border-bottom: 1px solid rgba(0,0,0,0.10) !important;
+}
+
+/* Cuerpo de tabla: tamaño y tinta unificados */
+:is(.tech-app, .fin-app) tbody td { font-size: 12px; color: #1D1D1F; }
+
+/* Inputs dentro de tablas: suaves, del sistema, cifras tabulares */
+:is(.tech-app, .fin-app) table input,
+:is(.tech-app, .fin-app) table select {
+  font-variant-numeric: tabular-nums;
+  border-radius: 8px;
+  border-color: rgba(0,0,0,0.10) !important;
+  background-color: #FAFAFC;
+  transition: border-color .15s var(--ease), box-shadow .15s var(--ease), background-color .15s var(--ease);
+}
+:is(.tech-app, .fin-app) table input:hover,
+:is(.tech-app, .fin-app) table select:hover { background-color: #FFFFFF; }
+
+/* Entrada animada de secciones desplegadas (un solo momento coreografiado) */
+.reveal {
+  animation: revealIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes revealIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Filas reservadas (slots 00.X1…): presencia mínima, sin ruido */
+.slot-row td {
+  font-size: 10px !important;
+  color: #C7C7CC !important;
+  padding-top: 2px; padding-bottom: 2px;
+  letter-spacing: 0.04em;
+}

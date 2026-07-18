@@ -626,8 +626,8 @@ function ItemRow({ item, budgetLines, onUpdate, onOpenPanel, onDelete }: {
   const isSlot = item.itemCode.includes('X') && !item.itemCode.includes('.A')
   if (isSlot && !item.completado && !item.valorEjecutado) {
     return (
-      <tr className="border-b border-slate-200">
-        <td colSpan={10} className="px-4 py-1 text-[10px] text-slate-800 font-mono">{item.itemCode}</td>
+      <tr className="slot-row border-b border-slate-100">
+        <td colSpan={10} className="px-4 font-mono" title="Espacio reservado para actividades futuras de esta fase">{item.itemCode} · reservado</td>
       </tr>
     )
   }
@@ -789,7 +789,7 @@ function ItemRow({ item, budgetLines, onUpdate, onOpenPanel, onDelete }: {
       {expanded && (
         <tr className="bg-slate-50/70">
           <td colSpan={10} className="p-0">
-            <div className="ml-10 mr-4 my-2 rounded-lg border border-slate-200 bg-white">
+            <div className="reveal ml-10 mr-4 my-2 rounded-lg border border-slate-200 bg-white">
               <div className="px-3 py-2 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
                 <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
                   Desglose · Fase {phaseCode} · Actividad {item.itemCode}
@@ -930,7 +930,7 @@ function PhaseSection({ phase, budgetLines, budgetDivisions, defaultOpen = false
         </div>
       </div>
       {open && (
-        <div className="mt-0.5 bg-slate-50/60 rounded-b-xl border border-slate-200/30 border-t-0 overflow-hidden">
+        <div className="reveal mt-0.5 bg-slate-50/60 rounded-b-xl border border-slate-200/30 border-t-0 overflow-hidden">
           {/* Enlace FASE ↔ divisiones del Construction Budget (opcional) */}
           {budgetDivisions.length > 0 && (
             <div className="px-4 py-2 border-b border-slate-200/60 bg-white/60">
