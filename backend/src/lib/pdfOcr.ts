@@ -37,7 +37,7 @@ export async function extractPdfText(buffer: Buffer): Promise<{ text: string; oc
   // GUARDA DE MEMORIA (Render Starter = 512MB): PDFs enormes no entran a OCR.
   // Un escaneado de >15MB a resolución alta puede tumbar el contenedor
   // (email de Render 13-jul-2026: "exceeded its memory limit").
-  if (buffer.length > 15 * 1024 * 1024) {
+  if (buffer.length > 8 * 1024 * 1024) {
     console.warn('[pdf-ocr] PDF demasiado grande para OCR en este plan:', (buffer.length / 1048576).toFixed(1), 'MB')
     return { text, ocrUsed: false, pages }
   }
