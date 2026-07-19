@@ -2,19 +2,16 @@ import { useState, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft, Building2, Landmark, Pencil, Trash2, Save, X, Upload, FileText,
-  ExternalLink, Mail, MessageCircle, Download, AlertTriangle, CheckCircle2,
-  Clock, HelpCircle, Wallet, ListChecks, Plus, FolderPlus, Calendar,
+  ArrowLeft, User, Pencil, Trash2, Save, X, Upload, FileText, ExternalLink,
+  Mail, MessageCircle, Download, AlertTriangle, CheckCircle2, Clock, HelpCircle,
+  ListChecks, Plus, FolderPlus, Calendar,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import {
-  AdminAPI, ROLE_LABELS, STATUS_LABELS, shareByEmail, shareByWhatsApp, absoluteShareUrl,
-} from "../lib/api";
+import { AdminAPI, PERSON_ROLE_LABELS, shareByEmail, shareByWhatsApp, absoluteShareUrl } from "../lib/api";
 import { cls, date as fmtDate } from "../../finance/lib/format";
 import { useConfirm } from "../../components/ConfirmDialog";
 import { downloadAuthed } from "../../lib/api";
 
-// ── Semáforo de cumplimiento por requisito ────────────────────────────────
 const STATUS_META: Record<string, { label: string; color: string; bg: string; Icon: typeof CheckCircle2 }> = {
   OK:         { label: "Al día",     color: "#22c55e", bg: "rgba(34,197,94,0.12)",  Icon: CheckCircle2 },
   POR_VENCER: { label: "Por vencer", color: "#f59e0b", bg: "rgba(245,158,11,0.12)", Icon: Clock },
@@ -22,30 +19,18 @@ const STATUS_META: Record<string, { label: string; color: string; bg: string; Ic
   FALTANTE:   { label: "Faltante",   color: "#94a3b8", bg: "rgba(148,163,184,0.12)", Icon: HelpCircle },
 };
 
-const CATEGORY_LABELS: Record<string, string> = {
-  FORMACION: "Formación / Corporativo",
-  FISCAL: "Fiscal",
-  BANCARIO: "Bancario",
-  SEGUROS: "Seguros",
-  PROPIEDAD: "Propiedad",
-  LEGAL: "Legal",
-  PERSONAL: "Personal / RR.HH.",
-  CUMPLIMIENTO: "Cumplimiento",
-  OTRO: "Otros",
-};
-
-const LEGAL_FIELDS: { k: string; label: string; ph?: string }[] = [
+const FIELDS: { k: string; label: string; ph?: string }[] = [
   { k: "name", label: "Nombre *" },
-  { k: "legalName", label: "Razón social completa" },
-  { k: "ein", label: "EIN", ph: "XX-XXXXXXX" },
-  { k: "stateOfFormation", label: "Estado de constitución", ph: "South Carolina" },
-  { k: "registeredAgent", label: "Registered Agent" },
-  { k: "address", label: "Dirección" },
+  { k: "position", label: "Cargo" },
+  { k: "email", label: "Email" },
+  { k: "phone", label: "Teléfono" },
+  { k: "idNumber", label: "Identificación" },
 ];
 
-// ── Fila del checklist con acción de subir documento ──────────────────────
-function ChecklistRow({ item, companyId, onUploaded, onRemove }: { item: any; companyId: number; onUploaded: () => void; onRemove: (item: any) => void }) {
+// ── Fila del checklist personal con subida de archivo ─────────────────────
+function ChecklistRow({ item, personId, onChanged }: { item: any; personId: number; onChanged: () => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const confirm = useConfirm();
   const [issueDate, setIssueDate] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
   const [open, setOpen] = useState(false);
@@ -55,18 +40,34 @@ function ChecklistRow({ item, companyId, onUploaded, onRemove }: { item: any; co
     mutationFn: (file: File) => {
       const fd = new FormData();
       fd.append("file", file);
-      fd.append("docTypeId", String(item.docTypeId));
+      fd.append("requirementId", String(item.requirementId));
       if (issueDate) fd.append("issueDate", issueDate);
       if (expiryDate) fd.append("expiryDate", expiryDate);
-      return AdminAPI.uploadDocument(companyId, fd);
+      return AdminAPI.uploadPersonDocument(personId, fd);
     },
     onSuccess: () => {
       toast.success(`"${item.name}" cargado`);
       setOpen(false); setIssueDate(""); setExpiryDate("");
-      onUploaded();
+      onChanged();
     },
     onError: (e: any) => toast.error(e.message),
   });
+
+  const removeReq = async () => {
+    const ok = await confirm({
+      title: "Quitar del checklist",
+      message: `¿Quitar "${item.name}" de los documentos requeridos?`,
+      detail: "Los archivos ya cargados NO se borran; quedan en la carpeta general de la persona.",
+      destructive: true,
+      confirmText: "Sí, quitar",
+    });
+    if (!ok) return;
+    try {
+      await AdminAPI.deletePersonRequirement(item.requirementId);
+      toast.success("Requisito eliminado");
+      onChanged();
+    } catch (e: any) { toast.error(e.message); }
+  };
 
   return (
     <div className="rounded-lg" style={{ border: "1px solid var(--border)", background: "var(--bg-panel, #fff)" }}>
@@ -94,7 +95,7 @@ function ChecklistRow({ item, companyId, onUploaded, onRemove }: { item: any; co
         <button className="fin-btn-icon" title="Subir / actualizar" onClick={() => setOpen((o) => !o)}>
           <Upload size={13} />
         </button>
-        <button className="fin-btn-icon" title="Quitar del checklist (no borra archivos)" style={{ color: "#ef4444" }} onClick={() => onRemove(item)}>
+        <button className="fin-btn-icon" title="Quitar del checklist" style={{ color: "#ef4444" }} onClick={removeReq}>
           <X size={13} />
         </button>
       </div>
@@ -121,9 +122,9 @@ function ChecklistRow({ item, companyId, onUploaded, onRemove }: { item: any; co
   );
 }
 
-export default function CompanyDetail() {
+export default function PersonDetail() {
   const { id } = useParams();
-  const companyId = Number(id);
+  const personId = Number(id);
   const qc = useQueryClient();
   const nav = useNavigate();
   const confirm = useConfirm();
@@ -131,57 +132,56 @@ export default function CompanyDetail() {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<any>(null);
 
-  // Agregar documento requerido personalizado (categoría existente o nueva)
+  // Agregar requisito nuevo (nombre + categoría libre + vencimiento)
   const [addingReq, setAddingReq] = useState(false);
   const [reqName, setReqName] = useState("");
   const [reqCategory, setReqCategory] = useState("");
   const [reqHasExpiry, setReqHasExpiry] = useState(false);
 
-  // Tarea rápida para esta empresa
+  // Tarea rápida para esta persona
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDue, setTaskDue] = useState("");
   const [taskPriority, setTaskPriority] = useState("media");
 
-  const companyQ = useQuery({ queryKey: ["adm-company", companyId], queryFn: () => AdminAPI.getCompany(companyId) });
-  const checklistQ = useQuery({ queryKey: ["adm-checklist", companyId], queryFn: () => AdminAPI.getChecklist(companyId) });
-  const docsQ = useQuery({ queryKey: ["adm-docs", companyId], queryFn: () => AdminAPI.getDocuments(companyId) });
-  const tasksQ = useQuery({ queryKey: ["adm-tasks", companyId], queryFn: () => AdminAPI.getTasks({ companyId }) });
+  const personQ = useQuery({ queryKey: ["adm-person", personId], queryFn: () => AdminAPI.getPerson(personId) });
+  const checklistQ = useQuery({ queryKey: ["adm-person-checklist", personId], queryFn: () => AdminAPI.getPersonChecklist(personId) });
+  const docsQ = useQuery({ queryKey: ["adm-person-docs", personId], queryFn: () => AdminAPI.getPersonDocuments(personId) });
+  const tasksQ = useQuery({ queryKey: ["adm-person-tasks", personId], queryFn: () => AdminAPI.getTasks({ personId }) });
 
   const invalidateAll = () => {
-    qc.invalidateQueries({ queryKey: ["adm-company", companyId] });
-    qc.invalidateQueries({ queryKey: ["adm-checklist", companyId] });
-    qc.invalidateQueries({ queryKey: ["adm-docs", companyId] });
-    qc.invalidateQueries({ queryKey: ["adm-tasks", companyId] });
-    qc.invalidateQueries({ queryKey: ["adm-orgchart"] });
+    qc.invalidateQueries({ queryKey: ["adm-person", personId] });
+    qc.invalidateQueries({ queryKey: ["adm-person-checklist", personId] });
+    qc.invalidateQueries({ queryKey: ["adm-person-docs", personId] });
+    qc.invalidateQueries({ queryKey: ["adm-person-tasks", personId] });
+    qc.invalidateQueries({ queryKey: ["adm-persons"] });
     qc.invalidateQueries({ queryKey: ["adm-dashboard"] });
     qc.invalidateQueries({ queryKey: ["adm-task-summary"] });
-    qc.invalidateQueries({ queryKey: ["adm-doc-types"] });
   };
 
+  const updateMut = useMutation({
+    mutationFn: (data: any) => AdminAPI.updatePerson(personId, data),
+    onSuccess: () => { toast.success("Persona actualizada"); setEditing(false); invalidateAll(); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const addReqMut = useMutation({
-    mutationFn: () => AdminAPI.addCompanyRequirement(companyId, {
+    mutationFn: () => AdminAPI.createPersonRequirement(personId, {
       name: reqName.trim(),
-      category: reqCategory.trim() || "OTRO",
+      category: reqCategory.trim() || "GENERAL",
       hasExpiry: reqHasExpiry,
     }),
     onSuccess: () => {
-      toast.success("Documento agregado al expediente requerido");
+      toast.success("Documento agregado al checklist");
       setReqName(""); setReqCategory(""); setReqHasExpiry(false); setAddingReq(false);
       invalidateAll();
     },
     onError: (e: any) => toast.error(e.message),
   });
 
-  const removeReqMut = useMutation({
-    mutationFn: (docTypeId: number) => AdminAPI.toggleRequirement(companyId, { docTypeId, required: false }),
-    onSuccess: () => { toast.success("Requisito quitado del checklist"); invalidateAll(); },
-    onError: (e: any) => toast.error(e.message),
-  });
-
   const addTaskMut = useMutation({
     mutationFn: () => AdminAPI.createTask({
       title: taskTitle.trim(),
-      companyId,
+      personId,
       priority: taskPriority,
       dueDate: taskDue || null,
     }),
@@ -195,30 +195,24 @@ export default function CompanyDetail() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  const updateMut = useMutation({
-    mutationFn: (data: any) => AdminAPI.updateCompany(companyId, data),
-    onSuccess: () => { toast.success("Empresa actualizada"); setEditing(false); invalidateAll(); },
-    onError: (e: any) => toast.error(e.message),
-  });
-
   const deleteDocMut = useMutation({
-    mutationFn: (docId: number) => AdminAPI.deleteDocument(docId),
+    mutationFn: (docId: number) => AdminAPI.deletePersonDocument(docId),
     onSuccess: () => { toast.success("Documento eliminado"); invalidateAll(); },
     onError: (e: any) => toast.error(e.message),
   });
 
-  const c = companyQ.data;
+  const p = personQ.data;
   const checklist = checklistQ.data;
   const docs = docsQ.data ?? [];
   const tasks = tasksQ.data ?? [];
 
-  if (companyQ.isLoading || !c) return <div className="fin-page-sub">Cargando expediente…</div>;
+  if (personQ.isLoading || !p) return <div className="fin-page-sub">Cargando carpeta personal…</div>;
 
   const startEdit = () => {
     setForm({
-      name: c.name ?? "", legalName: c.legalName ?? "", role: c.role ?? "SUBSIDIARY_OWNER",
-      ein: c.ein ?? "", stateOfFormation: c.stateOfFormation ?? "", registeredAgent: c.registeredAgent ?? "",
-      address: c.address ?? "", status: c.status ?? "ACTIVE", notes: c.notes ?? "",
+      name: p.name ?? "", role: p.role ?? "SOCIO", position: p.position ?? "",
+      email: p.email ?? "", phone: p.phone ?? "", idNumber: p.idNumber ?? "",
+      status: p.status ?? "ACTIVO", notes: p.notes ?? "",
     });
     setEditing(true);
   };
@@ -230,94 +224,89 @@ export default function CompanyDetail() {
     updateMut.mutate(payload);
   };
 
-  const handleDeleteCompany = async () => {
+  const handleDelete = async () => {
     const ok = await confirm({
-      title: "Suprimir empresa",
-      message: `¿Eliminar "${c.name}" del organigrama?`,
-      detail: "Se borrará su expediente (documentos, requisitos y tareas). El SPV financiero vinculado NO se toca. Esta acción no se puede deshacer.",
+      title: "Suprimir persona",
+      message: `¿Eliminar a "${p.name}"?`,
+      detail: "Se borrará su carpeta completa (documentos incluidos) y sus tareas. Esta acción no se puede deshacer.",
       destructive: true,
       confirmText: "Sí, suprimir",
     });
     if (!ok) return;
     try {
-      await AdminAPI.deleteCompany(companyId);
-      toast.success("Empresa suprimida");
-      qc.invalidateQueries({ queryKey: ["adm-orgchart"] });
-      nav("/admin/orgchart");
+      await AdminAPI.deletePerson(personId);
+      toast.success("Persona suprimida");
+      qc.invalidateQueries({ queryKey: ["adm-persons"] });
+      nav("/admin/persons");
     } catch (e: any) { toast.error(e.message); }
   };
 
   const shareDoc = async (docId: number, via: "email" | "whatsapp") => {
     try {
-      const info = await AdminAPI.getShareInfo(docId);
+      const info = await AdminAPI.getPersonShareInfo(docId);
       const url = absoluteShareUrl(info.sharePath);
-      if (via === "email") shareByEmail(info.filename, info.companyName, url);
-      else shareByWhatsApp(info.filename, info.companyName, url);
+      if (via === "email") shareByEmail(info.filename, info.personName, url);
+      else shareByWhatsApp(info.filename, info.personName, url);
     } catch (e: any) { toast.error(e.message); }
   };
 
-  const isHolding = c.role === "HOLDING";
   const groups = Object.entries(
     (checklist?.items ?? []).reduce((acc: Record<string, any[]>, it: any) => {
       (acc[it.category] ||= []).push(it); return acc;
     }, {})
   ) as [string, any[]][];
+  const existingCategories: string[] = Array.from(new Set<string>((checklist?.items ?? []).map((i: any) => String(i.category))));
+  const pendingTasks = tasks.filter((t: any) => t.status !== "completada");
 
   return (
     <div className="space-y-5">
       {/* ── Cabecera ── */}
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div className="flex items-start gap-3 min-w-0">
-          <Link to="/admin/orgchart" className="fin-btn-icon mt-1" title="Volver al organigrama"><ArrowLeft size={14} /></Link>
+          <Link to="/admin/persons" className="fin-btn-icon mt-1" title="Volver al directorio"><ArrowLeft size={14} /></Link>
           <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: isHolding ? "linear-gradient(135deg,#2A1E3F,#3E2C5C)" : "rgba(139,92,246,0.12)" }}>
-            {isHolding ? <Landmark size={20} color="#C6952F" /> : <Building2 size={20} color="#3E5A70" />}
+            style={{ background: p.role === "SOCIO" ? "linear-gradient(135deg,#33495C,#3E5A70)" : "rgba(62,90,112,0.12)" }}>
+            <User size={20} color={p.role === "SOCIO" ? "#D9AE52" : "#3E5A70"} />
           </div>
           <div className="min-w-0">
-            <div className="fin-page-title truncate">{c.name}</div>
+            <div className="fin-page-title truncate">{p.name}</div>
             <div className="flex items-center gap-2 flex-wrap mt-0.5">
-              <span className="badge-active" style={{ fontSize: 10 }}>{ROLE_LABELS[c.role] ?? c.role}</span>
-              <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>{STATUS_LABELS[c.status] ?? c.status}</span>
-              {c.finSpv && (
-                <Link to="/finance" className="flex items-center gap-1 text-[11px]" style={{ color: "#3E5A70" }} title="Ver en el módulo financiero">
-                  <Wallet size={11} /> SPV {c.finSpv.code}
-                </Link>
-              )}
+              <span className="badge-active" style={{ fontSize: 10 }}>{PERSON_ROLE_LABELS[p.role] ?? p.role}</span>
+              {p.position && <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>{p.position}</span>}
+              {p.status !== "ACTIVO" && <span className="text-[11px]" style={{ color: "#ef4444" }}>Inactivo</span>}
             </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
           {!editing && <button className="fin-btn-icon flex items-center gap-2 px-3" style={{ width: "auto", fontSize: 11.5, fontWeight: 600 }} onClick={startEdit}><Pencil size={12} /> Editar</button>}
-          <button className="fin-btn-icon" title="Suprimir empresa" style={{ color: "#ef4444" }} onClick={handleDeleteCompany}><Trash2 size={13} /></button>
+          <button className="fin-btn-icon" title="Suprimir persona" style={{ color: "#ef4444" }} onClick={handleDelete}><Trash2 size={13} /></button>
         </div>
       </div>
 
-      {/* ── Datos legales (edición) ── */}
+      {/* ── Edición del perfil ── */}
       {editing && form && (
         <div className="fin-cpanel">
           <div className="fin-cpanel-body space-y-3">
             <div className="grid md:grid-cols-2 gap-3">
-              {LEGAL_FIELDS.map((f) => (
+              {FIELDS.map((f) => (
                 <label key={f.k} className="block">
                   <span className="text-[11px] font-semibold" style={{ color: "var(--text-secondary)" }}>{f.label}</span>
                   <input className="input-base w-full mt-1" placeholder={f.ph} value={form[f.k] ?? ""} onChange={(e) => setForm({ ...form, [f.k]: e.target.value })} />
                 </label>
               ))}
               <label className="block">
-                <span className="text-[11px] font-semibold" style={{ color: "var(--text-secondary)" }}>Rol en el grupo</span>
+                <span className="text-[11px] font-semibold" style={{ color: "var(--text-secondary)" }}>Rol</span>
                 <select className="input-base w-full mt-1" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-                  <option value="HOLDING">Holding (matriz)</option>
-                  <option value="PROPERTY_MANAGER">Property Manager (administradora)</option>
-                  <option value="SUBSIDIARY_OWNER">Propietaria de casa/proyecto</option>
-                  <option value="OTHER">Otra</option>
+                  <option value="SOCIO">Socio</option>
+                  <option value="COLABORADOR">Colaborador</option>
+                  <option value="OTRO">Otro</option>
                 </select>
               </label>
               <label className="block">
                 <span className="text-[11px] font-semibold" style={{ color: "var(--text-secondary)" }}>Estado</span>
                 <select className="input-base w-full mt-1" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
-                  <option value="ACTIVE">Activa</option>
-                  <option value="INACTIVE">Inactiva</option>
-                  <option value="DISSOLVED">Disuelta</option>
+                  <option value="ACTIVO">Activo</option>
+                  <option value="INACTIVO">Inactivo</option>
                 </select>
               </label>
             </div>
@@ -333,26 +322,22 @@ export default function CompanyDetail() {
         </div>
       )}
 
-      {/* ── Ficha de datos (lectura) ── */}
+      {/* ── Ficha (lectura) ── */}
       {!editing && (
         <div className="fin-cpanel">
           <div className="fin-cpanel-body grid md:grid-cols-3 gap-y-3 gap-x-6">
-            {[
-              ["Razón social", c.legalName], ["EIN", c.ein], ["Estado de constitución", c.stateOfFormation],
-              ["Registered Agent", c.registeredAgent], ["Dirección", c.address],
-              ["Constituida", c.formationDate ? fmtDate(c.formationDate) : null],
-            ].map(([label, val]) => (
+            {[["Email", p.email], ["Teléfono", p.phone], ["Identificación", p.idNumber]].map(([label, val]) => (
               <div key={label as string}>
                 <div className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>{label}</div>
                 <div className="text-[13px]" style={{ color: "var(--text-primary)" }}>{(val as string) || "—"}</div>
               </div>
             ))}
           </div>
-          {c.notes && <div className="fin-cpanel-body pt-0 text-[12px]" style={{ color: "var(--text-secondary)" }}>{c.notes}</div>}
+          {p.notes && <div className="fin-cpanel-body pt-0 text-[12px]" style={{ color: "var(--text-secondary)" }}>{p.notes}</div>}
         </div>
       )}
 
-      {/* ── Semáforo de cumplimiento ── */}
+      {/* ── Semáforo ── */}
       {checklist && (
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {[
@@ -370,11 +355,11 @@ export default function CompanyDetail() {
         </div>
       )}
 
-      {/* ── Checklist due diligence agrupado (extensible con categorías propias) ── */}
+      {/* ── Checklist documental por categorías ── */}
       <div className="fin-cpanel">
         <div className="fin-cpanel-body">
           <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-            <div className="fin-tb-title flex items-center gap-2"><ListChecks size={15} /> Expediente documental (due diligence)</div>
+            <div className="fin-tb-title flex items-center gap-2"><ListChecks size={15} /> Carpeta documental</div>
             <button className="fin-btn-icon flex items-center gap-1.5 px-3" style={{ width: "auto", fontSize: 11, fontWeight: 600 }} onClick={() => setAddingReq((a) => !a)}>
               {addingReq ? <><X size={12} /> Cancelar</> : <><FolderPlus size={12} /> Agregar documento / categoría</>}
             </button>
@@ -384,50 +369,33 @@ export default function CompanyDetail() {
             <div className="rounded-lg p-3 mb-3 flex flex-wrap items-end gap-2" style={{ border: "1px dashed var(--border)", background: "var(--bg-base)" }}>
               <label className="text-[10px] font-semibold flex-1 min-w-[180px]" style={{ color: "var(--text-secondary)" }}>
                 Nombre del documento *
-                <input className="input-base block w-full mt-0.5" placeholder="Ej: Contrato de arrendamiento, Póliza builder's risk…" value={reqName} onChange={(e) => setReqName(e.target.value)} />
+                <input className="input-base block w-full mt-0.5" placeholder="Ej: Licencia de conducción" value={reqName} onChange={(e) => setReqName(e.target.value)} />
               </label>
-              <label className="text-[10px] font-semibold min-w-[170px]" style={{ color: "var(--text-secondary)" }}>
+              <label className="text-[10px] font-semibold min-w-[160px]" style={{ color: "var(--text-secondary)" }}>
                 Categoría (existente o nueva)
-                <input className="input-base block w-full mt-0.5" placeholder="Ej: PROPIEDAD" list={`company-cats-${companyId}`} value={reqCategory} onChange={(e) => setReqCategory(e.target.value)} />
-                <datalist id={`company-cats-${companyId}`}>
-                  {Object.keys(CATEGORY_LABELS).map((c) => <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>)}
+                <input className="input-base block w-full mt-0.5" placeholder="Ej: LEGAL" list={`cats-${personId}`} value={reqCategory} onChange={(e) => setReqCategory(e.target.value)} />
+                <datalist id={`cats-${personId}`}>
+                  {existingCategories.map((c) => <option key={c} value={c} />)}
                 </datalist>
               </label>
               <label className="flex items-center gap-1.5 text-[11px] pb-2" style={{ color: "var(--text-secondary)" }}>
                 <input type="checkbox" checked={reqHasExpiry} onChange={(e) => setReqHasExpiry(e.target.checked)} /> Tiene vencimiento
               </label>
               <button className="fin-btn-cta" style={{ height: 34 }} disabled={!reqName.trim() || addReqMut.isPending} onClick={() => addReqMut.mutate()}>
-                {addReqMut.isPending ? "Agregando…" : "Agregar al checklist"}
+                {addReqMut.isPending ? "Agregando…" : "Agregar"}
               </button>
             </div>
           )}
 
           {groups.length === 0 ? (
-            <div className="fin-page-sub">Sin requisitos configurados para esta empresa. Agrega el primero con "Agregar documento / categoría".</div>
+            <div className="fin-page-sub">Sin documentos requeridos. Agrega el primero con "Agregar documento / categoría".</div>
           ) : (
             <div className="space-y-4">
               {groups.map(([cat, items]) => (
                 <div key={cat}>
-                  <div className="fin-nav-grp" style={{ paddingLeft: 0 }}>{CATEGORY_LABELS[cat] ?? cat}</div>
+                  <div className="fin-nav-grp" style={{ paddingLeft: 0 }}>{cat}</div>
                   <div className="grid gap-2">
-                    {items.map((it) => (
-                      <ChecklistRow
-                        key={it.docTypeId}
-                        item={it}
-                        companyId={companyId}
-                        onUploaded={invalidateAll}
-                        onRemove={async (item) => {
-                          const okRm = await confirm({
-                            title: "Quitar del checklist",
-                            message: `¿Quitar "${item.name}" de los documentos requeridos de ${c.name}?`,
-                            detail: "Los archivos ya cargados NO se borran; siguen en 'Documentos cargados'.",
-                            destructive: true,
-                            confirmText: "Sí, quitar",
-                          });
-                          if (okRm) removeReqMut.mutate(item.docTypeId);
-                        }}
-                      />
-                    ))}
+                    {items.map((it) => <ChecklistRow key={it.requirementId} item={it} personId={personId} onChanged={invalidateAll} />)}
                   </div>
                 </div>
               ))}
@@ -436,12 +404,12 @@ export default function CompanyDetail() {
         </div>
       </div>
 
-      {/* ── Todos los documentos cargados ── */}
+      {/* ── Todos los archivos cargados ── */}
       <div className="fin-cpanel">
         <div className="fin-cpanel-body">
-          <div className="fin-tb-title mb-3 flex items-center gap-2"><FileText size={15} /> Documentos cargados ({docs.length})</div>
+          <div className="fin-tb-title mb-3 flex items-center gap-2"><FileText size={15} /> Archivos cargados ({docs.length})</div>
           {docs.length === 0 ? (
-            <div className="fin-page-sub">Aún no hay documentos en el expediente.</div>
+            <div className="fin-page-sub">Aún no hay archivos en la carpeta.</div>
           ) : (
             <div className="space-y-1.5">
               {docs.map((d: any) => {
@@ -452,7 +420,7 @@ export default function CompanyDetail() {
                     <div className="flex-1 min-w-0">
                       <div className="text-[12.5px] font-medium truncate" style={{ color: "var(--text-primary)" }}>{d.filename}</div>
                       <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-                        {d.docType?.name ?? "Sin clasificar"}
+                        {d.requirement?.name ?? "Sin clasificar"}
                         {d.expiryDate ? ` · vence ${fmtDate(d.expiryDate)}` : ""}
                       </div>
                     </div>
@@ -473,26 +441,19 @@ export default function CompanyDetail() {
         </div>
       </div>
 
-      {/* ── Tareas de la empresa (alta rápida + check inline) ── */}
+      {/* ── Tareas / pendientes de la persona ── */}
       <div className="fin-cpanel">
         <div className="fin-cpanel-body">
           <div className="flex items-center justify-between mb-3">
-            <div className="fin-tb-title flex items-center gap-2">
-              <ListChecks size={15} /> Tareas ({tasks.filter((t: any) => t.status !== "completada").length} pendientes)
-              {tasks.some((t: any) => t.status !== "completada" && t.dueDate && new Date(t.dueDate) < new Date()) && (
-                <span className="flex items-center gap-1 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full" style={{ background: "rgba(239,68,68,0.12)", color: "#ef4444" }}>
-                  <AlertTriangle size={10} /> Vencidas
-                </span>
-              )}
-            </div>
-            <Link to="/admin/tasks" className="fin-btn-icon flex items-center gap-1.5 px-3" style={{ width: "auto", fontSize: 11, fontWeight: 600 }}><Plus size={12} /> Gestionar</Link>
+            <div className="fin-tb-title flex items-center gap-2"><ListChecks size={15} /> Pendientes ({pendingTasks.length})</div>
+            <Link to="/admin/tasks" className="fin-btn-icon flex items-center gap-1.5 px-3" style={{ width: "auto", fontSize: 11, fontWeight: 600 }}>Ver todas</Link>
           </div>
 
-          {/* Alta rápida sin salir del expediente */}
+          {/* Alta rápida */}
           <div className="flex flex-wrap items-end gap-2 mb-3 rounded-lg p-3" style={{ border: "1px dashed var(--border)", background: "var(--bg-base)" }}>
             <label className="text-[10px] font-semibold flex-1 min-w-[200px]" style={{ color: "var(--text-secondary)" }}>
-              Nueva tarea para {c.name}
-              <input className="input-base block w-full mt-0.5" placeholder="Ej: Renovar Annual Report, pagar registered agent…" value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)}
+              Nueva tarea para {p.name.split(" ")[0]}
+              <input className="input-base block w-full mt-0.5" placeholder="Ej: Renovar visa, firmar operating agreement…" value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && taskTitle.trim()) addTaskMut.mutate(); }} />
             </label>
             <label className="text-[10px] font-semibold" style={{ color: "var(--text-secondary)" }}>
@@ -513,7 +474,7 @@ export default function CompanyDetail() {
           </div>
 
           {tasks.length === 0 ? (
-            <div className="fin-page-sub">Sin tareas para esta empresa.</div>
+            <div className="fin-page-sub">Sin pendientes para esta persona.</div>
           ) : (
             <div className="space-y-1">
               {tasks.map((t: any) => {

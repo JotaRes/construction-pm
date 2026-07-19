@@ -8,14 +8,38 @@ import { parseOrError, taskCreateSchema, taskUpdateSchema } from "../lib/validat
 
 const router = Router();
 
-// Lista con filtros: ?companyId= & ?status=
+// Resumen para el menú lateral y señalización de alertas:
+// pendientes, vencidas y próximas a vencer (7 días), por relevancia.
+router.get("/summary", async (_req, res) => {
+  try {
+    const now = new Date();
+    const soon = new Date(now.getTime() + 7 * 86_400_000);
+    const [pending, overdue, dueSoon, highPriority] = await Promise.all([
+      prisma.admTask.count({ where: { status: { not: "completada" } } }),
+      prisma.admTask.count({ where: { status: { not: "completada" }, dueDate: { lt: now } } }),
+      prisma.admTask.count({ where: { status: { not: "completada" }, dueDate: { gte: now, lte: soon } } }),
+      prisma.admTask.count({ where: { status: { not: "completada" }, priority: "alta" } }),
+    ]);
+    ok(res, { pending, overdue, dueSoon, highPriority });
+  } catch (e) { fail(res, e); }
+});
+
+// Lista con filtros: ?companyId= & ?personId= & ?status=
 router.get("/", async (req, res) => {
   try {
     const companyId = req.query.companyId ? +String(req.query.companyId) : undefined;
+    const personId = req.query.personId ? +String(req.query.personId) : undefined;
     const status = req.query.status ? String(req.query.status) : undefined;
     const tasks = await prisma.admTask.findMany({
-      where: { ...(companyId ? { companyId } : {}), ...(status ? { status } : {}) },
-      include: { company: { select: { id: true, name: true } } },
+      where: {
+        ...(companyId ? { companyId } : {}),
+        ...(personId ? { personId } : {}),
+        ...(status ? { status } : {}),
+      },
+      include: {
+        company: { select: { id: true, name: true } },
+        person: { select: { id: true, name: true } },
+      },
       orderBy: [{ status: "asc" }, { dueDate: "asc" }, { createdAt: "desc" }],
     });
     ok(res, tasks);
@@ -28,7 +52,10 @@ router.post("/", async (req, res) => {
     if (error !== null) return fail(res, error, 400);
     const created = await prisma.admTask.create({
       data,
-      include: { company: { select: { id: true, name: true } } },
+      include: {
+        company: { select: { id: true, name: true } },
+        person: { select: { id: true, name: true } },
+      },
     });
     ok(res, created);
   } catch (e) { fail(res, e); }
@@ -46,7 +73,10 @@ router.patch("/:id", async (req, res) => {
         ...(data.status === "completada" ? { completedAt: new Date() } : {}),
         ...(data.status && data.status !== "completada" ? { completedAt: null } : {}),
       },
-      include: { company: { select: { id: true, name: true } } },
+      include: {
+        company: { select: { id: true, name: true } },
+        person: { select: { id: true, name: true } },
+      },
     });
     ok(res, updated);
   } catch (e) { fail(res, e); }

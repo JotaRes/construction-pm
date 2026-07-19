@@ -98,6 +98,31 @@ Paleta oficial (única fuente: bloque de tokens en `frontend/src/index.css`):
   técnico, `RAMark` (finance) y ModuleGate — si se cambia, cambiar en los cinco.
 - NO reintroducir azul Apple #0071E3: fue reemplazado por decisión del usuario.
 
+## Módulo Administrativo v1.0 (desde julio 2026)
+
+- **Sin "Asistente"**: el botón flotante AssistantButton fue RETIRADO por decisión del
+  usuario (era solo un buscador de navegación, no IA). No reintroducirlo.
+- **Socios y colaboradores** (`/admin/persons`): modelos `AdmPerson`,
+  `AdmPersonRequirement` (checklist con categorías LIBRES por persona) y
+  `AdmPersonDocument` (Cloudinary, carpeta `admin-corporate/persons/:id`).
+  Al crear una persona se siembra un checklist inicial editable
+  (identidad/migratorio/fiscal/personal). El cumplimiento se DERIVA
+  (`computePersonCompliance`) — nunca se almacena estado.
+- **Documentos requeridos personalizables por empresa**: además del due diligence
+  preestablecido, `AdminAPI.addCompanyRequirement` crea un `AdmDocType` con code
+  `CUSTOM_*` + categoría libre y lo exige a la empresa vía `AdmRequirement`.
+  Quitar un requisito usa `required: false` (upsert) y NO borra archivos.
+- **Tareas**: `AdmTask.personId` (Cascade) además de `companyId`. Alta rápida
+  inline en CompanyDetail y PersonDetail. `GET /api/admin/tasks/summary`
+  alimenta los badges del sidebar (pendientes/vencidas — rojo pulsante si hay
+  vencidas; alertas críticas+altas en el ítem Alertas).
+- **Alertas** incluyen ahora: docs de personas (PERSONA_DOC_*), tareas vencidas
+  y tareas PRÓXIMAS a vencer (ventana 7 días, `TASK_DUE_SOON_DAYS`).
+- En rutas de persons.ts las rutas con prefijo fijo (/requirements/*, /documents/*)
+  van ANTES que las paramétricas (/:id) — no reordenar.
+- El backup global incluye persons/personRequirements/personDocuments (JSON) y
+  sus binarios (`collectPersonTargets`, carpeta files/administrativo/socios/).
+
 ## Pendientes conocidos / Ideas
 
 - Bundle frontend > 500KB → considerar code-split de Recharts via dynamic import

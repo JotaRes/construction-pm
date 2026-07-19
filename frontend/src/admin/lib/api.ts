@@ -34,6 +34,12 @@ export const ROLE_LABELS: Record<string, string> = {
   OTHER: "Otra",
 };
 
+export const PERSON_ROLE_LABELS: Record<string, string> = {
+  SOCIO: "Socio",
+  COLABORADOR: "Colaborador",
+  OTRO: "Otro",
+};
+
 export const STATUS_LABELS: Record<string, string> = {
   ACTIVE: "Activa",
   INACTIVE: "Inactiva",
@@ -56,6 +62,21 @@ export const AdminAPI = {
   getChecklist: (companyId: number) => unwrap<any>(api.get(`/doc-types/companies/${companyId}/checklist`)),
   toggleRequirement: (companyId: number, data: any) => unwrap<any>(api.put(`/doc-types/companies/${companyId}/requirements`, data)),
 
+  /** Crea un tipo documental nuevo (categoría libre) y lo exige de una vez a la empresa. */
+  addCompanyRequirement: async (companyId: number, data: { name: string; category: string; hasExpiry: boolean }) => {
+    const code = `CUSTOM_${data.name.toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Z0-9]+/g, "_").slice(0, 40)}_${Date.now().toString(36).toUpperCase()}`;
+    const docType = await unwrap<any>(api.post("/doc-types", {
+      code,
+      name: data.name,
+      category: data.category.toUpperCase(),
+      hasExpiry: data.hasExpiry,
+      defaultRequired: false,
+      sortOrder: 999,
+    }));
+    await unwrap<any>(api.put(`/doc-types/companies/${companyId}/requirements`, { docTypeId: docType.id, required: true }));
+    return docType;
+  },
+
   // Documentos
   getDocuments: (companyId: number) => unwrap<any[]>(api.get(`/companies/${companyId}/documents`)),
   uploadDocument: (companyId: number, form: FormData) =>
@@ -65,10 +86,29 @@ export const AdminAPI = {
   getShareInfo: (docId: number) => unwrap<any>(api.get(`/documents/${docId}/share`)),
 
   // Tareas
-  getTasks: (params?: { companyId?: number; status?: string }) => unwrap<any[]>(api.get("/tasks", { params })),
+  getTasks: (params?: { companyId?: number; personId?: number; status?: string }) => unwrap<any[]>(api.get("/tasks", { params })),
+  getTaskSummary: () => unwrap<{ pending: number; overdue: number; dueSoon: number; highPriority: number }>(api.get("/tasks/summary")),
   createTask: (data: any) => unwrap<any>(api.post("/tasks", data)),
   updateTask: (id: number, data: any) => unwrap<any>(api.patch(`/tasks/${id}`, data)),
   deleteTask: (id: number) => unwrap<any>(api.delete(`/tasks/${id}`)),
+
+  // Socios y colaboradores
+  getPersons: () => unwrap<any[]>(api.get("/persons")),
+  getPerson: (id: number) => unwrap<any>(api.get(`/persons/${id}`)),
+  createPerson: (data: any) => unwrap<any>(api.post("/persons", data)),
+  updatePerson: (id: number, data: any) => unwrap<any>(api.patch(`/persons/${id}`, data)),
+  deletePerson: (id: number) => unwrap<any>(api.delete(`/persons/${id}`)),
+  getPersonChecklist: (id: number) => unwrap<any>(api.get(`/persons/${id}/checklist`)),
+  getPersonRequirements: (id: number) => unwrap<any[]>(api.get(`/persons/${id}/requirements`)),
+  createPersonRequirement: (id: number, data: any) => unwrap<any>(api.post(`/persons/${id}/requirements`, data)),
+  updatePersonRequirement: (reqId: number, data: any) => unwrap<any>(api.patch(`/persons/requirements/${reqId}`, data)),
+  deletePersonRequirement: (reqId: number) => unwrap<any>(api.delete(`/persons/requirements/${reqId}`)),
+  getPersonDocuments: (id: number) => unwrap<any[]>(api.get(`/persons/${id}/documents`)),
+  uploadPersonDocument: (id: number, form: FormData) =>
+    unwrap<any>(api.post(`/persons/${id}/documents`, form, { headers: { "Content-Type": "multipart/form-data" } })),
+  updatePersonDocument: (docId: number, data: any) => unwrap<any>(api.patch(`/persons/documents/${docId}`, data)),
+  deletePersonDocument: (docId: number) => unwrap<any>(api.delete(`/persons/documents/${docId}`)),
+  getPersonShareInfo: (docId: number) => unwrap<any>(api.get(`/persons/documents/${docId}/share`)),
 
   // Dashboard + alertas
   getDashboard: () => unwrap<any>(api.get("/dashboard")),

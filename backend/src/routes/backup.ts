@@ -7,7 +7,7 @@ import multer from 'multer'
 import AdmZip from 'adm-zip'
 import { buildTechExcel, buildFinanceExcel, readRestoreSnapshotFromXlsx } from '../lib/excelReports'
 import { buildSnapshot as buildFinanceSnapshot } from '../finance/routes/backup'
-import { collectTechTargets, collectFinanceTargets, collectAdminTargets, appendBinaries, manifestToCsv } from '../lib/backupBinaries'
+import { collectTechTargets, collectFinanceTargets, collectAdminTargets, collectPersonTargets, appendBinaries, manifestToCsv } from '../lib/backupBinaries'
 
 const router = Router()
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } })
@@ -155,13 +155,16 @@ router.get('/', async (req: Request, res: Response) => {
     archive.append(finSnapshot, { name: 'data/finance-database.json' })
 
     // === MÓDULO ADMINISTRATIVO (gobierno corporativo) ===
-    const [admCompanies, admDocTypes, admDocuments, admRequirements, admTasks] =
+    const [admCompanies, admDocTypes, admDocuments, admRequirements, admTasks, admPersons, admPersonRequirements, admPersonDocuments] =
       await Promise.all([
         prisma.admCompany.findMany(),
         prisma.admDocType.findMany(),
         prisma.admDocument.findMany(),
         prisma.admRequirement.findMany(),
         prisma.admTask.findMany(),
+        prisma.admPerson.findMany(),
+        prisma.admPersonRequirement.findMany(),
+        prisma.admPersonDocument.findMany(),
       ])
 
     const admSnapshot = JSON.stringify(
@@ -171,8 +174,11 @@ router.get('/', async (req: Request, res: Response) => {
         documents: admDocuments,
         requirements: admRequirements,
         tasks: admTasks,
+        persons: admPersons,
+        personRequirements: admPersonRequirements,
+        personDocuments: admPersonDocuments,
         exportedAt: new Date().toISOString(),
-        version: '1.0',
+        version: '1.1',
       },
       null,
       2
@@ -197,7 +203,7 @@ router.get('/', async (req: Request, res: Response) => {
       '## Contenido',
       '- data/tech-database.json     → datos del módulo TÉCNICO (v1.3, re-importable)',
       '- data/finance-database.json  → datos del módulo FINANCIERO (re-importable)',
-      '- data/admin-database.json    → datos del módulo ADMINISTRATIVO (empresas, expedientes, tareas)',
+      '- data/admin-database.json    → datos del módulo ADMINISTRATIVO (empresas, expedientes, socios/colaboradores, tareas)',
       '- excel/reporte-tecnico.xlsx  → dashboard técnico legible (plan B de control)',
       '- excel/reporte-financiero.xlsx → dashboard financiero legible (plan B de control)',
       '- files/                      → binarios (PDFs/fotos) descargados de Cloudinary',
@@ -249,7 +255,8 @@ router.get('/', async (req: Request, res: Response) => {
         const techTargets = collectTechTargets(projects, itemDocuments, subcontractorContracts)
         const finTargets = finFull ? collectFinanceTargets(finFull) : []
         const admTargets = collectAdminTargets(admDocuments, admCompanies)
-        const targets = [...techTargets, ...finTargets, ...admTargets]
+        const personTargets = collectPersonTargets(admPersonDocuments, admPersons)
+        const targets = [...techTargets, ...finTargets, ...admTargets, ...personTargets]
         const manifest = await appendBinaries(archive, targets)
         const okCount = manifest.filter((m) => m.Estado.startsWith('OK')).length
         archive.append(manifestToCsv(manifest), { name: 'files/INDICE-ARCHIVOS.csv' })

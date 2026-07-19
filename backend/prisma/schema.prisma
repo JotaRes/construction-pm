@@ -1000,11 +1000,13 @@ model AdmRequirement {
   @@map("adm_requirement")
 }
 
-// Tarea administrativa (opcionalmente ligada a una empresa)
+// Tarea administrativa (opcionalmente ligada a una empresa y/o a un socio)
 model AdmTask {
   id          Int         @id @default(autoincrement())
   companyId   Int?
   company     AdmCompany? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  personId    Int?
+  person      AdmPerson?  @relation(fields: [personId], references: [id], onDelete: Cascade)
   title       String
   description String?
   dueDate     DateTime?
@@ -1014,5 +1016,72 @@ model AdmTask {
   completedAt DateTime?
 
   @@map("adm_task")
+}
+
+// ============================================================
+// SOCIOS Y COLABORADORES — carpeta documental personal
+// ============================================================
+// Cada persona tiene su propio checklist de documentos (requisitos con
+// categoría y nombre libres), su expediente de archivos en Cloudinary y
+// sus tareas/pendientes. El cumplimiento se DERIVA de datos reales,
+// igual que el semáforo de empresas (nunca queda desactualizado).
+model AdmPerson {
+  id       Int     @id @default(autoincrement())
+  name     String
+  role     String  @default("SOCIO") // SOCIO | COLABORADOR | OTRO
+  position String? // cargo dentro del grupo
+  email    String?
+  phone    String?
+  idNumber String? // cédula / pasaporte / SSN-ITIN
+  status   String  @default("ACTIVO") // ACTIVO | INACTIVO
+  notes    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  requirements AdmPersonRequirement[]
+  documents    AdmPersonDocument[]
+  tasks        AdmTask[]
+
+  @@map("adm_person")
+}
+
+// Requisito documental de una persona: nombre del archivo esperado +
+// categoría libre (el usuario crea las categorías que necesite).
+model AdmPersonRequirement {
+  id        Int       @id @default(autoincrement())
+  personId  Int
+  person    AdmPerson @relation(fields: [personId], references: [id], onDelete: Cascade)
+  name      String
+  category  String    @default("GENERAL")
+  hasExpiry Boolean   @default(false)
+  required  Boolean   @default(true)
+  sortOrder Int       @default(0)
+  notes     String?
+
+  documents AdmPersonDocument[]
+
+  @@map("adm_person_requirement")
+}
+
+// Archivo de la carpeta personal (Cloudinary), opcionalmente ligado
+// a un requisito del checklist.
+model AdmPersonDocument {
+  id            Int                   @id @default(autoincrement())
+  personId      Int
+  person        AdmPerson             @relation(fields: [personId], references: [id], onDelete: Cascade)
+  requirementId Int?
+  requirement   AdmPersonRequirement? @relation(fields: [requirementId], references: [id], onDelete: SetNull)
+  filename      String
+  url           String
+  publicId      String?
+  mimetype      String?
+  size          Int?
+  issueDate     DateTime?
+  expiryDate    DateTime?
+  notes         String?
+  uploadedAt    DateTime              @default(now())
+
+  @@map("adm_person_document")
 }
 

@@ -1,20 +1,44 @@
 import { NavLink, useLocation, Link } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { Network, ListChecks, Bell, LogOut, Home, Menu, X, Download } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Network, ListChecks, Bell, LogOut, Home, Menu, X, Download, Users } from "lucide-react";
 import { cls } from "../../finance/lib/format";
 import { logout as unifiedLogout } from "../../components/AuthGate";
 import ModuleSwitcher from "../../components/ModuleSwitcher";
 import CapacityBanner from "../../components/CapacityBanner";
 import { useTheme } from "../../hooks/useTheme";
 import { downloadAuthed } from "../../lib/api";
+import { AdminAPI } from "../lib/api";
 
 const NAV = [
   { to: "/admin/orgchart", label: "Organigrama", icon: Network, group: "Estructura corporativa" },
+  { to: "/admin/persons", label: "Socios y colaboradores", icon: Users, group: "Estructura corporativa" },
   { to: "/admin/tasks", label: "Tareas", icon: ListChecks, group: "Gestión" },
   { to: "/admin/alerts", label: "Alertas de cumplimiento", icon: Bell, group: "Gestión" },
 ];
 
 const GROUPS = ["Estructura corporativa", "Gestión"];
+
+/** Badge del menú lateral: pendientes en ámbar; si hay vencidas, rojo pulsante. */
+function NavBadge({ count, urgent, title }: { count: number; urgent?: boolean; title?: string }) {
+  if (!count) return null;
+  return (
+    <span
+      title={title}
+      className={cls("ml-auto flex-shrink-0 min-w-[20px] h-[18px] px-1.5 rounded-full flex items-center justify-center", urgent && "animate-pulse")}
+      style={{
+        background: urgent ? "#D93025" : "rgba(201,130,11,0.9)",
+        color: "#fff",
+        fontSize: 10,
+        fontWeight: 700,
+        fontFamily: "var(--font-mono)",
+        lineHeight: 1,
+      }}
+    >
+      {count > 99 ? "99+" : count}
+    </span>
+  );
+}
 
 function RAMark({ size = 15 }: { size?: number }) {
   return (
@@ -28,6 +52,7 @@ function RAMark({ size = 15 }: { size?: number }) {
 
 function getPageTitle(pathname: string): { title: string; sub: string } {
   if (pathname.includes("/companies/")) return { title: "Expediente corporativo", sub: "Documentación y cumplimiento" };
+  if (/\/persons\/\d+/.test(pathname)) return { title: "Carpeta personal", sub: "Documentación y pendientes del socio/colaborador" };
   const item = NAV.find((n) => pathname === n.to || pathname.startsWith(n.to + "/"));
   if (!item) return { title: "Gobierno Corporativo", sub: "Restrepo Acosta Global Holding LLC" };
   const subs: Record<string, string> = {
@@ -44,6 +69,39 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   useEffect(() => { setMobileOpen(false); }, [location.pathname]);
 
   const { title, sub } = getPageTitle(location.pathname);
+
+  // Señalización inteligente del sidebar: se refresca sola cada minuto y al
+  // volver a la pestaña. Tareas → pendientes/vencidas; Alertas → críticas+altas.
+  const summaryQ = useQuery({
+    queryKey: ["adm-task-summary"],
+    queryFn: AdminAPI.getTaskSummary,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+  });
+  const dashQ = useQuery({
+    queryKey: ["adm-dashboard"],
+    queryFn: AdminAPI.getDashboard,
+    refetchInterval: 120_000,
+    staleTime: 60_000,
+  });
+  const taskSummary = summaryQ.data;
+  const alertCounts = dashQ.data?.alertCounts;
+  const badgeFor = (to: string): { count: number; urgent: boolean; title: string } | null => {
+    if (to === "/admin/tasks" && taskSummary && taskSummary.pending > 0) {
+      return {
+        count: taskSummary.pending,
+        urgent: taskSummary.overdue > 0,
+        title: taskSummary.overdue > 0
+          ? `${taskSummary.pending} pendientes · ${taskSummary.overdue} VENCIDAS`
+          : `${taskSummary.pending} tareas pendientes${taskSummary.dueSoon > 0 ? ` · ${taskSummary.dueSoon} vencen esta semana` : ""}`,
+      };
+    }
+    if (to === "/admin/alerts" && alertCounts) {
+      const n = (alertCounts.criticas ?? 0) + (alertCounts.altas ?? 0);
+      if (n > 0) return { count: n, urgent: (alertCounts.criticas ?? 0) > 0, title: `${alertCounts.criticas} críticas · ${alertCounts.altas} altas` };
+    }
+    return null;
+  };
 
   return (
     <div className="flex h-screen overflow-hidden fin-app" style={{ background: "var(--bg-base)", color: "var(--text-primary)" }}>
@@ -108,10 +166,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               {NAV.filter((n) => n.group === group).map((item) => {
                 const Icon = item.icon;
                 const active = location.pathname === item.to || location.pathname.startsWith(item.to + "/");
+                const badge = badgeFor(item.to);
                 return (
                   <NavLink key={item.to} to={item.to} className={cls("fin-nav-item", active && "active")}>
                     <Icon size={14} style={{ flexShrink: 0 }} />
                     <span>{item.label}</span>
+                    {badge && <NavBadge count={badge.count} urgent={badge.urgent} title={badge.title} />}
                   </NavLink>
                 );
               })}

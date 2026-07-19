@@ -134,6 +134,23 @@ export function collectFinanceTargets(snap: any): BinaryTarget[] {
   return out
 }
 
+export function collectPersonTargets(documents: any[], persons: any[]): BinaryTarget[] {
+  const out: BinaryTarget[] = []
+  const nameOf = new Map((persons || []).map((p: any) => [p.id, p.name]))
+  for (const d of documents || []) {
+    if (!d.url || typeof d.url !== 'string' || !d.url.trim() || d.url.startsWith('local:')) continue
+    const personName = safe(nameOf.get(d.personId) || `persona-${d.personId}`)
+    out.push({
+      module: 'administrativo',
+      entity: `Doc personal · ${nameOf.get(d.personId) ?? d.personId}`,
+      folder: `socios/${personName}`,
+      name: safe(d.filename, String(d.id)),
+      url: d.url,
+    })
+  }
+  return out
+}
+
 export function collectAdminTargets(documents: any[], companies: any[]): BinaryTarget[] {
   const out: BinaryTarget[] = []
   const nameOf = new Map((companies || []).map((c: any) => [c.id, c.name]))

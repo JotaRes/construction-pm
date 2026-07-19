@@ -140,3 +140,124 @@ export async function computeAllCompliance(): Promise<Map<number, CompanyComplia
   }
   return result;
 }
+
+// ============================================================
+// CUMPLIMIENTO DE SOCIOS Y COLABORADORES — mismo motor derivado
+// ============================================================
+
+export interface PersonComplianceItem {
+  requirementId: number;
+  name: string;
+  category: string;
+  hasExpiry: boolean;
+  notes: string | null;
+  status: RequirementStatus;
+  document: {
+    id: number;
+    filename: string;
+    url: string;
+    issueDate: Date | null;
+    expiryDate: Date | null;
+    uploadedAt: Date;
+  } | null;
+  daysToExpiry: number | null;
+}
+
+export interface PersonCompliance {
+  personId: number;
+  totalRequired: number;
+  ok: number;
+  porVencer: number;
+  vencidos: number;
+  faltantes: number;
+  compliancePct: number;
+  items: PersonComplianceItem[];
+}
+
+/** Cumplimiento documental de UNA persona (socio/colaborador). */
+export async function computePersonCompliance(personId: number): Promise<PersonCompliance> {
+  const [requirements, documents] = await Promise.all([
+    prisma.admPersonRequirement.findMany({
+      where: { personId, required: true },
+      orderBy: [{ category: "asc" }, { sortOrder: "asc" }, { id: "asc" }],
+    }),
+    prisma.admPersonDocument.findMany({
+      where: { personId },
+      orderBy: { uploadedAt: "desc" },
+    }),
+  ]);
+
+  const now = new Date();
+  const items: PersonComplianceItem[] = requirements.map((req) => {
+    // Documento más relevante del requisito: vencimiento más lejano gana
+    const docs = documents.filter((d) => d.requirementId === req.id);
+    const doc =
+      docs.length === 0
+        ? null
+        : docs.slice().sort((a, b) => {
+            const ea = a.expiryDate?.getTime() ?? 0;
+            const eb = b.expiryDate?.getTime() ?? 0;
+            if (ea !== eb) return eb - ea;
+            return b.uploadedAt.getTime() - a.uploadedAt.getTime();
+          })[0];
+
+    if (!doc) {
+      return {
+        requirementId: req.id,
+        name: req.name,
+        category: req.category,
+        hasExpiry: req.hasExpiry,
+        notes: req.notes,
+        status: "FALTANTE" as const,
+        document: null,
+        daysToExpiry: null,
+      };
+    }
+
+    const { status, days } = statusFor(req.hasExpiry, doc.expiryDate, now);
+    return {
+      requirementId: req.id,
+      name: req.name,
+      category: req.category,
+      hasExpiry: req.hasExpiry,
+      notes: req.notes,
+      status,
+      document: {
+        id: doc.id,
+        filename: doc.filename,
+        url: doc.url,
+        issueDate: doc.issueDate,
+        expiryDate: doc.expiryDate,
+        uploadedAt: doc.uploadedAt,
+      },
+      daysToExpiry: days,
+    };
+  });
+
+  const ok = items.filter((i) => i.status === "OK").length;
+  const porVencer = items.filter((i) => i.status === "POR_VENCER").length;
+  const vencidos = items.filter((i) => i.status === "VENCIDO").length;
+  const faltantes = items.filter((i) => i.status === "FALTANTE").length;
+  const total = items.length;
+
+  return {
+    personId,
+    totalRequired: total,
+    ok,
+    porVencer,
+    vencidos,
+    faltantes,
+    compliancePct: total === 0 ? 100 : Math.round(((ok + porVencer) / total) * 100),
+    items,
+  };
+}
+
+/** Cumplimiento de TODAS las personas (para dashboard y alertas). */
+export async function computeAllPersonCompliance(): Promise<Map<number, PersonCompliance>> {
+  const persons = await prisma.admPerson.findMany({ select: { id: true } });
+  const result = new Map<number, PersonCompliance>();
+  for (const p of persons) {
+    result.set(p.id, await computePersonCompliance(p.id));
+  }
+  return result;
+}

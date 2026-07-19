@@ -4,7 +4,6 @@ import AuthGate from './components/AuthGate'
 import Splash from './components/Splash'
 import { ConfirmProvider } from './components/ConfirmDialog'
 import ModuleGate from './components/ModuleGate'
-import AssistantButton from './components/AssistantButton'
 import { useQuery } from '@tanstack/react-query'
 import { useProjectStore } from './store/projectStore'
 import { projectsApi } from './lib/api'
@@ -118,7 +117,6 @@ export default function App() {
               </ModuleGate>
             } />
           </Routes>
-          <AssistantButton />
         </BrowserRouter>
       </ConfirmProvider>
     </AuthGate>

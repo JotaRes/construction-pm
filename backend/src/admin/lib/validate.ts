@@ -64,12 +64,50 @@ export const taskCreateSchema = z.object({
   title: z.string().trim().min(1, "El título es obligatorio").max(300),
   description: optionalStr(5000),
   companyId: optionalId,
+  personId: optionalId,
   dueDate: optionalDate,
   priority: z.enum(["alta", "media", "baja"]).optional(),
   status: z.enum(["pendiente", "en_progreso", "completada"]).optional(),
 });
 
 export const taskUpdateSchema = taskCreateSchema.partial();
+
+// === SOCIOS Y COLABORADORES ===
+
+export const PERSON_ROLES = ["SOCIO", "COLABORADOR", "OTRO"] as const;
+export const PERSON_STATUS = ["ACTIVO", "INACTIVO"] as const;
+
+export const personCreateSchema = z.object({
+  name: z.string().trim().min(1, "El nombre es obligatorio").max(200),
+  role: z.enum(PERSON_ROLES).optional(),
+  position: optionalStr(200),
+  email: optionalStr(200),
+  phone: optionalStr(50),
+  idNumber: optionalStr(60),
+  status: z.enum(PERSON_STATUS).optional(),
+  notes: optionalStr(5000),
+});
+
+export const personUpdateSchema = personCreateSchema.partial();
+
+export const personRequirementCreateSchema = z.object({
+  name: z.string().trim().min(1, "El nombre del documento es obligatorio").max(200),
+  category: z.string().trim().min(1).max(80).optional(),
+  hasExpiry: z.coerce.boolean().optional(),
+  required: z.coerce.boolean().optional(),
+  sortOrder: z.coerce.number().int().optional(),
+  notes: optionalStr(1000),
+});
+
+export const personRequirementUpdateSchema = personRequirementCreateSchema.partial();
+
+export const personDocumentMetaSchema = z.object({
+  requirementId: optionalId,
+  issueDate: optionalDate,
+  expiryDate: optionalDate,
+  notes: optionalStr(2000),
+  filename: z.string().trim().min(1).max(300).optional(),
+});
 
 /** Devuelve { data } o { error } con mensajes legibles (patrón finance). */
 export function parseOrError<T>(schema: z.ZodType<T>, body: unknown):

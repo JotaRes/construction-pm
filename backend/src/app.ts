@@ -59,6 +59,7 @@ import admDocTypes from './admin/routes/docTypes'
 import admDocuments from './admin/routes/documents'
 import admTasks from './admin/routes/tasks'
 import admDashboard from './admin/routes/dashboard'
+import admPersons from './admin/routes/persons'
 
 // Red de seguridad: un archivo corrupto (p.ej. imagen dañada en OCR) puede hacer
 // abortar el módulo WASM de tesseract con un error ASÍNCRONO no atrapable por
@@ -227,6 +228,7 @@ app.use('/api/admin/doc-types', admDocTypes)
 app.use('/api/admin', admDocuments)      // /companies/:id/documents + /documents/:id
 app.use('/api/admin/tasks', admTasks)
 app.use('/api/admin/dashboard', admDashboard)
+app.use('/api/admin/persons', admPersons)
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), version: 'v2-with-module-gate' })
