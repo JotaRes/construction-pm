@@ -191,8 +191,28 @@ export default function CompanyDetail() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  // Asignación de obras (módulo técnico) a esta LLC
+  // Asignación de obras (módulo técnico) y propiedades (financiero) a esta LLC
   const [assignSel, setAssignSel] = useState("");
+  const [assignFinSel, setAssignFinSel] = useState("");
+  const assignFinMut = useMutation({
+    mutationFn: (finProjectId: number) => AdminAPI.assignFinProject(companyId, finProjectId),
+    onSuccess: () => {
+      toast.success("Propiedad asignada a esta empresa");
+      setAssignFinSel("");
+      qc.invalidateQueries({ queryKey: ["adm-company-projects", companyId] });
+      qc.invalidateQueries({ queryKey: ["adm-orgchart"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const unassignFinMut = useMutation({
+    mutationFn: (finProjectId: number) => AdminAPI.unassignFinProject(companyId, finProjectId),
+    onSuccess: () => {
+      toast.success("Asignación de propiedad retirada");
+      qc.invalidateQueries({ queryKey: ["adm-company-projects", companyId] });
+      qc.invalidateQueries({ queryKey: ["adm-orgchart"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
   const assignMut = useMutation({
     mutationFn: (projectId: string) => AdminAPI.assignProject(companyId, projectId),
     onSuccess: () => {
@@ -453,10 +473,10 @@ export default function CompanyDetail() {
             </div>
           )}
 
-          {/* Propiedades del portafolio financiero (derivadas del SPV vinculado) */}
+          {/* Propiedades del portafolio financiero (vía SPV o asignadas directamente) */}
           {(projectsQ.data?.finProjects ?? []).length > 0 && (
             <div className="space-y-2 mb-4">
-              <div className="fin-nav-grp" style={{ paddingLeft: 0 }}>Propiedades (portafolio financiero · vía SPV)</div>
+              <div className="fin-nav-grp" style={{ paddingLeft: 0 }}>Propiedades (portafolio financiero)</div>
               {(projectsQ.data?.finProjects ?? []).map((p: any) => (
                 <div key={p.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl" style={{ border: "1px solid var(--border)", background: "var(--bg-panel, #fff)" }}>
                   <span className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(198,149,47,0.12)" }}>
@@ -469,16 +489,26 @@ export default function CompanyDetail() {
                       {p.arv > 0 ? ` · ARV $${Math.round(p.arv).toLocaleString("en-US")}` : ""}
                     </div>
                   </div>
+                  <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full flex-shrink-0"
+                    style={p.source === "SPV"
+                      ? { background: "rgba(62,90,112,0.10)", color: "#3E5A70" }
+                      : { background: "rgba(198,149,47,0.12)", color: "#8a6a1f" }}
+                    title={p.source === "SPV" ? "Derivada del SPV vinculado en el módulo financiero" : "Asignada directamente a esta empresa"}>
+                    {p.source === "SPV" ? "vía SPV" : "directa"}
+                  </span>
+                  {p.source === "DIRECTA" && (
+                    <button className="fin-btn-icon" title="Quitar asignación (no borra la propiedad)" style={{ color: "#D93025" }}
+                      onClick={() => unassignFinMut.mutate(p.id)}>
+                      <X size={13} />
+                    </button>
+                  )}
                 </div>
               ))}
-              <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-                Estas propiedades vienen del SPV vinculado en el módulo financiero — un solo origen de verdad, sin doble registro.
-              </div>
             </div>
           )}
 
-          {/* Asignar obra disponible */}
-          <div className="flex flex-wrap items-end gap-2 rounded-lg p-3" style={{ border: "1px dashed var(--border)", background: "var(--bg-base)" }}>
+          {/* Asignar obra técnica disponible */}
+          <div className="flex flex-wrap items-end gap-2 rounded-lg p-3 mb-2" style={{ border: "1px dashed var(--border)", background: "var(--bg-base)" }}>
             <label className="text-[10px] font-semibold flex-1 min-w-[220px]" style={{ color: "var(--text-secondary)" }}>
               Asignar una obra del módulo técnico a esta empresa
               <select className="input-base block w-full mt-0.5" value={assignSel} onChange={(e) => setAssignSel(e.target.value)}>
@@ -490,6 +520,22 @@ export default function CompanyDetail() {
             </label>
             <button className="fin-btn-cta" style={{ height: 34 }} disabled={!assignSel || assignMut.isPending} onClick={() => assignMut.mutate(assignSel)}>
               {assignMut.isPending ? "Asignando…" : "Asignar"}
+            </button>
+          </div>
+
+          {/* Asignar propiedad financiera disponible (Vero Beach, Holiday, etc.) */}
+          <div className="flex flex-wrap items-end gap-2 rounded-lg p-3" style={{ border: "1px dashed var(--border)", background: "var(--bg-base)" }}>
+            <label className="text-[10px] font-semibold flex-1 min-w-[220px]" style={{ color: "var(--text-secondary)" }}>
+              Asignar una propiedad del portafolio financiero a esta empresa
+              <select className="input-base block w-full mt-0.5" value={assignFinSel} onChange={(e) => setAssignFinSel(e.target.value)}>
+                <option value="">— seleccionar propiedad sin asignar —</option>
+                {(projectsQ.data?.availableFin ?? []).map((p: any) => (
+                  <option key={p.id} value={p.id}>{p.code} · {p.name}{p.address ? ` · ${p.address}` : ""}</option>
+                ))}
+              </select>
+            </label>
+            <button className="fin-btn-cta" style={{ height: 34 }} disabled={!assignFinSel || assignFinMut.isPending} onClick={() => assignFinMut.mutate(Number(assignFinSel))}>
+              {assignFinMut.isPending ? "Asignando…" : "Asignar"}
             </button>
           </div>
         </div>

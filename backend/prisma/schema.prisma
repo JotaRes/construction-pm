@@ -667,6 +667,10 @@ model FinProject {
   status        String   @default("Enlistado")
   spvId         Int?
   spv           FinSPV?     @relation(fields: [spvId], references: [id])
+  // Empresa responsable en el organigrama administrativo — asignación DIRECTA
+  // para propiedades sin SPV vinculado (además de la derivación vía SPV).
+  admCompanyId  Int?
+  admCompany    AdmCompany? @relation("CompanyFinProjects", fields: [admCompanyId], references: [id], onDelete: SetNull)
   address       String?
   purchasePrice Float    @default(0)
   arv           Float    @default(0)
@@ -754,6 +758,10 @@ model FinMovement {
   techItem          Item?        @relation("MovementTechItem", fields: [techItemId], references: [id], onDelete: SetNull)
   techSubActivityId String?      @unique
   techSubActivity   SubActivity? @relation("MovementTechSub", fields: [techSubActivityId], references: [id], onDelete: SetNull)
+  // true = la subactividad vinculada YA existía (el usuario la eligió): el sync
+  // solo actualiza valor/fecha y al desvincular NO la borra. false = espejo
+  // creado por el sistema: se gestiona y elimina automáticamente.
+  techSubAdopted    Boolean      @default(false)
 
   documents       FinMovementDocument[]
   createdAt       DateTime @default(now())
@@ -963,6 +971,8 @@ model AdmCompany {
   tasks        AdmTask[]
   // Proyectos del módulo TÉCNICO a cargo de esta LLC (carga operativa)
   techProjects Project[]    @relation("CompanyTechProjects")
+  // Propiedades del portafolio FINANCIERO asignadas directamente (sin SPV)
+  finProjectsDirect FinProject[] @relation("CompanyFinProjects")
 
   @@map("adm_company")
 }

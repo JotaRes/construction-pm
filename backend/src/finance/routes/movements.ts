@@ -106,7 +106,7 @@ router.get("/tech-projects", async (_req, res) => {
   } catch (e) { fail(res, e); }
 });
 
-// Fases → actividades de un proyecto técnico (cascada fase → actividad)
+// Fases → actividades → subactividades de un proyecto técnico (cascada completa)
 router.get("/tech-tree/:projectId", async (req, res) => {
   try {
     const phases = await prisma.phase.findMany({
@@ -118,11 +118,55 @@ router.get("/tech-tree/:projectId", async (req, res) => {
         name: true,
         items: {
           orderBy: { order: "asc" },
-          select: { id: true, itemCode: true, activity: true, esNA: true, valorPresupuestado: true, valorEjecutado: true },
+          select: {
+            id: true, itemCode: true, activity: true, esNA: true,
+            valorPresupuestado: true, valorEjecutado: true,
+            subactivities: {
+              orderBy: { order: "asc" },
+              select: { id: true, description: true, valorEjecutado: true, fecha: true },
+            },
+          },
         },
       },
     });
     ok(res, phases);
+  } catch (e) { fail(res, e); }
+});
+
+// Crear una actividad nueva en una fase de la obra DESDE el módulo financiero.
+// Caso de uso: el gasto no corresponde a ninguna actividad existente — se crea
+// aquí mismo sin ir al módulo técnico (mismo formato de código que Ejecución).
+router.post("/tech-items", async (req, res) => {
+  try {
+    const phaseId = String(req.body?.phaseId ?? "");
+    const activity = String(req.body?.activity ?? "").trim();
+    if (!phaseId || !activity) return fail(res, "phaseId y activity son obligatorios", 400);
+    if (activity.length > 200) return fail(res, "Nombre de actividad demasiado largo", 400);
+
+    const phase = await prisma.phase.findUnique({
+      where: { id: phaseId },
+      select: { id: true, code: true, _count: { select: { items: true } } },
+    });
+    if (!phase) return fail(res, "Fase no encontrada", 404);
+
+    // Código consecutivo dentro de la fase (ej. F01.7). Si choca, se incrementa.
+    let n = phase._count.items + 1;
+    let itemCode = `${phase.code}.${n}`;
+    while (await prisma.item.findFirst({ where: { phaseId, itemCode }, select: { id: true } })) {
+      n++; itemCode = `${phase.code}.${n}`;
+    }
+
+    const created = await prisma.item.create({
+      data: {
+        phaseId,
+        itemCode,
+        activity,
+        order: n - 1,
+        observaciones: "Creada desde el módulo financiero (asociación de movimiento).",
+      },
+      select: { id: true, itemCode: true, activity: true },
+    });
+    ok(res, created);
   } catch (e) { fail(res, e); }
 });
 
@@ -154,6 +198,21 @@ async function detectIsLoanRepayment(categoryId?: number | null): Promise<boolea
   return /pago.*(deuda|pr[ée]stamo)|debt.*pay|amortizaci[oó]n/i.test(c.name || "");
 }
 
+// Valida la adopción de una subactividad existente: debe existir, pertenecer a
+// la actividad elegida y no estar ya vinculada a otro movimiento.
+async function validateSubAdoption(techSubActivityId: string, techItemId: string | null | undefined, excludeMovementId?: number): Promise<string | null> {
+  if (!techItemId) return "Para vincular una subactividad, primero elige la actividad";
+  const sub = await prisma.subActivity.findUnique({ where: { id: techSubActivityId }, select: { id: true, itemId: true } });
+  if (!sub) return "La subactividad elegida ya no existe";
+  if (sub.itemId !== techItemId) return "La subactividad no pertenece a la actividad elegida";
+  const taken = await prisma.finMovement.findFirst({
+    where: { techSubActivityId, ...(excludeMovementId ? { id: { not: excludeMovementId } } : {}) },
+    select: { id: true, concept: true },
+  });
+  if (taken) return `Esa subactividad ya está vinculada al movimiento #${taken.id} (${taken.concept}). Cada subactividad admite un solo movimiento.`;
+  return null;
+}
+
 router.post("/", async (req, res) => {
   try {
     // Validación Zod: rechaza montos no numéricos/negativos, tipos inventados,
@@ -180,6 +239,14 @@ router.post("/", async (req, res) => {
       data.isLoan = false;
       data.isLoanRepayment = false;
       data.techItemId = null; // una transferencia interna no es gasto de obra
+      data.techSubActivityId = null;
+    }
+
+    // Adopción de subactividad existente: validar pertenencia y exclusividad
+    if (data.techSubActivityId) {
+      const err = await validateSubAdoption(data.techSubActivityId, data.techItemId);
+      if (err) return fail(res, err, 400);
+      data.techSubAdopted = true;
     }
 
     // === Defense in depth: si el frontend no setea las flags, las detectamos por código/nombre ===
@@ -238,6 +305,24 @@ router.patch("/:id", async (req, res) => {
     if (type === "Egreso" && lenderId) {
       const repayBackend = await detectIsLoanRepayment(categoryId);
       if (repayBackend) data.isLoanRepayment = true;
+    }
+
+    // === Cambios en el vínculo con la obra ===
+    // Si cambia la actividad o la subactividad elegida, primero se retira el
+    // registro anterior (el espejo automático se borra; una subactividad
+    // adoptada se conserva). Luego el sync crea/actualiza el nuevo.
+    if (existing) {
+      const touchesItem = "techItemId" in data && data.techItemId !== existing.techItemId;
+      const touchesSub = "techSubActivityId" in data && data.techSubActivityId !== existing.techSubActivityId;
+      if (data.techSubActivityId) {
+        const targetItem = ("techItemId" in data ? data.techItemId : existing.techItemId) as string | null;
+        const err = await validateSubAdoption(data.techSubActivityId, targetItem, existing.id);
+        if (err) return fail(res, err, 400);
+      }
+      if (touchesItem || touchesSub) {
+        await removeTechForMovement(existing.id);
+        data.techSubAdopted = !!data.techSubActivityId;
+      }
     }
 
     const updated = await prisma.finMovement.update({ where: { id: +req.params.id }, data, include: includeAll });

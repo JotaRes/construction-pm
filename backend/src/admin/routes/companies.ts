@@ -107,6 +107,7 @@ router.get("/orgchart", async (_req, res) => {
               projects: { select: { id: true, code: true, name: true, status: true }, where: { archivedAt: null } },
             },
           },
+          finProjectsDirect: { select: { id: true, code: true, name: true, status: true }, where: { archivedAt: null } },
           techProjects: { select: { id: true, name: true, photoUrl: true, constructionBudget: true, loanAmount: true } },
           _count: { select: { documents: true, tasks: true } },
         },
@@ -127,13 +128,19 @@ router.get("/orgchart", async (_req, res) => {
     const overdueOf = new Map(overdueByCompany.map((t) => [t.companyId, t._count._all]));
     const pendingOf = new Map(pendingByCompany.map((t) => [t.companyId, t._count._all]));
 
-    const withCompliance = companies.map((c) => ({
-      ...c,
-      compliance: compliance.get(c.id) ?? null,
-      overdueTasks: overdueOf.get(c.id) ?? 0,
-      pendingTasks: pendingOf.get(c.id) ?? 0,
-      finProjects: c.finSpv?.projects ?? [],
-    }));
+    const withCompliance = companies.map((c) => {
+      // Propiedades = derivadas del SPV + asignadas directamente (sin duplicar)
+      const viaSpv = c.finSpv?.projects ?? [];
+      const direct = (c as any).finProjectsDirect ?? [];
+      const seen = new Set(viaSpv.map((p: any) => p.id));
+      return {
+        ...c,
+        compliance: compliance.get(c.id) ?? null,
+        overdueTasks: overdueOf.get(c.id) ?? 0,
+        pendingTasks: pendingOf.get(c.id) ?? 0,
+        finProjects: [...viaSpv, ...direct.filter((p: any) => !seen.has(p.id))],
+      };
+    });
 
     const holding = withCompliance.find((c) => c.role === "HOLDING") ?? null;
     const subsidiaries = withCompliance.filter(
@@ -158,7 +165,7 @@ router.get("/:id/projects", async (req, res) => {
     });
     if (!company) return fail(res, "Empresa no encontrada", 404);
 
-    const [techProjects, availableTech, finProjects] = await Promise.all([
+    const [techProjects, availableTech, finViaSpv, finDirect, availableFin] = await Promise.all([
       prisma.project.findMany({
         where: { admCompanyId: id },
         select: {
@@ -179,8 +186,30 @@ router.get("/:id/projects", async (req, res) => {
             select: { id: true, code: true, name: true, status: true, address: true, purchasePrice: true, arv: true },
             orderBy: { name: "asc" },
           })
-        : Promise.resolve([]),
+        : Promise.resolve([] as any[]),
+      prisma.finProject.findMany({
+        where: { admCompanyId: id, archivedAt: null },
+        select: { id: true, code: true, name: true, status: true, address: true, purchasePrice: true, arv: true },
+        orderBy: { name: "asc" },
+      }),
+      // Propiedades disponibles para asignación directa: sin empresa asignada
+      // (las derivadas de un SPV vinculado a OTRA empresa se excluyen en el front
+      // solo visualmente; aquí basta con que no tengan asignación directa).
+      prisma.finProject.findMany({
+        where: { admCompanyId: null, archivedAt: null },
+        select: { id: true, code: true, name: true, status: true, address: true, spvId: true },
+        orderBy: { name: "asc" },
+      }),
     ]);
+
+    // Unión sin duplicados: SPV manda; la directa complementa (Vero Beach, Holiday…)
+    const seenFin = new Set(finViaSpv.map((p: any) => p.id));
+    const finProjects = [
+      ...finViaSpv.map((p: any) => ({ ...p, source: "SPV" as const })),
+      ...finDirect.filter((p: any) => !seenFin.has(p.id)).map((p: any) => ({ ...p, source: "DIRECTA" as const })),
+    ];
+    // No ofrecer en el selector las que ya se ven vía SPV de esta empresa
+    const availableFinClean = availableFin.filter((p: any) => !seenFin.has(p.id));
 
     // Avance físico y carga económica de cada obra (para evaluar la carga de la LLC)
     const tech = techProjects.map((p) => {
@@ -197,7 +226,40 @@ router.get("/:id/projects", async (req, res) => {
       };
     });
 
-    ok(res, { techProjects: tech, finProjects, availableTech });
+    ok(res, { techProjects: tech, finProjects, availableTech, availableFin: availableFinClean });
+  } catch (e) { fail(res, e); }
+});
+
+// Asignar DIRECTAMENTE una propiedad del portafolio financiero a esta empresa
+// (para propiedades sin SPV vinculado, p.ej. Vero Beach y Holiday)
+router.post("/:id/assign-fin-project", async (req, res) => {
+  try {
+    const id = +req.params.id;
+    const finProjectId = +String(req.body?.finProjectId ?? 0);
+    if (!finProjectId) return fail(res, "finProjectId es obligatorio", 400);
+    const [company, finProject] = await Promise.all([
+      prisma.admCompany.findUnique({ where: { id }, select: { id: true } }),
+      prisma.finProject.findUnique({ where: { id: finProjectId }, select: { id: true, admCompanyId: true, name: true } }),
+    ]);
+    if (!company) return fail(res, "Empresa no encontrada", 404);
+    if (!finProject) return fail(res, "Propiedad no encontrada", 404);
+    if (finProject.admCompanyId && finProject.admCompanyId !== id) {
+      return fail(res, `"${finProject.name}" ya está asignada a otra empresa. Desasígnala primero.`, 400);
+    }
+    await prisma.finProject.update({ where: { id: finProjectId }, data: { admCompanyId: id } });
+    ok(res, { assigned: true });
+  } catch (e) { fail(res, e); }
+});
+
+router.post("/:id/unassign-fin-project", async (req, res) => {
+  try {
+    const id = +req.params.id;
+    const finProjectId = +String(req.body?.finProjectId ?? 0);
+    const finProject = await prisma.finProject.findUnique({ where: { id: finProjectId }, select: { id: true, admCompanyId: true } });
+    if (!finProject) return fail(res, "Propiedad no encontrada", 404);
+    if (finProject.admCompanyId !== id) return fail(res, "Esa propiedad no está asignada directamente a esta empresa", 400);
+    await prisma.finProject.update({ where: { id: finProjectId }, data: { admCompanyId: null } });
+    ok(res, { unassigned: true });
   } catch (e) { fail(res, e); }
 });
 

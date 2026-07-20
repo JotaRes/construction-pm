@@ -50,8 +50,10 @@ export const movementCreateSchema = z.object({
   importRef: z.string().max(200).nullable().optional(),
 
   // Vínculo opcional a una actividad del módulo TÉCNICO (id cuid string).
-  // techSubActivityId NO se acepta del cliente: lo gestiona el backend (espejo).
   techItemId: z.string().trim().min(1).max(50).nullable().optional(),
+  // Subactividad EXISTENTE elegida por el usuario (adopción). Si viene null o
+  // ausente, el backend crea/gestiona su propia subactividad espejo.
+  techSubActivityId: z.string().trim().min(1).max(50).nullable().optional(),
 });
 // .strip() por defecto: cualquier campo desconocido se descarta en vez de
 // llegar crudo a Prisma (protege contra inyección de campos y typos).

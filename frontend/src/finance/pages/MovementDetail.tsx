@@ -9,6 +9,7 @@ import {
   ArrowDownLeft, ArrowUpRight, Repeat, HardHat,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { TechAssociate, TechSel, EMPTY_TECH_SEL, techSelReady, resolveTechLink } from "../components/TechAssociate";
 
 const TYPE_COLOR: Record<string, { bg: string; text: string; icon: any }> = {
   Ingreso:       { bg: "bg-emerald-50 border-emerald-200", text: "text-emerald-700", icon: ArrowDownLeft },
@@ -90,30 +91,23 @@ export default function MovementDetail() {
   });
 
   // ── Engranaje con la obra: asociar/cambiar/quitar sin entrar al modo edición ──
-  const [techSel, setTechSel] = useState<{ projectId: string; phaseId: string; itemId: string }>({ projectId: "", phaseId: "", itemId: "" });
+  const [techSel, setTechSel] = useState<TechSel>(EMPTY_TECH_SEL);
   const [techOpen, setTechOpen] = useState(false);
-  const { data: techProjects = [] } = useQuery<any[]>({
-    queryKey: ["fin-tech-projects"],
-    queryFn: API.getTechProjects,
-    enabled: techOpen,
-  });
-  const { data: techTree = [] } = useQuery<any[]>({
-    queryKey: ["fin-tech-tree", techSel.projectId],
-    queryFn: () => API.getTechTree(techSel.projectId),
-    enabled: techOpen && !!techSel.projectId,
-  });
-  const techPhaseSel = techTree.find((p: any) => p.id === techSel.phaseId);
-  const techItemsSel = (techPhaseSel?.items ?? []).filter((i: any) => !i.esNA);
   const techMutation = useMutation({
-    mutationFn: (techItemId: string | null) => API.updateMovement(mid, { techItemId }),
+    mutationFn: async (unlink: boolean) => {
+      if (unlink) return API.updateMovement(mid, { techItemId: null, techSubActivityId: null });
+      const link = await resolveTechLink(techSel);
+      return API.updateMovement(mid, link);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["movement", mid] });
       qc.invalidateQueries({ queryKey: ["movements"] });
+      qc.invalidateQueries({ queryKey: ["fin-tech-tree"] });
       setTechOpen(false);
-      setTechSel({ projectId: "", phaseId: "", itemId: "" });
+      setTechSel(EMPTY_TECH_SEL);
       toast.success("Asociación con la obra actualizada");
     },
-    onError: (e: any) => toast.error(e.response?.data?.error || "Error al asociar"),
+    onError: (e: any) => toast.error(e.response?.data?.error || e?.message || "Error al asociar"),
   });
 
   // Lógica equity/loan también en edición
@@ -466,8 +460,8 @@ export default function MovementDetail() {
                 <button
                   className="btn-ghost text-xs text-red-600"
                   disabled={techMutation.isPending}
-                  onClick={() => techMutation.mutate(null)}
-                  title="Quita la asociación y elimina la subactividad espejo de la obra"
+                  onClick={() => techMutation.mutate(true)}
+                  title="Quita la asociación (el espejo automático se elimina; una subactividad tuya se conserva)"
                 >
                   <Unlink size={12} /> Quitar
                 </button>
@@ -496,29 +490,17 @@ export default function MovementDetail() {
           ) : null}
 
           {techOpen && (
-            <div className="grid md:grid-cols-4 gap-2 mt-3">
-              <select className="select w-full text-sm" value={techSel.projectId}
-                onChange={(e) => setTechSel({ projectId: e.target.value, phaseId: "", itemId: "" })}>
-                <option value="">— obra —</option>
-                {techProjects.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-              <select className="select w-full text-sm" value={techSel.phaseId} disabled={!techSel.projectId}
-                onChange={(e) => setTechSel((s) => ({ ...s, phaseId: e.target.value, itemId: "" }))}>
-                <option value="">— fase —</option>
-                {techTree.map((p: any) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
-              </select>
-              <select className="select w-full text-sm" value={techSel.itemId} disabled={!techSel.phaseId}
-                onChange={(e) => setTechSel((s) => ({ ...s, itemId: e.target.value }))}>
-                <option value="">— actividad —</option>
-                {techItemsSel.map((i: any) => <option key={i.id} value={i.id}>{i.itemCode} · {i.activity}</option>)}
-              </select>
-              <button
-                className="btn-primary text-sm"
-                disabled={!techSel.itemId || techMutation.isPending}
-                onClick={() => techMutation.mutate(techSel.itemId)}
-              >
-                {techMutation.isPending ? "Asociando…" : "Guardar asociación"}
-              </button>
+            <div className="mt-3 space-y-2">
+              <TechAssociate sel={techSel} onChange={setTechSel} enabled={techOpen} />
+              <div className="flex justify-end">
+                <button
+                  className="btn-primary text-sm"
+                  disabled={!techSelReady(techSel) || techMutation.isPending}
+                  onClick={() => techMutation.mutate(false)}
+                >
+                  {techMutation.isPending ? "Asociando…" : "Guardar asociación"}
+                </button>
+              </div>
             </div>
           )}
         </div>

@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useConfirm } from "../../components/ConfirmDialog";
 import toast from "react-hot-toast";
+import { TechAssociate, TechSel, EMPTY_TECH_SEL, techSelReady, resolveTechLink } from "../components/TechAssociate";
 
 const TYPE_BADGE: Record<string, { color: string; icon: any; label: string }> = {
   Ingreso:       { color: "text-positive bg-positive/10 border-positive/30",     icon: ArrowDownLeft, label: "Ingreso" },
@@ -37,6 +38,8 @@ export default function Movements() {
   const [q, setQ] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  // Asociación rápida a obra desde la fila (movimientos ya registrados/conciliados)
+  const [quickAssign, setQuickAssign] = useState<any | null>(null);
 
   const { data: catalogs } = useQuery({ queryKey: ["catalogs"], queryFn: API.getCatalogs });
   const { data, isLoading } = useQuery({
@@ -460,6 +463,16 @@ export default function Movements() {
                   </td>
                   <td className="px-3 py-2 text-right">
                     <div className="inline-flex gap-1">
+                      {m.type === "Egreso" && (
+                        <button
+                          onClick={() => setQuickAssign(m)}
+                          className="btn-ghost p-1"
+                          style={{ color: m.techItem ? '#8a6a1f' : undefined }}
+                          title={m.techItem ? `Asociado a obra: ${m.techItem.itemCode} · ${m.techItem.activity} — clic para cambiar` : "Asociar este gasto a una fase/actividad de la obra"}
+                        >
+                          <HardHat size={14} />
+                        </button>
+                      )}
                       <Link to={`/finance/movements/${m.id}`} className="btn-ghost p-1" title="Ver detalle / editar"><ChevronRight size={14} /></Link>
                       <button
                         onClick={async () => {
@@ -484,7 +497,80 @@ export default function Movements() {
       </div>
 
       <MovementModal open={modalOpen} onClose={() => setModalOpen(false)} catalogs={catalogs} />
+      <QuickTechAssignModal movement={quickAssign} onClose={() => setQuickAssign(null)} />
     </div>
+  );
+}
+
+// =============================================================================
+// MODAL de asociación rápida a obra — para movimientos YA registrados
+// (incluidos los conciliados con extracto). No toca ningún otro campo.
+// =============================================================================
+function QuickTechAssignModal({ movement, onClose }: { movement: any | null; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [sel, setSel] = useState<TechSel>(EMPTY_TECH_SEL);
+  const open = !!movement;
+
+  const saveMut = useMutation({
+    mutationFn: async () => {
+      const link = await resolveTechLink(sel);
+      return API.updateMovement(movement.id, link);
+    },
+    onSuccess: () => {
+      toast.success("Gasto asociado a la obra — Ejecución actualizada");
+      qc.invalidateQueries({ queryKey: ["movements"] });
+      qc.invalidateQueries({ queryKey: ["fin-tech-tree"] });
+      setSel(EMPTY_TECH_SEL);
+      onClose();
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.error || e?.message || "Error al asociar"),
+  });
+
+  const removeMut = useMutation({
+    mutationFn: () => API.updateMovement(movement.id, { techItemId: null, techSubActivityId: null }),
+    onSuccess: () => {
+      toast.success("Asociación retirada");
+      qc.invalidateQueries({ queryKey: ["movements"] });
+      setSel(EMPTY_TECH_SEL);
+      onClose();
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.error || "Error al desvincular"),
+  });
+
+  if (!open) return null;
+  return (
+    <Modal open={open} onClose={() => { setSel(EMPTY_TECH_SEL); onClose(); }} title="Asociar gasto a la obra" size="lg">
+      <div className="space-y-3">
+        <div className="p-3 rounded-lg bg-bg-soft border border-line text-sm">
+          <div className="font-semibold" style={{ color: 'var(--brand-teal)' }}>{movement.concept}</div>
+          <div className="text-xs text-slate-500 mt-0.5">
+            {dateShort(movement.date)} · {usd(movement.amount)} · {movement.account?.name || "—"}
+            {movement.matchStatus === "matched" ? " · conciliado con extracto" : ""}
+          </div>
+          {movement.techItem && (
+            <div className="text-xs mt-1" style={{ color: '#8a6a1f' }}>
+              Asociado actualmente a: {movement.techItem.itemCode} · {movement.techItem.activity}
+            </div>
+          )}
+        </div>
+
+        <TechAssociate sel={sel} onChange={setSel} enabled={open} />
+
+        <div className="flex justify-between gap-2 pt-3 border-t border-line">
+          {movement.techItem ? (
+            <button className="btn-ghost text-xs text-red-600" disabled={removeMut.isPending} onClick={() => removeMut.mutate()}>
+              Quitar asociación actual
+            </button>
+          ) : <span />}
+          <div className="flex gap-2">
+            <button className="btn-secondary" onClick={() => { setSel(EMPTY_TECH_SEL); onClose(); }}>Cancelar</button>
+            <button className="btn-primary" disabled={!techSelReady(sel) || saveMut.isPending} onClick={() => saveMut.mutate()}>
+              {saveMut.isPending ? "Asociando…" : "Asociar a la obra"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Modal>
   );
 }
 
@@ -507,27 +593,11 @@ function MovementModal({ open, onClose, catalogs }: { open: boolean; onClose: ()
     lenderId: "",
     projectId: "",
     notes: "",
-    // Engranaje con la obra (módulo técnico): cascada proyecto → fase → actividad
-    techProjectId: "",
-    techPhaseId: "",
-    techItemId: "",
   });
+  // Engranaje con la obra (módulo técnico): cascada proyecto → fase → actividad → subactividad
+  const [techSel, setTechSel] = useState<TechSel>(EMPTY_TECH_SEL);
 
   const update = (patch: any) => setForm((f: any) => ({ ...f, ...patch }));
-
-  // Árbol del módulo técnico (solo se consulta cuando el modal está abierto)
-  const { data: techProjects = [] } = useQuery<any[]>({
-    queryKey: ["fin-tech-projects"],
-    queryFn: API.getTechProjects,
-    enabled: open,
-  });
-  const { data: techTree = [] } = useQuery<any[]>({
-    queryKey: ["fin-tech-tree", form.techProjectId],
-    queryFn: () => API.getTechTree(form.techProjectId),
-    enabled: open && !!form.techProjectId,
-  });
-  const techPhase = techTree.find((p: any) => p.id === form.techPhaseId);
-  const techItems = (techPhase?.items ?? []).filter((i: any) => !i.esNA);
 
   const mutation = useMutation({
     mutationFn: (data: any) => API.createMovement(data),
@@ -546,8 +616,8 @@ function MovementModal({ open, onClose, catalogs }: { open: boolean; onClose: ()
         type: "Egreso", amount: "", concept: "",
         accountId: "", destAccountId: "", categoryId: "", originId: "",
         providerId: "", partnerId: "", lenderId: "", projectId: "", notes: "",
-        techProjectId: "", techPhaseId: "", techItemId: "",
       });
+      setTechSel(EMPTY_TECH_SEL);
     },
     onError: (e: any) => toast.error(e.response?.data?.error || "Error al crear"),
   });
@@ -568,7 +638,7 @@ function MovementModal({ open, onClose, catalogs }: { open: boolean; onClose: ()
   const selectedCategory = catalogs?.categories?.find((c: any) => String(c.id) === String(form.categoryId));
   const isDebtPayment = !!(selectedCategory && /pago.*(deuda|pr[ée]stamo)|debt.*pay|amortizaci[oó]n/i.test(selectedCategory.name || ""));
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     // Validación cascada
     if (!form.accountId) return toast.error("Selecciona la cuenta");
@@ -602,9 +672,18 @@ function MovementModal({ open, onClose, catalogs }: { open: boolean; onClose: ()
       isLoan: !!(form.type === "Ingreso" && isLoanOrigin && form.lenderId),
       isLoanRepayment: !!(form.type === "Egreso" && isDebtPayment && form.lenderId),
       isIntercompany: form.type === "Interbancario",
-      // Engranaje con la obra: solo aplica a egresos con actividad elegida
-      techItemId: form.type === "Egreso" && form.techItemId ? form.techItemId : null,
     };
+    // Engranaje con la obra: resolver la asociación (crea la actividad si es nueva)
+    if (form.type === "Egreso" && techSelReady(techSel)) {
+      try {
+        const link = await resolveTechLink(techSel);
+        payload.techItemId = link.techItemId;
+        payload.techSubActivityId = link.techSubActivityId;
+      } catch (err: any) {
+        toast.error(err?.response?.data?.error || "No se pudo crear la actividad en la obra");
+        return;
+      }
+    }
     mutation.mutate(payload);
   };
 
@@ -723,49 +802,15 @@ function MovementModal({ open, onClose, catalogs }: { open: boolean; onClose: ()
             )}
 
             {/* ── ENGRANAJE CON LA OBRA (módulo técnico) ─────────────────────
-                Cascada: proyecto de obra → fase → actividad. Al guardar, el
-                sistema crea automáticamente una subactividad espejo en esa
-                actividad con el mismo valor, fecha y concepto — el gasto queda
-                registrado en Finanzas Y en Ejecución de una sola vez. */}
+                Cascada proyecto → fase → actividad (existente o NUEVA) →
+                subactividad opcional. El gasto queda registrado en Finanzas Y
+                en Ejecución de una sola vez. */}
             <div className="md:col-span-2 p-3 rounded-lg" style={{ background: 'rgba(198,149,47,0.06)', border: '1px dashed rgba(198,149,47,0.4)' }}>
               <label className="label flex items-center gap-1.5" style={{ marginBottom: 6 }}>
                 <HardHat size={13} style={{ color: 'var(--brand-gold)' }} />
                 Asociar a la obra (módulo técnico) <span className="text-[11px] font-normal text-slate-500">(opcional)</span>
               </label>
-              <div className="grid md:grid-cols-3 gap-2">
-                <select
-                  className="select w-full text-sm"
-                  value={form.techProjectId}
-                  onChange={(e) => update({ techProjectId: e.target.value, techPhaseId: "", techItemId: "" })}
-                >
-                  <option value="">— sin obra —</option>
-                  {techProjects.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-                <select
-                  className="select w-full text-sm"
-                  value={form.techPhaseId}
-                  onChange={(e) => update({ techPhaseId: e.target.value, techItemId: "" })}
-                  disabled={!form.techProjectId}
-                >
-                  <option value="">— fase —</option>
-                  {techTree.map((p: any) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
-                </select>
-                <select
-                  className="select w-full text-sm"
-                  value={form.techItemId}
-                  onChange={(e) => update({ techItemId: e.target.value })}
-                  disabled={!form.techPhaseId}
-                >
-                  <option value="">— actividad —</option>
-                  {techItems.map((i: any) => <option key={i.id} value={i.id}>{i.itemCode} · {i.activity}</option>)}
-                </select>
-              </div>
-              {form.techItemId && (
-                <p className="text-[11px] mt-2" style={{ color: '#8a6a1f' }}>
-                  ✓ Al guardar, este gasto se registrará también en EJECUCIÓN como subactividad de la actividad elegida
-                  (mismo valor y fecha). Si luego editas o eliminas el movimiento, la obra se actualiza sola.
-                </p>
-              )}
+              <TechAssociate sel={techSel} onChange={setTechSel} enabled={open} />
             </div>
           </>
         )}

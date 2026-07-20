@@ -57,9 +57,11 @@ export const AdminAPI = {
   importSPVs: () => unwrap<any>(api.post("/companies/import-spvs")),
 
   // Proyectos y propiedades a cargo de una empresa (carga de la LLC)
-  getCompanyProjects: (id: number) => unwrap<{ techProjects: any[]; finProjects: any[]; availableTech: any[] }>(api.get(`/companies/${id}/projects`)),
+  getCompanyProjects: (id: number) => unwrap<{ techProjects: any[]; finProjects: any[]; availableTech: any[]; availableFin: any[] }>(api.get(`/companies/${id}/projects`)),
   assignProject: (id: number, projectId: string) => unwrap<any>(api.post(`/companies/${id}/assign-project`, { projectId })),
   unassignProject: (id: number, projectId: string) => unwrap<any>(api.post(`/companies/${id}/unassign-project`, { projectId })),
+  assignFinProject: (id: number, finProjectId: number) => unwrap<any>(api.post(`/companies/${id}/assign-fin-project`, { finProjectId })),
+  unassignFinProject: (id: number, finProjectId: number) => unwrap<any>(api.post(`/companies/${id}/unassign-fin-project`, { finProjectId })),
 
   // Catálogo documental + checklist
   getDocTypes: () => unwrap<any[]>(api.get("/doc-types")),
