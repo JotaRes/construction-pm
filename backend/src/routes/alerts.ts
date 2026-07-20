@@ -35,21 +35,78 @@ router.get('/:projectId/alerts', async (req: Request, res: Response) => {
       })
     }
 
-    // 2. BUDGET DEVIATION — solo si existe presupuesto o ejecución cargada.
-    // Sin datos (usuario borró los ítems/budget) no tiene sentido mostrar "$0 de $0".
+    // 2. CONTROL PRESUPUESTAL EN DOS NIVELES (lógica de obra real):
+    //
+    //   2a. POR ACTIVIDAD — siempre: cualquier actividad habilitada cuyo
+    //       ejecutado supere SU casilla de presupuesto genera alerta puntual.
+    //       Basta una casilla diligenciada para vigilar ESA actividad.
+    //
+    //   2b. POR FASE — solo cuando el presupuesto de la fase está COMPLETO:
+    //       todas las actividades habilitadas (no N/A) de la fase tienen su
+    //       casilla de presupuesto diligenciada (> 0). Comparar el total de la
+    //       fase con presupuesto a medias daría falsas alarmas.
+    //
+    //   2c. GLOBAL — se calcula únicamente sobre las fases con presupuesto
+    //       completo (comparación confiable, no distorsionada por fases vacías).
+    const fmt = (n: number) => `$${n.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
+
+    // 2a. Sobrecosto por actividad
+    const allActive = project.phases.flatMap(p => p.items.filter(i => !i.esNA))
+    const overActivities = allActive
+      .filter(i => i.valorPresupuestado > 0 && i.valorEjecutado > i.valorPresupuestado)
+      .map(i => ({ code: i.itemCode, name: i.activity, over: i.valorEjecutado - i.valorPresupuestado, pct: (i.valorEjecutado / i.valorPresupuestado - 1) * 100 }))
+      .sort((a, b) => b.over - a.over)
+    if (overActivities.length > 0) {
+      const totalOver = overActivities.reduce((s, x) => s + x.over, 0)
+      alerts.push({
+        id: 'activity-budget-overrun',
+        level: overActivities.some(x => x.pct > 10) ? 'critical' : 'warning',
+        title: `Sobrecosto por actividad (${overActivities.length})`,
+        message: overActivities.slice(0, 4).map(x => `${x.code} +${fmt(x.over)} (${x.pct.toFixed(0)}%)`).join(' · ') +
+          (overActivities.length > 4 ? ` (+${overActivities.length - 4} más)` : '') +
+          ` — total +${fmt(totalOver)}`,
+        action: 'Revisar cada actividad excedida en EJECUCIÓN: validar soporte, renegociar con el trade o documentar change order.',
+        source: 'EJECUCIÓN — presupuesto por actividad',
+      })
+    }
+
+    // 2b. Sobrecosto por FASE (solo fases con presupuesto completo)
+    const phaseStatus = project.phases.map(p => {
+      const active = p.items.filter(i => !i.esNA)
+      const budgetComplete = active.length > 0 && active.every(i => i.valorPresupuestado > 0)
+      const budget = active.reduce((s, i) => s + i.valorPresupuestado, 0)
+      const ejec = active.reduce((s, i) => s + i.valorEjecutado, 0)
+      return { code: p.code, name: p.name, budgetComplete, budget, ejec }
+    })
+    const completePhases = phaseStatus.filter(p => p.budgetComplete)
+    const overPhases = completePhases.filter(p => p.ejec > p.budget)
+    if (overPhases.length > 0) {
+      alerts.push({
+        id: 'phase-budget-overrun',
+        level: 'critical',
+        title: `Fase(s) COMPLETA(s) sobre presupuesto (${overPhases.length})`,
+        message: overPhases.map(p => `${p.code} ${p.name}: ${fmt(p.ejec)} de ${fmt(p.budget)} (+${fmt(p.ejec - p.budget)})`).join(' · '),
+        action: 'La fase entera superó su presupuesto con todas las casillas diligenciadas: esto ya no es una partida suelta, es la fase. Evaluar change order y fuente de fondeo antes del próximo draw.',
+        source: 'EJECUCIÓN — presupuesto completo por fase',
+      })
+    }
+
+    // 2c. Desviación global (solo sobre fases con presupuesto completo)
     const totalBudget = project.phases.reduce((s, p) => s + p.items.reduce((ss, i) => ss + i.valorPresupuestado, 0), 0)
     const totalEjecutado = project.phases.reduce((s, p) => s + p.items.reduce((ss, i) => ss + i.valorEjecutado, 0), 0)
-    if (totalBudget > 0 || totalEjecutado > 0) {
+    const cBudget = completePhases.reduce((s, p) => s + p.budget, 0)
+    const cEjec = completePhases.reduce((s, p) => s + p.ejec, 0)
+    if (completePhases.length > 0 && cBudget > 0) {
       let budgetLevel = 'ok'
-      if (totalBudget > 0 && totalEjecutado > totalBudget) budgetLevel = 'critical'
-      else if (totalBudget > 0 && totalEjecutado > totalBudget * 0.95) budgetLevel = 'warning'
+      if (cEjec > cBudget) budgetLevel = 'critical'
+      else if (cEjec > cBudget * 0.95) budgetLevel = 'warning'
       alerts.push({
         id: 'budget-deviation',
         level: budgetLevel,
         title: 'Desviación Presupuestal',
-        message: `Ejecutado $${totalEjecutado.toLocaleString('en-US', { maximumFractionDigits: 0 })} de $${totalBudget.toLocaleString('en-US', { maximumFractionDigits: 0 })} budget`,
+        message: `Ejecutado ${fmt(cEjec)} de ${fmt(cBudget)} budget — sobre ${completePhases.length} fase(s) con presupuesto completo`,
         action: 'Revisar PROYECCIONES para identificar partida inflada. Evaluar change order.',
-        source: 'PRESUPUESTO MAESTRO',
+        source: 'PRESUPUESTO MAESTRO — fases completas',
       })
     }
 

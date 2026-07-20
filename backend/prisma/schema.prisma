@@ -112,6 +112,11 @@ model Project {
   builderRiskName      String?
   gcLiabilityExpiresAt DateTime?
 
+  // Empresa (LLC) del organigrama administrativo responsable de este proyecto.
+  // SetNull: borrar la empresa NO afecta el proyecto técnico.
+  admCompanyId Int?
+  admCompany   AdmCompany? @relation("CompanyTechProjects", fields: [admCompanyId], references: [id], onDelete: SetNull)
+
   phases       Phase[]
   draws        Draw[]
   changeOrders ChangeOrder[]
@@ -178,6 +183,7 @@ model Item {
   budgetLine         BudgetLine?    @relation("ItemBudgetLink", fields: [budgetLineId], references: [id], onDelete: SetNull)
   documents          ItemDocument[]
   subactivities      SubActivity[]
+  finMovements       FinMovement[]  @relation("MovementTechItem")
 }
 
 // Subactividades de una actividad (Item) de Ejecución.
@@ -203,6 +209,7 @@ model SubActivity {
   // proveedor en la sección Proveedores (historial de servicios y pagos).
   providerId     String?
   provider       Provider? @relation("SubActivityProvider", fields: [providerId], references: [id], onDelete: SetNull)
+  finMovement    FinMovement? @relation("MovementTechSub")
 }
 
 model Draw {
@@ -736,6 +743,18 @@ model FinMovement {
   importSource    String?
   importRef       String?
 
+  // ── ENGRANAJE CON EL MÓDULO TÉCNICO (opcional, no destructivo) ──
+  // Un Egreso puede asociarse a una actividad (Item) de la obra. Al asociarlo,
+  // el backend crea/actualiza una SubActivity espejo en esa actividad (misma
+  // fecha, valor y concepto), de modo que el gasto queda registrado en AMBOS
+  // módulos de una sola vez. techSubActivityId apunta a esa subactividad espejo
+  // (gestionada por el backend, nunca editada por el usuario directamente).
+  // SetNull: borrar la actividad u obra NO borra el movimiento financiero.
+  techItemId        String?
+  techItem          Item?        @relation("MovementTechItem", fields: [techItemId], references: [id], onDelete: SetNull)
+  techSubActivityId String?      @unique
+  techSubActivity   SubActivity? @relation("MovementTechSub", fields: [techSubActivityId], references: [id], onDelete: SetNull)
+
   documents       FinMovementDocument[]
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -746,6 +765,7 @@ model FinMovement {
   @@index([partnerId])
   @@index([categoryId])
   @@index([type])
+  @@index([techItemId])
   @@map("fin_movement")
 }
 
@@ -941,6 +961,8 @@ model AdmCompany {
   documents    AdmDocument[]
   requirements AdmRequirement[]
   tasks        AdmTask[]
+  // Proyectos del módulo TÉCNICO a cargo de esta LLC (carga operativa)
+  techProjects Project[]    @relation("CompanyTechProjects")
 
   @@map("adm_company")
 }

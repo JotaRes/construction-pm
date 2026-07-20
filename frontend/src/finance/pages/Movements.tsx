@@ -9,7 +9,7 @@ import {
   Plus, Search, Sparkles, ChevronRight, Trash2, FileCheck,
   AlertCircle, ArrowDownLeft, ArrowUpRight, Repeat, CheckCircle2, X,
   Calendar, Building2, Tag, Users, Briefcase, Banknote, TrendingUp,
-  SlidersHorizontal,
+  SlidersHorizontal, HardHat,
 } from "lucide-react";
 import { useConfirm } from "../../components/ConfirmDialog";
 import toast from "react-hot-toast";
@@ -431,6 +431,15 @@ export default function Movements() {
                   <td className="px-3 py-2 text-xs">
                     {m.project && <span className="badge bg-bg-hover text-slate-300 mr-1">{m.project.code}</span>}
                     {m.partner && <span className="badge bg-accent/10 text-accent">{m.partner.code}</span>}
+                    {m.techItem && (
+                      <span
+                        className="badge inline-flex items-center gap-1 mr-1"
+                        style={{ background: 'rgba(198,149,47,0.12)', color: '#8a6a1f', border: '1px solid rgba(198,149,47,0.35)' }}
+                        title={`Obra: ${m.techItem.phase?.project?.name ?? ''} · ${m.techItem.phase?.name ?? ''} · ${m.techItem.activity}. Este gasto tiene subactividad espejo en Ejecución.`}
+                      >
+                        <HardHat size={10} /> {m.techItem.itemCode}
+                      </span>
+                    )}
                   </td>
                   <td className={cls("px-3 py-2 text-right font-mono",
                     m.type === "Ingreso" ? "text-positive"
@@ -498,9 +507,27 @@ function MovementModal({ open, onClose, catalogs }: { open: boolean; onClose: ()
     lenderId: "",
     projectId: "",
     notes: "",
+    // Engranaje con la obra (módulo técnico): cascada proyecto → fase → actividad
+    techProjectId: "",
+    techPhaseId: "",
+    techItemId: "",
   });
 
   const update = (patch: any) => setForm((f: any) => ({ ...f, ...patch }));
+
+  // Árbol del módulo técnico (solo se consulta cuando el modal está abierto)
+  const { data: techProjects = [] } = useQuery<any[]>({
+    queryKey: ["fin-tech-projects"],
+    queryFn: API.getTechProjects,
+    enabled: open,
+  });
+  const { data: techTree = [] } = useQuery<any[]>({
+    queryKey: ["fin-tech-tree", form.techProjectId],
+    queryFn: () => API.getTechTree(form.techProjectId),
+    enabled: open && !!form.techProjectId,
+  });
+  const techPhase = techTree.find((p: any) => p.id === form.techPhaseId);
+  const techItems = (techPhase?.items ?? []).filter((i: any) => !i.esNA);
 
   const mutation = useMutation({
     mutationFn: (data: any) => API.createMovement(data),
@@ -519,6 +546,7 @@ function MovementModal({ open, onClose, catalogs }: { open: boolean; onClose: ()
         type: "Egreso", amount: "", concept: "",
         accountId: "", destAccountId: "", categoryId: "", originId: "",
         providerId: "", partnerId: "", lenderId: "", projectId: "", notes: "",
+        techProjectId: "", techPhaseId: "", techItemId: "",
       });
     },
     onError: (e: any) => toast.error(e.response?.data?.error || "Error al crear"),
@@ -574,6 +602,8 @@ function MovementModal({ open, onClose, catalogs }: { open: boolean; onClose: ()
       isLoan: !!(form.type === "Ingreso" && isLoanOrigin && form.lenderId),
       isLoanRepayment: !!(form.type === "Egreso" && isDebtPayment && form.lenderId),
       isIntercompany: form.type === "Interbancario",
+      // Engranaje con la obra: solo aplica a egresos con actividad elegida
+      techItemId: form.type === "Egreso" && form.techItemId ? form.techItemId : null,
     };
     mutation.mutate(payload);
   };
@@ -691,6 +721,52 @@ function MovementModal({ open, onClose, catalogs }: { open: boolean; onClose: ()
                 <p className="text-[11px] text-slate-500 mt-1">Este pago se reflejará en Deuda & Préstamos.</p>
               </div>
             )}
+
+            {/* ── ENGRANAJE CON LA OBRA (módulo técnico) ─────────────────────
+                Cascada: proyecto de obra → fase → actividad. Al guardar, el
+                sistema crea automáticamente una subactividad espejo en esa
+                actividad con el mismo valor, fecha y concepto — el gasto queda
+                registrado en Finanzas Y en Ejecución de una sola vez. */}
+            <div className="md:col-span-2 p-3 rounded-lg" style={{ background: 'rgba(198,149,47,0.06)', border: '1px dashed rgba(198,149,47,0.4)' }}>
+              <label className="label flex items-center gap-1.5" style={{ marginBottom: 6 }}>
+                <HardHat size={13} style={{ color: 'var(--brand-gold)' }} />
+                Asociar a la obra (módulo técnico) <span className="text-[11px] font-normal text-slate-500">(opcional)</span>
+              </label>
+              <div className="grid md:grid-cols-3 gap-2">
+                <select
+                  className="select w-full text-sm"
+                  value={form.techProjectId}
+                  onChange={(e) => update({ techProjectId: e.target.value, techPhaseId: "", techItemId: "" })}
+                >
+                  <option value="">— sin obra —</option>
+                  {techProjects.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+                <select
+                  className="select w-full text-sm"
+                  value={form.techPhaseId}
+                  onChange={(e) => update({ techPhaseId: e.target.value, techItemId: "" })}
+                  disabled={!form.techProjectId}
+                >
+                  <option value="">— fase —</option>
+                  {techTree.map((p: any) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
+                </select>
+                <select
+                  className="select w-full text-sm"
+                  value={form.techItemId}
+                  onChange={(e) => update({ techItemId: e.target.value })}
+                  disabled={!form.techPhaseId}
+                >
+                  <option value="">— actividad —</option>
+                  {techItems.map((i: any) => <option key={i.id} value={i.id}>{i.itemCode} · {i.activity}</option>)}
+                </select>
+              </div>
+              {form.techItemId && (
+                <p className="text-[11px] mt-2" style={{ color: '#8a6a1f' }}>
+                  ✓ Al guardar, este gasto se registrará también en EJECUCIÓN como subactividad de la actividad elegida
+                  (mismo valor y fecha). Si luego editas o eliminas el movimiento, la obra se actualiza sola.
+                </p>
+              )}
+            </div>
           </>
         )}
 

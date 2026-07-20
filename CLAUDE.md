@@ -123,6 +123,36 @@ Paleta oficial (única fuente: bloque de tokens en `frontend/src/index.css`):
 - El backup global incluye persons/personRequirements/personDocuments (JSON) y
   sus binarios (`collectPersonTargets`, carpeta files/administrativo/socios/).
 
+## Engranaje entre módulos v1.1 (desde julio 2026)
+
+- **FinMovement ↔ obra**: un EGRESO puede asociarse a una actividad técnica
+  (`FinMovement.techItemId → Item`, cascada proyecto→fase→actividad en el
+  formulario). El backend crea una **SubActivity espejo** (`techSubActivityId`,
+  descripción con prefijo `[FIN]`) vía `finance/services/techSync.ts`:
+  crear/editar/eliminar el movimiento crea/actualiza/elimina el espejo y
+  recalcula `Item.valorEjecutado` con `recomputeItemExecuted`. NUNCA tocar
+  subactividades manuales; el espejo es solo el id guardado en el movimiento.
+  Endpoints árbol: `GET /api/finance/movements/tech-projects` y
+  `/tech-tree/:projectId` (definidos ANTES de `/:id` — no reordenar).
+- **Project (técnico) ↔ AdmCompany**: `Project.admCompanyId` (SetNull).
+  Asignación desde CompanyDetail (`POST /api/admin/companies/:id/assign-project`
+  y `/unassign-project`; lista en `GET /:id/projects` con avance y carga).
+  Las propiedades financieras de la empresa se DERIVAN del SPV vinculado
+  (FinProject.spvId) — no se almacena doble.
+- **Alertas técnicas de presupuesto en dos niveles** (`routes/alerts.ts`):
+  `activity-budget-overrun` por actividad (siempre que su casilla esté
+  diligenciada) y `phase-budget-overrun` SOLO cuando TODAS las actividades
+  habilitadas (no N/A) de la fase tienen presupuesto > 0. La alerta global
+  `budget-deviation` se calcula únicamente sobre fases completas.
+- **OCR robusto** (`lib/pdfOcr.ts`): límite subido a 20MB (el auto-split del
+  frontend genera partes de ~9.3MB que antes se saltaban el OCR), 12 páginas,
+  timeout por página, heurística de densidad (<120 chars útiles/página =
+  escaneado) y `force`. `files.ts` reintenta con OCR forzado si el parseo no
+  encontró NINGÚN campo sin haber usado OCR. No bajar estos límites sin medir
+  memoria en Render (512MB).
+- **Organigrama**: colores POR ROL dentro de la paleta fija (nada de morados),
+  leyenda de roles, proyectos/propiedades y alertas visibles por tarjeta.
+
 ## Pendientes conocidos / Ideas
 
 - Bundle frontend > 500KB → considerar code-split de Recharts via dynamic import

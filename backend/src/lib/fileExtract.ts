@@ -21,11 +21,11 @@ export function detectKind(mimetype?: string, filename?: string) {
   return { isPdf, isImage, isWord, isExcel }
 }
 
-export async function extractTextFromFile(buffer: Buffer, mimetype?: string, filename?: string): Promise<ExtractResult> {
+export async function extractTextFromFile(buffer: Buffer, mimetype?: string, filename?: string, opts?: { forceOcr?: boolean }): Promise<ExtractResult> {
   const { isPdf, isImage, isWord, isExcel } = detectKind(mimetype, filename)
 
   if (isPdf) {
-    const r = await extractPdfText(buffer)
+    const r = await extractPdfText(buffer, { force: opts?.forceOcr })
     return { text: r.text, method: r.ocrUsed ? 'pdf-ocr' : 'pdf', ocrUsed: r.ocrUsed }
   }
 

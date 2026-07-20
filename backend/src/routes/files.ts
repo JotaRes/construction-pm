@@ -262,13 +262,40 @@ router.post('/:projectId/files/upload', upload.single('file'), async (req: Reque
 
     if (parserCfg) {
       try {
-        const ex = await extractTextFromFile(req.file.buffer, req.file.mimetype, req.file.originalname)
+        let ex = await extractTextFromFile(req.file.buffer, req.file.mimetype, req.file.originalname)
         ocrUsed = ex.ocrUsed
-        const meaningful = (ex.text || '').replace(/\s/g, '').length
+        let meaningful = (ex.text || '').replace(/\s/g, '').length
+        if (meaningful >= 10) {
+          extracted = parserCfg.parser(ex.text)
+        }
+
+        // ── RETRY INTELIGENTE CON OCR FORZADO ──
+        // Caso real: HUD escaneado cuyo "texto" de pdf-parse era basura del
+        // scanner → el parser no encontró NINGÚN campo. Si el PDF no pasó por
+        // OCR y el parseo vino vacío, se fuerza el OCR y se re-parsea. Así la
+        // extracción funciona sea PDF nativo, PDF escaneado, JPG o el formato
+        // que sea — sin intervención manual.
+        const fieldsFound = Object.values(extracted).filter(v => v !== undefined && v !== null && v !== '').length
+        const isPdfFile = req.file.mimetype === 'application/pdf' || /\.pdf$/i.test(req.file.originalname || '')
+        if (isPdfFile && !ex.ocrUsed && fieldsFound === 0) {
+          console.warn('[files/upload] parseo vacío sin OCR — reintentando con OCR forzado, kind:', kind)
+          const retry = await extractTextFromFile(req.file.buffer, req.file.mimetype, req.file.originalname, { forceOcr: true })
+          const retryMeaningful = (retry.text || '').replace(/\s/g, '').length
+          if (retry.ocrUsed && retryMeaningful >= 10) {
+            const retryExtracted = parserCfg.parser(retry.text)
+            const retryFields = Object.values(retryExtracted).filter(v => v !== undefined && v !== null && v !== '').length
+            if (retryFields > 0 || retryMeaningful > meaningful) {
+              ex = retry
+              extracted = retryExtracted
+              ocrUsed = true
+              meaningful = retryMeaningful
+            }
+          }
+        }
+
         if (meaningful < 10) {
           extractionError = 'No se pudo leer texto del archivo (imagen de baja calidad o formato no soportado). Puedes completar los datos manualmente.'
         } else {
-          extracted = parserCfg.parser(ex.text)
           applied = await applyExtractedToProject(req.params.projectId, extracted, parserCfg.fields)
           // Además de poblar el Project, diligenciar los ítems de la sección Ejecución.
           // Para los documentos de cierre/aprobación del préstamo, además del mapa

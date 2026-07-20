@@ -3,6 +3,7 @@ import { prisma } from "../lib/prisma";
 import { ok, fail } from "../lib/respond";
 import { upsertCapitalFromMovement, removeCapitalForMovement } from "../services/capitalSync";
 import { upsertLoanFromMovement, removeLoanForMovement, recalculateLoanRepayments } from "../services/loanSync";
+import { syncTechFromMovement, removeTechForMovement } from "../services/techSync";
 import { logActivity } from "../services/auditLog";
 import { movementCreateSchema, movementUpdateSchema, parseOrError } from "../lib/validate";
 
@@ -18,7 +19,17 @@ const includeAll = {
   lender: true,
   project: true,
   documents: true,
-};
+  // Vínculo con la obra (módulo técnico): actividad + fase + proyecto, para
+  // mostrar "→ Obra: F01 · Fundación" en la tabla de movimientos.
+  techItem: {
+    select: {
+      id: true,
+      itemCode: true,
+      activity: true,
+      phase: { select: { id: true, code: true, name: true, project: { select: { id: true, name: true } } } },
+    },
+  },
+} as const;
 
 router.get("/", async (req, res) => {
   try {
@@ -81,6 +92,40 @@ router.get("/", async (req, res) => {
   } catch (e) { fail(res, e); }
 });
 
+// === Árbol del módulo técnico para asociar movimientos a la obra ===
+// ⚠️ Definidas ANTES de "/:id" para que "tech-projects" no se interprete como id.
+
+// Lista de proyectos técnicos (para el selector del formulario de movimientos)
+router.get("/tech-projects", async (_req, res) => {
+  try {
+    const projects = await prisma.project.findMany({
+      select: { id: true, name: true, spv: true },
+      orderBy: { name: "asc" },
+    });
+    ok(res, projects);
+  } catch (e) { fail(res, e); }
+});
+
+// Fases → actividades de un proyecto técnico (cascada fase → actividad)
+router.get("/tech-tree/:projectId", async (req, res) => {
+  try {
+    const phases = await prisma.phase.findMany({
+      where: { projectId: req.params.projectId },
+      orderBy: { order: "asc" },
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        items: {
+          orderBy: { order: "asc" },
+          select: { id: true, itemCode: true, activity: true, esNA: true, valorPresupuestado: true, valorEjecutado: true },
+        },
+      },
+    });
+    ok(res, phases);
+  } catch (e) { fail(res, e); }
+});
+
 router.get("/:id", async (req, res) => {
   try {
     const m = await prisma.finMovement.findUnique({ where: { id: +req.params.id }, include: includeAll });
@@ -134,6 +179,7 @@ router.post("/", async (req, res) => {
       data.isEquity = false;
       data.isLoan = false;
       data.isLoanRepayment = false;
+      data.techItemId = null; // una transferencia interna no es gasto de obra
     }
 
     // === Defense in depth: si el frontend no setea las flags, las detectamos por código/nombre ===
@@ -155,8 +201,12 @@ router.post("/", async (req, res) => {
     await upsertCapitalFromMovement(created.id);
     await upsertLoanFromMovement(created.id);
     if (created.isLoanRepayment) await recalculateLoanRepayments();
+    // Engranaje con la obra: si viene asociado a una actividad técnica,
+    // crear la subactividad espejo (gasto registrado en ambos módulos).
+    await syncTechFromMovement(created.id);
     await logActivity("create", "FinMovement", created.id, `${created.type} ${created.amount} — ${created.concept}`);
-    ok(res, created);
+    const withTech = await prisma.finMovement.findUnique({ where: { id: created.id }, include: includeAll });
+    ok(res, withTech ?? created);
   } catch (e) { fail(res, e); }
 });
 
@@ -194,8 +244,12 @@ router.patch("/:id", async (req, res) => {
     await upsertCapitalFromMovement(updated.id);
     await upsertLoanFromMovement(updated.id);
     await recalculateLoanRepayments();
+    // Engranaje con la obra: actualiza/mueve/retira la subactividad espejo
+    // según el nuevo estado del movimiento (monto, fecha, concepto, vínculo).
+    await syncTechFromMovement(updated.id);
     await logActivity("update", "FinMovement", updated.id, `Actualizado: ${updated.concept}`);
-    ok(res, updated);
+    const withTech = await prisma.finMovement.findUnique({ where: { id: updated.id }, include: includeAll });
+    ok(res, withTech ?? updated);
   } catch (e) { fail(res, e); }
 });
 
@@ -205,6 +259,7 @@ router.delete("/:id", async (req, res) => {
     const m = await prisma.finMovement.findUnique({ where: { id } });
     await removeCapitalForMovement(id);
     await removeLoanForMovement(id);
+    await removeTechForMovement(id); // retira la subactividad espejo de la obra
     await prisma.finMovement.delete({ where: { id } });
     await recalculateLoanRepayments();
     if (m) await logActivity("delete", "FinMovement", id, `Eliminado: ${m.type} ${m.amount} — ${m.concept}`);

@@ -88,7 +88,8 @@ router.get("/", async (_req, res) => {
   } catch (e) { fail(res, e); }
 });
 
-// Organigrama: holding arriba, subsidiarias abajo + semáforo de cumplimiento
+// Organigrama: holding arriba, subsidiarias abajo + semáforo de cumplimiento +
+// proyectos a cargo de cada LLC (carga operativa) + tareas vencidas a la vista.
 router.get("/orgchart", async (_req, res) => {
   try {
     await ensureDocTypesSeeded();
@@ -96,20 +97,42 @@ router.get("/orgchart", async (_req, res) => {
     if ((await prisma.admCompany.count()) === 0) {
       await provisionCompaniesFromSPVs();
     }
-    const [companies, compliance] = await Promise.all([
+    const now = new Date();
+    const [companies, compliance, overdueByCompany, pendingByCompany] = await Promise.all([
       prisma.admCompany.findMany({
         include: {
-          finSpv: { select: { id: true, code: true, name: true } },
+          finSpv: {
+            select: {
+              id: true, code: true, name: true,
+              projects: { select: { id: true, code: true, name: true, status: true }, where: { archivedAt: null } },
+            },
+          },
+          techProjects: { select: { id: true, name: true, photoUrl: true, constructionBudget: true, loanAmount: true } },
           _count: { select: { documents: true, tasks: true } },
         },
         orderBy: { name: "asc" },
       }),
       computeAllCompliance(),
+      prisma.admTask.groupBy({
+        by: ["companyId"],
+        where: { companyId: { not: null }, status: { not: "completada" }, dueDate: { lt: now } },
+        _count: { _all: true },
+      }),
+      prisma.admTask.groupBy({
+        by: ["companyId"],
+        where: { companyId: { not: null }, status: { not: "completada" } },
+        _count: { _all: true },
+      }),
     ]);
+    const overdueOf = new Map(overdueByCompany.map((t) => [t.companyId, t._count._all]));
+    const pendingOf = new Map(pendingByCompany.map((t) => [t.companyId, t._count._all]));
 
     const withCompliance = companies.map((c) => ({
       ...c,
       compliance: compliance.get(c.id) ?? null,
+      overdueTasks: overdueOf.get(c.id) ?? 0,
+      pendingTasks: pendingOf.get(c.id) ?? 0,
+      finProjects: c.finSpv?.projects ?? [],
     }));
 
     const holding = withCompliance.find((c) => c.role === "HOLDING") ?? null;
@@ -118,6 +141,96 @@ router.get("/orgchart", async (_req, res) => {
     );
 
     ok(res, { holding, subsidiaries, all: withCompliance });
+  } catch (e) { fail(res, e); }
+});
+
+// === PROYECTOS / PROPIEDADES A CARGO DE UNA EMPRESA ======================
+// techProjects: obras del módulo técnico asignadas a esta LLC (FK directa).
+// finProjects: propiedades del portafolio financiero, derivadas del SPV
+// vinculado (no se almacena doble — un solo origen de verdad).
+// availableTech: obras sin LLC asignada (para el selector de asignación).
+router.get("/:id/projects", async (req, res) => {
+  try {
+    const id = +req.params.id;
+    const company = await prisma.admCompany.findUnique({
+      where: { id },
+      select: { id: true, finSpvId: true },
+    });
+    if (!company) return fail(res, "Empresa no encontrada", 404);
+
+    const [techProjects, availableTech, finProjects] = await Promise.all([
+      prisma.project.findMany({
+        where: { admCompanyId: id },
+        select: {
+          id: true, name: true, address: true, photoUrl: true,
+          constructionBudget: true, loanAmount: true, arv: true, spv: true,
+          phases: { select: { items: { select: { esNA: true, completado: true, valorEjecutado: true, valorPresupuestado: true } } } },
+        },
+        orderBy: { name: "asc" },
+      }),
+      prisma.project.findMany({
+        where: { admCompanyId: null },
+        select: { id: true, name: true, address: true },
+        orderBy: { name: "asc" },
+      }),
+      company.finSpvId
+        ? prisma.finProject.findMany({
+            where: { spvId: company.finSpvId, archivedAt: null },
+            select: { id: true, code: true, name: true, status: true, address: true, purchasePrice: true, arv: true },
+            orderBy: { name: "asc" },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    // Avance físico y carga económica de cada obra (para evaluar la carga de la LLC)
+    const tech = techProjects.map((p) => {
+      const items = p.phases.flatMap((ph) => ph.items).filter((i) => !i.esNA);
+      const done = items.filter((i) => i.completado).length;
+      const ejec = items.reduce((s, i) => s + i.valorEjecutado, 0);
+      const budget = items.reduce((s, i) => s + i.valorPresupuestado, 0);
+      const { phases: _omit, ...rest } = p as any;
+      return {
+        ...rest,
+        avancePct: items.length ? Math.round((done / items.length) * 100) : 0,
+        ejecutado: ejec,
+        presupuestado: budget,
+      };
+    });
+
+    ok(res, { techProjects: tech, finProjects, availableTech });
+  } catch (e) { fail(res, e); }
+});
+
+// Asignar una obra del módulo técnico a esta LLC
+router.post("/:id/assign-project", async (req, res) => {
+  try {
+    const id = +req.params.id;
+    const projectId = String(req.body?.projectId ?? "");
+    if (!projectId) return fail(res, "projectId es obligatorio", 400);
+    const [company, project] = await Promise.all([
+      prisma.admCompany.findUnique({ where: { id }, select: { id: true } }),
+      prisma.project.findUnique({ where: { id: projectId }, select: { id: true, admCompanyId: true } }),
+    ]);
+    if (!company) return fail(res, "Empresa no encontrada", 404);
+    if (!project) return fail(res, "Proyecto no encontrado", 404);
+    if (project.admCompanyId && project.admCompanyId !== id) {
+      return fail(res, "Ese proyecto ya está asignado a otra empresa. Desasígnalo primero.", 400);
+    }
+    await prisma.project.update({ where: { id: projectId }, data: { admCompanyId: id } });
+    ok(res, { assigned: true });
+  } catch (e) { fail(res, e); }
+});
+
+// Quitar la asignación de una obra (no borra nada)
+router.post("/:id/unassign-project", async (req, res) => {
+  try {
+    const id = +req.params.id;
+    const projectId = String(req.body?.projectId ?? "");
+    const project = await prisma.project.findUnique({ where: { id: projectId }, select: { id: true, admCompanyId: true } });
+    if (!project) return fail(res, "Proyecto no encontrado", 404);
+    if (project.admCompanyId !== id) return fail(res, "Ese proyecto no está asignado a esta empresa", 400);
+    await prisma.project.update({ where: { id: projectId }, data: { admCompanyId: null } });
+    ok(res, { unassigned: true });
   } catch (e) { fail(res, e); }
 });
 

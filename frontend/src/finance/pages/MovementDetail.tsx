@@ -6,7 +6,7 @@ import { usd, dateShort, cls } from "../lib/format";
 import {
   ArrowLeft, FileText, Upload, Trash2, Link2, Unlink, AlertCircle, FileCheck,
   Edit3, Save, X, Calendar, Building2, Tag, Briefcase, Users, Banknote, TrendingUp,
-  ArrowDownLeft, ArrowUpRight, Repeat,
+  ArrowDownLeft, ArrowUpRight, Repeat, HardHat,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -87,6 +87,33 @@ export default function MovementDetail() {
   const unlinkMutation = useMutation({
     mutationFn: () => API.unlinkMovement(mid),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["movement", mid] }),
+  });
+
+  // ── Engranaje con la obra: asociar/cambiar/quitar sin entrar al modo edición ──
+  const [techSel, setTechSel] = useState<{ projectId: string; phaseId: string; itemId: string }>({ projectId: "", phaseId: "", itemId: "" });
+  const [techOpen, setTechOpen] = useState(false);
+  const { data: techProjects = [] } = useQuery<any[]>({
+    queryKey: ["fin-tech-projects"],
+    queryFn: API.getTechProjects,
+    enabled: techOpen,
+  });
+  const { data: techTree = [] } = useQuery<any[]>({
+    queryKey: ["fin-tech-tree", techSel.projectId],
+    queryFn: () => API.getTechTree(techSel.projectId),
+    enabled: techOpen && !!techSel.projectId,
+  });
+  const techPhaseSel = techTree.find((p: any) => p.id === techSel.phaseId);
+  const techItemsSel = (techPhaseSel?.items ?? []).filter((i: any) => !i.esNA);
+  const techMutation = useMutation({
+    mutationFn: (techItemId: string | null) => API.updateMovement(mid, { techItemId }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["movement", mid] });
+      qc.invalidateQueries({ queryKey: ["movements"] });
+      setTechOpen(false);
+      setTechSel({ projectId: "", phaseId: "", itemId: "" });
+      toast.success("Asociación con la obra actualizada");
+    },
+    onError: (e: any) => toast.error(e.response?.data?.error || "Error al asociar"),
   });
 
   // Lógica equity/loan también en edición
@@ -426,6 +453,76 @@ export default function MovementDetail() {
           )}
         </div>
       </div>
+
+      {/* === OBRA ASOCIADA (engranaje con el módulo técnico) === */}
+      {m.type === "Egreso" && (
+        <div className="card p-5">
+          <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+            <h2 className="text-base font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}>
+              <HardHat size={16} style={{ color: 'var(--brand-gold)' }} /> Obra asociada
+            </h2>
+            <div className="flex items-center gap-2">
+              {m.techItem && (
+                <button
+                  className="btn-ghost text-xs text-red-600"
+                  disabled={techMutation.isPending}
+                  onClick={() => techMutation.mutate(null)}
+                  title="Quita la asociación y elimina la subactividad espejo de la obra"
+                >
+                  <Unlink size={12} /> Quitar
+                </button>
+              )}
+              <button className="btn-secondary text-xs" onClick={() => setTechOpen((o) => !o)}>
+                {techOpen ? "Cancelar" : m.techItem ? "Cambiar" : "Asociar a una actividad"}
+              </button>
+            </div>
+          </div>
+
+          {m.techItem ? (
+            <div className="text-sm" style={{ color: 'var(--brand-teal)' }}>
+              <span className="font-semibold">{m.techItem.phase?.project?.name}</span>
+              <span style={{ color: 'var(--brand-teal2)' }}> · {m.techItem.phase?.code} {m.techItem.phase?.name} · </span>
+              <span className="badge" style={{ background: 'rgba(198,149,47,0.12)', color: '#8a6a1f', border: '1px solid rgba(198,149,47,0.35)' }}>
+                {m.techItem.itemCode} · {m.techItem.activity}
+              </span>
+              <p className="text-[11px] mt-1.5" style={{ color: 'var(--brand-teal2)' }}>
+                Este gasto vive también en EJECUCIÓN como subactividad espejo (mismo valor y fecha). Editar o eliminar el movimiento actualiza la obra automáticamente.
+              </p>
+            </div>
+          ) : !techOpen ? (
+            <p className="text-sm" style={{ color: 'var(--brand-teal2)' }}>
+              Sin asociar. Asócialo a una actividad de obra para que el gasto se registre en ambos módulos a la vez.
+            </p>
+          ) : null}
+
+          {techOpen && (
+            <div className="grid md:grid-cols-4 gap-2 mt-3">
+              <select className="select w-full text-sm" value={techSel.projectId}
+                onChange={(e) => setTechSel({ projectId: e.target.value, phaseId: "", itemId: "" })}>
+                <option value="">— obra —</option>
+                {techProjects.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+              <select className="select w-full text-sm" value={techSel.phaseId} disabled={!techSel.projectId}
+                onChange={(e) => setTechSel((s) => ({ ...s, phaseId: e.target.value, itemId: "" }))}>
+                <option value="">— fase —</option>
+                {techTree.map((p: any) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
+              </select>
+              <select className="select w-full text-sm" value={techSel.itemId} disabled={!techSel.phaseId}
+                onChange={(e) => setTechSel((s) => ({ ...s, itemId: e.target.value }))}>
+                <option value="">— actividad —</option>
+                {techItemsSel.map((i: any) => <option key={i.id} value={i.id}>{i.itemCode} · {i.activity}</option>)}
+              </select>
+              <button
+                className="btn-primary text-sm"
+                disabled={!techSel.itemId || techMutation.isPending}
+                onClick={() => techMutation.mutate(techSel.itemId)}
+              >
+                {techMutation.isPending ? "Asociando…" : "Guardar asociación"}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* === SOPORTES === */}
       <div className="card p-5">

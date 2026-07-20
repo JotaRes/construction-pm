@@ -71,6 +71,9 @@ export const API = {
   updateMovement: (id: number, data: any) => unwrap<any>(api.patch(`/movements/${id}`, data)),
   deleteMovement: (id: number) => unwrap<any>(api.delete(`/movements/${id}`)),
   detectIntercompany: () => unwrap<any>(api.post("/movements/detect-intercompany")),
+  // Engranaje con el módulo técnico: árbol proyecto → fases → actividades
+  getTechProjects: () => unwrap<any[]>(api.get("/movements/tech-projects")),
+  getTechTree: (projectId: string) => unwrap<any[]>(api.get(`/movements/tech-tree/${projectId}`)),
   linkMovements: (a: number, b: number) => unwrap<any>(api.post(`/movements/${a}/link/${b}`)),
   unlinkMovement: (id: number) => unwrap<any>(api.post(`/movements/${id}/unlink`)),
 

@@ -48,6 +48,10 @@ export const movementCreateSchema = z.object({
   matchStatus: z.enum(["matched", "manual_only", "extract_only", "pending"]).optional(),
   importSource: z.string().max(200).nullable().optional(),
   importRef: z.string().max(200).nullable().optional(),
+
+  // Vínculo opcional a una actividad del módulo TÉCNICO (id cuid string).
+  // techSubActivityId NO se acepta del cliente: lo gestiona el backend (espejo).
+  techItemId: z.string().trim().min(1).max(50).nullable().optional(),
 });
 // .strip() por defecto: cualquier campo desconocido se descarta en vez de
 // llegar crudo a Prisma (protege contra inyección de campos y typos).

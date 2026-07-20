@@ -5,6 +5,7 @@ import {
   ArrowLeft, Building2, Landmark, Pencil, Trash2, Save, X, Upload, FileText,
   ExternalLink, Mail, MessageCircle, Download, AlertTriangle, CheckCircle2,
   Clock, HelpCircle, Wallet, ListChecks, Plus, FolderPlus, Calendar,
+  HardHat, Home,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
@@ -146,6 +147,7 @@ export default function CompanyDetail() {
   const checklistQ = useQuery({ queryKey: ["adm-checklist", companyId], queryFn: () => AdminAPI.getChecklist(companyId) });
   const docsQ = useQuery({ queryKey: ["adm-docs", companyId], queryFn: () => AdminAPI.getDocuments(companyId) });
   const tasksQ = useQuery({ queryKey: ["adm-tasks", companyId], queryFn: () => AdminAPI.getTasks({ companyId }) });
+  const projectsQ = useQuery({ queryKey: ["adm-company-projects", companyId], queryFn: () => AdminAPI.getCompanyProjects(companyId) });
 
   const invalidateAll = () => {
     qc.invalidateQueries({ queryKey: ["adm-company", companyId] });
@@ -186,6 +188,28 @@ export default function CompanyDetail() {
       dueDate: taskDue || null,
     }),
     onSuccess: () => { toast.success("Tarea creada"); setTaskTitle(""); setTaskDue(""); setTaskPriority("media"); invalidateAll(); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  // Asignación de obras (módulo técnico) a esta LLC
+  const [assignSel, setAssignSel] = useState("");
+  const assignMut = useMutation({
+    mutationFn: (projectId: string) => AdminAPI.assignProject(companyId, projectId),
+    onSuccess: () => {
+      toast.success("Proyecto asignado a esta empresa");
+      setAssignSel("");
+      qc.invalidateQueries({ queryKey: ["adm-company-projects", companyId] });
+      qc.invalidateQueries({ queryKey: ["adm-orgchart"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const unassignMut = useMutation({
+    mutationFn: (projectId: string) => AdminAPI.unassignProject(companyId, projectId),
+    onSuccess: () => {
+      toast.success("Asignación retirada");
+      qc.invalidateQueries({ queryKey: ["adm-company-projects", companyId] });
+      qc.invalidateQueries({ queryKey: ["adm-orgchart"] });
+    },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -369,6 +393,107 @@ export default function CompanyDetail() {
           ))}
         </div>
       )}
+
+      {/* ── Alertas de la empresa A LA VISTA (orden empresarial total) ── */}
+      {checklist && (() => {
+        const overdueT = tasks.filter((t: any) => t.status !== "completada" && t.dueDate && new Date(t.dueDate) < new Date()).length;
+        const strips: Array<{ color: string; bg: string; text: string }> = [];
+        if (checklist.vencidos > 0) strips.push({ color: "#D93025", bg: "rgba(217,48,37,0.08)", text: `${checklist.vencidos} documento(s) VENCIDO(S) — renovar de inmediato` });
+        if (overdueT > 0) strips.push({ color: "#D93025", bg: "rgba(217,48,37,0.08)", text: `${overdueT} tarea(s) VENCIDA(S) de esta empresa` });
+        if (checklist.porVencer > 0) strips.push({ color: "#C9820B", bg: "rgba(201,130,11,0.08)", text: `${checklist.porVencer} documento(s) por vencer en los próximos 30 días` });
+        if (checklist.faltantes > 0) strips.push({ color: "#C9820B", bg: "rgba(201,130,11,0.08)", text: `${checklist.faltantes} documento(s) del expediente sin cargar` });
+        if (strips.length === 0) return null;
+        return (
+          <div className="space-y-1.5">
+            {strips.map((s, i) => (
+              <div key={i} className="flex items-center gap-2 px-4 py-2.5 rounded-xl" style={{ background: s.bg, border: `1px solid ${s.color}33` }}>
+                <AlertTriangle size={14} color={s.color} />
+                <span className="text-[12.5px] font-semibold" style={{ color: s.color }}>{s.text}</span>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
+      {/* ── Proyectos y propiedades a cargo de esta LLC ── */}
+      <div className="fin-cpanel">
+        <div className="fin-cpanel-body">
+          <div className="fin-tb-title mb-3 flex items-center gap-2"><HardHat size={15} /> Proyectos y propiedades a cargo</div>
+
+          {/* Obras del módulo técnico */}
+          {(projectsQ.data?.techProjects ?? []).length === 0 && (projectsQ.data?.finProjects ?? []).length === 0 && (
+            <div className="fin-page-sub mb-3">Esta empresa no tiene proyectos ni propiedades asignadas todavía.</div>
+          )}
+
+          {(projectsQ.data?.techProjects ?? []).length > 0 && (
+            <div className="space-y-2 mb-4">
+              <div className="fin-nav-grp" style={{ paddingLeft: 0 }}>Obras (módulo técnico)</div>
+              {(projectsQ.data?.techProjects ?? []).map((p: any) => (
+                <div key={p.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl" style={{ border: "1px solid var(--border)", background: "var(--bg-panel, #fff)" }}>
+                  <span className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(62,90,112,0.10)" }}>
+                    <HardHat size={14} color="#3E5A70" />
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[13px] font-semibold truncate" style={{ color: "var(--text-primary)" }}>{p.name}</div>
+                    <div className="text-[10.5px]" style={{ color: "var(--text-muted)" }}>
+                      Avance {p.avancePct}% · Ejecutado ${Math.round(p.ejecutado).toLocaleString("en-US")}
+                      {p.presupuestado > 0 ? ` de $${Math.round(p.presupuestado).toLocaleString("en-US")}` : ""}
+                      {p.address ? ` · ${p.address}` : ""}
+                    </div>
+                  </div>
+                  <div className="w-24 h-1.5 rounded-full overflow-hidden hidden sm:block" style={{ background: "var(--border)" }}>
+                    <div style={{ width: `${p.avancePct}%`, height: "100%", background: p.avancePct >= 100 ? "#1D9A57" : "#3E5A70" }} />
+                  </div>
+                  <button className="fin-btn-icon" title="Quitar asignación (no borra el proyecto)" style={{ color: "#D93025" }}
+                    onClick={() => unassignMut.mutate(p.id)}>
+                    <X size={13} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Propiedades del portafolio financiero (derivadas del SPV vinculado) */}
+          {(projectsQ.data?.finProjects ?? []).length > 0 && (
+            <div className="space-y-2 mb-4">
+              <div className="fin-nav-grp" style={{ paddingLeft: 0 }}>Propiedades (portafolio financiero · vía SPV)</div>
+              {(projectsQ.data?.finProjects ?? []).map((p: any) => (
+                <div key={p.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl" style={{ border: "1px solid var(--border)", background: "var(--bg-panel, #fff)" }}>
+                  <span className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(198,149,47,0.12)" }}>
+                    <Home size={14} color="#8a6a1f" />
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[13px] font-semibold truncate" style={{ color: "var(--text-primary)" }}>{p.code} · {p.name}</div>
+                    <div className="text-[10.5px]" style={{ color: "var(--text-muted)" }}>
+                      {p.status}{p.address ? ` · ${p.address}` : ""}
+                      {p.arv > 0 ? ` · ARV $${Math.round(p.arv).toLocaleString("en-US")}` : ""}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                Estas propiedades vienen del SPV vinculado en el módulo financiero — un solo origen de verdad, sin doble registro.
+              </div>
+            </div>
+          )}
+
+          {/* Asignar obra disponible */}
+          <div className="flex flex-wrap items-end gap-2 rounded-lg p-3" style={{ border: "1px dashed var(--border)", background: "var(--bg-base)" }}>
+            <label className="text-[10px] font-semibold flex-1 min-w-[220px]" style={{ color: "var(--text-secondary)" }}>
+              Asignar una obra del módulo técnico a esta empresa
+              <select className="input-base block w-full mt-0.5" value={assignSel} onChange={(e) => setAssignSel(e.target.value)}>
+                <option value="">— seleccionar obra sin asignar —</option>
+                {(projectsQ.data?.availableTech ?? []).map((p: any) => (
+                  <option key={p.id} value={p.id}>{p.name}{p.address ? ` · ${p.address}` : ""}</option>
+                ))}
+              </select>
+            </label>
+            <button className="fin-btn-cta" style={{ height: 34 }} disabled={!assignSel || assignMut.isPending} onClick={() => assignMut.mutate(assignSel)}>
+              {assignMut.isPending ? "Asignando…" : "Asignar"}
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* ── Checklist due diligence agrupado (extensible con categorías propias) ── */}
       <div className="fin-cpanel">

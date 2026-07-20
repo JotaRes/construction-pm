@@ -56,6 +56,11 @@ export const AdminAPI = {
   deleteCompany: (id: number) => unwrap<any>(api.delete(`/companies/${id}`)),
   importSPVs: () => unwrap<any>(api.post("/companies/import-spvs")),
 
+  // Proyectos y propiedades a cargo de una empresa (carga de la LLC)
+  getCompanyProjects: (id: number) => unwrap<{ techProjects: any[]; finProjects: any[]; availableTech: any[] }>(api.get(`/companies/${id}/projects`)),
+  assignProject: (id: number, projectId: string) => unwrap<any>(api.post(`/companies/${id}/assign-project`, { projectId })),
+  unassignProject: (id: number, projectId: string) => unwrap<any>(api.post(`/companies/${id}/unassign-project`, { projectId })),
+
   // Catálogo documental + checklist
   getDocTypes: () => unwrap<any[]>(api.get("/doc-types")),
   createDocType: (data: any) => unwrap<any>(api.post("/doc-types", data)),
