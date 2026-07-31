@@ -237,6 +237,10 @@ model Draw {
   lenderApprovalName  String?
   lenderExcelUrl      String?   // tabla Excel del lender por draw
   lenderExcelName     String?
+  // Resumen JSON de la última sincronización del APPROVAL con el Construction
+  // Budget: { at, matched, applied, amount, unmatched[], mode }. Permite VER
+  // qué líneas del PDF no encontraron su línea del budget (antes se perdía).
+  approvalSyncJson    String?
   contributions       DrawLineContribution[]
 }
 

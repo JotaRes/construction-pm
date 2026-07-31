@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { drawsApi, drawParseApi, constructionBudgetApi, projectsApi, type DrawLineApproval, type DrawsValidation } from '../lib/api'
+import { drawsApi, drawParseApi, constructionBudgetApi, projectsApi, type DrawLineApproval, type DrawsValidation, type DrawsConsistency } from '../lib/api'
 import { formatUSD, formatDate } from '../lib/calculations'
 import type { Draw, DrawEstado } from '../lib/types'
-import { Upload, FileText, CheckCircle, X, AlertTriangle, Mail, MessageCircle, Download, Trash2, Table2, TrendingDown, ChevronDown, RefreshCw, Landmark } from 'lucide-react'
+import { Upload, FileText, CheckCircle, X, AlertTriangle, Mail, MessageCircle, Download, Trash2, Table2, TrendingDown, ChevronDown, RefreshCw, Landmark, ShieldCheck } from 'lucide-react'
 import { useConfirm } from '../components/ConfirmDialog'
 import toast from 'react-hot-toast'
 
@@ -786,6 +786,23 @@ export default function Draws({ projectId }: { projectId: string }) {
   const confirm = useConfirm()
   const [showParse, setShowParse] = useState(false)
   const [showTimeline, setShowTimeline] = useState(true)
+  // Chequeo de consistencia Draw ↔ Budget (testeo integral bajo demanda)
+  const [consistency, setConsistency] = useState<DrawsConsistency | null>(null)
+  const [checking, setChecking] = useState(false)
+
+  const runConsistency = async () => {
+    setChecking(true)
+    try {
+      const r = await drawsApi.consistency(projectId)
+      setConsistency(r)
+      if (r.ok) toast.success('Sincronización verificada: draws y Construction Budget 100% coherentes')
+      else toast.error(`Se detectaron ${r.issues.length} problema(s) de sincronización — revisa el panel`, { duration: 6000 })
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || 'Error al verificar')
+    } finally {
+      setChecking(false)
+    }
+  }
 
   const { data: draws = [], isLoading } = useQuery<Draw[]>({
     queryKey: ['draws', projectId],
@@ -897,6 +914,13 @@ export default function Draws({ projectId }: { projectId: string }) {
             <Trash2 className="w-3.5 h-3.5" />
             Resetear sección
           </button>
+          <button onClick={runConsistency}
+            disabled={checking}
+            title="Testeo integral: verifica que cada PDF de aprobación esté reflejado línea a línea en el Construction Budget"
+            className="flex items-center gap-2 px-3 py-2 border border-emerald-200 text-emerald-700 hover:bg-emerald-50 text-xs font-medium rounded-xl transition-colors disabled:opacity-40">
+            <ShieldCheck className="w-3.5 h-3.5" />
+            {checking ? 'Verificando…' : 'Verificar sincronización'}
+          </button>
           <button onClick={async () => {
               const ok = await confirm({
                 title: 'Reparar Construction Budget',
@@ -964,6 +988,90 @@ export default function Draws({ projectId }: { projectId: string }) {
           </button>
         </div>
       </div>
+
+      {/* ── PANEL DE VERIFICACIÓN Draw ↔ Construction Budget ── */}
+      {consistency && (
+        <div className={`rounded-2xl border p-4 ${consistency.ok ? 'border-emerald-200 bg-emerald-50/50' : 'border-red-200 bg-red-50/40'}`}>
+          <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className={`w-4 h-4 ${consistency.ok ? 'text-emerald-600' : 'text-red-600'}`} />
+              <span className="text-sm font-bold text-slate-800">
+                {consistency.ok
+                  ? 'Sincronización verificada — todo coherente'
+                  : `${consistency.issues.length} problema(s) de sincronización detectado(s)`}
+              </span>
+            </div>
+            <button className="text-xs text-slate-500 hover:text-slate-700" onClick={() => setConsistency(null)}><X className="w-4 h-4" /></button>
+          </div>
+
+          {/* Totales cruzados */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3 text-xs">
+            {[
+              { label: 'Budget inicial', v: consistency.totals.budgetInicial },
+              { label: 'Aprobado (budget)', v: consistency.totals.budgetAprobado },
+              { label: 'Σ contribuciones', v: consistency.totals.contribuciones },
+              { label: 'Σ elegible draws', v: consistency.totals.elegibleDraws },
+            ].map(k => (
+              <div key={k.label} className="bg-white rounded-lg border border-slate-200 px-3 py-2">
+                <div className="text-[10px] uppercase tracking-wider text-slate-400">{k.label}</div>
+                <div className="font-mono font-semibold text-slate-700">{formatUSD(k.v)}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Problemas encontrados */}
+          {consistency.issues.length > 0 && (
+            <div className="space-y-1.5 mb-3">
+              {consistency.issues.map((iss, i) => (
+                <div key={i} className={`flex items-start gap-2 px-3 py-2 rounded-lg text-xs ${iss.level === 'critical' ? 'bg-red-100/70 text-red-800' : 'bg-amber-100/70 text-amber-800'}`}>
+                  <AlertTriangle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <div className="font-semibold">{iss.title}</div>
+                    <div className="opacity-90">{iss.detail}</div>
+                  </div>
+                </div>
+              ))}
+              <div className="text-[11px] text-slate-600 px-1">
+                → Para corregir: usa <b>Reparar budget</b> (re-procesa todos los PDFs con el matcher mejorado y OCR) y vuelve a verificar.
+              </div>
+            </div>
+          )}
+
+          {/* Estado por draw */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="text-[10px] uppercase tracking-wider text-slate-400 border-b border-slate-200">
+                  <th className="text-left py-1.5 pr-3">Draw</th>
+                  <th className="text-left py-1.5 pr-3">PDF aprobación</th>
+                  <th className="text-right py-1.5 pr-3">Líneas al budget</th>
+                  <th className="text-right py-1.5 pr-3">$ aportado</th>
+                  <th className="text-left py-1.5">Sin matchear</th>
+                </tr>
+              </thead>
+              <tbody>
+                {consistency.draws.map(d => {
+                  const bad = d.hasApprovalPdf && d.contribLines === 0
+                  const un = d.sync?.unmatched?.length ?? 0
+                  return (
+                    <tr key={d.id} className={`border-b border-slate-100 ${bad ? 'bg-red-50' : ''}`}>
+                      <td className="py-1.5 pr-3 font-semibold text-slate-700">#{d.drawNumber}</td>
+                      <td className="py-1.5 pr-3">{d.hasApprovalPdf ? <span className="text-emerald-700">Sí</span> : <span className="text-slate-400">—</span>}</td>
+                      <td className={`py-1.5 pr-3 text-right font-mono ${bad ? 'text-red-600 font-bold' : 'text-slate-700'}`}>{d.contribLines}</td>
+                      <td className="py-1.5 pr-3 text-right font-mono text-slate-700">{formatUSD(d.contribTotal)}</td>
+                      <td className="py-1.5">
+                        {un > 0
+                          ? <span className="text-amber-700 font-semibold">{un}: {d.sync!.unmatched.slice(0, 3).join(' · ')}{un > 3 ? '…' : ''}</span>
+                          : d.hasApprovalPdf ? <span className="text-emerald-700">0</span> : <span className="text-slate-400">—</span>}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Excel general del lender — carga y validación (parte superior) */}
       <LenderExcelPanel projectId={projectId} />

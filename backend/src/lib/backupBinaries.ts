@@ -37,7 +37,7 @@ export interface ManifestRow {
 }
 
 // Descarga una URL a Buffer siguiendo redirecciones, con allowlist de host.
-function fetchBuffer(url: string, redirectsLeft = MAX_REDIRECTS): Promise<Buffer> {
+export function fetchBuffer(url: string, redirectsLeft = MAX_REDIRECTS): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     let parsed: URL
     try {

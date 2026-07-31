@@ -153,6 +153,26 @@ Paleta oficial (única fuente: bloque de tokens en `frontend/src/index.css`):
 - **Organigrama**: colores POR ROL dentro de la paleta fija (nada de morados),
   leyenda de roles, proyectos/propiedades y alertas visibles por tarjeta.
 
+## Sincronización Draw ↔ Construction Budget v1.2 (desde julio 2026)
+
+- **Matcher mejorado** (`applyDrawApprovalsToBudget`): byDesc ahora es multi-línea
+  (nada de "última gana") y hay fallback DIFUSO por tokens (`fuzzyMatchLine`):
+  "Labor" del PDF de Trinity matchea "Framing - Labor" del budget (caso real
+  draw 5 / proyecto 827). Ambigüedad (dos candidatas casi iguales) NO adivina.
+- **Auditoría persistente**: `Draw.approvalSyncJson` guarda el resumen de cada
+  aplicación (matched/unmatched/monto). Antes las líneas sin matchear se
+  perdían tras el upload.
+- **Endpoints**: `GET /api/draws/consistency/:projectId` (chequeo integral:
+  PDFs sin reflejar, unmatched, deriva valorAprobado vs Σcontribuciones,
+  totales cruzados) y `POST /api/draws/:id/reapply-approval` (re-parsea el
+  PDF guardado con OCR forzado si hace falta). Botón "Verificar sincronización"
+  en Draws.tsx; "Reparar budget" re-procesa todo con el matcher nuevo.
+- Todos los caminos de parseo de APPROVAL (upload, rebuild, reapply) tienen
+  retry con OCR forzado si el texto nativo no produce line items.
+- **Proveedores**: `POST /api/providers/import-finance` importa FinProvider →
+  Provider global (sin duplicar, por nombre normalizado). Botón "Importar del
+  financiero" en la página Proveedores.
+
 ## Pendientes conocidos / Ideas
 
 - Bundle frontend > 500KB → considerar code-split de Recharts via dynamic import

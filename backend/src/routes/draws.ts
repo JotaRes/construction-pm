@@ -6,6 +6,7 @@ import { uploadToCloudinary, resourceTypeFor } from '../lib/cloudinary'
 import { parseAmountFlexible } from '../lib/parseAmount'
 import { extractPdfText } from '../lib/pdfOcr'
 import { applyExtractedToExecution } from '../lib/executionAutofill'
+import { fetchBuffer } from '../lib/backupBinaries'
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pdfParse = require('pdf-parse') as (buffer: Buffer) => Promise<{ text: string; numpages: number }>
@@ -219,6 +220,54 @@ function normalizeItemDescription(s: string): string {
     .trim()
 }
 
+// Tokens significativos de una descripción (para matching difuso).
+const STOP_WORDS = new Set(['the', 'and', 'of', 'for', 'de', 'del', 'la', 'el', 'y'])
+function descTokens(s: string): Set<string> {
+  return new Set(
+    normalizeItemDescription(s).split(' ').filter(t => t.length > 1 && !STOP_WORDS.has(t))
+  )
+}
+
+// Matching difuso entre la línea del PDF del lender y las líneas del budget.
+// Caso real (proyecto 827, draw 5): Trinity reporta "Labor" / "Lumber" como
+// sub-líneas de Framing, mientras el budget dice "Framing - Labor" /
+// "Framing - Lumber". El match exacto por descripción fallaba EN SILENCIO y
+// esas aprobaciones nunca llegaban al Construction Budget.
+// Regla: gana la línea con mayor score si (a) el conjunto de tokens más
+// pequeño está CONTENIDO en el más grande, o (b) el solape Jaccard ≥ 0.6 —
+// y además el ganador supera al segundo por margen claro (sin ambigüedad).
+function fuzzyMatchLine<T extends { id: string; description: string }>(
+  pdfDesc: string,
+  lines: T[],
+  usedLineIds: Set<string>,
+): T | undefined {
+  const aTokens = descTokens(pdfDesc)
+  if (aTokens.size === 0) return undefined
+  let best: { line: T; score: number } | null = null
+  let second = 0
+  for (const l of lines) {
+    if (usedLineIds.has(l.id)) continue
+    const bTokens = descTokens(l.description)
+    if (bTokens.size === 0) continue
+    let inter = 0
+    for (const t of aTokens) if (bTokens.has(t)) inter++
+    if (inter === 0) continue
+    const smaller = Math.min(aTokens.size, bTokens.size)
+    const union = aTokens.size + bTokens.size - inter
+    const containment = inter / smaller
+    const jaccard = inter / union
+    const qualifies = containment >= 0.999 || jaccard >= 0.6
+    if (!qualifies) continue
+    const score = containment + jaccard // prioriza contención + solape total
+    if (!best || score > best.score) { second = best?.score ?? 0; best = { line: l, score } }
+    else if (score > second) second = score
+  }
+  if (!best) return undefined
+  // Ambigüedad: dos candidatas casi iguales → NO adivinar (mejor unmatched visible)
+  if (second > 0 && best.score - second < 0.15) return undefined
+  return best.line
+}
+
 // Recalcula valorAprobado de las líneas indicadas sumando todas sus contribuciones
 // activas (= contribuciones cuyo Draw aún existe). Es la operación inversa que
 // hace coherente el budget cuando se borra un draw o su APPROVAL pdf.
@@ -289,11 +338,18 @@ export async function applyDrawApprovalsToBudget(
 
   const lines = await prisma.budgetLine.findMany({ where: { projectId } })
   const byCode = new Map<string, (typeof lines)[number]>()
-  const byDesc = new Map<string, (typeof lines)[number]>()
+  // byDesc guarda TODAS las líneas por descripción normalizada (no "última
+  // gana"): si dos líneas del budget normalizan igual, el match exacto solo
+  // aplica cuando es inequívoco (una sola candidata sin usar).
+  const byDesc = new Map<string, (typeof lines)[number][]>()
   for (const l of lines) {
     if (l.itemCode) byCode.set(l.itemCode, l)
     const norm = normalizeItemDescription(l.description)
-    if (norm) byDesc.set(norm, l)
+    if (norm) {
+      const arr = byDesc.get(norm) ?? []
+      arr.push(l)
+      byDesc.set(norm, arr)
+    }
   }
 
   let matched = 0
@@ -313,11 +369,16 @@ export async function applyDrawApprovalsToBudget(
   for (const a of approvals) {
     // 1) Match por itemCode si viene en el PDF (formato A legacy)
     let line = a.itemCode ? byCode.get(a.itemCode) : undefined
-    // 2) Fallback: match por descripción normalizada (formato B 2026)
+    // 2) Match por descripción normalizada EXACTA (formato B 2026)
     if (!line) {
       const norm = normalizeItemDescription(a.description)
-      const candidate = norm ? byDesc.get(norm) : undefined
-      if (candidate && !usedLineIds.has(candidate.id)) line = candidate
+      const candidates = (norm ? byDesc.get(norm) : undefined)?.filter(c => !usedLineIds.has(c.id)) ?? []
+      if (candidates.length === 1) line = candidates[0]
+    }
+    // 3) Fallback DIFUSO por tokens: "Labor" ⊂ "Framing - Labor",
+    //    "Lumber" ⊂ "Framing - Lumber", "Lumber Package" ≈ "Lumber", etc.
+    if (!line) {
+      line = fuzzyMatchLine(a.description, lines, usedLineIds)
     }
     if (!line) { unmatched.push(a.itemCode || a.description); continue }
     usedLineIds.add(line.id)
@@ -353,7 +414,63 @@ export async function applyDrawApprovalsToBudget(
   await recomputeBudgetLinesFromContributions(Array.from(touched))
   const final = await prisma.budgetLine.findMany({ where: { projectId }, select: { valorAprobado: true } })
   const cumulativeApproved = final.reduce((s, l) => s + l.valorAprobado, 0)
+
+  // AUDITORÍA PERSISTENTE: guardar el resumen en el draw para que las líneas
+  // sin sincronizar sean visibles siempre (antes se perdían tras el upload).
+  await prisma.draw.update({
+    where: { id: drawId },
+    data: {
+      approvalSyncJson: JSON.stringify({
+        at: new Date().toISOString(),
+        mode,
+        totalPdfLines: approvals.length,
+        matched,
+        applied: newlyApprovedItems,
+        amount: Math.round(newlyApprovedAmount * 100) / 100,
+        unmatched,
+      }),
+    },
+  }).catch(() => {})
+
   return { matched, newlyApprovedItems, newlyApprovedAmount, cumulativeApproved, unmatched }
+}
+
+// ── RE-SINCRONIZAR el APPROVAL ya subido (sin re-subir el PDF) ──────────────
+// Descarga el PDF guardado en Cloudinary, lo re-parsea (con OCR forzado si el
+// texto viene vacío — PDFs escaneados) y re-aplica las aprobaciones con el
+// matcher mejorado. Es la vía para corregir draws históricos (ej. draw 5 / 827).
+export async function reapplyDrawApproval(drawId: string): Promise<{
+  ok: boolean
+  error?: string
+  result?: Awaited<ReturnType<typeof applyDrawApprovalsToBudget>>
+  ocrUsed?: boolean
+}> {
+  const draw = await prisma.draw.findUnique({
+    where: { id: drawId },
+    select: { id: true, projectId: true, lenderApprovalUrl: true },
+  })
+  if (!draw) return { ok: false, error: 'Draw no encontrado' }
+  if (!draw.lenderApprovalUrl) return { ok: false, error: 'Este draw no tiene PDF de aprobación cargado' }
+
+  let buffer: Buffer
+  try {
+    buffer = await fetchBuffer(draw.lenderApprovalUrl)
+  } catch (e) {
+    return { ok: false, error: `No se pudo descargar el PDF de Cloudinary: ${e instanceof Error ? e.message : e}` }
+  }
+
+  let pdfData = await extractPdfText(buffer)
+  let approvals = parseTrinityDrawApprovals(pdfData.text)
+  // Retry con OCR forzado: escaneados cuyo texto nativo es basura de scanner.
+  if (approvals.length === 0 && !pdfData.ocrUsed) {
+    pdfData = await extractPdfText(buffer, { force: true })
+    approvals = parseTrinityDrawApprovals(pdfData.text)
+  }
+  if (approvals.length === 0) {
+    return { ok: false, error: 'No se detectaron line items en el PDF (ni siquiera con OCR). Verifica que sea el reporte de Trinity.', ocrUsed: pdfData.ocrUsed }
+  }
+  const result = await applyDrawApprovalsToBudget(draw.projectId, draw.id, approvals)
+  return { ok: true, result, ocrUsed: pdfData.ocrUsed }
 }
 
 // Recalcula valorAprobado de TODAS las líneas del proyecto desde sus contribuciones.
@@ -1467,6 +1584,106 @@ router.patch('/:id', async (req: Request, res: Response) => {
   }
 })
 
+// ── RE-SINCRONIZAR aprobación con el Construction Budget ─────────────────────
+// Re-parsea el PDF de aprobación YA subido (Cloudinary) con el matcher mejorado
+// y OCR forzado si hace falta. Corrige draws históricos sin re-subir nada.
+router.post('/:id/reapply-approval', async (req: Request, res: Response) => {
+  try {
+    const r = await reapplyDrawApproval(req.params.id)
+    if (!r.ok) return res.status(400).json({ data: null, error: r.error })
+    res.json({ data: { ...r.result, ocrUsed: r.ocrUsed }, error: null })
+  } catch (e) {
+    res.status(500).json({ data: null, error: String(e) })
+  }
+})
+
+// ── CHEQUEO DE CONSISTENCIA Draw ↔ Construction Budget ───────────────────────
+// Testeo integral del engranaje, ejecutable en cualquier momento desde la UI:
+//   1. Draws con PDF de aprobación pero SIN contribuciones (caso draw 5 / 827)
+//   2. Líneas del PDF que quedaron sin matchear (approvalSyncJson persistido)
+//   3. Deriva entre valorAprobado de cada línea y la suma de sus contribuciones
+//   4. Totales cruzados: budget aprobado vs contribuciones vs elegible de draws
+router.get('/consistency/:projectId', async (req: Request, res: Response) => {
+  try {
+    const projectId = req.params.projectId
+    const [draws, lines, contribGroups] = await Promise.all([
+      prisma.draw.findMany({
+        where: { projectId },
+        orderBy: { drawNumber: 'asc' },
+        select: {
+          id: true, drawNumber: true, estado: true, elegibleTrinity: true,
+          lenderApprovalUrl: true, lenderApprovalName: true, approvalSyncJson: true,
+          contributions: { select: { deltaAmount: true } },
+        },
+      }),
+      prisma.budgetLine.findMany({
+        where: { projectId },
+        select: { id: true, itemCode: true, description: true, valorInicial: true, valorAprobado: true },
+      }),
+      prisma.drawLineContribution.groupBy({
+        by: ['budgetLineId'],
+        where: { budgetLine: { projectId } },
+        _sum: { deltaAmount: true },
+      }),
+    ])
+
+    const contribByLine = new Map(contribGroups.map(g => [g.budgetLineId, g._sum.deltaAmount ?? 0]))
+    const issues: Array<{ level: 'critical' | 'warning'; title: string; detail: string; drawId?: string; drawNumber?: number }> = []
+
+    const drawReports = draws.map(d => {
+      const contribTotal = d.contributions.reduce((s, c) => s + c.deltaAmount, 0)
+      let sync: any = null
+      try { sync = d.approvalSyncJson ? JSON.parse(d.approvalSyncJson) : null } catch { /* JSON corrupto */ }
+      const hasPdf = !!d.lenderApprovalUrl
+      if (hasPdf && d.contributions.length === 0) {
+        issues.push({
+          level: 'critical',
+          title: `Draw ${d.drawNumber}: PDF de aprobación SIN reflejar en el budget`,
+          detail: 'El PDF está cargado pero ninguna línea del Construction Budget recibió aprobación de este draw. Usa "Re-sincronizar" para reprocesarlo.',
+          drawId: d.id, drawNumber: d.drawNumber,
+        })
+      }
+      if (sync?.unmatched?.length > 0) {
+        issues.push({
+          level: 'warning',
+          title: `Draw ${d.drawNumber}: ${sync.unmatched.length} línea(s) del PDF sin matchear`,
+          detail: `Sin línea del budget equivalente: ${sync.unmatched.slice(0, 5).join(' · ')}${sync.unmatched.length > 5 ? ` (+${sync.unmatched.length - 5} más)` : ''}. Re-sincroniza (el matcher mejorado puede resolverlas) o revisa las descripciones del budget.`,
+          drawId: d.id, drawNumber: d.drawNumber,
+        })
+      }
+      return {
+        id: d.id, drawNumber: d.drawNumber, estado: d.estado,
+        hasApprovalPdf: hasPdf, approvalName: d.lenderApprovalName,
+        contribLines: d.contributions.length, contribTotal: Math.round(contribTotal * 100) / 100,
+        elegibleTrinity: d.elegibleTrinity, sync,
+      }
+    })
+
+    // Deriva por línea: valorAprobado guardado vs suma de contribuciones vivas
+    const drift = lines
+      .map(l => ({ ...l, contribSum: Math.round((contribByLine.get(l.id) ?? 0) * 100) / 100 }))
+      .filter(l => Math.abs(l.valorAprobado - l.contribSum) > 0.01)
+    for (const l of drift) {
+      issues.push({
+        level: 'critical',
+        title: `Línea ${l.itemCode} con deriva de datos`,
+        detail: `valorAprobado guardado $${l.valorAprobado.toLocaleString('en-US')} ≠ suma de contribuciones $${l.contribSum.toLocaleString('en-US')} (${l.description.slice(0, 40)}). Requiere recomputo.`,
+      })
+    }
+
+    const totals = {
+      budgetInicial: lines.reduce((s, l) => s + l.valorInicial, 0),
+      budgetAprobado: lines.reduce((s, l) => s + l.valorAprobado, 0),
+      contribuciones: Array.from(contribByLine.values()).reduce((s, v) => s + v, 0),
+      elegibleDraws: draws.reduce((s, d) => s + (d.elegibleTrinity || 0), 0),
+    }
+
+    res.json({ data: { ok: issues.length === 0, issues, draws: drawReports, driftLines: drift.length, totals }, error: null })
+  } catch (e) {
+    res.status(500).json({ data: null, error: String(e) })
+  }
+})
+
 // ── DELETE draw ───────────────────────────────────────────────────────────────
 // CRITICAL: must (1) recompute todo el budget del proyecto desde contribuciones
 // vivas (incluso datos legacy sin contribución quedan en 0 si nadie los respalda),
@@ -1578,8 +1795,14 @@ router.post('/:id/document', (req: Request, res: Response) => {
           extractionError = `Archivo no es un PDF (${req.file.mimetype || 'sin mimetype'}).`
         } else {
           try {
-            const pdfData = await extractPdfText(req.file.buffer)
-            const approvals = parseTrinityDrawApprovals(pdfData.text)
+            let pdfData = await extractPdfText(req.file.buffer)
+            let approvals = parseTrinityDrawApprovals(pdfData.text)
+            // Retry con OCR forzado: aprobaciones escaneadas cuyo texto nativo
+            // es basura del scanner (mismo patrón que files.ts).
+            if (approvals.length === 0 && !pdfData.ocrUsed) {
+              pdfData = await extractPdfText(req.file.buffer, { force: true })
+              approvals = parseTrinityDrawApprovals(pdfData.text)
+            }
             if (approvals.length > 0) {
               const draw = await prisma.draw.findUnique({ where: { id: req.params.id }, select: { projectId: true } })
               if (draw) budgetUpdate = await applyDrawApprovalsToBudget(draw.projectId, req.params.id, approvals)
@@ -1832,8 +2055,13 @@ router.post('/:projectId/draws/rebuild-contributions', async (req: Request, res:
         const r = await fetch(d.lenderApprovalUrl)
         if (!r.ok) throw new Error(`HTTP ${r.status}`)
         const buf = Buffer.from(await r.arrayBuffer())
-        const pdfData = await extractPdfText(buf)
-        const approvals = parseTrinityDrawApprovals(pdfData.text)
+        let pdfData = await extractPdfText(buf)
+        let approvals = parseTrinityDrawApprovals(pdfData.text)
+        // Retry con OCR forzado: PDFs escaneados con texto nativo basura.
+        if (approvals.length === 0 && !pdfData.ocrUsed) {
+          pdfData = await extractPdfText(buf, { force: true })
+          approvals = parseTrinityDrawApprovals(pdfData.text)
+        }
         const result = await applyDrawApprovalsToBudget(projectId, d.id, approvals)
 
         // Refrescar también el header del draw: el parser viejo guardó

@@ -3,7 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { providersApi, providerQuotesApi, providerDocumentsApi, providersGlobalApi } from '../lib/api'
 import { formatUSD, formatDate } from '../lib/calculations'
 import type { Provider, ProviderDocumentType } from '../lib/types'
-import { Plus, Trash2, X, Check, ChevronDown, FileText, Upload, ExternalLink, FolderOpen, ShieldCheck, FileSignature, Receipt, BadgeCheck, FileSpreadsheet, Users } from 'lucide-react'
+import { Plus, Trash2, X, Check, ChevronDown, FileText, Upload, ExternalLink, FolderOpen, ShieldCheck, FileSignature, Receipt, BadgeCheck, FileSpreadsheet, Users, Download } from 'lucide-react'
+import toast from 'react-hot-toast'
 
 // Tipos de documentos sugeridos por proveedor con icono y descripción contextual
 const PROVIDER_DOC_TYPES: { value: ProviderDocumentType; label: string; description: string }[] = [
@@ -702,10 +703,31 @@ export default function Providers({ projectId }: { projectId: string }) {
           <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><Users className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>Directorio de Proveedores — Catálogo General</span></h1>
           <p className="text-sm text-slate-500 mt-0.5">{providers.length} proveedores del holding · aplican a TODOS los proyectos · el récord de facturación se alimenta de las facturas de Ejecución</p>
         </div>
-        <button onClick={() => setShowAdd(true)}
-          className="flex items-center gap-2 bg-[var(--brand-gold)] hover:bg-[#4A6880] text-white text-sm px-4 py-2 rounded-xl transition-colors">
-          <Plus className="w-4 h-4" />Agregar
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={async () => {
+              try {
+                const r = await providersGlobalApi.importFromFinance()
+                if (r.imported === 0) {
+                  toast.success(`Sin novedades: los ${r.skipped} proveedor(es) del módulo financiero ya existen aquí.`)
+                } else {
+                  toast.success(`${r.imported} proveedor(es) importados del módulo financiero${r.skipped > 0 ? ` · ${r.skipped} ya existían` : ''}`, { duration: 7000 })
+                }
+                queryClient.invalidateQueries({ queryKey: ['providers-global'] })
+              } catch (e: any) {
+                toast.error(e?.response?.data?.error || 'Error al importar')
+              }
+            }}
+            title="Trae los proveedores/contratistas ya registrados en el módulo financiero (sin duplicar los existentes)"
+            className="flex items-center gap-2 px-3 py-2 border border-slate-300 text-slate-700 hover:bg-slate-50 text-sm font-medium rounded-xl transition-colors">
+            <Download className="w-4 h-4" />
+            Importar del financiero
+          </button>
+          <button onClick={() => setShowAdd(true)}
+            className="flex items-center gap-2 bg-[var(--brand-gold)] hover:bg-[#4A6880] text-white text-sm px-4 py-2 rounded-xl transition-colors">
+            <Plus className="w-4 h-4" />Agregar
+          </button>
+        </div>
       </div>
 
       {showAdd && (

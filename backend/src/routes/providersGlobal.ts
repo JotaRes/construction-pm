@@ -52,6 +52,45 @@ router.post('/', async (req: Request, res: Response) => {
   }
 })
 
+// POST /api/providers/import-finance — trae los proveedores/contratistas ya
+// cargados en el MÓDULO FINANCIERO (FinProvider) al catálogo global técnico.
+// No duplica: compara por nombre normalizado (case-insensitive, sin espacios
+// dobles). Los existentes se saltan; los datos técnicos nunca se sobreescriben.
+router.post('/import-finance', async (_req: Request, res: Response) => {
+  try {
+    const [finProviders, techProviders] = await Promise.all([
+      prisma.finProvider.findMany({ orderBy: { name: 'asc' } }),
+      prisma.provider.findMany({ select: { name: true } }),
+    ])
+    const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim()
+    const existing = new Set(techProviders.map(p => norm(p.name)))
+
+    let imported = 0
+    let skipped = 0
+    const created: string[] = []
+    for (const fp of finProviders) {
+      if (!fp.name?.trim() || existing.has(norm(fp.name))) { skipped++; continue }
+      await prisma.provider.create({
+        data: {
+          projectId: null, // global: visible en todos los proyectos
+          name: fp.name.trim(),
+          type: fp.type?.trim() || null,
+          phone: fp.phone?.trim() || null,
+          email: fp.email?.trim() || null,
+          notes: [fp.contactName ? `Contacto: ${fp.contactName}` : null, fp.notes?.trim() || null, 'Importado del módulo financiero.']
+            .filter(Boolean).join(' · '),
+        },
+      })
+      existing.add(norm(fp.name))
+      created.push(fp.name.trim())
+      imported++
+    }
+    res.json({ data: { imported, skipped, created }, error: null })
+  } catch (e) {
+    res.status(500).json({ data: null, error: String(e) })
+  }
+})
+
 // GET /api/providers/billing — récord de facturación por proveedor por proyecto.
 // Fuente: facturas (ItemDocument type FACTURA) con providerId, vía item→fase→proyecto.
 router.get('/billing', async (_req: Request, res: Response) => {

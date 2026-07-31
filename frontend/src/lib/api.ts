@@ -158,6 +158,26 @@ export const drawsApi = {
   // Reparación one-time: convierte contribuciones ACUMULADAS por ítem a DELTAS reales.
   repairCumulative: (projectId: string) =>
     api.post(`/projects/${projectId}/draws/repair-cumulative`).then(r => r.data.data as { linesFixed: number; contribsFixed: number; totalAprobado: number }),
+  // Chequeo de consistencia Draw ↔ Construction Budget: detecta PDFs sin
+  // reflejar, líneas sin matchear y derivas de datos. Testeo integral bajo demanda.
+  consistency: (projectId: string) =>
+    api.get(`/draws/consistency/${projectId}`).then(r => r.data.data as DrawsConsistency),
+  // Re-sincroniza el APPROVAL de UN draw (re-parsea el PDF guardado, con OCR si hace falta)
+  reapplyApproval: (drawId: string) =>
+    api.post(`/draws/${drawId}/reapply-approval`).then(r => r.data.data),
+}
+
+export interface DrawsConsistency {
+  ok: boolean
+  issues: Array<{ level: 'critical' | 'warning'; title: string; detail: string; drawId?: string; drawNumber?: number }>
+  draws: Array<{
+    id: string; drawNumber: number; estado: string
+    hasApprovalPdf: boolean; approvalName: string | null
+    contribLines: number; contribTotal: number; elegibleTrinity: number
+    sync: { at: string; matched: number; applied: number; amount: number; unmatched: string[] } | null
+  }>
+  driftLines: number
+  totals: { budgetInicial: number; budgetAprobado: number; contribuciones: number; elegibleDraws: number }
 }
 
 export interface DrawsValidation {
@@ -727,4 +747,6 @@ export const providersGlobalApi = {
     api.get('/providers/billing').then(r => r.data.data),
   // Récord completo del proveedor: actividades, subactividades y facturas
   record: (providerId: string) => api.get(`/providers/${providerId}/record`).then(r => r.data.data),
+  // Importa los proveedores/contratistas del MÓDULO FINANCIERO (sin duplicar)
+  importFromFinance: () => api.post('/providers/import-finance').then(r => r.data.data as { imported: number; skipped: number; created: string[] }),
 }
