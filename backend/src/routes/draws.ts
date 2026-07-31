@@ -1526,6 +1526,31 @@ router.get('/consistency/:projectId', async (req: Request, res: Response) => {
       elegibleDraws: draws.reduce((s, d) => s + (d.elegibleTrinity || 0), 0),
     }
 
+    // ── PUNTOS CIEGOS CERRADOS (caso real 827) ──
+    // a) Draw con monto elegible pero SIN PDF de aprobación: el budget no
+    //    tiene de dónde reflejar ese dinero — falta el documento.
+    for (const d of drawReports) {
+      if (!d.hasApprovalPdf && (d.elegibleTrinity || 0) > 0) {
+        issues.push({
+          level: 'critical',
+          title: `Draw ${d.drawNumber}: $${Math.round(d.elegibleTrinity).toLocaleString('en-US')} elegibles SIN PDF de aprobación`,
+          detail: 'El monto elegible existe pero no hay PDF de aprobación (APPROVAL) cargado en este draw — el Construction Budget no puede reflejar ese dinero. Sube el PDF del lender en este draw.',
+          drawId: d.id, drawNumber: d.drawNumber,
+        })
+      }
+    }
+    // b) Cruce global: hay dinero elegible en draws pero el budget aprobado
+    //    está muy por debajo (o en cero) — sincronización rota a nivel proyecto.
+    if (totals.elegibleDraws > 100 && totals.budgetAprobado < totals.elegibleDraws * 0.5) {
+      issues.push({
+        level: 'critical',
+        title: `Budget aprobado ($${Math.round(totals.budgetAprobado).toLocaleString('en-US')}) muy por debajo de lo elegible en draws ($${Math.round(totals.elegibleDraws).toLocaleString('en-US')})`,
+        detail: 'El dinero certificado en los draws no está reflejado en el Construction Budget. Verifica que cada draw tenga su PDF de aprobación cargado y ejecuta "Reparar budget".',
+      })
+    }
+    // Reordenar: críticas primero
+    issues.sort((a, b) => (a.level === b.level ? 0 : a.level === 'critical' ? -1 : 1))
+
     res.json({ data: { ok: issues.length === 0, issues, draws: drawReports, driftLines: drift.length, totals }, error: null })
   } catch (e) {
     res.status(500).json({ data: null, error: String(e) })
@@ -1892,6 +1917,15 @@ router.post('/:projectId/draws/rebuild-contributions', async (req: Request, res:
       select: { id: true, drawNumber: true, lenderApprovalUrl: true },
       orderBy: { drawNumber: 'asc' },
     })
+    // GUARD CRÍTICO: sin ningún PDF de aprobación NO hay nada que reconstruir.
+    // Antes de este guard, el rebuild borraba TODAS las contribuciones y dejaba
+    // el budget aprobado en $0 (caso real 827) — abortamos SIN tocar nada.
+    if (draws.length === 0) {
+      return res.status(400).json({
+        data: null,
+        error: 'Ningún draw de este proyecto tiene PDF de aprobación (APPROVAL) cargado — no hay nada que reconstruir y el budget NO fue modificado. Sube el PDF de aprobación en cada draw y vuelve a ejecutar "Reparar budget".',
+      })
+    }
     // Empezar limpio: borra todas las contribuciones del proyecto.
     await prisma.drawLineContribution.deleteMany({
       where: { draw: { projectId } },

@@ -1044,6 +1044,7 @@ export default function Draws({ projectId }: { projectId: string }) {
                 <tr className="text-[10px] uppercase tracking-wider text-slate-400 border-b border-slate-200">
                   <th className="text-left py-1.5 pr-3">Draw</th>
                   <th className="text-left py-1.5 pr-3">PDF aprobación</th>
+                  <th className="text-right py-1.5 pr-3">Elegible</th>
                   <th className="text-right py-1.5 pr-3">Líneas al budget</th>
                   <th className="text-right py-1.5 pr-3">$ aportado</th>
                   <th className="text-left py-1.5">Sin matchear</th>
@@ -1051,12 +1052,17 @@ export default function Draws({ projectId }: { projectId: string }) {
               </thead>
               <tbody>
                 {consistency.draws.map(d => {
-                  const bad = d.hasApprovalPdf && d.contribLines === 0
+                  const bad = (d.hasApprovalPdf && d.contribLines === 0) || (!d.hasApprovalPdf && (d.elegibleTrinity || 0) > 0)
                   const un = d.sync?.unmatched?.length ?? 0
                   return (
                     <tr key={d.id} className={`border-b border-slate-100 ${bad ? 'bg-red-50' : ''}`}>
                       <td className="py-1.5 pr-3 font-semibold text-slate-700">#{d.drawNumber}</td>
-                      <td className="py-1.5 pr-3">{d.hasApprovalPdf ? <span className="text-emerald-700">Sí</span> : <span className="text-slate-400">—</span>}</td>
+                      <td className="py-1.5 pr-3">{d.hasApprovalPdf
+                        ? <span className="text-emerald-700">Sí</span>
+                        : (d.elegibleTrinity || 0) > 0
+                          ? <span className="text-red-600 font-bold">FALTA</span>
+                          : <span className="text-slate-400">—</span>}</td>
+                      <td className="py-1.5 pr-3 text-right font-mono text-slate-700">{formatUSD(d.elegibleTrinity || 0)}</td>
                       <td className={`py-1.5 pr-3 text-right font-mono ${bad ? 'text-red-600 font-bold' : 'text-slate-700'}`}>{d.contribLines}</td>
                       <td className="py-1.5 pr-3 text-right font-mono text-slate-700">{formatUSD(d.contribTotal)}</td>
                       <td className="py-1.5">
