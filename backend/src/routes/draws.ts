@@ -120,153 +120,15 @@ async function recalcHoldback(projectId: string) {
 //   - currentAmountAvailable  = priorAmount + thisDraw approvals (new cumulative)
 // We expose all three so the caller can show per-draw deltas and the new
 // running total without re-processing already-approved items.
-export interface DrawLineApproval {
-  itemCode: string
-  description: string
-  priorAmount: number
-  thisInspectionPct: number
-  currentAmountAvailable: number
-  /** currentAmountAvailable - priorAmount — money approved ONLY in this draw. */
-  deltaThisDraw: number
-}
-
-// Trinity tiene DOS formatos de Draw Report — el parser soporta ambos.
-//
-// Formato A (legacy, con itemCode N.N):
-//   "21.1 Survey0.64%$3,000.00$0.000%$0.00100%$3,000.00"
-//   line# + itemCode + desc + line% + $req + $prior + prior% + $eligible + this% + $current
-//
-// Formato B (actual 2026, sin itemCode):
-//   "2Survey0.53%$2,432.00$0.005%$121.60100%$2,432.00"
-//   line# + desc + lineP% + $req + $prior + priorP% + $eligibleThis + thisP% + $current
-//
-// CRITICAL: las descripciones pueden contener % adentro ("GC Fee — 5% of Total
-// Budget"). Anclamos la "cola numérica" (7 grupos al final) y dejamos que la
-// descripción sea cualquier cosa (.+? lazy) entre el line# y la cola.
-//
-// "Cola numérica" Trinity:
-//   lineP% $req $prior priorP% $eligThis thisP% $current
-// 7 grupos. Esto NO ambiguo porque la cola está al final de línea ($).
-const TRINITY_TAIL = /(\d+\.?\d*)%\$([\d,]+\.\d{2})\$([\d,]+\.\d{2})(\d+(?:\.\d+)?)%\$([\d,]+\.\d{2})(\d+(?:\.\d+)?)%\$([\d,]+\.\d{2})$/
-// Formato A: prefijo es lineNum + itemCode N.N + espacio + desc
-const TRINITY_ITEM_RE_A = new RegExp(
-  `^\\d{1,3}(\\d+\\.\\d+[A-Za-z]?)\\s+(.+?)${TRINITY_TAIL.source}`
-)
-// Formato B: prefijo es lineNum + desc (cualquier cosa, incluso % adentro)
-const TRINITY_ITEM_RE_B = new RegExp(
-  `^\\d{1,3}([A-Za-z].+?)${TRINITY_TAIL.source}`
-)
-
-export function parseTrinityDrawApprovals(text: string): DrawLineApproval[] {
-  const normalized = text.replace(/\r\n/g, '\n').replace(/\x00/g, '')
-  const out: DrawLineApproval[] = []
-  for (const ln of normalized.split('\n')) {
-    const trimmed = ln.trim()
-    if (!trimmed) continue
-
-    // Probar formato A primero (más estricto: tiene itemCode N.N).
-    // Grupos: 1=itemCode, 2=desc, 3=lineP%, 4=$req, 5=$prior, 6=priorP%,
-    //         7=$eligThis, 8=thisP%, 9=$current
-    let m = trimmed.match(TRINITY_ITEM_RE_A)
-    if (m) {
-      const priorAmount = parseFloat(m[5].replace(/,/g, ''))
-      const currentAmountAvailable = parseFloat(m[9].replace(/,/g, ''))
-      out.push({
-        itemCode: m[1],
-        description: m[2].trim(),
-        priorAmount,
-        thisInspectionPct: parseFloat(m[8]),
-        currentAmountAvailable,
-        deltaThisDraw: Math.max(0, currentAmountAvailable - priorAmount),
-      })
-      continue
-    }
-
-    // Formato B. Grupos: 1=desc, 2=lineP%, 3=$req, 4=$prior, 5=priorP%,
-    //                    6=$eligThis, 7=thisP%, 8=$current
-    // "Current Amount Available" ($current) es lo que Trinity certifica como
-    // APROBADO hasta este draw. El lender Hera/etc le aplica su % funded
-    // (típico 84.88%) para producir el netWire que descuenta del holdback.
-    m = trimmed.match(TRINITY_ITEM_RE_B)
-    if (m) {
-      const description = m[1].trim()
-      const priorAmount = parseFloat(m[4].replace(/,/g, ''))
-      const currentAmountAvailable = parseFloat(m[8].replace(/,/g, ''))
-      out.push({
-        itemCode: '',
-        description,
-        priorAmount,
-        thisInspectionPct: parseFloat(m[7]),
-        currentAmountAvailable,
-        deltaThisDraw: Math.max(0, currentAmountAvailable - priorAmount),
-      })
-    }
-  }
-  return out
-}
-
-// Normaliza descripción para matching robusto:
-//   - lowercase, trim
-//   - remueve guiones iniciales ("- Lumber" → "Lumber")
-//   - colapsa whitespace
-//   - elimina caracteres no alfanuméricos al final ("Survey  " → "survey")
-function normalizeItemDescription(s: string): string {
-  return s
-    .toLowerCase()
-    .trim()
-    .replace(/^[-–—\s]+/, '')   // strip leading dashes used as bullets
-    .replace(/\s+/g, ' ')
-    .replace(/[^a-z0-9 ]/g, '') // strip punctuation that varies between sources
-    .trim()
-}
-
-// Tokens significativos de una descripción (para matching difuso).
-const STOP_WORDS = new Set(['the', 'and', 'of', 'for', 'de', 'del', 'la', 'el', 'y'])
-function descTokens(s: string): Set<string> {
-  return new Set(
-    normalizeItemDescription(s).split(' ').filter(t => t.length > 1 && !STOP_WORDS.has(t))
-  )
-}
-
-// Matching difuso entre la línea del PDF del lender y las líneas del budget.
-// Caso real (proyecto 827, draw 5): Trinity reporta "Labor" / "Lumber" como
-// sub-líneas de Framing, mientras el budget dice "Framing - Labor" /
-// "Framing - Lumber". El match exacto por descripción fallaba EN SILENCIO y
-// esas aprobaciones nunca llegaban al Construction Budget.
-// Regla: gana la línea con mayor score si (a) el conjunto de tokens más
-// pequeño está CONTENIDO en el más grande, o (b) el solape Jaccard ≥ 0.6 —
-// y además el ganador supera al segundo por margen claro (sin ambigüedad).
-function fuzzyMatchLine<T extends { id: string; description: string }>(
-  pdfDesc: string,
-  lines: T[],
-  usedLineIds: Set<string>,
-): T | undefined {
-  const aTokens = descTokens(pdfDesc)
-  if (aTokens.size === 0) return undefined
-  let best: { line: T; score: number } | null = null
-  let second = 0
-  for (const l of lines) {
-    if (usedLineIds.has(l.id)) continue
-    const bTokens = descTokens(l.description)
-    if (bTokens.size === 0) continue
-    let inter = 0
-    for (const t of aTokens) if (bTokens.has(t)) inter++
-    if (inter === 0) continue
-    const smaller = Math.min(aTokens.size, bTokens.size)
-    const union = aTokens.size + bTokens.size - inter
-    const containment = inter / smaller
-    const jaccard = inter / union
-    const qualifies = containment >= 0.999 || jaccard >= 0.6
-    if (!qualifies) continue
-    const score = containment + jaccard // prioriza contención + solape total
-    if (!best || score > best.score) { second = best?.score ?? 0; best = { line: l, score } }
-    else if (score > second) second = score
-  }
-  if (!best) return undefined
-  // Ambigüedad: dos candidatas casi iguales → NO adivinar (mejor unmatched visible)
-  if (second > 0 && best.score - second < 0.15) return undefined
-  return best.line
-}
+// Parseo y matching Draw → Budget: módulo PURO y testeado (lib/drawMatching).
+// Se re-exporta para mantener compatibilidad con quien importe desde aquí.
+import {
+  DrawLineApproval,
+  parseTrinityDrawApprovals,
+  matchApprovalsToLines,
+} from '../lib/drawMatching'
+export { parseTrinityDrawApprovals, matchApprovalsToLines }
+export type { DrawLineApproval }
 
 // Recalcula valorAprobado de las líneas indicadas sumando todas sus contribuciones
 // activas (= contribuciones cuyo Draw aún existe). Es la operación inversa que
@@ -336,28 +198,20 @@ export async function applyDrawApprovalsToBudget(
     }
   }
 
-  const lines = await prisma.budgetLine.findMany({ where: { projectId } })
-  const byCode = new Map<string, (typeof lines)[number]>()
-  // byDesc guarda TODAS las líneas por descripción normalizada (no "última
-  // gana"): si dos líneas del budget normalizan igual, el match exacto solo
-  // aplica cuando es inequívoco (una sola candidata sin usar).
-  const byDesc = new Map<string, (typeof lines)[number][]>()
-  for (const l of lines) {
-    if (l.itemCode) byCode.set(l.itemCode, l)
-    const norm = normalizeItemDescription(l.description)
-    if (norm) {
-      const arr = byDesc.get(norm) ?? []
-      arr.push(l)
-      byDesc.set(norm, arr)
-    }
-  }
+  // ORDEN IMPORTA: Trinity lista los ítems en el mismo orden del loan budget.
+  // El matching vive en matchApprovalsToLines (función PURA, testeada por
+  // scripts/test-draw-matching.ts) — aquí solo se aplican los deltas.
+  const lines = await prisma.budgetLine.findMany({
+    where: { projectId },
+    orderBy: [{ order: 'asc' }, { itemCode: 'asc' }],
+  })
+  const lineById = new Map(lines.map(l => [l.id, l]))
+  const { decisions, unmatched } = matchApprovalsToLines(approvals, lines)
 
   let matched = 0
   let newlyApprovedItems = 0
   let newlyApprovedAmount = 0
-  const unmatched: string[] = []
   const touched = new Set<string>(touchedFromPrior)
-  const usedLineIds = new Set<string>()
 
   // drawNumber de este draw — para restar lo ya acumulado por los draws anteriores.
   const thisDraw = await prisma.draw.findUnique({ where: { id: drawId }, select: { drawNumber: true } })
@@ -366,22 +220,13 @@ export async function applyDrawApprovalsToBudget(
   const proj = await prisma.project.findUnique({ where: { id: projectId }, select: { drawValuesMode: true } })
   const mode = proj?.drawValuesMode === 'INCREMENTAL' ? 'INCREMENTAL' : 'ACUMULADO'
 
-  for (const a of approvals) {
-    // 1) Match por itemCode si viene en el PDF (formato A legacy)
-    let line = a.itemCode ? byCode.get(a.itemCode) : undefined
-    // 2) Match por descripción normalizada EXACTA (formato B 2026)
-    if (!line) {
-      const norm = normalizeItemDescription(a.description)
-      const candidates = (norm ? byDesc.get(norm) : undefined)?.filter(c => !usedLineIds.has(c.id)) ?? []
-      if (candidates.length === 1) line = candidates[0]
-    }
-    // 3) Fallback DIFUSO por tokens: "Labor" ⊂ "Framing - Labor",
-    //    "Lumber" ⊂ "Framing - Lumber", "Lumber Package" ≈ "Lumber", etc.
-    if (!line) {
-      line = fuzzyMatchLine(a.description, lines, usedLineIds)
-    }
-    if (!line) { unmatched.push(a.itemCode || a.description); continue }
-    usedLineIds.add(line.id)
+  const matchedPairs: Array<{ pdf: string; code: string; desc: string; delta: number }> = []
+
+  for (const d of decisions) {
+    if (d.headerRow || !d.lineId) continue
+    const a = d.approval
+    const line = lineById.get(d.lineId)
+    if (!line) continue
     matched++
     // Trinity reporta el ACUMULADO por ítem en cada draw. El aporte de ESTE draw
     // = acumulado reportado − lo ya acumulado por los draws anteriores de esta línea.
@@ -402,6 +247,7 @@ export async function applyDrawApprovalsToBudget(
       })
       delta = Math.max(0, reported - (priorAgg._sum.deltaAmount ?? 0))
     }
+    matchedPairs.push({ pdf: a.description || a.itemCode, code: line.itemCode, desc: line.description, delta: Math.round(delta * 100) / 100 })
     if (delta <= 0.005) continue
     await prisma.drawLineContribution.create({
       data: { drawId, budgetLineId: line.id, itemCode: line.itemCode, deltaAmount: delta },
@@ -428,6 +274,8 @@ export async function applyDrawApprovalsToBudget(
         applied: newlyApprovedItems,
         amount: Math.round(newlyApprovedAmount * 100) / 100,
         unmatched,
+        // Trazabilidad total: qué línea del PDF cayó en qué línea del budget
+        pairs: matchedPairs,
       }),
     },
   }).catch(() => {})
