@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import AuthGate from './components/AuthGate'
 import Splash from './components/Splash'
@@ -8,28 +8,35 @@ import { useQuery } from '@tanstack/react-query'
 import { useProjectStore } from './store/projectStore'
 import { projectsApi } from './lib/api'
 import Layout from './components/layout/Layout'
-import Dashboard from './pages/Dashboard'
-import Execution from './pages/Execution'
-import Draws from './pages/Draws'
-import Inspections from './pages/Inspections'
-import Alerts from './pages/Alerts'
-import Providers from './pages/Providers'
-import Financial from './pages/Financial'
-import Files from './pages/Files'
-import Projects from './pages/Projects'
-import Tasks from './pages/Tasks'
-import ConstructionBudget from './pages/ConstructionBudget'
-import PriceReference from './pages/PriceReference'
-import TechImport from './pages/TechImport'
-import PhasesDashboard from './pages/PhasesDashboard'
-import GanttView from './pages/GanttView'
-import Subcontracts from './pages/Subcontracts'
-import ChangeOrders from './pages/ChangeOrders'
-import PunchList from './pages/PunchList'
 import Landing from './Landing'
-import FinanceApp from './finance/FinanceApp'
-import AdminApp from './admin/AdminApp'
 import { useTheme } from './hooks/useTheme'
+
+// ── CODE-SPLITTING ────────────────────────────────────────────────────────────
+// Cada página y cada módulo se carga BAJO DEMANDA (dynamic import). Así el bundle
+// inicial baja de ~1.3MB a solo lo necesario para la Landing + AuthGate: el
+// arranque en móvil/red lenta es mucho más rápido y cada módulo (técnico,
+// financiero, administrativo) descarga su código solo cuando el usuario entra.
+// Recharts (vendor pesado) queda aislado en su propio chunk (ver vite.config.ts).
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const Execution = lazy(() => import('./pages/Execution'))
+const Draws = lazy(() => import('./pages/Draws'))
+const Inspections = lazy(() => import('./pages/Inspections'))
+const Alerts = lazy(() => import('./pages/Alerts'))
+const Providers = lazy(() => import('./pages/Providers'))
+const Financial = lazy(() => import('./pages/Financial'))
+const Files = lazy(() => import('./pages/Files'))
+const Projects = lazy(() => import('./pages/Projects'))
+const Tasks = lazy(() => import('./pages/Tasks'))
+const ConstructionBudget = lazy(() => import('./pages/ConstructionBudget'))
+const PriceReference = lazy(() => import('./pages/PriceReference'))
+const TechImport = lazy(() => import('./pages/TechImport'))
+const PhasesDashboard = lazy(() => import('./pages/PhasesDashboard'))
+const GanttView = lazy(() => import('./pages/GanttView'))
+const Subcontracts = lazy(() => import('./pages/Subcontracts'))
+const ChangeOrders = lazy(() => import('./pages/ChangeOrders'))
+const PunchList = lazy(() => import('./pages/PunchList'))
+const FinanceApp = lazy(() => import('./finance/FinanceApp'))
+const AdminApp = lazy(() => import('./admin/AdminApp'))
 
 function TechModule() {
   const { activeProjectId, setActiveProjectId } = useProjectStore()
@@ -63,6 +70,7 @@ function TechModule() {
 
   return (
     <Layout projectId={activeProjectId}>
+      <Suspense fallback={<PageFallback />}>
       <Routes>
         <Route path="/" element={<Navigate to="dashboard" replace />} />
         <Route path="projects" element={<Projects />} />
@@ -87,7 +95,20 @@ function TechModule() {
         <Route path="price-refs" element={<PriceReference />} />
         <Route path="import" element={<TechImport />} />
       </Routes>
+      </Suspense>
     </Layout>
+  )
+}
+
+// Fallback ligero mientras un chunk perezoso se descarga. Coherente con la
+// paleta (marfil + petróleo); no bloquea toda la pantalla como el Splash.
+function PageFallback() {
+  return (
+    <div className="flex items-center justify-center" style={{ minHeight: '60vh' }}>
+      <div className="text-sm font-mono" style={{ color: 'var(--brand-teal, #33495C)', opacity: 0.6 }}>
+        Cargando…
+      </div>
+    </div>
   )
 }
 
@@ -99,6 +120,7 @@ export default function App() {
       <AuthGate>
       <ConfirmProvider>
         <BrowserRouter>
+          <Suspense fallback={<PageFallback />}>
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/tech/*" element={
@@ -117,6 +139,7 @@ export default function App() {
               </ModuleGate>
             } />
           </Routes>
+          </Suspense>
         </BrowserRouter>
       </ConfirmProvider>
     </AuthGate>

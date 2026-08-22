@@ -52,3 +52,41 @@ export const punchCreateSchema = z.object({
 export const punchUpdateSchema = punchCreateSchema.partial().extend({
   status: z.enum(PUNCH_STATUSES).optional(),
 })
+
+// ===== PRECIOS DE REFERENCIA =====
+const optS = (max: number) => z.string().trim().max(max).nullable().optional()
+export const priceRefCreateSchema = z.object({
+  category: z.string().trim().min(1, 'La categoría es obligatoria').max(120),
+  code: optS(60),
+  description: z.string().trim().min(1, 'La descripción es obligatoria').max(500),
+  unit: z.string().trim().max(20).optional(),
+  priceLow: z.coerce.number().finite().nonnegative().optional(),
+  priceHigh: z.coerce.number().finite().nonnegative().optional(),
+  source: optS(200),
+  region: optS(120),
+  notes: optS(2000),
+})
+export const priceRefUpdateSchema = priceRefCreateSchema.partial()
+
+// ===== NOTAS =====
+export const noteCreateSchema = z.object({
+  title: optS(300),
+  content: z.string().trim().min(1, 'El contenido es obligatorio').max(20000),
+})
+export const noteUpdateSchema = noteCreateSchema.partial()
+
+// ===== INSPECCIONES (solo campos editables desde el frontend) =====
+export const INSPECTION_STATUSES = ['PENDIENTE', 'SOLICITADA', 'APROBADA', 'RECHAZADA', 'REPROGRAMADA'] as const
+export const inspectionUpdateSchema = z.object({
+  wbs: z.string().trim().max(60).optional(),
+  tipo: z.string().trim().max(120).optional(),
+  prerrequisitos: optS(5000),
+  prereqs: optS(20000), // JSON serializado de checklist
+  fase: optS(120),
+  fechaSolicitada: z.coerce.date().nullable().optional(),
+  fechaRealizada: z.coerce.date().nullable().optional(),
+  resultado: optS(500),
+  estado: z.enum(INSPECTION_STATUSES).optional(),
+  observaciones: optS(2000),
+  order: z.coerce.number().int().optional(),
+}).partial()

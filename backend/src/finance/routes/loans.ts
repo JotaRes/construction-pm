@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma";
 import { ok, fail } from "../lib/respond";
+import { parseOrError, loanCreateSchema, loanUpdateSchema } from "../lib/validate";
 
 const router = Router();
 
@@ -30,10 +31,8 @@ router.get("/", async (_req, res) => {
 
 router.post("/", async (req, res) => {
   try {
-    const data = { ...req.body };
-    if (data.date) data.date = new Date(data.date);
-    if (data.startDate) data.startDate = new Date(data.startDate);
-    if (data.endDate) data.endDate = new Date(data.endDate);
+    const { data, error } = parseOrError(loanCreateSchema, req.body);
+    if (error !== null) return fail(res, error, 400);
     if (!data.classification) data.classification = classifyLoan(data.interestRate);
     ok(res, await prisma.finLoan.create({ data }));
   } catch (e) { fail(res, e); }
@@ -41,10 +40,8 @@ router.post("/", async (req, res) => {
 
 router.patch("/:id", async (req, res) => {
   try {
-    const data = { ...req.body };
-    if (data.date) data.date = new Date(data.date);
-    if (data.startDate) data.startDate = new Date(data.startDate);
-    if (data.endDate) data.endDate = new Date(data.endDate);
+    const { data, error } = parseOrError(loanUpdateSchema, req.body);
+    if (error !== null) return fail(res, error, 400);
     if (data.interestRate != null && !data.classification) data.classification = classifyLoan(data.interestRate);
     ok(res, await prisma.finLoan.update({ where: { id: +req.params.id }, data }));
   } catch (e) { fail(res, e); }

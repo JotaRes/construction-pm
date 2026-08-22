@@ -1,6 +1,13 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma";
 import { ok, fail } from "../lib/respond";
+import {
+  parseOrError,
+  capitalContributionCreateSchema,
+  capitalContributionUpdateSchema,
+  nonBankContributionCreateSchema,
+  nonBankContributionUpdateSchema,
+} from "../lib/validate";
 
 const router = Router();
 
@@ -36,8 +43,8 @@ router.get("/", async (_req, res) => {
 
 router.post("/contributions", async (req, res) => {
   try {
-    const data = { ...req.body };
-    if (data.date) data.date = new Date(data.date);
+    const { data, error } = parseOrError(capitalContributionCreateSchema, req.body);
+    if (error !== null) return fail(res, error, 400);
     const created = await prisma.finCapitalContribution.create({ data });
     ok(res, created);
   } catch (e) { fail(res, e); }
@@ -45,8 +52,8 @@ router.post("/contributions", async (req, res) => {
 
 router.patch("/contributions/:id", async (req, res) => {
   try {
-    const data = { ...req.body };
-    if (data.date) data.date = new Date(data.date);
+    const { data, error } = parseOrError(capitalContributionUpdateSchema, req.body);
+    if (error !== null) return fail(res, error, 400);
     const updated = await prisma.finCapitalContribution.update({ where: { id: +req.params.id }, data });
     ok(res, updated);
   } catch (e) { fail(res, e); }
@@ -61,15 +68,15 @@ router.delete("/contributions/:id", async (req, res) => {
 
 router.post("/non-bank", async (req, res) => {
   try {
-    const data = { ...req.body };
-    if (data.date) data.date = new Date(data.date);
+    const { data, error } = parseOrError(nonBankContributionCreateSchema, req.body);
+    if (error !== null) return fail(res, error, 400);
     ok(res, await prisma.finNonBankContribution.create({ data }));
   } catch (e) { fail(res, e); }
 });
 router.patch("/non-bank/:id", async (req, res) => {
   try {
-    const data = { ...req.body };
-    if (data.date) data.date = new Date(data.date);
+    const { data, error } = parseOrError(nonBankContributionUpdateSchema, req.body);
+    if (error !== null) return fail(res, error, 400);
     ok(res, await prisma.finNonBankContribution.update({ where: { id: +req.params.id }, data }));
   } catch (e) { fail(res, e); }
 });

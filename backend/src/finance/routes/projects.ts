@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma";
 import { ok, fail } from "../lib/respond";
+import { parseOrError, finProjectCreateSchema, finProjectUpdateSchema } from "../lib/validate";
 
 const router = Router();
 
@@ -34,14 +35,18 @@ router.get("/:id", async (req, res) => {
 
 router.post("/", async (req, res) => {
   try {
-    const created = await prisma.finProject.create({ data: req.body });
+    const { data, error } = parseOrError(finProjectCreateSchema, req.body);
+    if (error !== null) return fail(res, error, 400);
+    const created = await prisma.finProject.create({ data: data as any });
     ok(res, created);
   } catch (e) { fail(res, e); }
 });
 
 router.patch("/:id", async (req, res) => {
   try {
-    const updated = await prisma.finProject.update({ where: { id: +req.params.id }, data: req.body });
+    const { data, error } = parseOrError(finProjectUpdateSchema, req.body);
+    if (error !== null) return fail(res, error, 400);
+    const updated = await prisma.finProject.update({ where: { id: +req.params.id }, data: data as any });
     ok(res, updated);
   } catch (e) { fail(res, e); }
 });

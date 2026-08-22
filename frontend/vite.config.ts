@@ -17,6 +17,11 @@ export default defineConfig({
           'vendor-react': ['react', 'react-dom', 'react-router-dom'],
           'vendor-charts': ['recharts'],
           'vendor-query': ['@tanstack/react-query'],
+          // Vendors pesados que solo usan páginas puntuales: aislados para que no
+          // pesen en el bundle inicial (gantt = vista Gantt, pdf-lib = draws/files).
+          'vendor-gantt': ['gantt-task-react'],
+          'vendor-pdf': ['pdf-lib'],
+          'vendor-dates': ['date-fns'],
         },
       },
     },

@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express'
 import { prisma } from '../lib/prisma'
+import { parseOrError, noteCreateSchema, noteUpdateSchema } from '../lib/validate'
 
 const router = Router()
 
@@ -17,8 +18,10 @@ router.get('/:projectId/notes', async (req: Request, res: Response) => {
 
 router.post('/:projectId/notes', async (req: Request, res: Response) => {
   try {
+    const { data, error } = parseOrError(noteCreateSchema, req.body)
+    if (error !== null) return res.status(400).json({ data: null, error })
     const note = await prisma.note.create({
-      data: { ...req.body, projectId: req.params.projectId },
+      data: { ...data, projectId: req.params.projectId },
     })
     res.json({ data: note, error: null })
   } catch (e) {
@@ -28,7 +31,9 @@ router.post('/:projectId/notes', async (req: Request, res: Response) => {
 
 router.patch('/:projectId/notes/:id', async (req: Request, res: Response) => {
   try {
-    const note = await prisma.note.update({ where: { id: req.params.id }, data: req.body })
+    const { data, error } = parseOrError(noteUpdateSchema, req.body)
+    if (error !== null) return res.status(400).json({ data: null, error })
+    const note = await prisma.note.update({ where: { id: req.params.id }, data })
     res.json({ data: note, error: null })
   } catch (e) {
     res.status(500).json({ data: null, error: String(e) })

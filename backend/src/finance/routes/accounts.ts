@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma";
 import { ok, fail } from "../lib/respond";
+import { parseOrError, accountCreateSchema, accountUpdateSchema } from "../lib/validate";
 
 const router = Router();
 
@@ -102,26 +103,14 @@ router.get("/:id/reconciliation", async (req, res) => {
 
 router.patch("/:id", async (req, res) => {
   try {
-    const {
-      initialBalance, reportedBalance, currentBalance,
-      accountNumber, routingNumber, address,
-      name, bank, type, active, notes,
-    } = req.body;
-    const data: any = {};
-    if (initialBalance !== undefined) data.initialBalance = Number(initialBalance);
-    if (reportedBalance !== undefined) data.reportedBalance = Number(reportedBalance);
-    if (currentBalance !== undefined) data.currentBalance = Number(currentBalance);
-    if (accountNumber !== undefined) data.accountNumber = accountNumber;
-    if (routingNumber !== undefined) data.routingNumber = routingNumber;
-    if (address !== undefined) data.address = address;
-    if (name !== undefined) data.name = name;
-    if (bank !== undefined) data.bank = bank;
-    if (type !== undefined) data.type = type;
-    if (active !== undefined) data.active = !!active;
-    if (notes !== undefined) data.notes = notes;
+    // 'code' no es editable tras crear (es la llave del catálogo) → se ignora
+    // aunque venga en el body: el schema update lo permite pero lo omitimos aquí.
+    const { data, error } = parseOrError(accountUpdateSchema, req.body);
+    if (error !== null) return fail(res, error, 400);
+    const { code, ...editable } = data;
     const updated = await prisma.finAccount.update({
       where: { id: +req.params.id },
-      data,
+      data: editable as any, // Zod ya validó/limpió; los FK nullables no encajan en el tipo "checked" de Prisma
     });
     ok(res, updated);
   } catch (e) { fail(res, e); }
@@ -130,22 +119,23 @@ router.patch("/:id", async (req, res) => {
 // POST /api/finance/accounts — crear una cuenta nueva
 router.post("/", async (req, res) => {
   try {
-    const { code, name, bank, type, accountNumber, routingNumber, address,
-      currentBalance, initialBalance, reportedBalance, active, notes, spvId } = req.body;
-    if (!code || !name || !bank) return fail(res, "code, name y bank son obligatorios", 400);
+    const { data, error } = parseOrError(accountCreateSchema, req.body);
+    if (error !== null) return fail(res, error, 400);
     const created = await prisma.finAccount.create({
       data: {
-        code, name, bank,
-        type: type || "operativa",
-        accountNumber: accountNumber || null,
-        routingNumber: routingNumber || null,
-        address: address || null,
-        currentBalance: Number(currentBalance || 0),
-        initialBalance: Number(initialBalance || 0),
-        reportedBalance: Number(reportedBalance || 0),
-        active: active !== false,
-        notes: notes || null,
-        spvId: spvId ? +spvId : null,
+        code: data.code,
+        name: data.name,
+        bank: data.bank,
+        type: data.type || "operativa",
+        accountNumber: data.accountNumber ?? null,
+        routingNumber: data.routingNumber ?? null,
+        address: data.address ?? null,
+        currentBalance: data.currentBalance ?? 0,
+        initialBalance: data.initialBalance ?? 0,
+        reportedBalance: data.reportedBalance ?? 0,
+        active: data.active !== false,
+        notes: data.notes ?? null,
+        spvId: data.spvId ?? null,
       },
     });
     ok(res, created);

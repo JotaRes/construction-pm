@@ -173,11 +173,36 @@ Paleta oficial (única fuente: bloque de tokens en `frontend/src/index.css`):
   Provider global (sin duplicar, por nombre normalizado). Botón "Importar del
   financiero" en la página Proveedores.
 
+## Endurecimiento agosto 2026 (validación, tests, bundle)
+
+- **Validación Zod completa en escritura**: además de admin/movements/changeOrders/
+  punchList (ya existentes), ahora validan TODAS las rutas de escritura financieras
+  (`capital`, `loans`, `accounts`, `projects`, `catalogs` — SPV/partner/lender/
+  provider/category/origin) y las técnicas que volcaban `req.body` crudo a Prisma
+  (`priceRefs`, `notes`, `inspections`). Esquemas en `finance/lib/validate.ts` y
+  `lib/validate.ts`. Patrón: `parseOrError(schema, req.body)` → `if (error !== null)
+  return fail/400`. Zod hace `.strip()` (descarta campos desconocidos ANTES de la BD).
+  NOTA: para FK nullables (spvId/admCompanyId/lender.type) Prisma exige `data as any`
+  tras validar — es seguro porque Zod ya limpió; ver movements.ts como patrón.
+  El módulo técnico (items/budgetLines/subactivities/tasks) ya hacía whitelisting
+  manual campo por campo — no se tocó, es equivalente.
+- **Tests de lógica en CI**: `.github/workflows/ci.yml` job `backend` corre
+  `npm run test:pure` (runner `scripts/run-tests.ts`). Cubre matching de draws,
+  parsers de HUD/extractos/Excel — sin BD. Si un cambio rompe el parseo o el
+  matcher, el push queda en ❌. `test:all` (con BD) sigue disponible local.
+- **Code-splitting frontend**: `App.tsx` carga cada página y cada módulo con
+  `React.lazy` + `Suspense` (fallback `PageFallback`). El bundle inicial bajó de
+  ~1.3MB a ~140KB. Recharts/pdf-lib/gantt/date-fns aislados en chunks propios
+  (`vite.config.ts` manualChunks) — solo cargan cuando su página se abre.
+  NO reconvertir los `lazy()` a imports estáticos.
+
 ## Pendientes conocidos / Ideas
 
-- Bundle frontend > 500KB → considerar code-split de Recharts via dynamic import
 - Importador de Excel del módulo financiero acepta el archivo "DOC FINANCIERO 2025-2026.xlsx" del usuario
 - Cloudinary env vars deben estar configuradas en Render para upload de PDFs
+- (Seguridad, para versión final) rotar APP_PASSWORD/JWT_SECRET y considerar repo
+  privado: el historial git público aún contiene credenciales viejas. El password
+  actual se mantiene por decisión del usuario hasta la versión final.
 
 ## Reglas de oro
 

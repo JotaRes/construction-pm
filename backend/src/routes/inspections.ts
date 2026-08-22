@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express'
 import { prisma } from '../lib/prisma'
+import { parseOrError, inspectionUpdateSchema } from '../lib/validate'
 
 const router = Router()
 
@@ -17,9 +18,11 @@ router.get('/:projectId/inspections', async (req: Request, res: Response) => {
 
 router.patch('/:projectId/inspections/:id', async (req: Request, res: Response) => {
   try {
+    const { data, error } = parseOrError(inspectionUpdateSchema, req.body)
+    if (error !== null) return res.status(400).json({ data: null, error })
     const inspection = await prisma.inspection.update({
       where: { id: req.params.id },
-      data: req.body,
+      data,
     })
     res.json({ data: inspection, error: null })
   } catch (e) {

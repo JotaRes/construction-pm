@@ -8,7 +8,10 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
     "db:reset": "prisma migrate reset --force && tsx prisma/seed.ts",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "test": "tsx scripts/run-tests.ts",
+    "test:pure": "tsx scripts/run-tests.ts pure",
+    "test:all": "tsx scripts/run-tests.ts all"
   },
   "dependencies": {
     "@prisma/client": "^5.14.0",
