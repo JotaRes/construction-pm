@@ -10,6 +10,7 @@
     "db:reset": "prisma migrate reset --force && tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "test": "tsx scripts/run-tests.ts",
+    "test:ci": "tsx scripts/run-tests.ts ci",
     "test:pure": "tsx scripts/run-tests.ts pure",
     "test:all": "tsx scripts/run-tests.ts all"
   },

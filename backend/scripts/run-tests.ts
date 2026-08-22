@@ -14,8 +14,13 @@
 //
 // Uso:
 //   npx tsx scripts/run-tests.ts          → all si hay DATABASE_URL, si no pure
-//   npx tsx scripts/run-tests.ts pure     → fuerza solo lógica pura
-//   npx tsx scripts/run-tests.ts all      → fuerza suite completa
+//   npx tsx scripts/run-tests.ts ci       → solo herméticos (lo que corre GitHub CI)
+//   npx tsx scripts/run-tests.ts pure     → toda la lógica sin BD (incl. fixtures locales)
+//   npx tsx scripts/run-tests.ts all      → suite completa (requiere Postgres + fixtures)
+//
+// IMPORTANTE: "pure" y "all" leen PDFs/Excel REALES desde rutas absolutas del
+// disco (DIRECTOR CONSTRUCTIVO/LOTES/...) — solo funcionan en la máquina del
+// usuario. El CI usa "ci" porque esos archivos no viven en el repo.
 // ============================================================
 import { spawnSync } from 'node:child_process'
 import path from 'node:path'
@@ -23,13 +28,24 @@ import { fileURLToPath } from 'node:url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-// Tests de lógica pura — sin base de datos. Seguros en cualquier entorno.
-const PURE = [
+// HERMÉTICOS — lógica pura con fixtures EN LÍNEA: no tocan la BD, no leen
+// archivos del disco del usuario, no usan red. Corren idénticos en cualquier
+// máquina y en el CI de GitHub. Son la red de seguridad automática del pipeline.
+const CI_SAFE = [
   'test-draw-matching.ts',
   'test-statement-parser.ts',
+]
+
+// LÓGICA CON FIXTURES LOCALES — parsers que leen PDFs/Excel REALES desde rutas
+// absolutas del disco del usuario (DIRECTOR CONSTRUCTIVO/LOTES/...). Pasan en
+// local pero NO en CI (esos archivos no están en el repo). Solo suite local.
+const LOCAL_FIXTURES = [
   'test-excel-extraction.ts',
   'test-all-document-parsers.ts',
 ]
+
+// Alias histórico: "pure" = toda la lógica sin BD (herméticos + fixtures locales).
+const PURE = [...CI_SAFE, ...LOCAL_FIXTURES]
 
 // Tests que crean/leen datos reales en Postgres. Se autoabastecen de fixtures
 // y limpian tras de sí, pero necesitan una BD migrada (DATABASE_URL).
@@ -42,19 +58,24 @@ const DB = [
   'test-trinity-newformat-realpdf.ts',
 ]
 
-function resolveScope(): 'pure' | 'all' {
+function resolveScope(): 'ci' | 'pure' | 'all' {
   const arg = (process.argv[2] || '').toLowerCase()
-  if (arg === 'pure' || arg === 'all') return arg
+  if (arg === 'ci' || arg === 'pure' || arg === 'all') return arg
   // Auto: si hay una BD configurada, corre todo; si no, solo lo puro.
   return process.env.DATABASE_URL ? 'all' : 'pure'
 }
 
 const scope = resolveScope()
-const files = scope === 'all' ? [...PURE, ...DB] : PURE
+const files =
+  scope === 'ci'  ? CI_SAFE :
+  scope === 'all' ? [...PURE, ...DB] :
+  /* pure */        PURE
 
 console.log('============================================================')
 console.log(`RUNNER DE TESTS — alcance: ${scope.toUpperCase()} (${files.length} archivos)`)
-if (scope === 'pure') {
+if (scope === 'ci') {
+  console.log('(solo herméticos — aptos para GitHub CI; sin BD ni archivos locales)')
+} else if (scope === 'pure') {
   console.log('(sin DATABASE_URL → se omiten los tests con base de datos)')
 }
 console.log('============================================================')

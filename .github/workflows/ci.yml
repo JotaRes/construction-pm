@@ -53,11 +53,13 @@ jobs:
         working-directory: backend
       - run: npx tsc --noEmit
         working-directory: backend
-      # Red de seguridad de LÓGICA: corre la suite pura (matching de draws,
-      # parsers de HUD/extractos/Excel) — sin base de datos, apta para CI.
-      # Si un cambio rompe el parseo o el matcher, el push queda en ❌.
-      - name: Tests de lógica (suite pura)
-        run: npm run test:pure
+      # Red de seguridad de LÓGICA: corre solo los tests HERMÉTICOS (matching de
+      # draws + parser de extractos) — fixtures en línea, sin BD, sin red, sin
+      # archivos locales. Si un cambio rompe el matcher o el parser, el push
+      # queda en ❌. Los tests que leen PDFs/Excel reales del disco o requieren
+      # Postgres son suite LOCAL (npm run test:pure / test:all), no viven en el repo.
+      - name: Tests de lógica (herméticos)
+        run: npm run test:ci
         working-directory: backend
 
   frontend:
@@ -75,47 +77,9 @@ jobs:
       - run: npm run build
         working-directory: frontend
 
-  tests:
-    name: Backend — suite de tests (lógica + BD)
-    runs-on: ubuntu-latest
-    # Postgres efímero solo para esta corrida. Los tests con BD se autoabastecen
-    # de fixtures y limpian tras de sí; nunca tocan datos reales.
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: restrepoacosta_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/restrepoacosta_test
-      # Valores de prueba (no son secretos de producción). Algunos módulos leen
-      # estas vars al importarse; los tests no autentican contra ellas.
-      JWT_SECRET: ci-test-secret
-      APP_PASSWORD: ci-test-password
-      WIPE_PASSWORD: ci-test-wipe
-      NODE_ENV: test
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: backend/package-lock.json
-      - run: npm ci --include=dev
-        working-directory: backend
-      - run: npx prisma generate
-        working-directory: backend
-      - name: Aplicar migraciones a la BD de prueba
-        run: npx prisma migrate deploy
-        working-directory: backend
-      - name: Ejecutar suite completa (lógica pura + tests con BD)
-        run: npm run test:all
-        working-directory: backend
+  # NOTA — la suite COMPLETA (Postgres + tests que leen PDFs/Excel reales) NO
+  # corre en CI: esos tests dependen de archivos del disco del usuario
+  # (DIRECTOR CONSTRUCTIVO/LOTES/...) que no viven en el repo, y un Postgres
+  # efímero no los puede alimentar. Se ejecutan en LOCAL con:
+  #     docker compose up -d   &&   cd backend && npm run test:all
+  # El CI protege la lógica crítica con los tests herméticos del job `backend`.
