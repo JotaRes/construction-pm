@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { Lock, Eye, EyeOff, AlertCircle } from 'lucide-react'
+import { useI18n } from '../i18n'
+import LanguageToggle from './LanguageToggle'
 
 function RALogoMark({ width = 80, height = 60 }: { width?: number; height?: number }) {
   return (
@@ -88,6 +90,7 @@ export function logout() {
 }
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
+  const { t } = useI18n()
   const authed = useAuth()
   const [password, setPassword] = useState('')
   const [showPwd, setShowPwd] = useState(false)
@@ -98,7 +101,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex items-center justify-center h-screen" style={{ background: 'var(--brand-cream)' }}>
         <div className="text-sm font-mono animate-pulse" style={{ color: 'var(--brand-teal)' }}>
-          Verificando acceso...
+          {t('auth.checking')}
         </div>
       </div>
     )
@@ -117,9 +120,9 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     } catch (err: unknown) {
       const e = err as { response?: { status?: number; data?: { error?: string } } }
       if (e.response?.status === 429) {
-        setError('Demasiados intentos fallidos. Espera 15 minutos.')
+        setError(t('auth.tooManyAttempts'))
       } else {
-        setError(e.response?.data?.error ?? 'Error de conexión')
+        setError(e.response?.data?.error ?? t('auth.connectionError'))
       }
     } finally {
       setLoading(false)
@@ -136,6 +139,11 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
         <div className="h-1.5" style={{ background: 'linear-gradient(90deg, #1D1D1F 0%, #3E5A70 100%)' }} />
 
         <div className="px-8 py-10">
+          {/* Conmutador de idioma — disponible ANTES de autenticarse */}
+          <div className="flex justify-end -mt-3 mb-2">
+            <LanguageToggle variant="light" />
+          </div>
+
           {/* Logo */}
           <div className="flex flex-col items-center mb-8">
             <RALogoMark width={100} height={75} />
@@ -146,7 +154,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
               Restrepo Acosta
             </h1>
             <p className="text-[10px] uppercase tracking-[0.2em] font-semibold mt-0.5" style={{ color: '#3E5A70' }}>
-              Global Holdings LLC
+              {t('auth.company')}
             </p>
           </div>
 
@@ -155,7 +163,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
             <div>
               <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wider"
                 style={{ color: '#1D1D1F' }}>
-                Contraseña de acceso
+                {t('auth.passwordLabel')}
               </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
@@ -213,7 +221,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
               onMouseEnter={e => !loading && (e.currentTarget.style.transform = 'translateY(-1px)')}
               onMouseLeave={e => (e.currentTarget.style.transform = 'none')}
             >
-              {loading ? 'Verificando...' : 'Ingresar al sistema'}
+              {loading ? t('auth.submitting') : t('auth.submit')}
             </button>
           </form>
         </div>
@@ -221,7 +229,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
         {/* Footer */}
         <div className="px-8 pb-6 text-center">
           <p className="text-[10px]" style={{ color: 'rgba(29,29,31,0.35)' }}>
-            Sistema privado · Acceso restringido
+            {t('auth.footer')}
           </p>
         </div>
       </div>

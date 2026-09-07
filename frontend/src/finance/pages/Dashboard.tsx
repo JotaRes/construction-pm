@@ -12,6 +12,7 @@ import {
   AreaChart, Area, CartesianGrid,
 } from "recharts";
 import { Link } from "react-router-dom";
+import { useI18n } from "../../i18n";
 
 // Paleta DS v2.1 — usa CSS vars como fills => las gráficas reaccionan a dark/light en vivo
 const COLORS = [
@@ -20,6 +21,7 @@ const COLORS = [
 ];
 
 export default function Dashboard() {
+  const { t, tc, locale } = useI18n();
   const { data, isLoading } = useQuery({
     queryKey: ["dashboard"],
     queryFn: API.getDashboard,
@@ -36,52 +38,53 @@ export default function Dashboard() {
     refetchInterval: 120_000,
   });
 
-  if (isLoading || !data) return <div style={{ color: 'var(--brand-teal)' }}>Cargando dashboard...</div>;
+  if (isLoading || !data) return <div style={{ color: 'var(--brand-teal)' }}>{t('dash.loading')}</div>;
   const k = data.kpis;
   const accountsDetail: any[] = data.accountsDetail || [];
 
+  // Los `name` alimentan leyendas y tooltips de Recharts → se traducen aquí.
   const equityVsDebt = [
-    { name: "Equity socios", value: k.totalEquity },
-    { name: "Deuda viva", value: k.outstandingDebt },
+    { name: t('fin.chart.partnerEquity'), value: k.totalEquity },
+    { name: t('fin.chart.outstandingDebt'), value: k.outstandingDebt },
   ];
 
   const corpVsProject = [
-    { name: "Gasto proyecto", value: k.projectExpenses },
-    { name: "Gasto corporativo", value: k.corpExpenses },
-    { name: "Otros", value: k.otherExpenses },
+    { name: t('fin.chart.projectSpend'), value: k.projectExpenses },
+    { name: t('fin.chart.corpSpend'), value: k.corpExpenses },
+    { name: t('fin.chart.otherSpend'), value: k.otherExpenses },
   ];
 
   return (
     <div className="space-y-6 page-content">
       <div className="fin-section flex items-end justify-between flex-wrap gap-3 mb-2">
         <div>
-          <div className="fin-page-title">Dashboard ejecutivo</div>
-          <div className="fin-page-sub">Lectura consolidada · {new Date().toLocaleDateString("es-CO", { year: "numeric", month: "long", day: "numeric" })}</div>
+          <div className="fin-page-title">{t('fin.dash.title')}</div>
+          <div className="fin-page-sub">{t('fin.dash.sub')} · {new Date().toLocaleDateString(locale, { year: "numeric", month: "long", day: "numeric" })}</div>
         </div>
       </div>
 
       {/* KPIs principales */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
-        <KPI label="Liquidez total" value={usd(k.totalLiquidez, { compact: true })} icon={<Wallet size={16} />} tone="accent" hint={`${accountsDetail.length} cuentas activas`} />
-        <KPI label="Equity aportado" value={usd(k.totalEquity, { compact: true })} icon={<Users size={16} />} tone="positive" hint={`${data.equityByPartner.length} socios`} />
-        <KPI label="Deuda viva" value={usd(k.outstandingDebt, { compact: true })} icon={<Banknote size={16} />} tone={k.outstandingDebt > 0 ? "negative" : "default"} hint={`${k.totalLoans > 0 ? pct(k.outstandingDebt / k.totalLoans) : "0%"} del total`} />
-        <KPI label="Variación neta" value={usd(k.variacion ?? 0, { compact: true, sign: true })} icon={<Activity size={16} />} tone={(k.variacion ?? 0) >= 0 ? "positive" : "negative"} hint="ingresos − egresos" />
-        <KPI label="Movimientos" value={k.totalMovements.toLocaleString()} icon={<Activity size={16} />} hint={`${k.intercompanyMovs} transferencias`} />
+        <KPI label={t('fin.kpi.liquidity')} value={usd(k.totalLiquidez, { compact: true })} icon={<Wallet size={16} />} tone="accent" hint={t('fin.kpi.activeAccounts', { n: accountsDetail.length })} />
+        <KPI label={t('fin.kpi.equity')} value={usd(k.totalEquity, { compact: true })} icon={<Users size={16} />} tone="positive" hint={t('fin.kpi.partners', { n: data.equityByPartner.length })} />
+        <KPI label={t('fin.kpi.debt')} value={usd(k.outstandingDebt, { compact: true })} icon={<Banknote size={16} />} tone={k.outstandingDebt > 0 ? "negative" : "default"} hint={t('fin.kpi.ofTotal', { pct: k.totalLoans > 0 ? pct(k.outstandingDebt / k.totalLoans) : "0%" })} />
+        <KPI label={t('fin.kpi.netChange')} value={usd(k.variacion ?? 0, { compact: true, sign: true })} icon={<Activity size={16} />} tone={(k.variacion ?? 0) >= 0 ? "positive" : "negative"} hint={t('fin.kpi.incomeMinusExpenses')} />
+        <KPI label={t('fin.kpi.movements')} value={k.totalMovements.toLocaleString(locale)} icon={<Activity size={16} />} hint={t('fin.kpi.transfers', { n: k.intercompanyMovs })} />
       </div>
 
       {/* === SALDOS EN CUENTAS Y TOTALES === */}
       <div className="card p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="flex items-center gap-2" style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 300, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
-            <Landmark size={18} style={{ color: 'var(--accent)' }} /> Saldos en cuentas
+            <Landmark size={18} style={{ color: 'var(--accent)' }} /> {t('fin.accounts.title')}
           </h2>
           <Link to="/finance/accounts" className="text-xs font-semibold flex items-center gap-1 hover:underline" style={{ color: 'var(--accent)' }}>
-            Ver todas <ArrowRight size={12} />
+            {t('common.viewAll')} <ArrowRight size={12} />
           </Link>
         </div>
         {accountsDetail.length === 0 ? (
           <p className="text-sm py-6 text-center" style={{ color: 'var(--brand-teal2)' }}>
-            Sin cuentas registradas. Ve a <Link to="/finance/accounts" className="font-semibold hover:underline" style={{ color: 'var(--accent)' }}>Cuentas bancarias</Link> para crear la primera.
+            {t('fin.accounts.emptyLead')} <Link to="/finance/accounts" className="font-semibold hover:underline" style={{ color: 'var(--accent)' }}>{t('nav.fin.accounts')}</Link> {t('fin.accounts.emptyTail')}
           </p>
         ) : (
           <>
@@ -114,7 +117,7 @@ export default function Dashboard() {
                     {usd(a.balance)}
                   </div>
                   <div className="text-[10px] mt-1" style={{ color: 'var(--brand-teal2)' }}>
-                    {a.movementCount} movimiento{a.movementCount !== 1 ? "s" : ""}
+                    {tc('fin.movementCount', a.movementCount)}
                     {a.accountNumber ? ` · #${a.accountNumber.slice(-4)}` : ""}
                   </div>
                 </Link>
@@ -123,15 +126,15 @@ export default function Dashboard() {
             {/* Totales */}
             <div className="grid grid-cols-3 gap-3 pt-4" style={{ borderTop: '1px solid rgba(29,29,31,0.1)' }}>
               <div className="text-center">
-                <div className="text-[10px] uppercase tracking-wider font-semibold mb-1" style={{ color: 'var(--brand-teal2)' }}>Ingresos totales</div>
+                <div className="text-[10px] uppercase tracking-wider font-semibold mb-1" style={{ color: 'var(--brand-teal2)' }}>{t('fin.totals.income')}</div>
                 <div className="text-lg font-bold font-mono text-emerald-600">{usd(k.totalIngresos ?? 0, { compact: true })}</div>
               </div>
               <div className="text-center">
-                <div className="text-[10px] uppercase tracking-wider font-semibold mb-1" style={{ color: 'var(--brand-teal2)' }}>Egresos totales</div>
+                <div className="text-[10px] uppercase tracking-wider font-semibold mb-1" style={{ color: 'var(--brand-teal2)' }}>{t('fin.totals.expenses')}</div>
                 <div className="text-lg font-bold font-mono text-red-600">{usd(k.totalEgresos ?? 0, { compact: true })}</div>
               </div>
               <div className="text-center">
-                <div className="text-[10px] uppercase tracking-wider font-semibold mb-1" style={{ color: 'var(--brand-teal2)' }}>Saldo consolidado</div>
+                <div className="text-[10px] uppercase tracking-wider font-semibold mb-1" style={{ color: 'var(--brand-teal2)' }}>{t('fin.totals.consolidated')}</div>
                 <div className={cls("text-lg font-bold font-mono", k.totalLiquidez >= 0 ? "text-emerald-600" : "text-red-600")}>{usd(k.totalLiquidez, { compact: true })}</div>
               </div>
             </div>
@@ -144,22 +147,22 @@ export default function Dashboard() {
         <div className="card p-5">
           <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
             <h2 className="flex items-center gap-2" style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 300, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
-              <Calendar size={16} style={{ color: 'var(--accent)' }} /> Cashflow forecast (90 días)
+              <Calendar size={16} style={{ color: 'var(--accent)' }} /> {t('fin.forecast.title')}
             </h2>
             <div className="flex items-center gap-4 text-xs flex-wrap">
               {forecast.runwayDays != null && (
                 <div className="flex items-center gap-1.5">
-                  <span style={{ color: 'var(--brand-teal2)' }}>Runway:</span>
+                  <span style={{ color: 'var(--brand-teal2)' }}>{t('fin.forecast.runway')}</span>
                   <span className="font-mono font-bold" style={{
                     color: forecast.runwayDays > 180 ? 'var(--ok)' :
                            forecast.runwayDays > 90 ? 'var(--warn)' : 'var(--err)'
                   }}>
-                    {forecast.runwayDays} días
+                    {t('fin.forecast.days', { n: forecast.runwayDays })}
                   </span>
                 </div>
               )}
               <div className="flex items-center gap-1.5">
-                <span style={{ color: 'var(--brand-teal2)' }}>Interés diario:</span>
+                <span style={{ color: 'var(--brand-teal2)' }}>{t('fin.forecast.dailyInterest')}</span>
                 <span className="font-mono font-bold text-red-600">{usd(forecast.interestPerDay)}</span>
               </div>
             </div>
@@ -181,13 +184,13 @@ export default function Dashboard() {
                   formatter={(v: any) => usd(v as number)}
                   labelFormatter={(d) => `📅 ${d}`}
                 />
-                <Area type="monotone" dataKey="balance" stroke="var(--inf)" strokeWidth={2} fill="url(#balanceFill)" name="Saldo proyectado" />
+                <Area type="monotone" dataKey="balance" stroke="var(--inf)" strokeWidth={2} fill="url(#balanceFill)" name={t('fin.forecast.projectedBalance')} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
           {forecast.upcomingMaturity && forecast.upcomingMaturity.length > 0 && (
             <div className="mt-3 p-3" style={{ background: 'var(--warn-soft)', border: '1px solid var(--warn-border)', borderRadius: 8 }}>
-              <div className="text-xs font-bold mb-1" style={{ color: 'var(--warn)' }}>⚠ Vencimientos de préstamo próximos (90 días)</div>
+              <div className="text-xs font-bold mb-1" style={{ color: 'var(--warn)' }}>{t('fin.forecast.maturities')}</div>
               <ul className="text-xs space-y-0.5" style={{ color: 'var(--warn)' }}>
                 {forecast.upcomingMaturity.slice(0, 5).map((m: any) => (
                   <li key={m.loanId}>
@@ -205,17 +208,17 @@ export default function Dashboard() {
         <div className="card p-5">
           <div className="flex items-center justify-between mb-3">
             <h2 className="flex items-center gap-2" style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 300, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
-              <ShieldAlert size={16} style={{ color: 'var(--accent)' }} /> Insights ejecutivos
+              <ShieldAlert size={16} style={{ color: 'var(--accent)' }} /> {t('fin.insights.title')}
             </h2>
             <div className="flex items-center gap-2 text-xs">
               {insights.bySeverity.red > 0 && (
-                <span className="fin-badge fin-b-err">{insights.bySeverity.red} críticas</span>
+                <span className="fin-badge fin-b-err">{t('fin.insights.critical', { n: insights.bySeverity.red })}</span>
               )}
               {insights.bySeverity.warn > 0 && (
-                <span className="fin-badge fin-b-warn">{insights.bySeverity.warn} advertencias</span>
+                <span className="fin-badge fin-b-warn">{t('fin.insights.warnings', { n: insights.bySeverity.warn })}</span>
               )}
               {insights.bySeverity.info > 0 && (
-                <span className="fin-badge fin-b-inf">{insights.bySeverity.info} info</span>
+                <span className="fin-badge fin-b-inf">{t('fin.insights.info', { n: insights.bySeverity.info })}</span>
               )}
             </div>
           </div>
@@ -249,7 +252,7 @@ export default function Dashboard() {
         <div className="card p-4">
           <div className="flex items-center gap-2 mb-3">
             <AlertOctagon size={16} style={{ color: 'var(--warn)' }} />
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 300, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>Alertas activas</h2>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 300, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>{t('fin.alerts.title')}</h2>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-2">
             {data.alerts.map((a: any) => (
@@ -276,26 +279,26 @@ export default function Dashboard() {
       <div className="grid lg:grid-cols-3 gap-4">
         <div className="card p-4 lg:col-span-2">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-bold flex items-center gap-2" style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 300, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}><Building2 size={14} style={{ color: 'var(--accent)' }} /> Portafolio por proyecto</h2>
-            <Link to="/finance/projects" className="text-xs hover:underline font-semibold" style={{ color: 'var(--accent)' }}>Ver todos →</Link>
+            <h2 className="text-sm font-bold flex items-center gap-2" style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 300, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}><Building2 size={14} style={{ color: 'var(--accent)' }} /> {t('fin.portfolio.title')}</h2>
+            <Link to="/finance/projects" className="text-xs hover:underline font-semibold" style={{ color: 'var(--accent)' }}>{t('common.viewAllArrow')}</Link>
           </div>
           <div className="overflow-x-auto">
             <table className="fin-dt">
               <thead>
                 <tr>
-                  <th>Código</th>
-                  <th>Proyecto</th>
-                  <th>Línea</th>
-                  <th>Estado</th>
-                  <th style={{ textAlign: 'right' }}>Ingresos</th>
-                  <th style={{ textAlign: 'right' }}>Egresos</th>
-                  <th style={{ textAlign: 'right' }}>Neto</th>
-                  <th style={{ textAlign: 'right' }}>ROI est.</th>
+                  <th>{t('fin.table.code')}</th>
+                  <th>{t('fin.table.project')}</th>
+                  <th>{t('fin.table.line')}</th>
+                  <th>{t('fin.table.status')}</th>
+                  <th style={{ textAlign: 'right' }}>{t('fin.table.income')}</th>
+                  <th style={{ textAlign: 'right' }}>{t('fin.table.expenses')}</th>
+                  <th style={{ textAlign: 'right' }}>{t('fin.table.net')}</th>
+                  <th style={{ textAlign: 'right' }}>{t('fin.table.roi')}</th>
                 </tr>
               </thead>
               <tbody>
                 {data.byProject.length === 0 ? (
-                  <tr><td colSpan={8} className="py-6 text-center" style={{ color: 'var(--brand-teal2)' }}>Sin proyectos registrados.</td></tr>
+                  <tr><td colSpan={8} className="py-6 text-center" style={{ color: 'var(--brand-teal2)' }}>{t('fin.portfolio.empty')}</td></tr>
                 ) : data.byProject.map((p: any) => (
                   <tr key={p.id}>
                     <td className="py-2 px-2 font-mono text-xs" style={{ color: 'var(--brand-teal2)' }}>{p.code}</td>
@@ -316,9 +319,9 @@ export default function Dashboard() {
         </div>
 
         <div className="card p-4">
-          <h2 className="text-sm font-bold mb-3 flex items-center gap-2" style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 300, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}><Users size={14} style={{ color: 'var(--accent)' }} /> Capital por socio</h2>
+          <h2 className="text-sm font-bold mb-3 flex items-center gap-2" style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 300, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}><Users size={14} style={{ color: 'var(--accent)' }} /> {t('fin.capital.title')}</h2>
           {data.equityByPartner.length === 0 ? (
-            <p className="text-sm py-4 text-center" style={{ color: 'var(--brand-teal2)' }}>Sin aportes registrados.</p>
+            <p className="text-sm py-4 text-center" style={{ color: 'var(--brand-teal2)' }}>{t('fin.capital.empty')}</p>
           ) : (
             <>
               <div className="space-y-2">
@@ -329,7 +332,7 @@ export default function Dashboard() {
                       <span className="font-mono font-semibold text-emerald-600">{usd(p.total, { compact: true })}</span>
                     </div>
                     <div className="text-[11px] mt-1" style={{ color: 'var(--brand-teal2)' }}>
-                      Bancarizado: {usd(p.equity, { compact: true })} · No-banc: {usd(p.nonBank, { compact: true })}
+                      {t('fin.capital.banked')}: {usd(p.equity, { compact: true })} · {t('fin.capital.nonBanked')}: {usd(p.nonBank, { compact: true })}
                     </div>
                   </div>
                 ))}
@@ -353,7 +356,7 @@ export default function Dashboard() {
       {/* Distribuciones */}
       <div className="grid lg:grid-cols-2 gap-4">
         <div className="card p-4">
-          <h2 className="text-sm font-bold mb-3 flex items-center gap-2" style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 300, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}><PieIcon size={14} style={{ color: 'var(--accent)' }} /> Gasto: proyecto vs corporativo</h2>
+          <h2 className="text-sm font-bold mb-3 flex items-center gap-2" style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 300, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}><PieIcon size={14} style={{ color: 'var(--accent)' }} /> {t('fin.chart.spendTitle')}</h2>
           <div className="h-56">
             <ResponsiveContainer>
               <PieChart>
@@ -368,7 +371,7 @@ export default function Dashboard() {
         </div>
 
         <div className="card p-4">
-          <h2 className="text-sm font-bold mb-3 flex items-center gap-2" style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 300, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}><TrendingDown size={14} style={{ color: 'var(--accent)' }} /> Top categorías de gasto</h2>
+          <h2 className="text-sm font-bold mb-3 flex items-center gap-2" style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 300, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}><TrendingDown size={14} style={{ color: 'var(--accent)' }} /> {t('fin.chart.topCategories')}</h2>
           <div className="h-56">
             <ResponsiveContainer>
               <BarChart data={data.topCategories.slice(0, 8)} layout="vertical" margin={{ left: 80 }}>
@@ -384,7 +387,7 @@ export default function Dashboard() {
 
       {/* Por línea */}
       <div className="card p-4">
-        <h2 className="text-sm font-bold mb-3 flex items-center gap-2" style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 300, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}><TrendingUp size={14} style={{ color: 'var(--accent)' }} /> Performance por línea de negocio</h2>
+        <h2 className="text-sm font-bold mb-3 flex items-center gap-2" style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 300, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}><TrendingUp size={14} style={{ color: 'var(--accent)' }} /> {t('fin.chart.byLine')}</h2>
         <div className="h-64">
           <ResponsiveContainer>
             <BarChart data={data.byLine}>
@@ -392,9 +395,9 @@ export default function Dashboard() {
               <YAxis tick={{ fontSize: 10, fill: "#48484A" }} tickFormatter={(v) => usd(v, { compact: true })} />
               <Tooltip contentStyle={{ background: "#fff", border: "1px solid rgba(29,29,31,0.15)", borderRadius: 8 }} formatter={(v: any) => usd(v as number)} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Bar dataKey="ingresos" fill="var(--ok)" name="Ingresos" />
-              <Bar dataKey="egresos" fill="var(--err)" name="Egresos" />
-              <Bar dataKey="neto" fill="var(--accent)" name="Neto" />
+              <Bar dataKey="ingresos" fill="var(--ok)" name={t('fin.table.income')} />
+              <Bar dataKey="egresos" fill="var(--err)" name={t('fin.table.expenses')} />
+              <Bar dataKey="neto" fill="var(--accent)" name={t('fin.table.net')} />
             </BarChart>
           </ResponsiveContainer>
         </div>

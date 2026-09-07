@@ -13,6 +13,8 @@ import { useState, useEffect, ReactNode } from 'react'
 import { Lock, ArrowLeft } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import axios from 'axios'
+import { useI18n } from '../i18n'
+import LanguageToggle from './LanguageToggle'
 
 const STORAGE_KEY = (m: string) => `ra_module_unlocked_${m}`
 
@@ -23,6 +25,7 @@ interface Props {
 }
 
 export default function ModuleGate({ moduleName, moduleLabel, children }: Props) {
+  const { t } = useI18n()
   const [unlocked, setUnlocked] = useState(false)
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -46,10 +49,10 @@ export default function ModuleGate({ moduleName, moduleLabel, children }: Props)
         setUnlocked(true)
         setPassword('')
       } else {
-        setError('Contraseña incorrecta')
+        setError(t('gate.wrongPassword'))
       }
     } catch (err: any) {
-      setError(err?.response?.data?.error || 'Contraseña incorrecta')
+      setError(err?.response?.data?.error || t('gate.wrongPassword'))
     } finally {
       setLoading(false)
     }
@@ -77,6 +80,11 @@ export default function ModuleGate({ moduleName, moduleLabel, children }: Props)
         {/* Header con gradiente brand */}
         <div className="h-1.5" style={{ background: bg }} />
         <div className="px-8 py-10">
+          {/* Conmutador de idioma */}
+          <div className="flex justify-end -mt-3 mb-2">
+            <LanguageToggle variant="light" />
+          </div>
+
           {/* Logo + título */}
           <div className="flex flex-col items-center mb-6">
             <div
@@ -100,7 +108,7 @@ export default function ModuleGate({ moduleName, moduleLabel, children }: Props)
               className="text-[10px] uppercase tracking-[0.2em] font-semibold mt-1"
               style={{ color: accent }}
             >
-              Restrepo Acosta · Global Holding
+              {t('gate.subtitle')}
             </p>
           </div>
 
@@ -110,7 +118,7 @@ export default function ModuleGate({ moduleName, moduleLabel, children }: Props)
                 className="block text-xs font-semibold mb-1.5 uppercase tracking-wider"
                 style={{ color: 'var(--brand-teal)' }}
               >
-                Contraseña de acceso al módulo
+                {t('gate.passwordLabel')}
               </label>
               <div className="relative">
                 <Lock
@@ -147,7 +155,7 @@ export default function ModuleGate({ moduleName, moduleLabel, children }: Props)
                 boxShadow: '0 4px 14px rgba(29,29,31,0.25)',
               }}
             >
-              {loading ? 'Verificando…' : `Ingresar a ${moduleLabel}`}
+              {loading ? t('common.verifying') : t('gate.enter', { module: moduleLabel })}
             </button>
           </form>
 
@@ -157,14 +165,14 @@ export default function ModuleGate({ moduleName, moduleLabel, children }: Props)
               className="text-xs font-semibold inline-flex items-center gap-1 hover:underline"
               style={{ color: 'var(--brand-teal2)' }}
             >
-              <ArrowLeft size={12} /> Volver al inicio
+              <ArrowLeft size={12} /> {t('common.backHome')}
             </Link>
           </div>
         </div>
 
         <div className="px-8 pb-6 text-center">
           <p className="text-[10px]" style={{ color: 'rgba(29,29,31,0.4)' }}>
-            Acceso protegido · Sesión válida hasta cerrar el navegador
+            {t('gate.footer')}
           </p>
         </div>
       </div>

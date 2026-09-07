@@ -4,9 +4,12 @@ import {
   Building2, Wallet, Landmark, TrendingUp, HardHat, ArrowUpRight,
   AlertTriangle, Layers, CircleDollarSign,
 } from 'lucide-react'
+import { useI18n } from '../i18n'
 
-const fmt = (n: number) =>
-  n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+// La moneda es SIEMPRE USD (la operación es en EE. UU.), pero el separador de
+// miles y el formato siguen el locale activo: 1.234.567 en es-CO, 1,234,567 en en-US.
+const makeFmt = (locale: string) => (n: number) =>
+  n.toLocaleString(locale, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
 
 function Stat({ icon, label, value, sub, accent }: {
   icon: React.ReactNode; label: string; value: string; sub?: React.ReactNode; accent: string
@@ -28,6 +31,8 @@ function Stat({ icon, label, value, sub, accent }: {
 }
 
 export default function HomeExecutiveDashboard() {
+  const { t, tc, locale } = useI18n()
+  const fmt = makeFmt(locale)
   const { data, isLoading } = useQuery<PortfolioSummary>({
     queryKey: ['portfolio-executive'],
     queryFn: () => portfolioApi.executive(),
@@ -36,7 +41,7 @@ export default function HomeExecutiveDashboard() {
   if (isLoading || !data) {
     return (
       <div className="rounded-2xl p-8 text-center" style={{ background: 'rgba(255,255,255,0.6)', border: '1px solid rgba(29,29,31,0.12)', color: 'var(--brand-teal2)' }}>
-        Cargando dashboard ejecutivo…
+        {t('home.loading')}
       </div>
     )
   }
@@ -50,35 +55,35 @@ export default function HomeExecutiveDashboard() {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <h2 className="text-lg font-bold" style={{ color: 'var(--brand-teal)' }}>
-            Dashboard Ejecutivo
+            {t('home.title')}
           </h2>
           <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full" style={{ background: 'rgba(29,29,31,0.08)', color: 'var(--brand-teal2)' }}>
-            Holding consolidado
+            {t('home.consolidatedHolding')}
           </span>
         </div>
         <div className="flex gap-1.5">
-          <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full" style={{ background: 'rgba(29,29,31,0.1)', color: 'var(--brand-teal)' }}>Técnico</span>
-          <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full" style={{ background: 'rgba(62,90,112,0.15)', color: 'var(--brand-gold)' }}>Financiero</span>
+          <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full" style={{ background: 'rgba(29,29,31,0.1)', color: 'var(--brand-teal)' }}>{t('modules.tech')}</span>
+          <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full" style={{ background: 'rgba(62,90,112,0.15)', color: 'var(--brand-gold)' }}>{t('modules.finance')}</span>
         </div>
       </div>
 
       {/* KPI row — cruce de ambos módulos */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Stat icon={<CircleDollarSign size={14} />} accent="var(--brand-gold)"
-          label="Caja consolidada" value={fmt(f.consolidatedCash)}
+          label={t('home.cash')} value={fmt(f.consolidatedCash)}
           sub={<span>
             <span style={{ color: '#16a34a' }}>↑{fmt(f.totalIngresos)}</span>{' · '}
             <span style={{ color: '#ef4444' }}>↓{fmt(f.totalEgresos)}</span>
           </span>} />
         <Stat icon={<TrendingUp size={14} />} accent="var(--brand-teal)"
-          label="Budget portafolio" value={fmt(p.totalBudget)}
-          sub={<span>Pagado {fmt(p.totalPaid)} · <span style={{ color: varColor }}>{p.budgetVariancePct > 0 ? '+' : ''}{p.budgetVariancePct}%</span></span>} />
+          label={t('home.portfolioBudget')} value={fmt(p.totalBudget)}
+          sub={<span>{t('home.paid')} {fmt(p.totalPaid)} · <span style={{ color: varColor }}>{p.budgetVariancePct > 0 ? '+' : ''}{p.budgetVariancePct}%</span></span>} />
         <Stat icon={<Landmark size={14} />} accent="var(--brand-teal)"
-          label="Construction loans" value={fmt(p.totalLoan)}
-          sub={`Disponible ${fmt(p.totalRemainingLoan)}`} />
+          label={t('home.constructionLoans')} value={fmt(p.totalLoan)}
+          sub={`${t('home.available')} ${fmt(p.totalRemainingLoan)}`} />
         <Stat icon={<HardHat size={14} />} accent="var(--brand-gold)"
-          label="Avance global" value={`${p.weightedProgress}%`}
-          sub={`${p.projectCount} proyecto${p.projectCount === 1 ? '' : 's'} · ${p.pendingInspections} insp. pend.`} />
+          label={t('home.globalProgress')} value={`${p.weightedProgress}%`}
+          sub={`${tc('home.projectCount', p.projectCount)} · ${p.pendingInspections} ${t('home.pendingInsp')}`} />
       </div>
 
       {/* Cuentas del holding */}
@@ -102,7 +107,7 @@ export default function HomeExecutiveDashboard() {
       {/* Proyectos del portafolio */}
       <div>
         <div className="text-[11px] font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5" style={{ color: 'var(--brand-teal2)' }}>
-          <Building2 size={13} /> Proyectos en obra
+          <Building2 size={13} /> {t('home.projectsUnderway')}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {p.projects.map(proj => (
@@ -124,7 +129,7 @@ export default function HomeExecutiveDashboard() {
                   )}
                   {proj.overdueTasks > 0 && (
                     <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444' }}>
-                      {proj.overdueTasks} venc.
+                      {proj.overdueTasks} {t('home.overdueShort')}
                     </span>
                   )}
                 </div>
@@ -134,17 +139,17 @@ export default function HomeExecutiveDashboard() {
                 <div className="h-1.5 rounded-full" style={{ width: `${proj.progress}%`, background: proj.progress >= 80 ? '#16a34a' : proj.progress >= 40 ? 'var(--brand-gold)' : 'var(--brand-teal)' }} />
               </div>
               <div className="flex items-center justify-between text-[11px]" style={{ color: 'var(--brand-teal2)' }}>
-                <span>{proj.progress}% avance</span>
-                <span className="font-mono">Budget {fmt(proj.totalBudget)}</span>
+                <span>{proj.progress}% {t('home.progressSuffix')}</span>
+                <span className="font-mono">{t('home.budget')} {fmt(proj.totalBudget)}</span>
               </div>
               <div className="flex items-center justify-between text-[11px] mt-1" style={{ color: 'var(--brand-teal2)' }}>
-                <span className="flex items-center gap-1"><ArrowUpRight size={10} /> Fondeado {fmt(proj.totalFunded)}</span>
-                <span className="font-mono">Loan {fmt(proj.loanAmount)}</span>
+                <span className="flex items-center gap-1"><ArrowUpRight size={10} /> {t('home.funded')} {fmt(proj.totalFunded)}</span>
+                <span className="font-mono">{t('home.loan')} {fmt(proj.loanAmount)}</span>
               </div>
             </div>
           ))}
           {p.projects.length === 0 && (
-            <p className="text-sm" style={{ color: 'var(--brand-teal2)' }}>No hay proyectos cargados.</p>
+            <p className="text-sm" style={{ color: 'var(--brand-teal2)' }}>{t('home.noProjects')}</p>
           )}
         </div>
       </div>

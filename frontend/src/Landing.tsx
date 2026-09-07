@@ -3,6 +3,8 @@ import { Building2, Wallet, Landmark, ArrowRight, Download, Loader2 } from 'luci
 import { useState } from 'react'
 import { logout } from './components/AuthGate'
 import HomeExecutiveDashboard from './components/HomeExecutiveDashboard'
+import { useI18n } from './i18n'
+import LanguageToggle from './components/LanguageToggle'
 
 const TOKEN_KEY = 'pm_auth_token'
 
@@ -38,6 +40,7 @@ function RALogoMark({ width = 96, height = 72 }: { width?: number; height?: numb
 }
 
 export default function Landing() {
+  const { t } = useI18n()
   const [downloading, setDownloading] = useState(false)
   const [downloadError, setDownloadError] = useState('')
 
@@ -62,7 +65,7 @@ export default function Landing() {
       URL.revokeObjectURL(url)
     } catch (err: unknown) {
       setDownloadError(
-        err instanceof Error ? err.message : 'No se pudo descargar el respaldo'
+        err instanceof Error ? err.message : t('landing.backupFailed')
       )
     } finally {
       setDownloading(false)
@@ -85,17 +88,20 @@ export default function Landing() {
               Restrepo Acosta
             </div>
             <div className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--brand-gold)' }}>
-              Global Holdings LLC
+              {t('auth.company')}
             </div>
           </div>
         </div>
-        <button
-          onClick={logout}
-          className="text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
-          style={{ color: 'var(--brand-teal)', border: '1px solid rgba(29,29,31,0.2)' }}
-        >
-          Cerrar sesión
-        </button>
+        <div className="flex items-center gap-2.5">
+          <LanguageToggle variant="light" />
+          <button
+            onClick={logout}
+            className="text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+            style={{ color: 'var(--brand-teal)', border: '1px solid rgba(29,29,31,0.2)' }}
+          >
+            {t('common.logout')}
+          </button>
+        </div>
       </header>
 
       {/* Contenido */}
@@ -116,7 +122,7 @@ export default function Landing() {
               className="text-[11px] uppercase tracking-[0.25em] font-semibold"
               style={{ color: 'var(--brand-gold)' }}
             >
-              Global Holdings LLC
+              {t('auth.company')}
             </div>
           </div>
 
@@ -131,7 +137,7 @@ export default function Landing() {
               className="inline-block text-[11px] uppercase tracking-[0.18em] px-4 py-1 rounded-full"
               style={{ background: 'rgba(29,29,31,0.07)', color: 'var(--brand-teal2)' }}
             >
-              Entrar a los módulos
+              {t('landing.enterModules')}
             </div>
           </div>
 
@@ -142,16 +148,16 @@ export default function Landing() {
           <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
             {[
               {
-                to: '/tech', num: '01', title: 'Técnico', Icon: Building2,
-                desc: 'Gestión de obra residencial: proyectos, fases, presupuestos, ejecución, draws, inspecciones, alertas y proveedores.',
+                to: '/tech', num: '01', title: t('modules.tech'), Icon: Building2,
+                desc: t('landing.techDesc'),
               },
               {
-                to: '/finance', num: '02', title: 'Financiero', Icon: Wallet,
-                desc: 'CFO digital: movimientos, capital aportado, deuda, conciliación bancaria, reportes ejecutivos y trazabilidad documental.',
+                to: '/finance', num: '02', title: t('modules.finance'), Icon: Wallet,
+                desc: t('landing.financeDesc'),
               },
               {
-                to: '/admin', num: '03', title: 'Administrativo', Icon: Landmark,
-                desc: 'Gobierno corporativo: organigrama del holding, expediente jurídico y documental de cada empresa, cumplimiento, alertas de vencimiento y tareas.',
+                to: '/admin', num: '03', title: t('modules.admin'), Icon: Landmark,
+                desc: t('landing.adminDesc'),
               },
             ].map(({ to, num, title, Icon, desc }) => (
               <Link
@@ -171,14 +177,14 @@ export default function Landing() {
                   <Icon size={24} strokeWidth={1.8} color="#1D1D1F" />
                 </div>
                 <div className="text-[11px] uppercase tracking-[0.18em] font-medium mb-2" style={{ color: '#86868B' }}>
-                  Módulo {num}
+                  {t('landing.moduleLabel', { num })}
                 </div>
                 <h2 className="text-2xl font-semibold mb-3" style={{ color: '#1D1D1F', letterSpacing: '-0.02em' }}>{title}</h2>
                 <p className="text-sm leading-relaxed mb-6" style={{ color: '#48484A' }}>
                   {desc}
                 </p>
                 <div className="flex items-center gap-2 text-sm font-medium" style={{ color: '#3E5A70' }}>
-                  Entrar al módulo
+                  {t('landing.enterModule')}
                   <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
                 </div>
               </Link>
@@ -203,10 +209,10 @@ export default function Landing() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-semibold mb-0.5" style={{ color: 'var(--brand-teal)' }}>
-                  Respaldo completo del sistema
+                  {t('landing.backupTitle')}
                 </div>
                 <div className="text-xs" style={{ color: 'var(--brand-teal2)' }}>
-                  Datos de ambos módulos · 2 dashboards Excel · código fuente · ZIP único
+                  {t('landing.backupSub')}
                 </div>
                 {downloadError && (
                   <div className="text-xs mt-1 text-red-500">Error: {downloadError}</div>
@@ -224,12 +230,12 @@ export default function Landing() {
                 {downloading ? (
                   <>
                     <Loader2 size={14} className="animate-spin" />
-                    Generando…
+                    {t('landing.backupGenerating')}
                   </>
                 ) : (
                   <>
                     <Download size={14} />
-                    Descargar backup
+                    {t('landing.backupDownload')}
                   </>
                 )}
               </button>
@@ -238,7 +244,7 @@ export default function Landing() {
 
           {/* Footer info */}
           <div className="text-center mt-8 text-xs font-mono" style={{ color: 'var(--brand-teal2)' }}>
-            Acceso seguro · sesión única para ambos módulos
+            {t('landing.secureAccess')}
           </div>
         </div>
       </main>

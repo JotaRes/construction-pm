@@ -3,6 +3,7 @@ import { systemApi } from '../lib/api'
 import type { SystemCapacity } from '../lib/api'
 import { AlertTriangle, HardDrive } from 'lucide-react'
 import { useState } from 'react'
+import { useI18n } from '../i18n'
 
 function fmtBytes(b: number) {
   if (b < 1024) return `${b} B`
@@ -13,6 +14,7 @@ function fmtBytes(b: number) {
 
 // Banner global de capacidad documental. Solo se muestra en warning (>80%) o critical (>90%).
 export default function CapacityBanner() {
+  const { t } = useI18n()
   const [dismissed, setDismissed] = useState(false)
   const { data } = useQuery<SystemCapacity>({
     queryKey: ['system-capacity'],
@@ -35,11 +37,15 @@ export default function CapacityBanner() {
       <div className="flex-1">
         <div className="font-semibold">
           {isCritical
-            ? `Capacidad documental al ${pct}% — cerca del límite del plan`
-            : `Capacidad documental al ${pct}% — considera limpiar archivos antiguos`}
+            ? t('capacity.critical', { pct })
+            : t('capacity.warning', { pct })}
         </div>
         <div className="text-[10px] mt-0.5 opacity-80">
-          {fmtBytes(data.totalBytes)} de {fmtBytes(data.limitBytes)} usados · {data.totalDocs} documentos almacenados
+          {t('capacity.detail', {
+            used: fmtBytes(data.totalBytes),
+            limit: fmtBytes(data.limitBytes),
+            docs: data.totalDocs,
+          })}
         </div>
       </div>
       <div className="w-32 hidden md:block">
@@ -51,7 +57,7 @@ export default function CapacityBanner() {
         </div>
       </div>
       <button onClick={() => setDismissed(true)} className="text-[11px] opacity-60 hover:opacity-100 ml-2">
-        Ocultar
+        {t('common.hide')}
       </button>
     </div>
   )

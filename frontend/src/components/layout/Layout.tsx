@@ -15,51 +15,58 @@ import { useProjectStore } from '../../store/projectStore'
 import type { Alert, Task } from '../../lib/types'
 import { tasksApi } from '../../lib/api'
 import { useState, useRef, useEffect } from 'react'
+import { useI18n, type TranslationKey } from '../../i18n'
+import LanguageToggle from '../LanguageToggle'
 
-const navGroups = [
+// La navegación guarda CLAVES de traducción, no texto. El texto se resuelve en
+// el render con t(), así el sidebar cambia de idioma sin remontar nada.
+const navGroups: Array<{
+  labelKey: TranslationKey
+  items: Array<{ to: string; icon: typeof LayoutDashboard; labelKey: TranslationKey }>
+}> = [
   {
-    label: 'Portafolio',
+    labelKey: 'nav.tech.group.portfolio',
     items: [
-      { to: '/tech/projects',   icon: FolderKanban,    label: 'Proyectos' },
-      { to: '/tech/dashboard',  icon: LayoutDashboard, label: 'Dashboard' },
+      { to: '/tech/projects',   icon: FolderKanban,    labelKey: 'nav.tech.projects' },
+      { to: '/tech/dashboard',  icon: LayoutDashboard, labelKey: 'nav.tech.dashboard' },
     ],
   },
   {
-    label: 'Ejecución',
+    labelKey: 'nav.tech.group.execution',
     items: [
-      { to: '/tech/execution',  icon: DollarSign,      label: 'Presupuesto & Ejecución' },
-      { to: '/tech/phases',     icon: Layers,          label: 'Fases' },
-      { to: '/tech/construction-budget', icon: FileSpreadsheet, label: 'Const. Budget' },
-      { to: '/tech/draws',      icon: TrendingUp,      label: 'Draws' },
-      { to: '/tech/inspections',icon: Search,          label: 'Inspecciones' },
-      { to: '/tech/gantt',      icon: GanttChart,      label: 'Gantt' },
+      { to: '/tech/execution',  icon: DollarSign,      labelKey: 'nav.tech.execution' },
+      { to: '/tech/phases',     icon: Layers,          labelKey: 'nav.tech.phases' },
+      { to: '/tech/construction-budget', icon: FileSpreadsheet, labelKey: 'nav.tech.constructionBudget' },
+      { to: '/tech/draws',      icon: TrendingUp,      labelKey: 'nav.tech.draws' },
+      { to: '/tech/inspections',icon: Search,          labelKey: 'nav.tech.inspections' },
+      { to: '/tech/gantt',      icon: GanttChart,      labelKey: 'nav.tech.gantt' },
     ],
   },
   {
-    label: 'Análisis',
+    labelKey: 'nav.tech.group.analysis',
     items: [
-      { to: '/tech/financial',  icon: BarChart3,       label: 'Financiero' },
-      { to: '/tech/alerts',     icon: AlertTriangle,   label: 'Alertas' },
-      { to: '/tech/tasks',      icon: ListChecks,      label: 'Tareas' },
+      { to: '/tech/financial',  icon: BarChart3,       labelKey: 'nav.tech.financial' },
+      { to: '/tech/alerts',     icon: AlertTriangle,   labelKey: 'nav.tech.alerts' },
+      { to: '/tech/tasks',      icon: ListChecks,      labelKey: 'nav.tech.tasks' },
     ],
   },
   {
-    label: 'Operaciones',
+    labelKey: 'nav.tech.group.operations',
     items: [
-      { to: '/tech/subcontracts', icon: HardHat,       label: 'Subcontratos' },
-      { to: '/tech/change-orders', icon: FileDiff,    label: 'Change Orders' },
-      { to: '/tech/punch-list', icon: ClipboardCheck, label: 'Punch List' },
-      { to: '/tech/files',      icon: Folder,          label: 'Archivos' },
-      { to: '/tech/import',     icon: Archive,         label: 'Importar / Backup' },
+      { to: '/tech/subcontracts', icon: HardHat,       labelKey: 'nav.tech.subcontracts' },
+      { to: '/tech/change-orders', icon: FileDiff,     labelKey: 'nav.tech.changeOrders' },
+      { to: '/tech/punch-list', icon: ClipboardCheck,  labelKey: 'nav.tech.punchList' },
+      { to: '/tech/files',      icon: Folder,          labelKey: 'nav.tech.files' },
+      { to: '/tech/import',     icon: Archive,         labelKey: 'nav.tech.import' },
     ],
   },
   {
     // R2: catálogo GENERAL del holding — no pertenece a ningún proyecto.
     // Proveedores y precios de referencia aplican a TODOS los proyectos.
-    label: 'Catálogo General',
+    labelKey: 'nav.tech.group.catalog',
     items: [
-      { to: '/tech/providers',  icon: Users,           label: 'Proveedores' },
-      { to: '/tech/price-refs', icon: Tag,             label: 'Precios Ref.' },
+      { to: '/tech/providers',  icon: Users,           labelKey: 'nav.tech.providers' },
+      { to: '/tech/price-refs', icon: Tag,             labelKey: 'nav.tech.priceRefs' },
     ],
   },
 ]
@@ -73,6 +80,7 @@ interface Props {
 }
 
 function ProjectSwitcher({ projectId }: { projectId: string }) {
+  const { t } = useI18n()
   const { setActiveProjectId } = useProjectStore()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
@@ -108,7 +116,7 @@ function ProjectSwitcher({ projectId }: { projectId: string }) {
         letterSpacing: '0.22em', color: 'var(--text-muted)',
         marginBottom: 6, paddingLeft: 2,
       }}>
-        Proyecto activo
+        {t('layout.activeProject')}
       </div>
       <button
         onClick={() => setOpen(o => !o)}
@@ -170,7 +178,7 @@ function ProjectSwitcher({ projectId }: { projectId: string }) {
               onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'var(--row-hover-v2)'}
               onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'transparent'}
             >
-              + Nuevo proyecto
+              {t('layout.newProject')}
             </button>
           </div>
         </div>
@@ -179,30 +187,37 @@ function ProjectSwitcher({ projectId }: { projectId: string }) {
   )
 }
 
-function getPageTitle(pathname: string): { title: string; sub: string } {
+// Devuelve CLAVES de traducción (no texto): el idioma se resuelve en el render.
+function getPageTitleKeys(pathname: string): { titleKey: TranslationKey; subKey: TranslationKey } {
   const flat = navItems.find(n => pathname === n.to || pathname.startsWith(n.to + '/'))
-  if (!flat) return { title: 'Módulo Técnico', sub: 'Gestión de obra residencial' }
-  const subs: Record<string, string> = {
-    '/tech/projects': 'Portafolio de proyectos',
-    '/tech/dashboard': 'Vista general del proyecto activo',
-    '/tech/execution': 'Planeación de presupuesto + control de ejecución en campo',
-    '/tech/budget': 'Presupuesto y control de costos',
-    '/tech/construction-budget': 'Presupuesto de construcción detallado',
-    '/tech/draws': 'Solicitudes de desembolso',
-    '/tech/inspections': 'Registro de inspecciones',
-    '/tech/financial': 'Análisis financiero del proyecto',
-    '/tech/alerts': 'Alertas y notificaciones activas',
-    '/tech/tasks': 'Gestión de tareas y pendientes',
-    '/tech/providers': 'Registro de proveedores',
-    '/tech/notes': 'Notas y bitácora',
-    '/tech/files': 'Archivos y documentación',
-    '/tech/price-refs': 'Precios de referencia',
-    '/tech/import': 'Importar datos / Backup',
+  if (!flat) return { titleKey: 'sub.tech.moduleTitle', subKey: 'sub.tech.moduleSub' }
+  const subs: Record<string, TranslationKey> = {
+    '/tech/projects': 'sub.tech.projects',
+    '/tech/dashboard': 'sub.tech.dashboard',
+    '/tech/execution': 'sub.tech.execution',
+    '/tech/phases': 'sub.tech.phases',
+    '/tech/gantt': 'sub.tech.gantt',
+    '/tech/budget': 'sub.tech.budget',
+    '/tech/construction-budget': 'sub.tech.constructionBudget',
+    '/tech/draws': 'sub.tech.draws',
+    '/tech/inspections': 'sub.tech.inspections',
+    '/tech/financial': 'sub.tech.financial',
+    '/tech/alerts': 'sub.tech.alerts',
+    '/tech/tasks': 'sub.tech.tasks',
+    '/tech/subcontracts': 'sub.tech.subcontracts',
+    '/tech/change-orders': 'sub.tech.changeOrders',
+    '/tech/punch-list': 'sub.tech.punchList',
+    '/tech/providers': 'sub.tech.providers',
+    '/tech/notes': 'sub.tech.notes',
+    '/tech/files': 'sub.tech.files',
+    '/tech/price-refs': 'sub.tech.priceRefs',
+    '/tech/import': 'sub.tech.import',
   }
-  return { title: flat.label, sub: subs[flat.to] ?? 'Módulo técnico' }
+  return { titleKey: flat.labelKey, subKey: subs[flat.to] ?? 'sub.tech.default' }
 }
 
 export default function Layout({ projectId, children }: Props) {
+  const { t } = useI18n()
   const location = useLocation()
   const [mobileOpen, setMobileOpen] = useState(false)
   useEffect(() => { setMobileOpen(false) }, [location.pathname])
@@ -223,7 +238,7 @@ export default function Layout({ projectId, children }: Props) {
   const urgentTasks   = tasks.filter(t => !t.done && t.priority === 'URGENT').length
   const pendingTasks  = tasks.filter(t => !t.done).length
 
-  const { title, sub } = getPageTitle(location.pathname)
+  const { titleKey, subKey } = getPageTitleKeys(location.pathname)
 
   return (
     <div className="flex h-screen overflow-hidden tech-app" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)' }}>
@@ -238,7 +253,7 @@ export default function Layout({ projectId, children }: Props) {
           paddingTop: 'env(safe-area-inset-top, 0)',
         }}
       >
-        <button onClick={() => setMobileOpen(true)} style={{ color: 'var(--text-secondary)', padding: '8px', marginLeft: -8 }} aria-label="Abrir menú">
+        <button onClick={() => setMobileOpen(true)} style={{ color: 'var(--text-secondary)', padding: '8px', marginLeft: -8 }} aria-label={t('common.openMenu')}>
           <Menu className="w-5 h-5" />
         </button>
         <div className="flex items-center gap-2.5">
@@ -278,7 +293,7 @@ export default function Layout({ projectId, children }: Props) {
           onClick={() => setMobileOpen(false)}
           className="md:hidden absolute top-3 right-3 p-2"
           style={{ color: 'var(--text-secondary)', zIndex: 10 }}
-          aria-label="Cerrar menú"
+          aria-label={t('common.closeMenu')}
         >
           <X className="w-5 h-5" />
         </button>
@@ -310,7 +325,7 @@ export default function Layout({ projectId, children }: Props) {
                 textTransform: 'uppercase', letterSpacing: '0.18em',
                 color: 'var(--text-muted)', marginTop: 3,
               }}>
-                Construction PM
+                {t('layout.role.constructionPM')}
               </div>
             </div>
           </div>
@@ -319,16 +334,16 @@ export default function Layout({ projectId, children }: Props) {
         {/* Nav groups */}
         <nav className="flex-1 overflow-y-auto py-2">
           {navGroups.map(group => (
-            <div key={group.label}>
+            <div key={group.labelKey}>
               <div style={{
                 padding: '14px 18px 4px',
                 fontFamily: 'var(--font-mono)', fontSize: 7.5,
                 textTransform: 'uppercase', letterSpacing: '0.22em',
                 color: 'var(--text-muted)',
               }}>
-                {group.label}
+                {t(group.labelKey)}
               </div>
-              {group.items.map(({ to, icon: Icon, label }) => {
+              {group.items.map(({ to, icon: Icon, labelKey }) => {
                 const isActive = location.pathname === to || location.pathname.startsWith(to + '/')
                 const alertTo   = to === '/tech/alerts'
                 const tasksTo   = to === '/tech/tasks'
@@ -366,7 +381,7 @@ export default function Layout({ projectId, children }: Props) {
                     }}
                   >
                     <Icon size={14} style={{ flexShrink: 0, color: isActive ? 'var(--accent)' : 'inherit' }} />
-                    <span style={{ flex: 1 }}>{label}</span>
+                    <span style={{ flex: 1 }}>{t(labelKey)}</span>
                     {alertTo && (criticalCount > 0 || warningCount > 0) && (
                       <span style={{
                         fontFamily: 'var(--font-mono)', fontSize: 9,
@@ -412,11 +427,11 @@ export default function Layout({ projectId, children }: Props) {
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.3 }}>Dr. Restrepo</div>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 7.5, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginTop: 2 }}>Construction PM</div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 7.5, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginTop: 2 }}>{t('layout.role.constructionPM')}</div>
           </div>
           <button
             onClick={logout}
-            title="Cerrar sesión"
+            title={t('common.logout')}
             style={{
               width: 26, height: 26,
               border: '1px solid var(--border)', borderRadius: 6,
@@ -459,26 +474,27 @@ export default function Layout({ projectId, children }: Props) {
               fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 300,
               letterSpacing: '-0.025em', color: 'var(--text-primary)', lineHeight: 1,
             }}>
-              {title}
+              {t(titleKey)}
             </div>
             <div style={{
               fontFamily: 'var(--font-mono)', fontSize: 8,
               textTransform: 'uppercase', letterSpacing: '0.14em',
               color: 'var(--text-muted)', marginTop: 3,
             }}>
-              {sub}
+              {t(subKey)}
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <LanguageToggle />
             <ModuleSwitcher currentModule="tech" />
             <a
               href="/api/backup"
               download
-              title="Backup del sistema"
+              title={t('common.systemBackup')}
               onClick={e => {
                 e.preventDefault()
                 downloadAuthed('/api/backup', `restrepoacosta-backup-${new Date().toISOString().slice(0, 10)}.zip`)
-                  .catch(() => window.alert('Error al descargar el backup. Verifica tu sesión e intenta de nuevo.'))
+                  .catch(() => window.alert(t('common.backupError')))
               }}
               style={{
                 width: 32, height: 32,

@@ -10,6 +10,7 @@ import { projectsApi } from './lib/api'
 import Layout from './components/layout/Layout'
 import Landing from './Landing'
 import { useTheme } from './hooks/useTheme'
+import { I18nProvider, useI18n } from './i18n'
 
 // ── CODE-SPLITTING ────────────────────────────────────────────────────────────
 // Cada página y cada módulo se carga BAJO DEMANDA (dynamic import). Así el bundle
@@ -39,6 +40,7 @@ const FinanceApp = lazy(() => import('./finance/FinanceApp'))
 const AdminApp = lazy(() => import('./admin/AdminApp'))
 
 function TechModule() {
+  const { t } = useI18n()
   const { activeProjectId, setActiveProjectId } = useProjectStore()
 
   const { data: projects = [], isLoading } = useQuery<Array<{ id: string }>>({
@@ -59,7 +61,7 @@ function TechModule() {
       <div className="flex h-screen overflow-hidden" style={{ background: 'var(--brand-cream)' }}>
         <aside className="w-56 flex-shrink-0 flex items-center justify-center"
           style={{ background: 'var(--brand-teal)', borderRight: '1px solid rgba(255,255,255,0.07)' }}>
-          <div className="text-xs font-mono" style={{ color: 'rgba(255,255,255,0.4)' }}>Sin proyecto activo</div>
+          <div className="text-xs font-mono" style={{ color: 'rgba(255,255,255,0.4)' }}>{t('layout.noActiveProject')}</div>
         </aside>
         <main className="flex-1 overflow-y-auto p-6">
           <Projects />
@@ -103,46 +105,58 @@ function TechModule() {
 // Fallback ligero mientras un chunk perezoso se descarga. Coherente con la
 // paleta (marfil + petróleo); no bloquea toda la pantalla como el Splash.
 function PageFallback() {
+  const { t } = useI18n()
   return (
     <div className="flex items-center justify-center" style={{ minHeight: '60vh' }}>
       <div className="text-sm font-mono" style={{ color: 'var(--brand-teal, #33495C)', opacity: 0.6 }}>
-        Cargando…
+        {t('common.loading')}
       </div>
     </div>
   )
 }
 
-export default function App() {
-  useTheme() // inicializa data-theme en <html> desde localStorage
+// Las rutas viven en su propio componente porque necesitan `t()`, y `t()` solo
+// existe DENTRO del <I18nProvider>. Los labels de los ModuleGate se traducen aquí.
+function AppRoutes() {
+  const { t } = useI18n()
   return (
-    <>
+    <Routes>
+      <Route path="/" element={<Landing />} />
+      <Route path="/tech/*" element={
+        <ModuleGate moduleName="tech" moduleLabel={t('modules.techFull')}>
+          <TechModule />
+        </ModuleGate>
+      } />
+      <Route path="/finance/*" element={
+        <ModuleGate moduleName="finance" moduleLabel={t('modules.financeFull')}>
+          <FinanceApp />
+        </ModuleGate>
+      } />
+      <Route path="/admin/*" element={
+        <ModuleGate moduleName="admin" moduleLabel={t('modules.adminFull')}>
+          <AdminApp />
+        </ModuleGate>
+      } />
+    </Routes>
+  )
+}
+
+export default function App() {
+  useTheme() // inicializa data-theme en <html>
+  // I18nProvider envuelve TODO —  incluido el AuthGate — para que la pantalla de
+  // login también responda al idioma elegido.
+  return (
+    <I18nProvider>
       <Splash />
       <AuthGate>
-      <ConfirmProvider>
-        <BrowserRouter>
-          <Suspense fallback={<PageFallback />}>
-          <Routes>
-            <Route path="/" element={<Landing />} />
-            <Route path="/tech/*" element={
-              <ModuleGate moduleName="tech" moduleLabel="Módulo Técnico">
-                <TechModule />
-              </ModuleGate>
-            } />
-            <Route path="/finance/*" element={
-              <ModuleGate moduleName="finance" moduleLabel="Módulo Financiero">
-                <FinanceApp />
-              </ModuleGate>
-            } />
-            <Route path="/admin/*" element={
-              <ModuleGate moduleName="admin" moduleLabel="Módulo Administrativo">
-                <AdminApp />
-              </ModuleGate>
-            } />
-          </Routes>
-          </Suspense>
-        </BrowserRouter>
-      </ConfirmProvider>
-    </AuthGate>
-    </>
+        <ConfirmProvider>
+          <BrowserRouter>
+            <Suspense fallback={<PageFallback />}>
+              <AppRoutes />
+            </Suspense>
+          </BrowserRouter>
+        </ConfirmProvider>
+      </AuthGate>
+    </I18nProvider>
   )
 }

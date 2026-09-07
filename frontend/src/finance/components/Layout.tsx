@@ -11,23 +11,33 @@ import ModuleSwitcher from "../../components/ModuleSwitcher";
 import CapacityBanner from "../../components/CapacityBanner";
 import { useTheme } from "../../hooks/useTheme";
 import { downloadAuthed } from "../../lib/api";
+import { useI18n, type TranslationKey } from "../../i18n";
+import LanguageToggle from "../../components/LanguageToggle";
 
-const NAV = [
-  { to: "/finance/dashboard", label: "Dashboard", icon: LayoutDashboard, group: "Vista ejecutiva" },
-  { to: "/finance/movements", label: "Movimientos", icon: ArrowLeftRight, group: "Operación" },
-  { to: "/finance/accounts", label: "Cuentas bancarias", icon: Wallet, group: "Operación" },
-  { to: "/finance/capital", label: "Capital aportado", icon: Users, group: "Estructura" },
-  { to: "/finance/debt", label: "Deuda y préstamos", icon: Banknote, group: "Estructura" },
-  { to: "/finance/projects", label: "Proyectos", icon: Briefcase, group: "Inversión" },
-  { to: "/finance/returns", label: "Retorno por proyecto", icon: Percent, group: "Inversión" },
-  { to: "/finance/cashflow", label: "Flujo de caja", icon: Activity, group: "Análisis" },
-  { to: "/finance/liquidity", label: "Liquidez 90 días", icon: Droplets, group: "Análisis" },
-  { to: "/finance/reports", label: "Reportes & Trazabilidad", icon: BarChart3, group: "Análisis" },
-  { to: "/finance/catalogs", label: "Catálogos", icon: ListTree, group: "Administración" },
-  { to: "/finance/import", label: "Importar / Backup", icon: Upload, group: "Administración" },
+// NAV guarda CLAVES de traducción; el texto se resuelve en el render con t().
+type NavGroupKey =
+  | "nav.fin.group.executive" | "nav.fin.group.operations" | "nav.fin.group.structure"
+  | "nav.fin.group.investment" | "nav.fin.group.analysis" | "nav.fin.group.administration";
+
+const NAV: Array<{ to: string; labelKey: TranslationKey; icon: typeof LayoutDashboard; group: NavGroupKey }> = [
+  { to: "/finance/dashboard", labelKey: "nav.fin.dashboard", icon: LayoutDashboard, group: "nav.fin.group.executive" },
+  { to: "/finance/movements", labelKey: "nav.fin.movements", icon: ArrowLeftRight, group: "nav.fin.group.operations" },
+  { to: "/finance/accounts", labelKey: "nav.fin.accounts", icon: Wallet, group: "nav.fin.group.operations" },
+  { to: "/finance/capital", labelKey: "nav.fin.capital", icon: Users, group: "nav.fin.group.structure" },
+  { to: "/finance/debt", labelKey: "nav.fin.debt", icon: Banknote, group: "nav.fin.group.structure" },
+  { to: "/finance/projects", labelKey: "nav.fin.projects", icon: Briefcase, group: "nav.fin.group.investment" },
+  { to: "/finance/returns", labelKey: "nav.fin.returns", icon: Percent, group: "nav.fin.group.investment" },
+  { to: "/finance/cashflow", labelKey: "nav.fin.cashflow", icon: Activity, group: "nav.fin.group.analysis" },
+  { to: "/finance/liquidity", labelKey: "nav.fin.liquidity", icon: Droplets, group: "nav.fin.group.analysis" },
+  { to: "/finance/reports", labelKey: "nav.fin.reports", icon: BarChart3, group: "nav.fin.group.analysis" },
+  { to: "/finance/catalogs", labelKey: "nav.fin.catalogs", icon: ListTree, group: "nav.fin.group.administration" },
+  { to: "/finance/import", labelKey: "nav.fin.import", icon: Upload, group: "nav.fin.group.administration" },
 ];
 
-const GROUPS = ["Vista ejecutiva", "Operación", "Estructura", "Inversión", "Análisis", "Administración"];
+const GROUPS: NavGroupKey[] = [
+  "nav.fin.group.executive", "nav.fin.group.operations", "nav.fin.group.structure",
+  "nav.fin.group.investment", "nav.fin.group.analysis", "nav.fin.group.administration",
+];
 
 // Logo SVG custom — cityscape Restrepo Acosta (conservado del diseño previo)
 function RAMark({ size = 15 }: { size?: number }) {
@@ -40,28 +50,29 @@ function RAMark({ size = 15 }: { size?: number }) {
   );
 }
 
-// Mapea cada grupo a la ruta activa para el topbar
-function getPageTitle(pathname: string): { title: string; sub: string } {
+// Devuelve CLAVES de traducción para el topbar (no texto).
+function getPageTitleKeys(pathname: string): { titleKey: TranslationKey; subKey: TranslationKey } {
   const item = NAV.find(n => pathname === n.to || pathname.startsWith(n.to + "/"));
-  if (!item) return { title: "CFO Holding", sub: "Restrepo Acosta Global Holding LLC" };
-  const subs: Record<string, string> = {
-    "Vista ejecutiva": "Lectura consolidada del negocio",
-    "Operación": "Control operativo",
-    "Estructura": "Capital & deuda",
-    "Inversión": "Portafolio de proyectos",
-    "Análisis": "Reportes & trazabilidad",
-    "Administración": "Configuración del sistema",
+  if (!item) return { titleKey: "fin.title.default", subKey: "fin.sub.default" };
+  const subs: Record<NavGroupKey, TranslationKey> = {
+    "nav.fin.group.executive": "sub.fin.executive",
+    "nav.fin.group.operations": "sub.fin.operations",
+    "nav.fin.group.structure": "sub.fin.structure",
+    "nav.fin.group.investment": "sub.fin.investment",
+    "nav.fin.group.analysis": "sub.fin.analysis",
+    "nav.fin.group.administration": "sub.fin.administration",
   };
-  return { title: item.label, sub: subs[item.group] || "Módulo financiero" };
+  return { titleKey: item.labelKey, subKey: subs[item.group] ?? "sub.fin.fallback" };
 }
 
 export default function Layout({ children }: { children: React.ReactNode }) {
+  const { t, locale } = useI18n();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   useTheme(); // asegura que data-theme esté aplicado en esta subtree
   useEffect(() => { setMobileOpen(false); }, [location.pathname]);
 
-  const { title, sub } = getPageTitle(location.pathname);
+  const { titleKey, subKey } = getPageTitleKeys(location.pathname);
 
   return (
     <div className="flex h-screen overflow-hidden fin-app" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)' }}>
@@ -71,14 +82,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         className="md:hidden fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 py-3 fin-topbar-v2"
         style={{ paddingTop: 'calc(env(safe-area-inset-top, 0) + 0.75rem)', height: 'auto' }}
       >
-        <button onClick={() => setMobileOpen(true)} style={{ color: 'var(--text-secondary)' }} className="p-2 -ml-2" aria-label="Abrir menú">
+        <button onClick={() => setMobileOpen(true)} style={{ color: 'var(--text-secondary)' }} className="p-2 -ml-2" aria-label={t('common.openMenu')}>
           <Menu className="w-6 h-6" />
         </button>
         <div className="flex items-center gap-2.5">
           <div className="fin-logo-mark" style={{ width: 28, height: 28 }}>
             <RAMark size={14} />
           </div>
-          <div className="fin-logo-name" style={{ fontSize: 13 }}>CFO Holding</div>
+          <div className="fin-logo-name" style={{ fontSize: 13 }}>{t('fin.title.default')}</div>
         </div>
       </div>
 
@@ -99,7 +110,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           onClick={() => setMobileOpen(false)}
           className="md:hidden absolute top-3 right-3 p-2"
           style={{ color: 'var(--text-secondary)', zIndex: 10 }}
-          aria-label="Cerrar menú"
+          aria-label={t('common.closeMenu')}
         >
           <X className="w-5 h-5" />
         </button>
@@ -112,7 +123,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </div>
             <div>
               <div className="fin-logo-name">Restrepo Acosta</div>
-              <div className="fin-logo-sub">Global Holding</div>
+              <div className="fin-logo-sub">{t('fin.logo.sub')}</div>
             </div>
           </Link>
         </div>
@@ -120,14 +131,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         {/* Back to home */}
         <Link to="/" className="fin-nav-item mt-2" style={{ fontSize: 11.5 }}>
           <Home size={13} style={{ color: 'var(--text-muted)' }} />
-          <span>Inicio</span>
+          <span>{t('common.home')}</span>
         </Link>
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-3">
           {GROUPS.map((group) => (
             <div key={group}>
-              <div className="fin-nav-grp">{group}</div>
+              <div className="fin-nav-grp">{t(group)}</div>
               {NAV.filter((n) => n.group === group).map((item) => {
                 const Icon = item.icon;
                 const active = location.pathname === item.to || location.pathname.startsWith(item.to + "/");
@@ -138,7 +149,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     className={cls("fin-nav-item", active && "active")}
                   >
                     <Icon size={14} style={{ flexShrink: 0 }} />
-                    <span>{item.label}</span>
+                    <span>{t(item.labelKey)}</span>
                   </NavLink>
                 );
               })}
@@ -151,9 +162,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <div className="fin-user-av">JR</div>
           <div className="flex-1 min-w-0">
             <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.3 }}>Dr. Restrepo</div>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 7.5, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginTop: 2 }}>Managing Director</div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 7.5, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginTop: 2 }}>{t('layout.role.managingDirector')}</div>
           </div>
-          <button onClick={unifiedLogout} title="Cerrar sesión" className="fin-btn-icon" style={{ width: 26, height: 26 }}>
+          <button onClick={unifiedLogout} title={t('common.logout')} className="fin-btn-icon" style={{ width: 26, height: 26 }}>
             <LogOut size={12} />
           </button>
         </div>
@@ -167,20 +178,21 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         {/* TOPBAR */}
         <header className="fin-topbar-v2 hidden md:flex flex-shrink-0">
           <div>
-            <div className="fin-tb-title">{title}</div>
-            <div className="fin-tb-sub">{sub} · {new Date().toLocaleDateString("es-CO", { month: "long", year: "numeric" })}</div>
+            <div className="fin-tb-title">{t(titleKey)}</div>
+            <div className="fin-tb-sub">{t(subKey)} · {new Date().toLocaleDateString(locale, { month: "long", year: "numeric" })}</div>
           </div>
           <div className="flex items-center gap-2">
+            <LanguageToggle />
             <ModuleSwitcher currentModule="finance" />
             <a
               href="/api/backup"
               download
               className="fin-btn-icon"
-              title="Backup del sistema"
+              title={t('common.systemBackup')}
               onClick={e => {
                 e.preventDefault();
                 downloadAuthed("/api/backup", `restrepoacosta-backup-${new Date().toISOString().slice(0, 10)}.zip`)
-                  .catch(() => window.alert("Error al descargar el backup. Verifica tu sesión e intenta de nuevo."));
+                  .catch(() => window.alert(t('common.backupError')));
               }}
             >
               <Download size={13} />

@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Building2, Wallet, Landmark, ArrowRightLeft } from 'lucide-react'
+import { useI18n } from '../i18n'
 
 type ModuleName = 'tech' | 'finance' | 'admin'
 
@@ -9,7 +10,7 @@ interface Props {
 
 // Identidad visual de cada módulo (destino del botón)
 const MODULES: Record<ModuleName, {
-  label: string
+  labelKey: 'modules.tech' | 'modules.finance' | 'modules.admin'
   icon: typeof Building2
   background: string
   color: string
@@ -17,7 +18,7 @@ const MODULES: Record<ModuleName, {
   hover: string
 }> = {
   tech: {
-    label: 'Técnico',
+    labelKey: 'modules.tech',
     icon: Building2,
     background: 'linear-gradient(135deg, #1D1D1F 0%, #48484A 100%)',
     color: '#4A6880',
@@ -25,7 +26,7 @@ const MODULES: Record<ModuleName, {
     hover: 'linear-gradient(135deg, #355760 0%, #436c77 100%)',
   },
   finance: {
-    label: 'Financiero',
+    labelKey: 'modules.finance',
     icon: Wallet,
     background: 'linear-gradient(135deg, #0F2027 0%, #1B3640 100%)',
     color: '#5eead4',
@@ -33,7 +34,7 @@ const MODULES: Record<ModuleName, {
     hover: 'linear-gradient(135deg, #142d35 0%, #224550 100%)',
   },
   admin: {
-    label: 'Administrativo',
+    labelKey: 'modules.admin',
     icon: Landmark,
     background: 'linear-gradient(135deg, #2A1E3F 0%, #3E2C5C 100%)',
     color: '#C6952F',
@@ -47,6 +48,7 @@ const MODULES: Record<ModuleName, {
  * Muestra un botón hacia cada uno de los OTROS dos módulos del ecosistema.
  */
 export default function ModuleSwitcher({ currentModule }: Props) {
+  const { t } = useI18n()
   const targets = (Object.keys(MODULES) as ModuleName[]).filter((m) => m !== currentModule)
 
   return (
@@ -54,6 +56,7 @@ export default function ModuleSwitcher({ currentModule }: Props) {
       {targets.map((target) => {
         const styles = MODULES[target]
         const Icon = styles.icon
+        const label = t(styles.labelKey)
         return (
           <Link
             key={target}
@@ -66,7 +69,7 @@ export default function ModuleSwitcher({ currentModule }: Props) {
             }}
             onMouseEnter={e => (e.currentTarget.style.background = styles.hover)}
             onMouseLeave={e => (e.currentTarget.style.background = styles.background)}
-            title={`Ir al Módulo ${styles.label}`}
+            title={t('modules.goTo', { module: label })}
           >
             <span
               className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0"
@@ -74,7 +77,7 @@ export default function ModuleSwitcher({ currentModule }: Props) {
             >
               <Icon size={11} />
             </span>
-            <span className="hidden lg:inline">{styles.label}</span>
+            <span className="hidden lg:inline">{label}</span>
             <ArrowRightLeft size={11} className="opacity-70 transition-transform group-hover:translate-x-0.5" />
           </Link>
         )
