@@ -151,7 +151,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
               className="text-xl font-bold tracking-wide text-center mt-3"
               style={{ color: '#1D1D1F', letterSpacing: '0.04em' }}
             >
-              Restrepo Acosta
+              {t('common.restrepoAcosta')}
             </h1>
             <p className="text-[10px] uppercase tracking-[0.2em] font-semibold mt-0.5" style={{ color: '#3E5A70' }}>
               {t('auth.company')}

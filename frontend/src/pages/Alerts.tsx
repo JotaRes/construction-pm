@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { alertsApi, type UpcomingAlert } from '../lib/api'
 import type { Alert } from '../lib/types'
 import { AlertTriangle, CheckCircle, XCircle, Info, CalendarClock, Search, FileWarning, ListChecks } from 'lucide-react'
+import { useI18n, currentLocale } from '../i18n'
 
 const UPCOMING_SEVERITY: Record<UpcomingAlert['severity'], { dot: string; badge: string }> = {
   CRITICAL: { dot: 'bg-red-500', badge: 'bg-red-500/15 text-red-500' },
@@ -10,6 +11,7 @@ const UPCOMING_SEVERITY: Record<UpcomingAlert['severity'], { dot: string; badge:
 }
 
 function UpcomingPanel({ projectId }: { projectId: string }) {
+  const { t } = useI18n()
   const { data: items = [] } = useQuery<UpcomingAlert[]>({
     queryKey: ['upcoming', projectId],
     queryFn: () => alertsApi.upcoming(projectId),
@@ -24,7 +26,7 @@ function UpcomingPanel({ projectId }: { projectId: string }) {
   return (
     <div className="space-y-3">
       <h2 className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-        <CalendarClock className="w-3.5 h-3.5" /> Hitos próximos (30 días)
+        <CalendarClock className="w-3.5 h-3.5" /> {t('tech.alerts.hitosProximos30Dias')}
       </h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {items.map((a, i) => {
@@ -43,7 +45,7 @@ function UpcomingPanel({ projectId }: { projectId: string }) {
                   <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${sev.badge}`}>{a.severity}</span>
                   {a.date && (
                     <span className="text-[11px] text-slate-400">
-                      {new Date(a.date).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      {new Date(a.date).toLocaleDateString(currentLocale(), { day: '2-digit', month: 'short', year: 'numeric' })}
                     </span>
                   )}
                 </div>
@@ -92,6 +94,7 @@ function AlertCard({ alert }: { alert: Alert }) {
 }
 
 export default function Alerts({ projectId }: { projectId: string }) {
+  const { t } = useI18n()
   const { data: alerts = [], isLoading } = useQuery<Alert[]>({
     queryKey: ['alerts', projectId],
     queryFn: () => alertsApi.list(projectId),
@@ -102,15 +105,15 @@ export default function Alerts({ projectId }: { projectId: string }) {
   const warning = alerts.filter(a => a.level === 'warning')
   const ok = alerts.filter(a => a.level === 'ok')
 
-  if (isLoading) return <div className="text-slate-500 text-sm animate-pulse">Calculando alertas...</div>
+  if (isLoading) return <div className="text-slate-500 text-sm animate-pulse">{t('tech.alerts.calculandoAlertas')}</div>
 
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><AlertTriangle className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>Centro de Alertas</span></h1>
+        <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><AlertTriangle className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>{t('tech.alerts.centroDeAlertas')}</span></h1>
         <p className="text-sm text-slate-500 mt-0.5">
-          {critical.length > 0 && <span className="text-red-400">{critical.length} crítica{critical.length > 1 ? 's' : ''} · </span>}
-          {warning.length > 0 && <span className="text-[var(--brand-gold)]">{warning.length} advertencia{warning.length > 1 ? 's' : ''} · </span>}
+          {critical.length > 0 && <span className="text-red-400">{critical.length} {t('tech.alerts.critica')}{critical.length > 1 ? 's' : ''} · </span>}
+          {warning.length > 0 && <span className="text-[var(--brand-gold)]">{warning.length} {t('tech.alerts.advertencia')}{warning.length > 1 ? 's' : ''} · </span>}
           {ok.length > 0 && <span className="text-emerald-400">{ok.length} OK</span>}
         </p>
       </div>
@@ -119,14 +122,14 @@ export default function Alerts({ projectId }: { projectId: string }) {
 
       {critical.length > 0 && (
         <div className="space-y-3">
-          <h2 className="text-xs font-semibold text-red-400 uppercase tracking-wider">Críticas</h2>
+          <h2 className="text-xs font-semibold text-red-400 uppercase tracking-wider">{t('tech.alerts.criticas')}</h2>
           {critical.map(a => <AlertCard key={a.id} alert={a} />)}
         </div>
       )}
 
       {warning.length > 0 && (
         <div className="space-y-3">
-          <h2 className="text-xs font-semibold text-[var(--brand-gold)] uppercase tracking-wider">Advertencias</h2>
+          <h2 className="text-xs font-semibold text-[var(--brand-gold)] uppercase tracking-wider">{t('tech.alerts.advertencias')}</h2>
           {warning.map(a => <AlertCard key={a.id} alert={a} />)}
         </div>
       )}

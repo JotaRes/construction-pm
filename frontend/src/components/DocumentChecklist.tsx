@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useConfirm } from './ConfirmDialog'
+import { useI18n } from '../i18n'
 
 interface DocItem {
   key: string
@@ -38,6 +39,7 @@ export default function DocumentChecklist({ projectId, projectName, projectAddre
   projectName?: string
   projectAddress?: string
 }) {
+  const { t } = useI18n()
   const qc = useQueryClient()
   const confirm = useConfirm()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -73,8 +75,8 @@ export default function DocumentChecklist({ projectId, projectName, projectAddre
         const codes = executionApplied.map(e => e.itemCode).join(', ')
         const conValor = executionApplied.filter(e => e.applied.includes('valor ejecutado')).length
         toast.success(
-          `✓ Ejecución diligenciada: ${n} ítem(s) — ${codes}` +
-          (conValor > 0 ? ` (${conValor} con monto de gasto)` : ''),
+          t('ui.docs.ejecucionDiligenciadaV0ItemSV1', { v0: n, v1: codes }) +
+          (conValor > 0 ? t('ui.docs.v0ConMontoDeGasto', { v0: conValor }) : ''),
           { duration: 9000 },
         )
       }
@@ -82,23 +84,23 @@ export default function DocumentChecklist({ projectId, projectName, projectAddre
       if (applied.length > 0) {
         const friendly: Record<string, string> = {
           sfHeated: 'pies cuadrados (heated)', sfGarage: 'pies cuadrados (garaje)',
-          sfPorches: 'pies cuadrados (porches)', bedrooms: 'habitaciones',
-          bathrooms: 'baños', foundationType: 'tipo de cimentación',
-          parcelId: 'parcel ID', lotAcres: 'acres del lote',
-          address: 'dirección', county: 'condado',
-          lender: 'lender', loanNumber: 'número de préstamo',
-          loanAmount: 'monto del préstamo', interestRate: 'tasa de interés',
-          holdback: 'holdback', day1Disbursement: 'desembolso día 1',
-          interestReserve: 'reserva de interés', settlementDate: 'fecha settlement',
-          closingCosts: 'costos de cierre', cashAtSettlement: 'cash at settlement',
-          contractSalesPrice: 'precio de venta', permitNumber: 'número de permiso',
-          permitIssued: 'fecha emisión permiso', permitExpires: 'fecha vencimiento permiso',
-          loiSalePrice: 'precio LOI', loiOfferDate: 'fecha oferta LOI',
-          loiExpectedClose: 'cierre esperado LOI', loiEarnestMoney: 'earnest money LOI',
+          sfPorches: 'pies cuadrados (porches)', bedrooms: t('ui.docs.habitaciones'),
+          bathrooms: t('ui.docs.banos'), foundationType: t('ui.docs.tipoDeCimentacion'),
+          parcelId: 'parcel ID', lotAcres: t('ui.docs.acresDelLote'),
+          address: t('ui.docs.direccion'), county: 'condado',
+          lender: 'lender', loanNumber: t('ui.docs.numeroDePrestamo'),
+          loanAmount: t('ui.docs.montoDelPrestamo'), interestRate: t('ui.docs.tasaDeInteres'),
+          holdback: 'holdback', day1Disbursement: t('ui.docs.desembolsoDia1'),
+          interestReserve: t('ui.docs.reservaDeInteres'), settlementDate: t('ui.docs.fechaSettlement'),
+          closingCosts: t('ui.docs.costosDeCierre'), cashAtSettlement: 'cash at settlement',
+          contractSalesPrice: t('ui.docs.precioDeVenta'), permitNumber: t('ui.docs.numeroDePermiso'),
+          permitIssued: t('ui.docs.fechaEmisionPermiso'), permitExpires: t('ui.docs.fechaVencimientoPermiso'),
+          loiSalePrice: t('ui.docs.precioLoi'), loiOfferDate: t('ui.docs.fechaOfertaLoi'),
+          loiExpectedClose: t('ui.docs.cierreEsperadoLoi'), loiEarnestMoney: 'earnest money LOI',
         }
         const fieldNames = applied.map(k => friendly[k] || k).join(', ')
         toast.success(
-          `✓ Documento cargado. ${applied.length} campo(s) aplicados al proyecto: ${fieldNames}${ocrUsed ? ' (OCR usado)' : ''}`,
+          t('ui.docs.documentoCargadoV0CampoSAplicados', { v0: applied.length, v1: fieldNames, v2: ocrUsed ? ' (OCR usado)' : '' }),
           { duration: 8000 }
         )
         // Invalidate project queries to refresh CFO Dashboard, etc.
@@ -106,14 +108,14 @@ export default function DocumentChecklist({ projectId, projectName, projectAddre
         qc.invalidateQueries({ queryKey: ['project', projectId] })
         qc.invalidateQueries({ queryKey: ['dashboard'] })
       } else if (Object.keys(extracted).length > 0) {
-        toast(`Documento cargado. Extraje ${Object.keys(extracted).length} campo(s) pero ya estaban configurados en el proyecto.`, { duration: 6000 })
+        toast(t('ui.docs.documentoCargadoExtrajeV0CampoS', { v0: Object.keys(extracted).length }), { duration: 6000 })
       } else if (extractionError) {
-        toast(`Documento cargado. No fue posible extraer datos automáticamente: ${extractionError}`, { icon: '⚠', duration: 8000 })
+        toast(t('ui.docs.documentoCargadoNoFuePosibleExtraer', { v0: extractionError }), { icon: '⚠', duration: 8000 })
       } else {
-        toast.success('Documento cargado')
+        toast.success(t('ui.docs.documentoCargado'))
       }
     },
-    onError: (e: any) => toast.error(e?.response?.data?.error || 'Error al subir'),
+    onError: (e: any) => toast.error(e?.response?.data?.error || t('ui.docs.errorAlSubir')),
   })
 
   const deleteMut = useMutation({
@@ -122,17 +124,17 @@ export default function DocumentChecklist({ projectId, projectName, projectAddre
       qc.invalidateQueries({ queryKey: ['document-checklist', projectId] })
       qc.invalidateQueries({ queryKey: ['files', projectId] })
       qc.invalidateQueries({ queryKey: ['project', projectId] })
-      toast.success('Documento eliminado')
+      toast.success(t('common.documentoEliminado'))
     },
     // BUG REPARADO: sin onError el fallo era invisible y parecía que el botón no funcionaba
-    onError: (e: any) => toast.error(e?.response?.data?.error || 'Error al eliminar el documento'),
+    onError: (e: any) => toast.error(e?.response?.data?.error || t('ui.docs.errorAlEliminarElDocumento')),
   })
 
   const reclassifyMut = useMutation({
     mutationFn: ({ id, kind }: { id: string; kind: string }) => filesApi.patch(projectId, id, { kind }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['document-checklist', projectId] })
-      toast.success('Re-categorizado')
+      toast.success(t('ui.docs.reCategorizado'))
     },
   })
 
@@ -158,12 +160,12 @@ export default function DocumentChecklist({ projectId, projectName, projectAddre
   }
 
   const handleShareEmail = (file: any) => {
-    const subject = encodeURIComponent(`Documento del proyecto ${projectName || projectId}: ${file.name}`)
+    const subject = encodeURIComponent(t('ui.docs.documentoDelProyectoV0V1', { v0: projectName || projectId, v1: file.name }))
     const body = encodeURIComponent(
-      `Hola,\n\nComparto el siguiente documento del proyecto:\n\n` +
-      `Proyecto: ${projectName || ''}\n` +
-      (projectAddress ? `Dirección: ${projectAddress}\n` : '') +
-      `Categoría: ${file.category || file.kind || 'Sin categoría'}\n` +
+      t('ui.docs.holaCompartoElSiguienteDocumentoDel') +
+      t('ui.docs.proyectoV0', { v0: projectName || '' }) +
+      (projectAddress ? t('ui.docs.direccionV0', { v0: projectAddress }) : '') +
+      t('ui.docs.categoriaV0', { v0: file.category || file.kind || 'Sin categoría' }) +
       `Documento: ${file.name}\n\n` +
       `🔗 Descargar: ${buildDownloadUrl(file)}\n\n` +
       `Saludos.`
@@ -177,10 +179,10 @@ export default function DocumentChecklist({ projectId, projectName, projectAddre
   const handleShareWhatsApp = async (file: any) => {
     const downloadUrl = buildDownloadUrl(file)
     const captionText =
-      `📄 *Documento del proyecto*\n\n` +
-      `*Proyecto:* ${projectName || projectId}\n` +
-      (projectAddress ? `*Dirección:* ${projectAddress}\n` : '') +
-      `*Categoría:* ${file.category || file.kind || 'Sin categoría'}\n` +
+      t('ui.docs.documentoDelProyecto') +
+      t('ui.docs.proyectoV02', { v0: projectName || projectId }) +
+      (projectAddress ? t('ui.docs.direccionV02', { v0: projectAddress }) : '') +
+      t('ui.docs.categoriaV02', { v0: file.category || file.kind || 'Sin categoría' }) +
       `*Documento:* ${file.name}`
 
     // 1) Intentar compartir el archivo binario directamente (móvil con Web Share Level 2)
@@ -211,11 +213,11 @@ export default function DocumentChecklist({ projectId, projectName, projectAddre
     // 2) Fallback: abrir WhatsApp Web/App con el LINK de descarga (no es un attach pero al hacer click descarga el PDF correctamente)
     const text = encodeURIComponent(`${captionText}\n\n🔗 ${downloadUrl}`)
     window.open(`https://wa.me/?text=${text}`, '_blank')
-    toast('Tu navegador no permite adjuntar el archivo. Se compartió el link de descarga.', { icon: 'ℹ️' })
+    toast(t('ui.docs.tuNavegadorNoPermiteAdjuntarEl'), { icon: 'ℹ️' })
   }
 
   if (!checklist) {
-    return <div className="text-sm text-stone-500 py-6 text-center">Cargando checklist documental...</div>
+    return <div className="text-sm text-stone-500 py-6 text-center">{t('ui.docs.cargandoChecklistDocumental')}</div>
   }
 
   const sum = checklist.summary
@@ -238,18 +240,18 @@ export default function DocumentChecklist({ projectId, projectName, projectAddre
         <div className="flex items-start justify-between flex-wrap gap-3 mb-4">
           <div>
             <h2 className="text-base font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}>
-              <FolderOpen size={18} style={{ color: 'var(--brand-gold)' }} /> Checklist documental del proyecto
+              <FolderOpen size={18} style={{ color: 'var(--brand-gold)' }} /> {t('ui.docs.checklistDocumentalDelProyecto')}
             </h2>
             <p className="text-xs mt-1" style={{ color: 'var(--brand-teal2)' }}>
-              {sum.completed} de {sum.totalRequired} documentos obligatorios cargados
-              {sum.unclassifiedCount > 0 && ` · ${sum.unclassifiedCount} archivos sin categorizar`}
+              {sum.completed} {t('common.de')} {sum.totalRequired} {t('ui.docs.documentosObligatoriosCargados')}
+              {sum.unclassifiedCount > 0 && t('ui.docs.v0ArchivosSinCategorizar', { v0: sum.unclassifiedCount })}
             </p>
           </div>
           <div className="text-right">
             <div className="text-3xl font-bold font-mono" style={{
               color: completePct >= 100 ? '#059669' : completePct >= 70 ? '#3E5A70' : '#dc2626',
             }}>{completePct}%</div>
-            <div className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>completo</div>
+            <div className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>{t('ui.docs.completo')}</div>
           </div>
         </div>
 
@@ -267,7 +269,7 @@ export default function DocumentChecklist({ projectId, projectName, projectAddre
         {sum.missing > 0 && (
           <div className="mt-4 p-3 rounded-lg bg-red-50 border border-red-200">
             <div className="flex items-center gap-2 mb-2 text-xs font-bold text-red-700">
-              <AlertCircle size={14} /> Documentos obligatorios faltantes ({sum.missing}):
+              <AlertCircle size={14} /> {t('ui.docs.documentosObligatoriosFaltantes')}{sum.missing}):
             </div>
             <div className="flex flex-wrap gap-1.5">
               {sum.missingKeys.map((k) => {
@@ -304,7 +306,7 @@ export default function DocumentChecklist({ projectId, projectName, projectAddre
               {group.label}
             </h3>
             <div className="text-xs flex items-center gap-2" style={{ color: 'var(--brand-teal2)' }}>
-              {group.items.filter((i) => i.status === 'complete').length} / {group.items.length} cargados
+              {group.items.filter((i) => i.status === 'complete').length} / {group.items.length} {t('ui.docs.cargados')}
             </div>
           </button>
           {openGroup[group.key] && (
@@ -341,7 +343,7 @@ export default function DocumentChecklist({ projectId, projectName, projectAddre
                       style={{ background: 'var(--brand-gold)' }}
                       disabled={uploadMut.isPending}
                     >
-                      <Upload size={12} /> Subir
+                      <Upload size={12} /> {t('ui.docs.subir')}
                     </button>
                   </div>
 
@@ -360,7 +362,7 @@ export default function DocumentChecklist({ projectId, projectName, projectAddre
                           <div className="flex items-center gap-1 flex-shrink-0">
                             {!f.url && (
                               <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: 'var(--brand-teal-xl)', color: 'var(--brand-teal)' }}>
-                                importado
+                                {t('ui.docs.importado')}
                               </span>
                             )}
                             {f.url && (<>
@@ -368,7 +370,7 @@ export default function DocumentChecklist({ projectId, projectName, projectAddre
                               href={`/api/download?url=${encodeURIComponent(f.url)}&name=${encodeURIComponent(f.name)}&inline=1`}
                               target="_blank"
                               rel="noreferrer"
-                              title="Ver"
+                              title={t('common.ver')}
                               className="p-1 rounded hover:bg-stone-200 transition-colors"
                               style={{ color: 'var(--brand-teal2)' }}
                             >
@@ -377,7 +379,7 @@ export default function DocumentChecklist({ projectId, projectName, projectAddre
                             <a
                               href={`/api/download?url=${encodeURIComponent(f.url)}&name=${encodeURIComponent(f.name)}`}
                               download={f.name}
-                              title="Descargar"
+                              title={t('common.descargar')}
                               className="p-1 rounded hover:bg-stone-200 transition-colors"
                               style={{ color: 'var(--brand-teal2)' }}
                             >
@@ -385,7 +387,7 @@ export default function DocumentChecklist({ projectId, projectName, projectAddre
                             </a>
                             <button
                               onClick={() => handleShareEmail(f)}
-                              title="Enviar por correo"
+                              title={t('ui.docs.enviarPorCorreo')}
                               className="p-1 rounded hover:bg-stone-200 transition-colors"
                               style={{ color: 'var(--brand-teal2)' }}
                             >
@@ -393,7 +395,7 @@ export default function DocumentChecklist({ projectId, projectName, projectAddre
                             </button>
                             <button
                               onClick={() => handleShareWhatsApp(f)}
-                              title="Enviar por WhatsApp"
+                              title={t('ui.docs.enviarPorWhatsapp')}
                               className="p-1 rounded hover:bg-stone-200 transition-colors"
                               style={{ color: '#25D366' }}
                             >
@@ -402,15 +404,15 @@ export default function DocumentChecklist({ projectId, projectName, projectAddre
                             <button
                               onClick={async () => {
                                 const ok = await confirm({
-                                  title: 'Eliminar documento',
-                                  message: `¿Seguro que quieres eliminar "${f.name}"?`,
-                                  detail: `Categoría: ${item.label}. Esta acción no se puede deshacer.`,
+                                  title: t('ui.docs.eliminarDocumento'),
+                                  message: t('ui.docs.seguroQueQuieresEliminarV0', { v0: f.name }),
+                                  detail: t('ui.docs.categoriaV0EstaAccionNoSe', { v0: item.label }),
                                   destructive: true,
-                                  confirmText: 'Sí, eliminar',
+                                  confirmText: t('tech.projects.siEliminar'),
                                 })
                                 if (ok) deleteMut.mutate(f.id)
                               }}
-                              title="Eliminar"
+                              title={t('common.eliminar')}
                               className="p-1 rounded hover:bg-red-100 transition-colors text-red-600"
                             >
                               <Trash2 size={12} />
@@ -433,9 +435,9 @@ export default function DocumentChecklist({ projectId, projectName, projectAddre
         <div className="bg-amber-50 rounded-2xl p-4 border border-amber-200">
           <div className="flex items-center gap-2 mb-2">
             <AlertCircle size={14} className="text-amber-600" />
-            <h3 className="text-sm font-bold text-amber-800">{checklist.unclassified.length} archivo(s) sin categorizar</h3>
+            <h3 className="text-sm font-bold text-amber-800">{checklist.unclassified.length} {t('ui.docs.archivoSSinCategorizar')}</h3>
           </div>
-          <p className="text-xs text-amber-700 mb-2">Re-categoriza cada uno para que aparezca en el checklist:</p>
+          <p className="text-xs text-amber-700 mb-2">{t('ui.docs.reCategorizaCadaUnoParaQue')}</p>
           <ul className="space-y-1.5">
             {checklist.unclassified.map((f: any) => (
               <li key={f.id} className="flex items-center justify-between gap-2 text-xs bg-white rounded p-2 border border-amber-100">
@@ -451,7 +453,7 @@ export default function DocumentChecklist({ projectId, projectName, projectAddre
                     if (e.target.value) reclassifyMut.mutate({ id: f.id, kind: e.target.value })
                   }}
                 >
-                  <option value="">— categorizar como —</option>
+                  <option value="">{t('ui.docs.categorizarComo')}</option>
                   {checklist.items.map((i) => (
                     <option key={i.key} value={i.key}>{i.label}</option>
                   ))}

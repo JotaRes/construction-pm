@@ -269,7 +269,7 @@ export default function Layout({ projectId, children }: Props) {
             </svg>
           </div>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 400, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
-            Restrepo Acosta
+            {t('common.restrepoAcosta')}
           </div>
         </div>
       </div>
@@ -318,7 +318,7 @@ export default function Layout({ projectId, children }: Props) {
                 fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 400,
                 letterSpacing: '-0.025em', color: 'var(--text-primary)', lineHeight: 1.25,
               }}>
-                Restrepo Acosta
+                {t('common.restrepoAcosta')}
               </div>
               <div style={{
                 fontFamily: 'var(--font-mono)', fontSize: 7.5,
@@ -426,7 +426,7 @@ export default function Layout({ projectId, children }: Props) {
             JR
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.3 }}>Dr. Restrepo</div>
+            <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.3 }}>{t('common.drRestrepo')}</div>
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: 7.5, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginTop: 2 }}>{t('layout.role.constructionPM')}</div>
           </div>
           <button

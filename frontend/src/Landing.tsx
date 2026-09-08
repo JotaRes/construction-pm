@@ -3,7 +3,7 @@ import { Building2, Wallet, Landmark, ArrowRight, Download, Loader2 } from 'luci
 import { useState } from 'react'
 import { logout } from './components/AuthGate'
 import HomeExecutiveDashboard from './components/HomeExecutiveDashboard'
-import { useI18n } from './i18n'
+import { useI18n, currentLang } from './i18n'
 import LanguageToggle from './components/LanguageToggle'
 
 const TOKEN_KEY = 'pm_auth_token'
@@ -50,7 +50,7 @@ export default function Landing() {
     try {
       const token = localStorage.getItem(TOKEN_KEY)
       const res = await fetch('/api/backup', {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        headers: { 'Accept-Language': currentLang(), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const blob = await res.blob()
@@ -85,7 +85,7 @@ export default function Landing() {
           <RALogoMark width={44} height={33} />
           <div>
             <div className="text-sm font-bold tracking-wide" style={{ color: 'var(--brand-teal)' }}>
-              Restrepo Acosta
+              {t('common.restrepoAcosta')}
             </div>
             <div className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--brand-gold)' }}>
               {t('auth.company')}
@@ -116,7 +116,7 @@ export default function Landing() {
               className="text-2xl md:text-3xl font-bold mb-1 leading-tight"
               style={{ color: 'var(--brand-teal)', letterSpacing: '0.04em' }}
             >
-              Restrepo Acosta
+              {t('common.restrepoAcosta')}
             </h1>
             <div
               className="text-[11px] uppercase tracking-[0.25em] font-semibold"
@@ -215,7 +215,7 @@ export default function Landing() {
                   {t('landing.backupSub')}
                 </div>
                 {downloadError && (
-                  <div className="text-xs mt-1 text-red-500">Error: {downloadError}</div>
+                  <div className="text-xs mt-1 text-red-500">{t('landing.error')} {downloadError}</div>
                 )}
               </div>
               <button
@@ -250,7 +250,7 @@ export default function Landing() {
       </main>
 
       <footer className="py-6 text-center text-xs" style={{ color: 'var(--brand-teal2)' }}>
-        © {new Date().getFullYear()} Restrepo Acosta Global Holding LLC
+        © {new Date().getFullYear()} {t('landing.restrepoAcostaGlobalHoldingLlc')}
       </footer>
     </div>
   )

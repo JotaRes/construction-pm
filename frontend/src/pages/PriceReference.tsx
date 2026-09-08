@@ -4,6 +4,7 @@ import { priceRefsApi, type ComputedPriceRefs, type ComputedPriceActivity } from
 import { formatUSD } from '../lib/calculations'
 import type { PriceRef } from '../lib/types'
 import { Plus, Trash2, Tag, Search, ChevronDown, ChevronRight, Calculator, Sparkles } from 'lucide-react'
+import { useI18n } from '../i18n'
 
 const UNIT_LABELS: Record<string, string> = {
   SF: 'pie²', LF: 'lineal', CY: 'yarda³', AC: 'acre', EA: 'unidad', MO: 'mes', LS: 'global', HR: 'hora', SY: 'yarda²',
@@ -12,17 +13,18 @@ function unitLabel(u: string) { return UNIT_LABELS[u] ? `${u} · ${UNIT_LABELS[u
 
 /* ── Referencias AUTO-CALCULADAS desde presupuesto + ejecución ── */
 function ComputedSection() {
+  const { t } = useI18n()
   const { data, isLoading } = useQuery<ComputedPriceRefs>({
     queryKey: ['price-refs-computed'],
     queryFn: priceRefsApi.computed,
   })
   const [openUnits, setOpenUnits] = useState<Record<string, boolean>>({})
 
-  if (isLoading) return <div className="text-slate-400 text-sm animate-pulse">Calculando promedios...</div>
+  if (isLoading) return <div className="text-slate-400 text-sm animate-pulse">{t('tech.prices.calculandoPromedios')}</div>
   if (!data || data.totalRecords === 0) {
     return (
       <div className="section-card p-6 text-center text-slate-400 text-sm">
-        Aún no hay presupuestos ni ejecución cargados para calcular promedios. Carga un Construction Budget o registra ejecución de obra y aquí aparecerán solos.
+        {t('tech.prices.aunNoHayPresupuestosNiEjecucion')}
       </div>
     )
   }
@@ -39,7 +41,7 @@ function ComputedSection() {
             <div className="text-lg font-bold font-mono text-slate-800">
               {u.avgUnitPrice != null ? `${formatUSD(u.avgUnitPrice)}/${u.unit}` : formatUSD(u.avgCost)}
             </div>
-            <div className="text-[10px] text-slate-400 mt-1">{u.count} muestra(s){u.avgUnitPrice == null ? ' · costo prom.' : ' · $/unidad'}</div>
+            <div className="text-[10px] text-slate-400 mt-1">{u.count} {t('tech.prices.muestraS')}{u.avgUnitPrice == null ? t('tech.prices.costoProm') : t('tech.prices.unidad')}</div>
           </div>
         ))}
       </div>
@@ -52,18 +54,18 @@ function ComputedSection() {
               className="w-full flex items-center gap-2 px-4 py-2.5 bg-slate-50 border-b border-slate-200 hover:bg-slate-100 transition-colors">
               {open ? <ChevronDown className="w-3.5 h-3.5 text-slate-400" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-400" />}
               <span className="text-xs font-bold uppercase tracking-wider text-slate-700">{unitLabel(unit)}</span>
-              <span className="text-[10px] text-slate-400">({acts.length} actividad(es))</span>
+              <span className="text-[10px] text-slate-400">({acts.length} {t('tech.prices.actividadEs')}</span>
             </button>
             {open && (
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-200">
-                      <th className="px-4 py-2 text-left text-[10px] font-semibold text-slate-600 uppercase tracking-wider">Actividad</th>
-                      <th className="px-3 py-2 text-left text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-40">Categoría</th>
-                      <th className="px-3 py-2 text-right text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-16">Muestras</th>
-                      <th className="px-3 py-2 text-right text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-28 border-l border-slate-100">Costo prom.</th>
-                      <th className="px-3 py-2 text-right text-[10px] font-semibold text-[var(--brand-gold)] uppercase tracking-wider w-32 border-l border-slate-100">Precio / {unit}</th>
+                      <th className="px-4 py-2 text-left text-[10px] font-semibold text-slate-600 uppercase tracking-wider">{t('common.actividad')}</th>
+                      <th className="px-3 py-2 text-left text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-40">{t('common.categoria')}</th>
+                      <th className="px-3 py-2 text-right text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-16">{t('tech.prices.muestras')}</th>
+                      <th className="px-3 py-2 text-right text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-28 border-l border-slate-100">{t('tech.prices.costoProm2')}</th>
+                      <th className="px-3 py-2 text-right text-[10px] font-semibold text-[var(--brand-gold)] uppercase tracking-wider w-32 border-l border-slate-100">{t('tech.prices.precio')} {unit}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -75,8 +77,8 @@ function ComputedSection() {
                         <td className="px-3 py-2 text-right text-xs font-mono text-slate-700 border-l border-slate-100">{formatUSD(a.avgCost)}</td>
                         <td className="px-3 py-2 text-right text-xs font-mono font-semibold border-l border-slate-100">
                           {a.avgUnitPrice != null
-                            ? <span className="text-[var(--brand-gold)]" title={`Rango ${formatUSD(a.minUnitPrice ?? 0)} – ${formatUSD(a.maxUnitPrice ?? 0)} · ${a.qtyCount} con cantidad`}>{formatUSD(a.avgUnitPrice)}</span>
-                            : <span className="text-slate-300" title="Carga la cantidad en el presupuesto/ejecución para calcular el precio por unidad">—</span>}
+                            ? <span className="text-[var(--brand-gold)]" title={t('tech.prices.rangoV0V1V2ConCantidad', { v0: formatUSD(a.minUnitPrice ?? 0), v1: formatUSD(a.maxUnitPrice ?? 0), v2: a.qtyCount })}>{formatUSD(a.avgUnitPrice)}</span>
+                            : <span className="text-slate-300" title={t('tech.prices.cargaLaCantidadEnElPresupuesto')}>—</span>}
                         </td>
                       </tr>
                     ))}
@@ -205,6 +207,7 @@ function CategorySection({
   onUpdate: (id: string, data: Record<string, unknown>) => void
   onDelete: (id: string) => void
 }) {
+  const { t } = useI18n()
   const [open, setOpen] = useState(true)
   const avgMid = refs.length === 0 ? 0
     : refs.reduce((s, r) => s + (r.priceLow + r.priceHigh) / 2, 0) / refs.length
@@ -217,9 +220,9 @@ function CategorySection({
       >
         {open ? <ChevronDown className="w-3.5 h-3.5 text-slate-400" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-400" />}
         <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${catColor(category)}`}>{category}</span>
-        <span className="text-xs text-slate-500 flex-1 text-left">{refs.length} {refs.length === 1 ? 'ítem' : 'ítems'}</span>
+        <span className="text-xs text-slate-500 flex-1 text-left">{refs.length} {refs.length === 1 ? t('tech.prices.item') : t('common.items')}</span>
         {avgMid > 0 && (
-          <span className="text-xs font-mono text-slate-400">avg mid {formatUSD(avgMid)}</span>
+          <span className="text-xs font-mono text-slate-400">{t('tech.prices.avgMid')} {formatUSD(avgMid)}</span>
         )}
       </button>
 
@@ -228,14 +231,14 @@ function CategorySection({
           <table className="w-full">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200/30">
-                <th className="px-4 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider">Descripción</th>
-                <th className="px-3 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider w-14">Cód.</th>
-                <th className="px-3 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider w-16">Unidad</th>
-                <th className="px-3 py-1.5 text-right text-[9px] text-slate-400 uppercase tracking-wider w-24">Precio Bajo</th>
-                <th className="px-3 py-1.5 text-right text-[9px] text-slate-400 uppercase tracking-wider w-24">Precio Alto</th>
-                <th className="px-3 py-1.5 text-right text-[9px] text-[#3E5A70]/60 uppercase tracking-wider w-24">Promedio</th>
-                <th className="px-3 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider w-32">Fuente</th>
-                <th className="px-3 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider w-24">Región</th>
+                <th className="px-4 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider">{t('common.descripcion')}</th>
+                <th className="px-3 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider w-14">{t('common.cod')}</th>
+                <th className="px-3 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider w-16">{t('tech.exec.unidad')}</th>
+                <th className="px-3 py-1.5 text-right text-[9px] text-slate-400 uppercase tracking-wider w-24">{t('tech.prices.precioBajo')}</th>
+                <th className="px-3 py-1.5 text-right text-[9px] text-slate-400 uppercase tracking-wider w-24">{t('tech.prices.precioAlto')}</th>
+                <th className="px-3 py-1.5 text-right text-[9px] text-[#3E5A70]/60 uppercase tracking-wider w-24">{t('tech.prices.promedio')}</th>
+                <th className="px-3 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider w-32">{t('fin.debt.fuente')}</th>
+                <th className="px-3 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider w-24">{t('tech.prices.region')}</th>
                 <th className="w-8" />
               </tr>
             </thead>
@@ -245,10 +248,10 @@ function CategorySection({
                 return (
                   <tr key={ref.id} className="border-b border-slate-200/20 hover:bg-white/40 transition-colors group">
                     <td className="px-4 py-2">
-                      <Txt value={ref.description} onSave={v => onUpdate(ref.id, { description: v })} placeholder="Descripción" />
+                      <Txt value={ref.description} onSave={v => onUpdate(ref.id, { description: v })} placeholder={t('common.descripcion')} />
                     </td>
                     <td className="px-3 py-2">
-                      <Txt value={ref.code} onSave={v => onUpdate(ref.id, { code: v })} placeholder="Cód." />
+                      <Txt value={ref.code} onSave={v => onUpdate(ref.id, { code: v })} placeholder={t('common.cod')} />
                     </td>
                     <td className="px-3 py-2">
                       <Txt value={ref.unit} onSave={v => onUpdate(ref.id, { unit: v })} placeholder="LS" />
@@ -265,10 +268,10 @@ function CategorySection({
                       </span>
                     </td>
                     <td className="px-3 py-2">
-                      <Txt value={ref.source} onSave={v => onUpdate(ref.id, { source: v })} placeholder="Fuente" />
+                      <Txt value={ref.source} onSave={v => onUpdate(ref.id, { source: v })} placeholder={t('fin.debt.fuente')} />
                     </td>
                     <td className="px-3 py-2">
-                      <Txt value={ref.region} onSave={v => onUpdate(ref.id, { region: v })} placeholder="Región" />
+                      <Txt value={ref.region} onSave={v => onUpdate(ref.id, { region: v })} placeholder={t('tech.prices.region')} />
                     </td>
                     <td className="px-2 py-2">
                       <button
@@ -291,6 +294,7 @@ function CategorySection({
 
 /* ── Add Form ───────────────────────────────────────── */
 function AddPriceForm({ onSave, onClose }: { onSave: (data: Record<string, unknown>) => void; onClose: () => void }) {
+  const { t } = useI18n()
   const [form, setForm] = useState({
     category: CATEGORIES[0],
     description: '',
@@ -307,10 +311,10 @@ function AddPriceForm({ onSave, onClose }: { onSave: (data: Record<string, unkno
 
   return (
     <div className="bg-white/60 border border-amber-500/20 rounded-2xl p-5 mb-4">
-      <div className="text-sm font-semibold text-slate-800 mb-4">Nuevo precio de referencia</div>
+      <div className="text-sm font-semibold text-slate-800 mb-4">{t('tech.prices.nuevoPrecioDeReferencia')}</div>
       <div className="grid grid-cols-2 gap-3 mb-3">
         <div>
-          <label className="block text-[10px] text-slate-400 uppercase tracking-wider mb-1">Categoría</label>
+          <label className="block text-[10px] text-slate-400 uppercase tracking-wider mb-1">{t('common.categoria')}</label>
           <select
             value={form.category}
             onChange={e => set('category', e.target.value)}
@@ -320,54 +324,54 @@ function AddPriceForm({ onSave, onClose }: { onSave: (data: Record<string, unkno
           </select>
         </div>
         <div>
-          <label className="block text-[10px] text-slate-400 uppercase tracking-wider mb-1">Descripción *</label>
+          <label className="block text-[10px] text-slate-400 uppercase tracking-wider mb-1">{t('tech.prices.descripcion')}</label>
           <input
             type="text"
             value={form.description}
             onChange={e => set('description', e.target.value)}
-            placeholder="Ej: Framing 2x6 walls"
+            placeholder={t('tech.prices.ejFraming2x6Walls')}
             className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs px-2 py-1.5 rounded-lg focus:outline-none focus:border-[#3E5A70]/60 placeholder-slate-400"
           />
         </div>
         <div>
-          <label className="block text-[10px] text-slate-400 uppercase tracking-wider mb-1">Código (opcional)</label>
+          <label className="block text-[10px] text-slate-400 uppercase tracking-wider mb-1">{t('tech.prices.codigoOpcional')}</label>
           <input type="text" value={form.code} onChange={e => set('code', e.target.value)}
             placeholder="03.01"
             className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs px-2 py-1.5 rounded-lg focus:outline-none focus:border-[#3E5A70]/60 placeholder-slate-400" />
         </div>
         <div>
-          <label className="block text-[10px] text-slate-400 uppercase tracking-wider mb-1">Unidad</label>
+          <label className="block text-[10px] text-slate-400 uppercase tracking-wider mb-1">{t('tech.exec.unidad')}</label>
           <input type="text" value={form.unit} onChange={e => set('unit', e.target.value)}
-            placeholder="SF / LF / EA / LS"
+            placeholder={t('tech.prices.sfLfEaLs')}
             className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs px-2 py-1.5 rounded-lg focus:outline-none focus:border-[#3E5A70]/60 placeholder-slate-400" />
         </div>
         <div>
-          <label className="block text-[10px] text-slate-400 uppercase tracking-wider mb-1">Precio Bajo</label>
+          <label className="block text-[10px] text-slate-400 uppercase tracking-wider mb-1">{t('tech.prices.precioBajo')}</label>
           <input type="number" value={form.priceLow} onChange={e => set('priceLow', e.target.value)}
             placeholder="0.00"
             className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs px-2 py-1.5 rounded-lg focus:outline-none focus:border-[#3E5A70]/60 font-mono placeholder-slate-400" />
         </div>
         <div>
-          <label className="block text-[10px] text-slate-400 uppercase tracking-wider mb-1">Precio Alto</label>
+          <label className="block text-[10px] text-slate-400 uppercase tracking-wider mb-1">{t('tech.prices.precioAlto')}</label>
           <input type="number" value={form.priceHigh} onChange={e => set('priceHigh', e.target.value)}
             placeholder="0.00"
             className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs px-2 py-1.5 rounded-lg focus:outline-none focus:border-[#3E5A70]/60 font-mono placeholder-slate-400" />
         </div>
         <div>
-          <label className="block text-[10px] text-slate-400 uppercase tracking-wider mb-1">Fuente</label>
+          <label className="block text-[10px] text-slate-400 uppercase tracking-wider mb-1">{t('fin.debt.fuente')}</label>
           <input type="text" value={form.source} onChange={e => set('source', e.target.value)}
-            placeholder="Contratista ABC / RS Means 2024"
+            placeholder={t('tech.prices.contratistaAbcRsMeans2024')}
             className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs px-2 py-1.5 rounded-lg focus:outline-none focus:border-[#3E5A70]/60 placeholder-slate-400" />
         </div>
         <div>
-          <label className="block text-[10px] text-slate-400 uppercase tracking-wider mb-1">Región</label>
+          <label className="block text-[10px] text-slate-400 uppercase tracking-wider mb-1">{t('tech.prices.region')}</label>
           <input type="text" value={form.region} onChange={e => set('region', e.target.value)}
             className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs px-2 py-1.5 rounded-lg focus:outline-none focus:border-[#3E5A70]/60" />
         </div>
       </div>
       <div className="flex gap-2 justify-end">
         <button onClick={onClose} className="px-4 py-1.5 text-xs text-slate-500 hover:text-slate-800 transition-colors">
-          Cancelar
+          {t('common.cancelar')}
         </button>
         <button
           onClick={() => {
@@ -381,7 +385,7 @@ function AddPriceForm({ onSave, onClose }: { onSave: (data: Record<string, unkno
           }}
           className="px-4 py-1.5 bg-[var(--brand-gold)] hover:bg-[#4A6880] text-white text-xs font-medium rounded-lg transition-colors"
         >
-          Guardar
+          {t('common.guardar')}
         </button>
       </div>
     </div>
@@ -390,6 +394,7 @@ function AddPriceForm({ onSave, onClose }: { onSave: (data: Record<string, unkno
 
 /* ── Main ───────────────────────────────────────────── */
 export default function PriceReference() {
+  const { t } = useI18n()
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [filterCat, setFilterCat] = useState('ALL')
@@ -446,7 +451,7 @@ export default function PriceReference() {
     return { total: refs.length, cats: categories.length, withPrices: withPrices.length }
   }, [refs, categories])
 
-  if (isLoading) return <div className="text-slate-500 text-sm animate-pulse">Cargando precios...</div>
+  if (isLoading) return <div className="text-slate-500 text-sm animate-pulse">{t('tech.prices.cargandoPrecios')}</div>
 
   return (
     <div className="space-y-5">
@@ -455,19 +460,19 @@ export default function PriceReference() {
         <div>
           <div className="flex items-center gap-2 mb-0.5">
             <Tag className="w-5 h-5 text-[var(--brand-gold)]" />
-            <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><Tag className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>Precios de Referencia</span></h1>
+            <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><Tag className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>{t('tech.prices.preciosDeReferencia')}</span></h1>
           </div>
-          <p className="text-xs text-slate-400">Promedios automáticos de tus presupuestos y ejecución (general al módulo técnico), más un catálogo manual opcional.</p>
+          <p className="text-xs text-slate-400">{t('tech.prices.promediosAutomaticosDeTusPresupuestosY')}</p>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex gap-0.5 bg-white rounded-lg p-0.5 border border-slate-200">
             <button onClick={() => setView('auto')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${view === 'auto' ? 'bg-[var(--brand-gold)] text-white' : 'text-slate-500 hover:text-slate-800'}`}>
-              <Sparkles className="w-3.5 h-3.5" />Automáticos
+              <Sparkles className="w-3.5 h-3.5" />{t('tech.prices.automaticos')}
             </button>
             <button onClick={() => setView('manual')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${view === 'manual' ? 'bg-[var(--brand-teal)] text-white' : 'text-slate-500 hover:text-slate-800'}`}>
-              <Tag className="w-3.5 h-3.5" />Catálogo manual
+              <Tag className="w-3.5 h-3.5" />{t('tech.prices.catalogoManual')}
             </button>
           </div>
           {view === 'manual' && (
@@ -476,7 +481,7 @@ export default function PriceReference() {
               className="flex items-center gap-2 px-4 py-2 bg-[var(--brand-gold)] hover:bg-[#4A6880] text-white text-sm font-medium rounded-xl transition-colors"
             >
               <Plus className="w-4 h-4" />
-              Agregar precio
+              {t('tech.prices.agregarPrecio')}
             </button>
           )}
         </div>
@@ -485,7 +490,7 @@ export default function PriceReference() {
       {view === 'auto' && (
         <div className="section-card p-3 flex items-start gap-2" style={{ background: 'rgba(62,90,112,0.05)' }}>
           <Calculator className="w-4 h-4 text-[var(--brand-gold)] flex-shrink-0 mt-0.5" />
-          <p className="text-[11px] text-slate-600">Calculado en vivo desde tus presupuestos y ejecución de todos los proyectos: costo promedio por actividad y precio por unidad ($/pie², $/yarda³, $/lineal...) donde hayas cargado la cantidad. Se actualiza solo.</p>
+          <p className="text-[11px] text-slate-600">{t('tech.prices.calculadoEnVivoDesdeTusPresupuestos')}</p>
         </div>
       )}
       {view === 'auto' && <ComputedSection />}
@@ -494,17 +499,17 @@ export default function PriceReference() {
       {/* KPI cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="kpi-card">
-          <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">Total referencias</div>
+          <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">{t('tech.prices.totalReferencias')}</div>
           <div className="text-2xl font-bold font-mono text-slate-900">{stats.total}</div>
         </div>
         <div className="kpi-card kpi-card-green">
-          <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">Categorías</div>
+          <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">{t('tech.prices.categorias')}</div>
           <div className="text-2xl font-bold font-mono text-emerald-400">{stats.cats}</div>
         </div>
         <div className="kpi-card kpi-card-amber">
-          <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">Con precio</div>
+          <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">{t('tech.prices.conPrecio')}</div>
           <div className="text-2xl font-bold font-mono text-[var(--brand-gold)]">{stats.withPrices}</div>
-          <div className="text-xs text-slate-400 mt-1">{stats.total > 0 ? Math.round(stats.withPrices / stats.total * 100) : 0}% del catálogo</div>
+          <div className="text-xs text-slate-400 mt-1">{stats.total > 0 ? Math.round(stats.withPrices / stats.total * 100) : 0}{t('tech.prices.delCatalogo')}</div>
         </div>
       </div>
 
@@ -522,7 +527,7 @@ export default function PriceReference() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
           <input
             type="text"
-            placeholder="Buscar por descripción, categoría, fuente..."
+            placeholder={t('tech.prices.buscarPorDescripcionCategoriaFuente')}
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 text-xs text-slate-800 rounded-xl focus:outline-none focus:border-[#3E5A70]/60 placeholder-slate-400"
@@ -534,7 +539,7 @@ export default function PriceReference() {
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
               ${filterCat === 'ALL' ? 'bg-[#3E5A70]/10 text-[var(--brand-teal)] border border-amber-500/40' : 'text-slate-500 hover:text-slate-800 bg-white/50'}`}
           >
-            Todas
+            {t('tech.photos.todas')}
           </button>
           {categories.map(c => (
             <button
@@ -553,13 +558,13 @@ export default function PriceReference() {
       {byCategory.size === 0 ? (
         <div className="text-center py-20 text-slate-400">
           <Tag className="w-10 h-10 mx-auto mb-3 opacity-30" />
-          <p className="text-sm">No hay precios de referencia todavía.</p>
-          <p className="text-xs mt-1">Agrega cotizaciones, valores de mercado o referencias de RS Means.</p>
+          <p className="text-sm">{t('tech.prices.noHayPreciosDeReferenciaTodavia')}</p>
+          <p className="text-xs mt-1">{t('tech.prices.agregaCotizacionesValoresDeMercadoO')}</p>
           <button
             onClick={() => setShowAdd(true)}
             className="mt-4 px-4 py-2 bg-[#3E5A70]/10 text-[var(--brand-gold)] border border-amber-500/30 rounded-xl text-sm hover:bg-blue-600/30 transition-colors"
           >
-            + Agregar primer precio
+            {t('tech.prices.agregarPrimerPrecio')}
           </button>
         </div>
       ) : (

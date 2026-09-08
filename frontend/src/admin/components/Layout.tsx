@@ -156,7 +156,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <RAMark size={15} />
             </div>
             <div>
-              <div className="fin-logo-name">Restrepo Acosta</div>
+              <div className="fin-logo-name">{t('common.restrepoAcosta')}</div>
               <div className="fin-logo-sub">{t('adm.title.default')}</div>
             </div>
           </Link>
@@ -190,7 +190,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div className="px-[18px] py-[14px] flex items-center gap-[10px]" style={{ borderTop: "1px solid var(--border)" }}>
           <div className="fin-user-av">JR</div>
           <div className="flex-1 min-w-0">
-            <div style={{ fontSize: 12, fontWeight: 500, color: "var(--text-primary)", lineHeight: 1.3 }}>Dr. Restrepo</div>
+            <div style={{ fontSize: 12, fontWeight: 500, color: "var(--text-primary)", lineHeight: 1.3 }}>{t('common.drRestrepo')}</div>
             <div style={{ fontFamily: "var(--font-mono)", fontSize: 7.5, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginTop: 2 }}>{t('layout.role.managingDirector')}</div>
           </div>
           <button onClick={unifiedLogout} title={t('common.logout')} className="fin-btn-icon" style={{ width: 26, height: 26 }}>

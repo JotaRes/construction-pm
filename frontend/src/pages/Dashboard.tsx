@@ -117,7 +117,7 @@ export default function Dashboard({ projectId }: Props) {
             permitLevel === 'critical' ? 'bg-red-50 text-red-500 border border-red-200' :
             permitLevel === 'warning' ? 'bg-amber-50 text-amber-600 border border-amber-200' :
             'bg-emerald-50 text-emerald-600 border border-emerald-200'}`}>
-            {t('dash.permitExpires')}: {formatDate(project.permitExpires ?? null)} · {permitDias}d
+            {t('dash.permitExpires')}: {formatDate(project.permitExpires ?? null)} · {permitDias}{t('tech.dash.d')}
           </div>
         </div>
       </div>

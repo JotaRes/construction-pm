@@ -6,6 +6,8 @@ import type { ProjectFile, Draw, Phase } from '../lib/types'
 import { Plus, ExternalLink, Trash2, Upload, FileText, CheckCircle, AlertCircle, ChevronDown, ChevronUp, X, FolderOpen } from 'lucide-react'
 import axios from 'axios'
 import DocumentChecklist from '../components/DocumentChecklist'
+import { useI18n, type TranslationKey, currentLocale } from '../i18n'
+import { dataLabel, FILE_CATEGORY_LABELS } from '../i18n/dataLabels'
 
 const api = axios.create({ baseURL: '/api' })
 // Inyecta el token JWT en cada request — sin esto, /api/* da 401 con la auth global.
@@ -17,65 +19,65 @@ api.interceptors.request.use((config) => {
 
 const CATEGORIES = ['Contrato', 'Permiso', 'Plano', 'Seguro', 'Draw', 'HOA', 'Legal', 'Inspección', 'Otro']
 
-const DOC_TYPES = [
-  { value: 'DRAW',      label: 'Draw / Inspección Trinity',      cat: 'Draw' },
-  { value: 'HUD',       label: 'HUD-1 / Closing Disclosure',     cat: 'Legal' },
-  { value: 'LOAN',      label: 'Carta aprobación préstamo (Lender Commitment)', cat: 'Legal' },
-  { value: 'SURVEY',    label: 'Survey / Levantamiento',         cat: 'Legal' },
-  { value: 'PLANS',     label: 'Planos Arquitectónicos',         cat: 'Plano' },
-  { value: 'PERMIT',    label: 'Building Permit',                cat: 'Permiso' },
-  { value: 'APPRAISAL', label: 'Appraisal / Avalúo',            cat: 'Otro' },
-  { value: 'BUDGET',    label: 'Construction Budget (PDF)',      cat: 'Otro' },
-  { value: 'INSURANCE', label: 'Seguro / Insurance',            cat: 'Seguro' },
-  { value: 'HOA',       label: 'HOA Documents',                 cat: 'HOA' },
-  { value: 'CONTRACT',  label: 'Contrato GC / Subcontratista',  cat: 'Contrato' },
-  { value: 'GENERAL',   label: 'Otro documento (solo guardar)', cat: 'Otro' },
+const DOC_TYPES: { value: string; labelKey: TranslationKey; cat: string }[] = [
+  { value: 'DRAW',      labelKey: 'tech.files.drawInspeccionTrinity',      cat: 'Draw' },
+  { value: 'HUD',       labelKey: 'tech.files.hud1ClosingDisclosure',     cat: 'Legal' },
+  { value: 'LOAN',      labelKey: 'tech.files.cartaAprobacionPrestamoLenderCommitment', cat: 'Legal' },
+  { value: 'SURVEY',    labelKey: 'tech.files.surveyLevantamiento',         cat: 'Legal' },
+  { value: 'PLANS',     labelKey: 'tech.files.planosArquitectonicos',         cat: 'Plano' },
+  { value: 'PERMIT',    labelKey: 'tech.files.buildingPermit',                cat: 'Permiso' },
+  { value: 'APPRAISAL', labelKey: 'tech.files.appraisalAvaluo',            cat: 'Otro' },
+  { value: 'BUDGET',    labelKey: 'tech.files.constructionBudgetPdf',      cat: 'Otro' },
+  { value: 'INSURANCE', labelKey: 'tech.files.seguroInsurance',            cat: 'Seguro' },
+  { value: 'HOA',       labelKey: 'tech.files.hoaDocuments',                 cat: 'HOA' },
+  { value: 'CONTRACT',  labelKey: 'tech.files.contratoGcSubcontratista',  cat: 'Contrato' },
+  { value: 'GENERAL',   labelKey: 'tech.files.otroDocumentoSoloGuardar', cat: 'Otro' },
 ]
 
-const FIELD_LABELS: Record<string, string> = {
+const FIELD_LABELS: Record<string, TranslationKey> = {
   // Draw
-  drawNumber: 'Nº de Draw',
-  fechaSolicitud: 'Fecha solicitud',
-  fechaInspeccion: 'Fecha inspección',
-  fechaWire: 'Fecha wire',
-  montoSolicitado: 'Monto solicitado',
-  elegibleTrinity: 'Elegible Trinity',
-  netWire: 'Net wire',
-  porcentajeFunded: '% fundado',
+  drawNumber: 'tech.files.nDeDraw',
+  fechaSolicitud: 'tech.files.fechaSolicitud',
+  fechaInspeccion: 'tech.files.fechaInspeccion',
+  fechaWire: 'tech.files.fechaWire',
+  montoSolicitado: 'tech.files.montoSolicitado',
+  elegibleTrinity: 'tech.draws.elegibleTrinity',
+  netWire: 'tech.files.netWire',
+  porcentajeFunded: 'tech.files.porcentajeFundado',
   // HUD / Closing
-  settlementDate: 'Fecha de cierre',
-  cashAtSettlement: 'Cash al cierre',
-  closingCosts: 'Costos de cierre',
+  settlementDate: 'tech.files.fechaDeCierre',
+  cashAtSettlement: 'tech.files.cashAlCierre',
+  closingCosts: 'tech.files.costosDeCierre',
   // Loan
-  lender: 'Prestamista',
-  loanNumber: 'Nº de préstamo',
-  loanAmount: 'Monto del préstamo',
-  interestRate: 'Tasa de interés',
-  loanTermMonths: 'Plazo (meses)',
-  holdback: 'Holdback',
-  day1Disbursement: 'Desembolso Día 1',
-  interestReserve: 'Reserva de intereses',
+  lender: 'tech.files.prestamista',
+  loanNumber: 'tech.files.nDePrestamo',
+  loanAmount: 'tech.files.montoDelPrestamo',
+  interestRate: 'tech.files.tasaDeInteres',
+  loanTermMonths: 'fin.debt.plazoMeses',
+  holdback: 'tech.projects.holdback',
+  day1Disbursement: 'tech.files.desembolsoDia1',
+  interestReserve: 'tech.files.reservaDeIntereses',
   // Survey
-  parcelId: 'Parcel ID',
-  lotAcres: 'Acres del lote',
-  address: 'Dirección',
-  county: 'Condado',
+  parcelId: 'tech.projects.parcelId',
+  lotAcres: 'tech.projects.acresDelLote',
+  address: 'common.direccion',
+  county: 'tech.projects.condado',
   // Plans
-  sfHeated: 'SF calefaccionados',
-  sfGarage: 'SF garaje',
-  sfPorches: 'SF porches',
-  bedrooms: 'Habitaciones',
-  bathrooms: 'Baños',
-  foundationType: 'Tipo de fundación',
+  sfHeated: 'tech.files.sfCalefaccionados',
+  sfGarage: 'tech.files.sfGaraje',
+  sfPorches: 'tech.files.sfPorchesLbl',
+  bedrooms: 'tech.projects.habitaciones',
+  bathrooms: 'tech.projects.banos',
+  foundationType: 'tech.files.tipoDeFundacion',
   // Permit
-  permitNumber: 'Nº de permiso',
-  permitIssued: 'Fecha emisión',
-  permitExpires: 'Fecha vencimiento',
+  permitNumber: 'tech.files.nDePermiso',
+  permitIssued: 'tech.projects.fechaEmision',
+  permitExpires: 'tech.files.fechaVencimiento',
   // Appraisal
-  arv: 'ARV (valor mercado)',
-  targetListingPrice: 'Precio de lista estimado',
+  arv: 'tech.files.arvValorMercado',
+  targetListingPrice: 'tech.files.precioDeListaEstimado',
   // HUD land purchase
-  contractSalesPrice: 'Precio de compra (lote)',
+  contractSalesPrice: 'tech.files.precioDeCompraLote',
 }
 
 function formatExtracted(key: string, val: unknown): string {
@@ -84,7 +86,7 @@ function formatExtracted(key: string, val: unknown): string {
   const pctKeys = ['porcentajeFunded', 'interestRate']
   if (moneyKeys.includes(key)) return formatUSD(Number(val))
   if (pctKeys.includes(key)) return `${(Number(val) * 100).toFixed(2)}%`
-  if (typeof val === 'string' && val.includes('T00:00:00')) return new Date(val).toLocaleDateString('es-CO')
+  if (typeof val === 'string' && val.includes('T00:00:00')) return new Date(val).toLocaleDateString(currentLocale())
   return String(val)
 }
 
@@ -96,6 +98,7 @@ interface ExtractResult {
 }
 
 export default function Files({ projectId }: { projectId: string }) {
+  const { t } = useI18n()
   const queryClient = useQueryClient()
 
   // URL-reference form
@@ -144,18 +147,18 @@ export default function Files({ projectId }: { projectId: string }) {
     try {
       if (dtype === 'DRAW') {
         const drawNum = p.drawNumber as number | undefined
-        if (!drawNum) { setApplyStatus('⚠ No se detectó número de draw'); return }
+        if (!drawNum) { setApplyStatus(t('tech.files.noSeDetectoNumeroDeDraw')); return }
         const draw = draws.find(d => d.drawNumber === drawNum)
-        if (!draw) { setApplyStatus(`⚠ Draw #${drawNum} no encontrado en el proyecto`); return }
+        if (!draw) { setApplyStatus(t('tech.files.drawV0NoEncontradoEnEl', { v0: drawNum })); return }
         const drawFields = ['fechaSolicitud', 'fechaInspeccion', 'fechaWire', 'montoSolicitado', 'elegibleTrinity', 'netWire', 'porcentajeFunded', 'pdfUrl']
         const update: Record<string, unknown> = {}
         drawFields.forEach(k => { if (p[k] !== undefined) update[k] = p[k] })
         await drawsApi.patch(draw.id, update)
         queryClient.invalidateQueries({ queryKey: ['draws', projectId] })
-        setApplyStatus(`✓ Draw #${drawNum} actualizado`)
+        setApplyStatus(t('tech.files.drawUpdated', { n: drawNum }))
 
       } else if (dtype === 'BUDGET') {
-        setApplyStatus('✓ Budget extraído — ver sección "Const. Budget" para aplicar línea por línea')
+        setApplyStatus(t('tech.files.budgetExtraidoVerSeccionConstBudget'))
 
       } else if (dtype === 'HUD') {
         // 1. Project-level financial fields
@@ -173,18 +176,18 @@ export default function Files({ projectId }: { projectId: string }) {
           const allItems = phases.flatMap(ph => ph.items ?? [])
           if (p.contractSalesPrice !== undefined) {
             const item = allItems.find(i => i.itemCode === '00.01')
-            if (item) { await itemsApi.patch(item.id, { valorEjecutado: p.contractSalesPrice }); appliedItems.push('Compra del lote (00.01)') }
+            if (item) { await itemsApi.patch(item.id, { valorEjecutado: p.contractSalesPrice }); appliedItems.push(t('tech.files.compraDelLote0001')) }
           }
           if (p.closingCosts !== undefined) {
             const item = allItems.find(i => i.itemCode === '00.02')
-            if (item) { await itemsApi.patch(item.id, { valorEjecutado: p.closingCosts }); appliedItems.push('Closing del lote (00.02)') }
+            if (item) { await itemsApi.patch(item.id, { valorEjecutado: p.closingCosts }); appliedItems.push(t('tech.files.closingDelLote0002')) }
           }
           if (appliedItems.length > 0) queryClient.invalidateQueries({ queryKey: ['phases', projectId] })
         }
         const total = Object.keys(update).length + appliedItems.length
-        if (total === 0) { setApplyStatus('⚠ No se extrajeron campos del HUD'); return }
-        const itemStr = appliedItems.length > 0 ? ` · Ejecución: ${appliedItems.join(', ')}` : ''
-        setApplyStatus(`✓ ${Object.keys(update).length} campos del proyecto${itemStr}`)
+        if (total === 0) { setApplyStatus(t('tech.files.noSeExtrajeronCamposDelHud')); return }
+        const itemStr = appliedItems.length > 0 ? t('tech.files.ejecucionV0', { v0: appliedItems.join(', ') }) : ''
+        setApplyStatus(t('tech.files.v0CamposDelProyectoV1', { v0: Object.keys(update).length, v1: itemStr }))
 
       } else {
         // LOAN, SURVEY, PLANS, PERMIT, APPRAISAL — update project fields
@@ -198,16 +201,17 @@ export default function Files({ projectId }: { projectId: string }) {
         const fields = projectFieldsByType[dtype] ?? Object.keys(p).filter(k => k !== 'pdfUrl')
         const update: Record<string, unknown> = {}
         fields.forEach(k => { if (p[k] !== undefined) update[k] = p[k] })
-        if (Object.keys(update).length === 0) { setApplyStatus('⚠ No se extrajeron campos reconocibles de este documento'); return }
+        if (Object.keys(update).length === 0) { setApplyStatus(t('tech.files.noSeExtrajeronCamposReconociblesDe')); return }
         await projectsApi.patch(projectId, update)
         queryClient.invalidateQueries({ queryKey: ['projects'] })
-        const label = DOC_TYPES.find(d => d.value === dtype)?.label ?? dtype
-        setApplyStatus(`✓ ${Object.keys(update).length} campos de "${label}" aplicados al proyecto`)
+        const dt = DOC_TYPES.find(d => d.value === dtype)
+    const label = dt ? t(dt.labelKey) : dtype
+        setApplyStatus(t('tech.files.v0CamposDeV1AplicadosAl', { v0: Object.keys(update).length, v1: label }))
       }
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { error?: string } }; message?: string })?.response?.data?.error
-        ?? (e as Error)?.message ?? 'Error'
-      setApplyStatus(`✗ Error: ${msg}`)
+        ?? (e as Error)?.message ?? t('common.error')
+      setApplyStatus(t('tech.files.errorV0', { v0: msg }))
     } finally {
       setApplying(false)
     }
@@ -238,7 +242,7 @@ export default function Files({ projectId }: { projectId: string }) {
         await filesApi.create(projectId, { name: uploadFile.name, url: uploadFile.name, category: docTypeDef.cat })
         queryClient.invalidateQueries({ queryKey: ['files', projectId] })
         setUploadFile(null)
-        setApplyStatus('✓ Archivo guardado en el repositorio')
+        setApplyStatus(t('tech.files.archivoGuardadoEnElRepositorio'))
         return
       } else {
         result = await docParseApi.parsePdf(projectId, uploadFile, docType)
@@ -247,7 +251,7 @@ export default function Files({ projectId }: { projectId: string }) {
       setExtractResult(result)
       // Auto-save file reference
       await filesApi.create(projectId, {
-        name: `${docTypeDef.label} — ${uploadFile.name}`,
+        name: `${t(docTypeDef.labelKey)} — ${uploadFile.name}`,
         url: (result.parsed?.pdfUrl as string) ?? result.imageUrl ?? uploadFile.name,
         category: docTypeDef.cat,
       })
@@ -260,7 +264,7 @@ export default function Files({ projectId }: { projectId: string }) {
       }
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { error?: string } }; message?: string })?.response?.data?.error
-        ?? (e as Error)?.message ?? 'Error desconocido'
+        ?? (e as Error)?.message ?? t('tech.providers.errorDesconocido')
       setExtractError(msg)
     } finally {
       setExtracting(false)
@@ -282,11 +286,11 @@ export default function Files({ projectId }: { projectId: string }) {
     queryFn: () => projectsApi.get(projectId),
   })
 
-  if (isLoading) return <div className="text-slate-500 text-sm animate-pulse">Cargando archivos...</div>
+  if (isLoading) return <div className="text-slate-500 text-sm animate-pulse">{t('tech.files.cargandoArchivos')}</div>
 
   return (
     <div className="space-y-6">
-      <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><FolderOpen className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>Repositorio de Archivos</span></h1>
+      <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><FolderOpen className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>{t('tech.files.repositorioDeArchivos')}</span></h1>
 
       {/* === CHECKLIST DOCUMENTAL (nueva sección destacada) === */}
       <DocumentChecklist
@@ -299,22 +303,22 @@ export default function Files({ projectId }: { projectId: string }) {
       <div className="bg-white rounded-xl border border-[#3E5A70]/40 shadow-sm overflow-hidden">
         <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2">
           <Upload className="w-4 h-4 text-[var(--brand-gold)]" />
-          <span className="text-sm font-semibold text-slate-800">Cargar documento y extraer datos</span>
+          <span className="text-sm font-semibold text-slate-800">{t('tech.files.cargarDocumentoYExtraerDatos')}</span>
         </div>
         <div className="p-5 space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Tipo de documento</label>
+              <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">{t('tech.files.tipoDeDocumento')}</label>
               <select value={docType} onChange={e => { setDocType(e.target.value); setExtractResult(null); setApplyStatus(null) }}
                 className="w-full bg-slate-50 border border-slate-200 text-sm text-slate-700 px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)]">
-                {DOC_TYPES.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
+                {DOC_TYPES.map(d => <option key={d.value} value={d.value}>{t(d.labelKey)}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Archivo</label>
+              <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">{t('fin.stmts.archivo2')}</label>
               <label className="flex items-center gap-2 w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 cursor-pointer hover:border-[var(--brand-gold)] transition-colors">
                 <FileText className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                <span className="text-sm truncate text-slate-600">{uploadFile ? uploadFile.name : 'Seleccionar archivo (PDF, Word, Excel, imagen)...'}</span>
+                <span className="text-sm truncate text-slate-600">{uploadFile ? uploadFile.name : t('tech.files.seleccionarArchivoPdfWordExcelImagen')}</span>
                 <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.tiff,.tif,.bmp,.gif,.doc,.docx,.xlsx,.xls,.csv" className="hidden"
                   onChange={e => { setUploadFile(e.target.files?.[0] ?? null); setExtractResult(null); setApplyStatus(null) }} />
               </label>
@@ -324,9 +328,9 @@ export default function Files({ projectId }: { projectId: string }) {
           <button onClick={handleExtract} disabled={!uploadFile || extracting}
             className="flex items-center gap-2 bg-[var(--brand-gold)] hover:bg-[#4A6880] disabled:opacity-40 text-white text-sm font-semibold px-5 py-2 rounded-lg transition-colors">
             {extracting ? (
-              <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Extrayendo datos...</>
+              <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />{t('tech.files.extrayendoDatos')}</>
             ) : (
-              <><Upload className="w-4 h-4" />Cargar y extraer datos</>
+              <><Upload className="w-4 h-4" />{t('tech.files.cargarYExtraerDatos')}</>
             )}
           </button>
 
@@ -343,7 +347,7 @@ export default function Files({ projectId }: { projectId: string }) {
                 <div className="flex items-center gap-2">
                   <CheckCircle className="w-4 h-4 text-emerald-500" />
                   <span className="text-sm font-semibold text-slate-800">
-                    {extractedEntries.length > 0 ? `${extractedEntries.length} campos extraídos` : 'Archivo guardado'}
+                    {extractedEntries.length > 0 ? t('tech.files.v0CamposExtraidos', { v0: extractedEntries.length }) : t('tech.files.archivoGuardado')}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -351,7 +355,7 @@ export default function Files({ projectId }: { projectId: string }) {
                     <button onClick={() => setShowPreview(v => !v)}
                       className="flex items-center gap-1 text-[11px] text-slate-500 hover:text-slate-800 transition-colors">
                       {showPreview ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                      Ver texto
+                      {t('tech.files.verTexto')}
                     </button>
                   )}
                   <button onClick={() => { setExtractResult(null); setUploadFile(null); setApplyStatus(null) }}
@@ -363,7 +367,7 @@ export default function Files({ projectId }: { projectId: string }) {
                 <div className="p-4 grid grid-cols-2 gap-x-8 gap-y-2">
                   {extractedEntries.map(([key, val]) => (
                     <div key={key} className="flex items-center justify-between gap-4 text-sm py-1 border-b border-slate-100">
-                      <span className="text-slate-500 text-xs">{FIELD_LABELS[key] ?? key}</span>
+                      <span className="text-slate-500 text-xs">{FIELD_LABELS[key] ? t(FIELD_LABELS[key]) : key}</span>
                       <span className="font-mono font-semibold text-slate-800 text-xs">{formatExtracted(key, val)}</span>
                     </div>
                   ))}
@@ -387,7 +391,7 @@ export default function Files({ projectId }: { projectId: string }) {
                   )}
                   <button onClick={handleApply} disabled={applying}
                     className="flex items-center gap-2 bg-[var(--brand-teal)] hover:bg-[#48484A] disabled:opacity-40 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors">
-                    {applying ? 'Aplicando...' : '↺ Re-aplicar'}
+                    {applying ? t('tech.files.aplicando') : t('tech.files.reAplicar')}
                   </button>
                 </div>
               )}
@@ -398,20 +402,20 @@ export default function Files({ projectId }: { projectId: string }) {
 
       {/* ── Manual URL reference ──────────────────────────────── */}
       <div className="bg-white rounded-xl border border-slate-200 p-4">
-        <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-3">Agregar referencia manual (URL)</div>
+        <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-3">{t('tech.files.agregarReferenciaManualUrl')}</div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
-          <input placeholder="Nombre del documento *" value={name} onChange={e => setName(e.target.value)}
+          <input placeholder={t('common.nombreDelDocumento')} value={name} onChange={e => setName(e.target.value)}
             className="bg-slate-50 text-slate-800 text-sm px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-[var(--brand-gold)]" />
-          <input placeholder="URL o path del archivo *" value={url} onChange={e => setUrl(e.target.value)}
+          <input placeholder={t('tech.files.urlOPathDelArchivo')} value={url} onChange={e => setUrl(e.target.value)}
             className="bg-slate-50 text-slate-800 text-sm px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-[var(--brand-gold)]" />
           <select value={category} onChange={e => setCategory(e.target.value)}
             className="bg-slate-50 text-slate-800 text-sm px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-[var(--brand-gold)]">
-            {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+            {CATEGORIES.map(c => <option key={c} value={c}>{dataLabel(FILE_CATEGORY_LABELS, c, t)}</option>)}
           </select>
         </div>
         <button onClick={() => name && url && createMut.mutate()} disabled={!name || !url}
           className="flex items-center gap-2 bg-[var(--brand-teal)] hover:bg-[#48484A] disabled:opacity-40 text-white text-sm px-4 py-2 rounded-lg transition-colors">
-          <Plus className="w-4 h-4" /> Agregar referencia
+          <Plus className="w-4 h-4" /> {t('tech.files.agregarReferencia')}
         </button>
       </div>
 
@@ -421,7 +425,7 @@ export default function Files({ projectId }: { projectId: string }) {
           <button key={c} onClick={() => setFilterCat(c)}
             className={`px-3 py-1 rounded-full text-xs font-medium transition-colors
               ${filterCat === c ? 'bg-[var(--brand-teal)] text-white' : 'bg-white text-slate-500 hover:text-slate-800 border border-slate-200'}`}>
-            {c === 'ALL' ? 'Todos' : c}
+            {c === 'ALL' ? t('fin.movs.todos') : dataLabel(FILE_CATEGORY_LABELS, c, t)}
           </button>
         ))}
       </div>
@@ -431,9 +435,9 @@ export default function Files({ projectId }: { projectId: string }) {
         <table className="w-full">
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50">
-              <th className="px-4 py-3 text-left text-[10px] text-slate-400 uppercase">Documento</th>
-              <th className="px-4 py-3 text-left text-[10px] text-slate-400 uppercase w-28">Categoría</th>
-              <th className="px-4 py-3 text-left text-[10px] text-slate-400 uppercase w-28">Fecha</th>
+              <th className="px-4 py-3 text-left text-[10px] text-slate-400 uppercase">{t('tech.draws.documento')}</th>
+              <th className="px-4 py-3 text-left text-[10px] text-slate-400 uppercase w-28">{t('common.categoria')}</th>
+              <th className="px-4 py-3 text-left text-[10px] text-slate-400 uppercase w-28">{t('common.fecha')}</th>
               <th className="px-4 py-3 w-20" />
             </tr>
           </thead>
@@ -448,7 +452,7 @@ export default function Files({ projectId }: { projectId: string }) {
                   <div className="text-[10px] text-slate-400 ml-6 mt-0.5 truncate max-w-md">{file.url}</div>
                 </td>
                 <td className="px-4 py-3">
-                  {file.category && <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">{file.category}</span>}
+                  {file.category && <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">{dataLabel(FILE_CATEGORY_LABELS, file.category, t)}</span>}
                 </td>
                 <td className="px-4 py-3 text-xs text-slate-400 font-mono">{formatDate(file.createdAt)}</td>
                 <td className="px-4 py-3">
@@ -457,13 +461,13 @@ export default function Files({ projectId }: { projectId: string }) {
                       <>
                         <a href={`/api/download?url=${encodeURIComponent(file.url)}&inline=1`}
                           target="_blank" rel="noopener noreferrer"
-                          title="Ver documento"
+                          title={t('common.verDocumento')}
                           className="text-slate-300 hover:text-[var(--brand-gold)] transition-colors">
                           <ExternalLink className="w-4 h-4" />
                         </a>
                         <a href={`/api/download?url=${encodeURIComponent(file.url)}`}
                           download
-                          title="Descargar"
+                          title={t('common.descargar')}
                           className="text-slate-300 hover:text-[var(--brand-teal)] transition-colors">
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
@@ -471,8 +475,8 @@ export default function Files({ projectId }: { projectId: string }) {
                         </a>
                       </>
                     ) : (
-                      <span title="Almacenamiento no configurado — configure Cloudinary para habilitar enlaces"
-                        className="text-[10px] text-slate-300 italic">sin URL</span>
+                      <span title={t('tech.files.almacenamientoNoConfiguradoConfigureCloudi')}
+                        className="text-[10px] text-slate-300 italic">{t('tech.files.sinUrl')}</span>
                     )}
                     <button onClick={() => deleteMut.mutate(file.id)} className="text-slate-300 hover:text-red-400 transition-colors">
                       <Trash2 className="w-4 h-4" />
@@ -482,7 +486,7 @@ export default function Files({ projectId }: { projectId: string }) {
               </tr>
             ))}
             {filtered.length === 0 && (
-              <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-400 text-sm">Sin archivos en esta categoría.</td></tr>
+              <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-400 text-sm">{t('tech.files.sinArchivosEnEstaCategoria')}</td></tr>
             )}
           </tbody>
         </table>

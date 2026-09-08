@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { subcontractsApi, providersApi, type SubContract, type SubPayment } from '../lib/api'
 import { useConfirm } from '../components/ConfirmDialog'
 import { HardHat, Plus, Trash2, ChevronDown, CheckCircle2, Clock, AlertCircle, DollarSign, ShieldCheck, ShieldAlert, Upload, FileSignature } from 'lucide-react'
+import { useI18n, type TranslationKey, currentLocale } from '../i18n'
 
 const fmt = (n: number) =>
   n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
@@ -19,13 +20,14 @@ function paidPct(c: SubContract) {
   return total > 0 ? Math.round((paid / total) * 100) : 0
 }
 
-function paymentTone(p: SubPayment) {
-  if (p.status === 'PAGADO') return { icon: CheckCircle2, cls: 'text-emerald-600', label: 'Pagado' }
-  if (p.dueDate && new Date(p.dueDate) < new Date()) return { icon: AlertCircle, cls: 'text-red-500', label: 'Vencido' }
-  return { icon: Clock, cls: 'text-slate-400', label: 'Pendiente' }
+function paymentTone(p: SubPayment): { icon: typeof CheckCircle2; cls: string; labelKey: TranslationKey } {
+  if (p.status === 'PAGADO') return { icon: CheckCircle2, cls: 'text-emerald-600', labelKey: 'tech.phases.pagado' }
+  if (p.dueDate && new Date(p.dueDate) < new Date()) return { icon: AlertCircle, cls: 'text-red-500', labelKey: 'common.vencido' }
+  return { icon: Clock, cls: 'text-slate-400', labelKey: 'common.pendiente' }
 }
 
 function ContractCard({ contract, projectId }: { contract: SubContract; projectId: string }) {
+  const { t } = useI18n()
   const qc = useQueryClient()
   const confirm = useConfirm()
   const [expanded, setExpanded] = useState(false)
@@ -80,21 +82,21 @@ function ContractCard({ contract, projectId }: { contract: SubContract; projectI
         </button>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-slate-800 truncate">{contract.provider?.name ?? 'Proveedor'}</span>
+            <span className="font-semibold text-slate-800 truncate">{contract.provider?.name ?? t('common.proveedor')}</span>
             <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${STATUS_BADGE[contract.status]}`}>{contract.status}</span>
           </div>
           {contract.scopeDetails && <div className="text-xs text-slate-400 truncate">{contract.scopeDetails}</div>}
         </div>
         <div className="text-right flex-shrink-0">
           <div className="font-mono font-semibold text-slate-800">{fmt(contract.contractValue)}</div>
-          <div className="text-[10px] text-slate-400">{pct}% pagado</div>
+          <div className="text-[10px] text-slate-400">{pct}{t('tech.subs.pagado')}</div>
         </div>
         <button onClick={async () => {
           const ok = await confirm({
-            title: 'Eliminar contrato',
-            message: `¿Eliminar el contrato de "${contract.provider?.name}"?`,
-            detail: 'Se eliminarán también todos sus pagos programados. Esta acción no se puede deshacer.',
-            destructive: true, confirmText: 'Sí, eliminar',
+            title: t('tech.subs.eliminarContrato'),
+            message: t('tech.subs.eliminarElContratoDeV0', { v0: contract.provider?.name }),
+            detail: t('tech.subs.seEliminaranTambienTodosSusPagos'),
+            destructive: true, confirmText: t('tech.projects.siEliminar'),
           })
           if (ok) removeContractMut.mutate()
         }} className="text-slate-300 hover:text-red-400 p-1 flex-shrink-0">
@@ -115,7 +117,7 @@ function ContractCard({ contract, projectId }: { contract: SubContract; projectI
           {/* payments */}
           <div className="space-y-1.5">
             {contract.paymentSchedule.length === 0 && (
-              <div className="text-xs text-slate-400 py-2">Sin pagos programados todavía.</div>
+              <div className="text-xs text-slate-400 py-2">{t('tech.subs.sinPagosProgramadosTodavia')}</div>
             )}
             {contract.paymentSchedule.map(p => {
               const tone = paymentTone(p)
@@ -127,9 +129,9 @@ function ContractCard({ contract, projectId }: { contract: SubContract; projectI
                     <div className="flex-1 min-w-0">
                       <div className="text-sm text-slate-700 truncate">{p.milestoneDesc}</div>
                       <div className="text-[10px] text-slate-400">
-                        {tone.label}
-                        {p.dueDate && ` · vence ${new Date(p.dueDate).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' })}`}
-                        {p.paidDate && ` · pagado ${new Date(p.paidDate).toLocaleDateString('es', { day: '2-digit', month: 'short' })}`}
+                        {t(tone.labelKey)}
+                        {p.dueDate && ` · ${t('tech.punch.vence')} ${new Date(p.dueDate).toLocaleDateString(currentLocale(), { day: '2-digit', month: 'short', year: 'numeric' })}`}
+                        {p.paidDate && ` · ${t('tech.subs.paidOn')} ${new Date(p.paidDate).toLocaleDateString(currentLocale(), { day: '2-digit', month: 'short' })}`}
                       </div>
                     </div>
                     <span className="font-mono text-sm text-slate-700 whitespace-nowrap">{fmt(p.amount)}</span>
@@ -139,7 +141,7 @@ function ContractCard({ contract, projectId }: { contract: SubContract; projectI
                         else setExceptionFor(f => (f === p.id ? null : p.id))
                       }}
                         className="text-[11px] font-semibold px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 whitespace-nowrap">
-                        Registrar pago
+                        {t('tech.subs.registrarPago')}
                       </button>
                     )}
                     <button onClick={() => removePaymentMut.mutate(p.id)} className="text-slate-300 hover:text-red-400">
@@ -153,11 +155,11 @@ function ContractCard({ contract, projectId }: { contract: SubContract; projectI
                       <>
                         <a href={p.lienWaiverUrl} target="_blank" rel="noreferrer"
                           className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20">
-                          <ShieldCheck className="w-3 h-3" /> Lien waiver{p.lienWaiverName ? ` · ${p.lienWaiverName}` : ''}
+                          <ShieldCheck className="w-3 h-3" /> {t('tech.subs.lienWaiver')}{p.lienWaiverName ? ` · ${p.lienWaiverName}` : ''}
                         </a>
                         {p.status !== 'PAGADO' && (
                           <button onClick={() => removeWaiverMut.mutate(p.id)}
-                            className="text-[10px] text-slate-400 hover:text-red-400 hover:underline">quitar</button>
+                            className="text-[10px] text-slate-400 hover:text-red-400 hover:underline">{t('tech.providers.quitar')}</button>
                         )}
                       </>
                     ) : (
@@ -169,12 +171,12 @@ function ContractCard({ contract, projectId }: { contract: SubContract; projectI
                         }`}>
                           <ShieldAlert className="w-3 h-3" />
                           {p.status === 'PAGADO'
-                            ? `Pagado SIN waiver${p.waiverException ? ` — ${p.waiverException}` : ''}`
-                            : 'Sin lien waiver'}
+                            ? t('tech.subs.pagadoSinWaiverV0', { v0: p.waiverException ? ` — ${p.waiverException}` : '' })
+                            : t('tech.subs.sinLienWaiver')}
                         </span>
                         <label className="inline-flex items-center gap-1 text-[10px] font-semibold text-[var(--brand-teal)] hover:underline cursor-pointer">
                           <Upload className="w-3 h-3" />
-                          {uploadWaiverMut.isPending ? 'Subiendo…' : 'Subir waiver firmado'}
+                          {uploadWaiverMut.isPending ? t('common.subiendo') : t('tech.subs.subirWaiverFirmado')}
                           <input type="file" className="hidden" accept=".pdf,image/*"
                             onChange={e => { const f = e.target.files?.[0]; if (f) uploadWaiverMut.mutate({ paymentId: p.id, file: f }) }} />
                         </label>
@@ -186,20 +188,19 @@ function ContractCard({ contract, projectId }: { contract: SubContract; projectI
                   {exceptionFor === p.id && !p.lienWaiverUrl && p.status !== 'PAGADO' && (
                     <div className="ml-7 bg-amber-50 border border-amber-200 rounded-lg p-2.5 space-y-2">
                       <div className="text-[11px] text-amber-700 font-medium">
-                        Este pago no tiene lien waiver. En Carolina del Sur, pagar sin waiver deja el lote expuesto a un mechanic's lien.
-                        Sube el waiver firmado (recomendado) o registra la razón de la excepción — quedará en el historial.
+                        {t('tech.subs.estePagoNoTieneLienWaiver')}
                       </div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <input value={exceptionText} onChange={e => setExceptionText(e.target.value)}
-                          placeholder="Razón de pagar sin waiver (obligatoria)"
+                          placeholder={t('tech.subs.razonDePagarSinWaiverObligatoria')}
                           className="flex-1 min-w-[200px] bg-white border border-amber-200 text-[11px] px-2 py-1.5 rounded-lg focus:outline-none focus:border-amber-400" />
                         <button disabled={!exceptionText.trim() || payMut.isPending}
                           onClick={() => payMut.mutate({ paymentId: p.id, waiverException: exceptionText.trim() })}
                           className="text-[11px] font-semibold px-2.5 py-1.5 rounded-md bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-40 whitespace-nowrap">
-                          Pagar sin waiver
+                          {t('tech.subs.pagarSinWaiver')}
                         </button>
                         <button onClick={() => { setExceptionFor(null); setExceptionText('') }}
-                          className="text-[11px] text-slate-400 hover:underline">Cancelar</button>
+                          className="text-[11px] text-slate-400 hover:underline">{t('common.cancelar')}</button>
                       </div>
                     </div>
                   )}
@@ -216,30 +217,30 @@ function ContractCard({ contract, projectId }: { contract: SubContract; projectI
               addPaymentMut.mutate({ milestoneDesc: milestone.trim(), amount: parseFloat(amount), dueDate: dueDate || null })
             }} className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto_auto] gap-2 items-end bg-white border border-slate-200 rounded-lg p-3">
               <div>
-                <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Hito</label>
+                <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">{t('tech.subs.hito')}</label>
                 <input value={milestone} onChange={e => setMilestone(e.target.value)}
-                  placeholder='Ej. "Framing completado al 100%"'
+                  placeholder={t('tech.subs.ejFramingCompletadoAl100')}
                   className="w-full bg-slate-50 border border-slate-200 text-xs px-2 py-1.5 rounded-lg focus:outline-none focus:border-[var(--brand-gold)]" />
               </div>
               <div>
-                <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Monto</label>
+                <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">{t('common.monto')}</label>
                 <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0"
                   className="w-28 bg-slate-50 border border-slate-200 text-xs px-2 py-1.5 rounded-lg focus:outline-none focus:border-[var(--brand-gold)]" />
               </div>
               <div>
-                <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Vence</label>
+                <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">{t('tech.fin.vence')}</label>
                 <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
                   className="bg-slate-50 border border-slate-200 text-xs px-2 py-1.5 rounded-lg focus:outline-none focus:border-[var(--brand-gold)]" />
               </div>
               <button type="submit" disabled={!milestone.trim() || !amount || addPaymentMut.isPending}
                 className="px-3 py-1.5 bg-[var(--brand-gold)] hover:bg-[#4A6880] text-white text-xs font-semibold rounded-lg disabled:opacity-40">
-                Agregar
+                {t('common.agregar')}
               </button>
             </form>
           ) : (
             <button onClick={() => setShowPayForm(true)}
               className="flex items-center gap-1.5 text-xs font-semibold text-[var(--brand-gold)] hover:underline">
-              <Plus className="w-3.5 h-3.5" /> Agregar pago al calendario
+              <Plus className="w-3.5 h-3.5" /> {t('tech.subs.agregarPagoAlCalendario')}
             </button>
           )}
         </div>
@@ -249,6 +250,7 @@ function ContractCard({ contract, projectId }: { contract: SubContract; projectI
 }
 
 export default function Subcontracts({ projectId }: { projectId: string }) {
+  const { t } = useI18n()
   const qc = useQueryClient()
   const [showForm, setShowForm] = useState(false)
   const [providerId, setProviderId] = useState('')
@@ -276,33 +278,33 @@ export default function Subcontracts({ projectId }: { projectId: string }) {
   const totalPaid = contracts.reduce((s, c) =>
     s + c.paymentSchedule.filter(p => p.status === 'PAGADO').reduce((ss, p) => ss + p.amount, 0), 0)
 
-  if (isLoading) return <div className="text-slate-500 text-sm animate-pulse">Cargando subcontratos...</div>
+  if (isLoading) return <div className="text-slate-500 text-sm animate-pulse">{t('tech.subs.cargandoSubcontratos')}</div>
 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><FileSignature className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>Subcontratistas</span></h1>
-          <p className="text-sm text-slate-500 mt-0.5">Contratos, alcance y calendario de pagos por hito</p>
+          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><FileSignature className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>{t('tech.subs.subcontratistas')}</span></h1>
+          <p className="text-sm text-slate-500 mt-0.5">{t('tech.subs.contratosAlcanceYCalendarioDePagos')}</p>
         </div>
         <button onClick={() => setShowForm(s => !s)}
           className="flex items-center gap-2 px-4 py-2 bg-[var(--brand-gold)] hover:bg-[#4A6880] text-white text-sm font-semibold rounded-lg">
-          <Plus className="w-4 h-4" /> Nuevo contrato
+          <Plus className="w-4 h-4" /> {t('tech.subs.nuevoContrato')}
         </button>
       </div>
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         <div className="bg-white border border-slate-200 rounded-xl p-4">
-          <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1"><HardHat className="w-3 h-3" /> Contratos</div>
+          <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1"><HardHat className="w-3 h-3" /> {t('tech.subs.contratos')}</div>
           <div className="text-2xl font-bold font-mono text-slate-900">{contracts.length}</div>
         </div>
         <div className="bg-white border border-slate-200 rounded-xl p-4">
-          <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1"><DollarSign className="w-3 h-3" /> Comprometido</div>
+          <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1"><DollarSign className="w-3 h-3" /> {t('tech.subs.comprometido')}</div>
           <div className="text-2xl font-bold font-mono text-slate-900">{fmt(totalCommitted)}</div>
         </div>
         <div className="bg-white border border-slate-200 rounded-xl p-4">
-          <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1"><CheckCircle2 className="w-3 h-3" /> Pagado</div>
+          <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1"><CheckCircle2 className="w-3 h-3" /> {t('tech.phases.pagado')}</div>
           <div className="text-2xl font-bold font-mono text-emerald-600">{fmt(totalPaid)}</div>
         </div>
       </div>
@@ -320,27 +322,27 @@ export default function Subcontracts({ projectId }: { projectId: string }) {
         }} className="bg-white border border-slate-200 rounded-xl p-4 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 items-end">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
-              <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Proveedor *</label>
+              <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">{t('tech.subs.proveedor')}</label>
               <select value={providerId} onChange={e => setProviderId(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-200 text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)]">
-                <option value="">Selecciona...</option>
+                <option value="">{t('tech.subs.selecciona')}</option>
                 {providers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Valor del contrato</label>
+              <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">{t('tech.subs.valorDelContrato')}</label>
               <input type="number" value={contractValue} onChange={e => setContractValue(e.target.value)} placeholder="0"
                 className="w-full bg-slate-50 border border-slate-200 text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)]" />
             </div>
             <div>
-              <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">Alcance (scope)</label>
-              <input value={scopeDetails} onChange={e => setScopeDetails(e.target.value)} placeholder="Descripción del trabajo"
+              <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">{t('tech.subs.alcanceScope')}</label>
+              <input value={scopeDetails} onChange={e => setScopeDetails(e.target.value)} placeholder={t('tech.subs.descripcionDelTrabajo')}
                 className="w-full bg-slate-50 border border-slate-200 text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)]" />
             </div>
           </div>
           <button type="submit" disabled={!providerId || createMut.isPending}
             className="px-4 py-2 bg-[var(--brand-teal)] hover:opacity-90 text-white text-sm font-semibold rounded-lg disabled:opacity-40">
-            Crear contrato
+            {t('tech.subs.crearContrato')}
           </button>
         </form>
       )}
@@ -348,7 +350,7 @@ export default function Subcontracts({ projectId }: { projectId: string }) {
       {providers.length === 0 && (
         <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-700">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
-          Aún no hay proveedores en este proyecto. Crea proveedores en la sección Proveedores para asignarles contratos.
+          {t('tech.subs.aunNoHayProveedoresEnEste')}
         </div>
       )}
 
@@ -358,7 +360,7 @@ export default function Subcontracts({ projectId }: { projectId: string }) {
         {contracts.length === 0 && (
           <div className="bg-white border border-slate-200 rounded-xl text-center py-16">
             <HardHat className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-            <div className="text-slate-400 text-sm">No hay contratos de subcontratistas todavía.</div>
+            <div className="text-slate-400 text-sm">{t('tech.subs.noHayContratosDeSubcontratistasTodavia')}</div>
           </div>
         )}
       </div>

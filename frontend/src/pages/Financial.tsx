@@ -14,6 +14,7 @@ interface BudgetLine {
   valorAprobado: number
 }
 import { Upload, CheckCircle, X, AlertTriangle, FileText, FileSignature, Receipt, Building2, FileQuestion, Calendar, TrendingUp, Activity, DollarSign, Mail, MessageCircle, Download, BarChart3 } from 'lucide-react'
+import { useI18n, type TranslationKey } from '../i18n'
 
 function Row({ label, value, highlight = false, sub, warn = false }: {
   label: string; value: string; highlight?: boolean; sub?: string; warn?: boolean
@@ -34,20 +35,21 @@ function Row({ label, value, highlight = false, sub, warn = false }: {
 
 // Botones de share (email, WhatsApp, descarga)
 function ShareButtons({ url, label }: { url: string; label: string }) {
+  const { t } = useI18n()
   const subject = encodeURIComponent(`Documento: ${label}`)
   const body    = encodeURIComponent(`Documento "${label}":\n\n${url}`)
   const wa      = encodeURIComponent(`Documento "${label}":\n${url}`)
   return (
     <div className="flex items-center gap-1">
-      <a href={url} download target="_blank" rel="noreferrer" title="Descargar"
+      <a href={url} download target="_blank" rel="noreferrer" title={t('common.descargar')}
         className="text-slate-400 hover:text-[var(--brand-teal)] p-1 rounded transition-colors">
         <Download className="w-3.5 h-3.5" />
       </a>
-      <a href={`mailto:?subject=${subject}&body=${body}`} title="Enviar por email"
+      <a href={`mailto:?subject=${subject}&body=${body}`} title={t('common.enviarPorEmail')}
         className="text-slate-400 hover:text-[var(--brand-gold)] p-1 rounded transition-colors">
         <Mail className="w-3.5 h-3.5" />
       </a>
-      <a href={`https://wa.me/?text=${wa}`} target="_blank" rel="noreferrer" title="Compartir WhatsApp"
+      <a href={`https://wa.me/?text=${wa}`} target="_blank" rel="noreferrer" title={t('tech.fin.compartirWhatsapp')}
         className="text-slate-400 hover:text-green-600 p-1 rounded transition-colors">
         <MessageCircle className="w-3.5 h-3.5" />
       </a>
@@ -55,74 +57,74 @@ function ShareButtons({ url, label }: { url: string; label: string }) {
   )
 }
 
-const HUD_LABELS: Record<string, string> = {
-  settlementDate: 'Fecha Settlement',
-  loanAmount: 'Loan Amount',
-  cashAtSettlement: 'Cash at Settlement',
-  closingCosts: 'Total Closing Costs',
-  interestRate: 'Tasa de Interés',
-  loanTermMonths: 'Plazo (meses)',
-  contractSalesPrice: 'Precio de compra',
-  holdback: 'Holdback (construction funds)',
+const HUD_LABELS: Record<string, TranslationKey> = {
+  settlementDate: 'tech.fin.fechaSettlement',
+  loanAmount: 'tech.fin.loanAmount',
+  cashAtSettlement: 'tech.fin.cashAtSettlement',
+  closingCosts: 'tech.fin.totalClosingCosts2',
+  interestRate: 'tech.fin.tasaDeInteres',
+  loanTermMonths: 'fin.debt.plazoMeses',
+  contractSalesPrice: 'tech.fin.precioDeCompra',
+  holdback: 'tech.fin.holdbackConstructionFunds',
 }
 
-const LOAN_LABELS: Record<string, string> = {
-  lender: 'Lender (Prestamista)',
-  loanNumber: 'Número de préstamo',
-  loanAmount: 'Loan Amount (monto)',
-  interestRate: 'Tasa de Interés',
-  loanTermMonths: 'Plazo (meses)',
-  holdback: 'Holdback (retención)',
-  day1Disbursement: 'Day 1 Disbursement',
-  interestReserve: 'Interest Reserve',
-  settlementDate: 'Fecha Settlement',
+const LOAN_LABELS: Record<string, TranslationKey> = {
+  lender: 'fin.movs.lenderPrestamista',
+  loanNumber: 'tech.fin.numeroDePrestamo',
+  loanAmount: 'tech.fin.loanAmountMonto',
+  interestRate: 'tech.fin.tasaDeInteres',
+  loanTermMonths: 'fin.debt.plazoMeses',
+  holdback: 'tech.fin.holdbackRetencion',
+  day1Disbursement: 'tech.fin.day1Disbursement',
+  interestReserve: 'tech.fin.interestReserve',
+  settlementDate: 'tech.fin.fechaSettlement',
 }
 
-const LOI_LABELS: Record<string, string> = {
-  loiSalePrice: 'Precio ofertado',
-  loiOfferDate: 'Fecha de oferta',
-  loiExpectedClose: 'Cierre esperado',
-  loiEarnestMoney: 'Earnest money',
+const LOI_LABELS: Record<string, TranslationKey> = {
+  loiSalePrice: 'tech.fin.precioOfertado',
+  loiOfferDate: 'tech.fin.fechaDeOferta',
+  loiExpectedClose: 'tech.fin.cierreEsperado',
+  loiEarnestMoney: 'tech.fin.earnestMoney',
 }
 
 interface ParsePanelConfig {
-  title: string
-  subtitle: string
+  titleKey: TranslationKey
+  subtitleKey: TranslationKey
   docType: 'HUD' | 'LOAN' | 'LOI' | 'OTROS'
   applyFields: string[]
-  labels: Record<string, string>
+  labels: Record<string, TranslationKey>
   /** Cómo se nombran las URL+name al persistir en el proyecto */
   urlKey: 'hudUrl' | 'approvalLetterUrl' | 'loiUrl' | 'otrosFinancieroUrl'
   nameKey: 'hudName' | 'approvalLetterName' | 'loiName' | 'otrosFinancieroName'
 }
 
 const HUD_CFG: ParsePanelConfig = {
-  title: 'Cargar HUD-1 / Closing Disclosure',
-  subtitle: 'Extrae automáticamente los datos del cierre del préstamo',
+  titleKey: 'tech.fin.cargarHud1ClosingDisclosure',
+  subtitleKey: 'tech.fin.extraeAutomaticamenteLosDatosDelCierre',
   docType: 'HUD',
   applyFields: ['settlementDate', 'loanAmount', 'cashAtSettlement', 'closingCosts', 'interestRate', 'loanTermMonths', 'contractSalesPrice', 'holdback'],
   labels: HUD_LABELS,
   urlKey: 'hudUrl', nameKey: 'hudName',
 }
 const LOAN_CFG: ParsePanelConfig = {
-  title: 'Cargar carta de aprobación del lender',
-  subtitle: 'Commitment letter — extrae monto, tasa, plazo, holdback',
+  titleKey: 'tech.fin.cargarCartaDeAprobacionDelLender',
+  subtitleKey: 'tech.fin.commitmentLetterExtraeMontoTasaPlazo',
   docType: 'LOAN',
   applyFields: ['lender', 'loanNumber', 'loanAmount', 'interestRate', 'loanTermMonths', 'holdback', 'day1Disbursement', 'interestReserve', 'settlementDate'],
   labels: LOAN_LABELS,
   urlKey: 'approvalLetterUrl', nameKey: 'approvalLetterName',
 }
 const LOI_CFG: ParsePanelConfig = {
-  title: 'Cargar LOI / Letter of Intent',
-  subtitle: 'Carta de oferta — extrae precio, fecha de oferta, cierre esperado',
+  titleKey: 'tech.fin.cargarLoiLetterOfIntent',
+  subtitleKey: 'tech.fin.cartaDeOfertaExtraePrecioFecha',
   docType: 'LOI',
   applyFields: ['loiSalePrice', 'loiOfferDate', 'loiExpectedClose', 'loiEarnestMoney'],
   labels: LOI_LABELS,
   urlKey: 'loiUrl', nameKey: 'loiName',
 }
 const OTROS_CFG: ParsePanelConfig = {
-  title: 'Subir otro documento financiero',
-  subtitle: 'Cualquier otro documento que quieras almacenar (term sheet, modificaciones, etc.)',
+  titleKey: 'tech.fin.subirOtroDocumentoFinanciero',
+  subtitleKey: 'tech.fin.cualquierOtroDocumentoQueQuierasAlmacenar',
   docType: 'OTROS',
   applyFields: [],
   labels: {},
@@ -135,6 +137,7 @@ function ParsePanel({ projectId, cfg, onClose, onApply }: {
   onClose: () => void
   onApply: (data: Record<string, unknown>) => void
 }) {
+  const { t } = useI18n()
   const [file, setFile] = useState<File | null>(null)
   const [parsed, setParsed] = useState<Record<string, unknown> | null>(null)
   const [preview, setPreview] = useState('')
@@ -151,7 +154,7 @@ function ParsePanel({ projectId, cfg, onClose, onApply }: {
       const result = await docParseApi.parsePdf(projectId, file, cfg.docType)
       const fields = Object.keys(result.parsed ?? {}).filter(k => k !== 'pdfUrl')
       if (fields.length === 0 && cfg.docType !== 'OTROS') {
-        setError('No se extrajeron campos. Revisa que el PDF sea legible (no escaneado) y vea el texto extraído abajo. Aún puedes guardarlo solo como archivo.')
+        setError(t('tech.fin.noSeExtrajeronCamposRevisaQue'))
       }
       setParsed(result.parsed ?? {})
       setPreview(result.preview ?? '')
@@ -162,13 +165,13 @@ function ParsePanel({ projectId, cfg, onClose, onApply }: {
         queryClient.invalidateQueries({ queryKey: ['phases', projectId] })
         const conValor = execApplied.filter(e => e.applied.includes('valor ejecutado')).length
         toast.success(
-          `✓ Ejecución diligenciada: ${execApplied.length} ítem(s) de financiamiento` +
-          (conValor > 0 ? ` (${conValor} con monto de gasto)` : ''),
+          t('tech.fin.ejecucionDiligenciadaV0ItemSDe', { v0: execApplied.length }) +
+          (conValor > 0 ? t('ui.docs.v0ConMontoDeGasto', { v0: conValor }) : ''),
           { duration: 9000 },
         )
       }
     } catch {
-      setError('Error procesando el archivo.')
+      setError(t('tech.fin.errorProcesandoElArchivo'))
     } finally {
       setLoading(false)
     }
@@ -204,8 +207,8 @@ function ParsePanel({ projectId, cfg, onClose, onApply }: {
       <div className="bg-slate-50 border border-slate-200 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200/40 sticky top-0 bg-slate-50 z-10">
           <div>
-            <div className="text-sm font-semibold text-slate-900">{cfg.title}</div>
-            <div className="text-xs text-slate-400 mt-0.5">{cfg.subtitle}</div>
+            <div className="text-sm font-semibold text-slate-900">{t(cfg.titleKey)}</div>
+            <div className="text-xs text-slate-400 mt-0.5">{t(cfg.subtitleKey)}</div>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-500 transition-colors"><X className="w-4 h-4" /></button>
         </div>
@@ -214,14 +217,14 @@ function ParsePanel({ projectId, cfg, onClose, onApply }: {
           <div className="flex items-center gap-3 flex-wrap">
             <button onClick={() => fileRef.current?.click()}
               className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:border-[#3E5A70]/40 text-slate-700 text-sm rounded-xl transition-all">
-              <Upload className="w-4 h-4" />{file ? file.name : 'Seleccionar PDF / imagen'}
+              <Upload className="w-4 h-4" />{file ? file.name : t('tech.fin.seleccionarPdfImagen')}
             </button>
             <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" className="hidden"
               onChange={e => { setFile(e.target.files?.[0] ?? null); setParsed(null) }} />
             {file && (
               <button onClick={handleParse} disabled={loading}
                 className="px-4 py-2.5 bg-[var(--brand-gold)] hover:bg-[#4A6880] text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50">
-                {loading ? 'Procesando...' : cfg.docType === 'OTROS' ? 'Subir archivo' : 'Extraer datos'}
+                {loading ? t('common.procesando') : cfg.docType === 'OTROS' ? t('common.subirArchivo') : t('tech.draws.extraerDatos')}
               </button>
             )}
           </div>
@@ -237,12 +240,12 @@ function ParsePanel({ projectId, cfg, onClose, onApply }: {
             <div className="bg-white border border-emerald-300 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-3">
                 <CheckCircle className="w-4 h-4 text-emerald-500" />
-                <span className="text-xs font-semibold text-slate-700">Datos extraídos del documento</span>
+                <span className="text-xs font-semibold text-slate-700">{t('tech.fin.datosExtraidosDelDocumento')}</span>
               </div>
               <div className="space-y-1.5">
                 {applyable.map(([k, v]) => (
                   <div key={k} className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2">
-                    <span className="text-[10px] text-slate-500 uppercase">{cfg.labels[k] ?? k}</span>
+                    <span className="text-[10px] text-slate-500 uppercase">{cfg.labels[k] ? t(cfg.labels[k]) : k}</span>
                     <span className="text-xs font-mono text-[var(--brand-teal)] font-semibold">{fmtValue(k, v)}</span>
                   </div>
                 ))}
@@ -253,14 +256,14 @@ function ParsePanel({ projectId, cfg, onClose, onApply }: {
           {parsed && hasFile && (
             <button onClick={handleApply}
               className="w-full py-2.5 bg-[var(--brand-teal)] hover:bg-[#48484A] text-white text-sm font-semibold rounded-xl transition-colors">
-              Guardar en el proyecto {applyable.length > 0 ? `(${applyable.length} datos + archivo)` : '(solo archivo)'}
+              {t('tech.fin.guardarEnElProyecto')} {applyable.length > 0 ? `(${applyable.length} datos + archivo)` : t('tech.fin.soloArchivo')}
             </button>
           )}
 
           {preview && (
             <details className="text-[10px] text-slate-400 font-mono">
               <summary className="cursor-pointer text-slate-500 hover:text-slate-600 transition-colors">
-                <FileText className="w-3 h-3 inline mr-1" />Ver texto extraído del PDF
+                <FileText className="w-3 h-3 inline mr-1" />{t('tech.fin.verTextoExtraidoDelPdf')}
               </summary>
               <pre className="mt-2 bg-slate-100 rounded-lg p-3 overflow-x-auto max-h-48 text-slate-600 whitespace-pre-wrap">{preview}</pre>
             </details>
@@ -279,6 +282,7 @@ function DocStatus({ label, icon: Icon, url, name, onUpload }: {
   name: string | null
   onUpload: () => void
 }) {
+  const { t } = useI18n()
   const missing = !url
   return (
     <div className={`rounded-xl border p-3 ${missing ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-200'}`}>
@@ -292,16 +296,16 @@ function DocStatus({ label, icon: Icon, url, name, onUpload }: {
       {url ? (
         <div className="space-y-1.5">
           <a href={url} target="_blank" rel="noreferrer" className="text-xs text-slate-700 hover:text-[var(--brand-gold)] truncate block">
-            {name || 'Documento cargado'}
+            {name || t('ui.docs.documentoCargado')}
           </a>
           <div className="flex items-center justify-between">
             <ShareButtons url={url} label={label} />
-            <button onClick={onUpload} className="text-[10px] text-slate-400 hover:text-[var(--brand-gold)]">Reemplazar</button>
+            <button onClick={onUpload} className="text-[10px] text-slate-400 hover:text-[var(--brand-gold)]">{t('tech.fin.reemplazar')}</button>
           </div>
         </div>
       ) : (
         <button onClick={onUpload} className="w-full text-xs text-red-700 border border-dashed border-red-300 px-2 py-1.5 rounded hover:bg-red-100 transition-colors flex items-center justify-center gap-1.5">
-          <Upload className="w-3 h-3" />Subir documento
+          <Upload className="w-3 h-3" />{t('tech.draws.subirDocumento')}
         </button>
       )}
     </div>
@@ -381,6 +385,7 @@ function breakevenPricePerSqft(i: SalesProjectionInputs): number {
 }
 
 function ScenarioCard({ s, breakeven, accent }: { s: ScenarioResult; breakeven: number; accent: 'pessimist' | 'base' | 'optimist' }) {
+  const { t } = useI18n()
   const profitable = s.netProfit > 0
   const beatsBreakeven = s.pricePerSqft >= breakeven
   const accentBg = accent === 'optimist' ? 'from-emerald-50 to-white border-emerald-200'
@@ -392,65 +397,65 @@ function ScenarioCard({ s, breakeven, accent }: { s: ScenarioResult; breakeven: 
       <div className="flex items-center justify-between">
         <div>
           <div className={`text-[10px] uppercase font-bold tracking-wider ${accentLabel}`}>{s.label}</div>
-          <div className="text-[10px] text-slate-500">{s.bandPct === 0 ? 'precio base' : `${(s.bandPct * 100).toFixed(0)}% vs base`}</div>
+          <div className="text-[10px] text-slate-500">{s.bandPct === 0 ? t('tech.fin.precioBase') : `${(s.bandPct * 100).toFixed(0)}% vs base`}</div>
         </div>
         <div className="text-right">
-          <div className="text-[10px] text-slate-400 uppercase">$/sqft</div>
+          <div className="text-[10px] text-slate-400 uppercase">{t('tech.fin.sqft')}</div>
           <div className="font-mono font-bold text-sm text-slate-800">${s.pricePerSqft.toFixed(0)}</div>
         </div>
       </div>
 
       <div className="border-t border-slate-200/60 pt-2 space-y-0.5">
         <div className="flex items-center justify-between text-[11px]">
-          <span className="text-slate-500">Sale value</span>
+          <span className="text-slate-500">{t('tech.fin.saleValue')}</span>
           <span className="font-mono font-bold text-slate-800">{formatUSD(s.saleValue)}</span>
         </div>
         <div className="flex items-center justify-between text-[10px]">
-          <span className="text-slate-400">− Gastos ejecutados (lender)</span>
+          <span className="text-slate-400">{t('tech.fin.gastosEjecutadosLender')}</span>
           <span className="font-mono text-slate-600">−{formatUSD(s.executedSpend)}</span>
         </div>
         {s.remainingBudget > 0 && (
           <div className="flex items-center justify-between text-[10px]">
-            <span className="text-slate-400">− Falta por ejecutar (budget)</span>
+            <span className="text-slate-400">{t('tech.fin.faltaPorEjecutarBudget')}</span>
             <span className="font-mono text-slate-600">−{formatUSD(s.remainingBudget)}</span>
           </div>
         )}
         <div className="flex items-center justify-between text-[10px]">
-          <span className="text-slate-400">− Closing costs</span>
+          <span className="text-slate-400">{t('tech.fin.closingCosts')}</span>
           <span className="font-mono text-slate-600">−{formatUSD(s.closingCosts)}</span>
         </div>
         <div className="flex items-center justify-between text-[10px]">
-          <span className="text-slate-400">− Interés acumulado a hoy</span>
+          <span className="text-slate-400">{t('tech.fin.interesAcumuladoAHoy')}</span>
           <span className="font-mono text-slate-600">−{formatUSD(s.interestSoFar)}</span>
         </div>
         <div className="flex items-center justify-between text-[10px]">
-          <span className="text-slate-400">− Interés futuro hasta venta</span>
+          <span className="text-slate-400">{t('tech.fin.interesFuturoHastaVenta')}</span>
           <span className="font-mono text-slate-600">−{formatUSD(s.interestFuture)}</span>
         </div>
         <div className="flex items-center justify-between text-[10px]">
-          <span className="text-slate-400">− Realtor fees</span>
+          <span className="text-slate-400">{t('tech.fin.realtorFees')}</span>
           <span className="font-mono text-slate-600">−{formatUSD(s.realtorFees)}</span>
         </div>
       </div>
 
       <div className="border-t border-slate-300 pt-2">
         <div className="flex items-center justify-between">
-          <span className="text-[11px] font-semibold text-slate-700">NET PROFIT</span>
+          <span className="text-[11px] font-semibold text-slate-700">{t('tech.fin.netProfit')}</span>
           <span className={`font-mono text-base font-bold ${profitable ? 'text-emerald-600' : 'text-red-600'}`}>
             {formatUSD(s.netProfit)}
           </span>
         </div>
         <div className="grid grid-cols-2 gap-2 mt-1">
           <div className="text-[10px] text-slate-500">
-            ROI cash: <span className={`font-mono font-bold ${s.roi > 15 ? 'text-emerald-600' : s.roi > 0 ? 'text-slate-700' : 'text-red-600'}`}>{s.roi.toFixed(1)}%</span>
+            {t('tech.fin.roiCash')} <span className={`font-mono font-bold ${s.roi > 15 ? 'text-emerald-600' : s.roi > 0 ? 'text-slate-700' : 'text-red-600'}`}>{s.roi.toFixed(1)}%</span>
           </div>
           <div className="text-[10px] text-slate-500 text-right">
-            Margen: <span className={`font-mono font-bold ${s.margin > 15 ? 'text-emerald-600' : s.margin > 0 ? 'text-slate-700' : 'text-red-600'}`}>{s.margin.toFixed(1)}%</span>
+            {t('fin.projDet.margen')} <span className={`font-mono font-bold ${s.margin > 15 ? 'text-emerald-600' : s.margin > 0 ? 'text-slate-700' : 'text-red-600'}`}>{s.margin.toFixed(1)}%</span>
           </div>
         </div>
         {breakeven > 0 && !beatsBreakeven && (
           <div className="mt-1 text-[10px] text-red-600 flex items-center gap-1">
-            <AlertTriangle className="w-3 h-3" />Bajo breakeven (${breakeven.toFixed(0)}/sqft)
+            <AlertTriangle className="w-3 h-3" />{t('tech.fin.bajoBreakeven')}{breakeven.toFixed(0)}/sqft)
           </div>
         )}
       </div>
@@ -489,6 +494,7 @@ function SalesProjections({ project, upb, dailyRate, interestSoFar, projectId, b
   projectId: string
   budgetLines: BudgetLine[]
 }) {
+  const { t } = useI18n()
   const queryClient = useQueryClient()
 
   // Real executed spend = sum of approved budget lines (the lender's official
@@ -546,7 +552,7 @@ function SalesProjections({ project, upb, dailyRate, interestSoFar, projectId, b
   const breakeven = breakevenPricePerSqft(inputs)
 
   // Sell-today snapshot — uses pricePerSqft × sfHeated with zero future interest.
-  const sellToday: ScenarioResult = computeScenario('Si vendo HOY', 0, { ...inputs, daysToSale: 0 })
+  const sellToday: ScenarioResult = computeScenario(t('tech.fin.siVendoHoy'), 0, { ...inputs, daysToSale: 0 })
 
   const savePpsf = useMutation({
     mutationFn: (v: number) => projectsApi.patch(projectId, { expectedPricePerSqft: v }),
@@ -566,20 +572,19 @@ function SalesProjections({ project, upb, dailyRate, interestSoFar, projectId, b
         <div>
           <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-[var(--brand-gold)]" />
-            Proyecciones de Venta — Escenarios de salida
+            {t('tech.fin.proyeccionesDeVentaEscenariosDeSalida')}
           </h2>
           <p className="text-[11px] text-slate-500 mt-0.5 max-w-2xl">
-            Costos en cada escenario = gastos YA ejecutados (aprobados por el lender vía draws) +
-            faltante por ejecutar + closing + interés acumulado + interés futuro hasta venta + comisiones.
+            {t('tech.fin.costosEnCadaEscenarioGastosYa')}
           </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-1.5">
-            <label className="text-[10px] text-slate-500 uppercase tracking-wider">SF Heated</label>
+            <label className="text-[10px] text-slate-500 uppercase tracking-wider">{t('tech.fin.sfHeated')}</label>
             <InlineNum value={project.sfHeated || 0} onSave={v => saveSf.mutate(v)} suffix="sf" />
           </div>
           <div className="flex items-center gap-1.5">
-            <label className="text-[10px] text-slate-500 uppercase tracking-wider">Precio esperado</label>
+            <label className="text-[10px] text-slate-500 uppercase tracking-wider">{t('tech.fin.precioEsperado')}</label>
             <div className="flex items-center bg-slate-50 border border-slate-200 rounded-lg px-2 py-1">
               <span className="text-slate-400 text-xs">$</span>
               <input
@@ -600,10 +605,10 @@ function SalesProjections({ project, upb, dailyRate, interestSoFar, projectId, b
         <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-[11px] text-amber-800 flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 shrink-0" />
           {missingSf && missingPpsf
-            ? 'Define SF Heated y precio esperado $/sqft para ver las proyecciones.'
+            ? t('tech.fin.defineSfHeatedYPrecioEsperado')
             : missingSf
-              ? 'Define los SF Heated del proyecto.'
-              : 'Ingresa un precio esperado $/sqft.'}
+              ? t('tech.fin.defineLosSfHeatedDelProyecto')
+              : t('tech.fin.ingresaUnPrecioEsperadoSqft')}
         </div>
       )}
 
@@ -618,19 +623,19 @@ function SalesProjections({ project, upb, dailyRate, interestSoFar, projectId, b
           {/* "Si vendo HOY" — snapshot a precio base */}
           <div className="bg-gradient-to-r from-[#1D1D1F]/10 to-[#3E5A70]/10 border border-[#1D1D1F]/20 rounded-lg p-3 grid grid-cols-2 md:grid-cols-4 gap-2 text-[11px]">
             <div>
-              <div className="text-slate-500 uppercase text-[9px]">Si vendo HOY (sin esperar)</div>
+              <div className="text-slate-500 uppercase text-[9px]">{t('tech.fin.siVendoHoySinEsperar')}</div>
               <div className="font-mono font-bold text-sm text-slate-800">{formatUSD(sellToday.saleValue)}</div>
             </div>
             <div>
-              <div className="text-slate-500 uppercase text-[9px]">Net si vendo HOY</div>
+              <div className="text-slate-500 uppercase text-[9px]">{t('tech.fin.netSiVendoHoy')}</div>
               <div className={`font-mono font-bold text-sm ${sellToday.netProfit > 0 ? 'text-emerald-600' : 'text-red-600'}`}>{formatUSD(sellToday.netProfit)}</div>
             </div>
             <div>
-              <div className="text-slate-500 uppercase text-[9px]">Costo de esperar a venta proyectada</div>
+              <div className="text-slate-500 uppercase text-[9px]">{t('tech.fin.costoDeEsperarAVentaProyectada')}</div>
               <div className="font-mono font-bold text-sm text-[var(--brand-gold)]">−{formatUSD(scenarios[1].interestFuture)}</div>
             </div>
             <div>
-              <div className="text-slate-500 uppercase text-[9px]">Net en escenario base</div>
+              <div className="text-slate-500 uppercase text-[9px]">{t('tech.fin.netEnEscenarioBase')}</div>
               <div className={`font-mono font-bold text-sm ${scenarios[1].netProfit > 0 ? 'text-emerald-600' : 'text-red-600'}`}>{formatUSD(scenarios[1].netProfit)}</div>
             </div>
           </div>
@@ -638,45 +643,43 @@ function SalesProjections({ project, upb, dailyRate, interestSoFar, projectId, b
           {/* Diagnostic strip: inputs that drive the scenarios */}
           <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 grid grid-cols-2 md:grid-cols-6 gap-3 text-[10px]">
             <div>
-              <div className="text-slate-400 uppercase">SF Heated</div>
-              <div className="font-mono font-bold text-slate-700">{project.sfHeated} sf</div>
+              <div className="text-slate-400 uppercase">{t('tech.fin.sfHeated')}</div>
+              <div className="font-mono font-bold text-slate-700">{project.sfHeated} {t('tech.fin.sf')}</div>
             </div>
             <div>
-              <div className="text-slate-400 uppercase">Días a venta</div>
-              <div className="font-mono font-bold text-slate-700">{daysToSale}d</div>
+              <div className="text-slate-400 uppercase">{t('tech.fin.diasAVenta')}</div>
+              <div className="font-mono font-bold text-slate-700">{daysToSale}{t('tech.dash.d')}</div>
             </div>
             <div>
-              <div className="text-slate-400 uppercase">UPB hoy</div>
+              <div className="text-slate-400 uppercase">{t('tech.fin.upbHoy')}</div>
               <div className="font-mono font-bold text-slate-700">{formatUSD(upb)}</div>
             </div>
             <div>
-              <div className="text-slate-400 uppercase">Ejecutado (lender)</div>
+              <div className="text-slate-400 uppercase">{t('tech.fin.ejecutadoLender')}</div>
               <div className="font-mono font-bold text-emerald-700">{formatUSD(executedSpend)}</div>
             </div>
             <div>
-              <div className="text-slate-400 uppercase">Falta ejecutar</div>
+              <div className="text-slate-400 uppercase">{t('tech.fin.faltaEjecutar')}</div>
               <div className="font-mono font-bold text-slate-700">{formatUSD(remainingBudget)}</div>
             </div>
             <div>
-              <div className="text-slate-400 uppercase">Breakeven $/sqft</div>
+              <div className="text-slate-400 uppercase">{t('tech.fin.breakevenSqft')}</div>
               <div className="font-mono font-bold text-[var(--brand-gold)]">${breakeven.toFixed(0)}</div>
             </div>
           </div>
 
           {/* Director-level read */}
           <div className="bg-[#1D1D1F]/5 border border-[#1D1D1F]/15 rounded-lg p-3 text-[11px] text-slate-700">
-            <strong className="text-[var(--brand-teal)]">Lectura del director: </strong>
+            <strong className="text-[var(--brand-teal)]">{t('tech.fin.lecturaDelDirector')} </strong>
             {scenarios[0].netProfit > 0 ? (
-              <>Incluso en el pesimista (${scenarios[0].pricePerSqft.toFixed(0)}/sqft) el proyecto deja {formatUSD(scenarios[0].netProfit)} —
-              la decisión es de timing y velocidad, no de viabilidad.</>
+              <>{t('tech.fin.inclusoEnElPesimista')}{scenarios[0].pricePerSqft.toFixed(0)}/sqft) el proyecto deja {formatUSD(scenarios[0].netProfit)} {t('tech.fin.laDecisionEsDeTimingY')}</>
             ) : scenarios[1].netProfit > 0 ? (
-              <>El conservador da {formatUSD(scenarios[1].netProfit)} pero el pesimista entra en pérdida.
-              Cualquier retraso quema utilidad: cada día cuesta {formatUSD(upb * dailyRate)} en interés. Vigila tiempo y costos.</>
+              <>{t('tech.fin.elConservadorDa')} {formatUSD(scenarios[1].netProfit)} {t('tech.fin.peroElPesimistaEntraEnPerdida')} {formatUSD(upb * dailyRate)} {t('tech.fin.enInteresVigilaTiempoYCostos')}</>
             ) : breakeven > 0 ? (
-              <>Incluso el conservador da pérdida ({formatUSD(scenarios[1].netProfit)}). Necesitas vender sobre ${breakeven.toFixed(0)}/sqft para cubrir costos,
+              <>{t('tech.fin.inclusoElConservadorDaPerdida')}{formatUSD(scenarios[1].netProfit)}{t('tech.fin.necesitasVenderSobre')}{breakeven.toFixed(0)}/sqft para cubrir costos,
               o reducir el faltante por ejecutar y/o acelerar la venta para bajar carrying.</>
             ) : (
-              <>Falta información para evaluar — completa precio $/sqft y SF Heated.</>
+              <>{t('tech.fin.faltaInformacionParaEvaluarCompletaPrecio')}</>
             )}
           </div>
         </>
@@ -686,6 +689,7 @@ function SalesProjections({ project, upb, dailyRate, interestSoFar, projectId, b
 }
 
 export default function Financial({ projectId }: { projectId: string }) {
+  const { t } = useI18n()
   const queryClient = useQueryClient()
   const [activePanel, setActivePanel] = useState<ParsePanelConfig | null>(null)
 
@@ -707,7 +711,7 @@ export default function Financial({ projectId }: { projectId: string }) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['project', projectId] }),
   })
 
-  if (loadingP || !project) return <div className="text-slate-500 text-sm animate-pulse">Cargando modelo financiero...</div>
+  if (loadingP || !project) return <div className="text-slate-500 text-sm animate-pulse">{t('tech.fin.cargandoModeloFinanciero')}</div>
 
   const today = new Date()
   // Count every draw that actually moved money (netWire > 0), regardless of
@@ -757,7 +761,7 @@ export default function Financial({ projectId }: { projectId: string }) {
   // Validación de documentos requeridos
   const missingDocs: string[] = []
   if (!project.loiUrl) missingDocs.push('LOI')
-  if (!project.approvalLetterUrl) missingDocs.push('Aprobación del lender')
+  if (!project.approvalLetterUrl) missingDocs.push(t('tech.fin.aprobacionDelLender'))
   if (!project.hudUrl) missingDocs.push('HUD / Closing Disclosure')
   // "Otros" no es obligatorio
 
@@ -765,8 +769,8 @@ export default function Financial({ projectId }: { projectId: string }) {
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><BarChart3 className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>Modelo Financiero CFO</span></h1>
-          <p className="text-sm text-slate-500 mt-0.5">Non-Dutch daily accrual · Análisis de timing & rate para toma de decisión</p>
+          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><BarChart3 className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>{t('tech.fin.modeloFinancieroCfo')}</span></h1>
+          <p className="text-sm text-slate-500 mt-0.5">{t('tech.fin.nonDutchDailyAccrualAnalisisDe')}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <button onClick={() => setActivePanel(LOI_CFG)}
@@ -775,7 +779,7 @@ export default function Financial({ projectId }: { projectId: string }) {
           </button>
           <button onClick={() => setActivePanel(LOAN_CFG)}
             className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 hover:border-[#3E5A70]/40 text-slate-700 text-xs font-medium rounded-xl transition-colors">
-            <Building2 className="w-3.5 h-3.5" />Aprobación lender
+            <Building2 className="w-3.5 h-3.5" />{t('tech.fin.aprobacionLender')}
           </button>
           <button onClick={() => setActivePanel(HUD_CFG)}
             className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 hover:border-[#3E5A70]/40 text-slate-700 text-xs font-medium rounded-xl transition-colors">
@@ -783,7 +787,7 @@ export default function Financial({ projectId }: { projectId: string }) {
           </button>
           <button onClick={() => setActivePanel(OTROS_CFG)}
             className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 hover:border-[#3E5A70]/40 text-slate-700 text-xs font-medium rounded-xl transition-colors">
-            <FileQuestion className="w-3.5 h-3.5" />Otros
+            <FileQuestion className="w-3.5 h-3.5" />{t('tech.fin.otros')}
           </button>
         </div>
       </div>
@@ -795,10 +799,10 @@ export default function Financial({ projectId }: { projectId: string }) {
             <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
               <div className="text-sm font-semibold text-red-800">
-                Faltan {missingDocs.length} documento(s) financieros requerido(s)
+                {t('tech.fin.faltan')} {missingDocs.length} {t('tech.fin.documentoSFinancierosRequeridoS')}
               </div>
               <div className="text-xs text-red-700 mt-0.5">
-                Para que el CFO dashboard refleje la realidad, sube: <strong>{missingDocs.join(', ')}</strong>.
+                {t('tech.fin.paraQueElCfoDashboardRefleje')} <strong>{missingDocs.join(', ')}</strong>.
               </div>
             </div>
           </div>
@@ -807,16 +811,16 @@ export default function Financial({ projectId }: { projectId: string }) {
 
       {/* Repositorio de documentos financieros */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <DocStatus label="LOI / Letter of Intent" icon={FileSignature}
+        <DocStatus label={t('tech.fin.loiLetterOfIntent')} icon={FileSignature}
           url={project.loiUrl} name={project.loiName}
           onUpload={() => setActivePanel(LOI_CFG)} />
-        <DocStatus label="Aprobación lender" icon={Building2}
+        <DocStatus label={t('tech.fin.aprobacionLender')} icon={Building2}
           url={project.approvalLetterUrl} name={project.approvalLetterName}
           onUpload={() => setActivePanel(LOAN_CFG)} />
-        <DocStatus label="HUD / Closing" icon={Receipt}
+        <DocStatus label={t('tech.fin.hudClosing')} icon={Receipt}
           url={project.hudUrl} name={project.hudName}
           onUpload={() => setActivePanel(HUD_CFG)} />
-        <DocStatus label="Otros (term sheet, mod, etc.)" icon={FileQuestion}
+        <DocStatus label={t('tech.fin.otrosTermSheetModEtc')} icon={FileQuestion}
           url={project.otrosFinancieroUrl} name={project.otrosFinancieroName}
           onUpload={() => setActivePanel(OTROS_CFG)} />
       </div>
@@ -825,32 +829,32 @@ export default function Financial({ projectId }: { projectId: string }) {
       <div className="bg-white border border-black/[0.08] rounded-2xl p-5">
         <div className="flex items-center gap-2 mb-4">
           <Activity className="w-4 h-4 text-[var(--brand-gold)]" />
-          <h2 className="text-sm font-bold uppercase tracking-wider">CFO Dashboard — Análisis para toma de decisión</h2>
+          <h2 className="text-sm font-bold uppercase tracking-wider">{t('tech.fin.cfoDashboardAnalisisParaTomaDe')}</h2>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-slate-800">
           <div className="bg-[#F4F1EB] rounded-xl p-3">
-            <div className="text-[10px] uppercase opacity-60 mb-1">Burn rate / día</div>
+            <div className="text-[10px] uppercase opacity-60 mb-1">{t('tech.fin.burnRateDia')}</div>
             <div className="text-lg font-bold font-mono text-[#4A6880]">{formatUSD(dailyBurn)}</div>
-            <div className="text-[10px] opacity-50 mt-1">UPB × tasa diaria</div>
+            <div className="text-[10px] opacity-50 mt-1">{t('tech.fin.upbTasaDiaria')}</div>
           </div>
           <div className="bg-[#F4F1EB] rounded-xl p-3">
-            <div className="text-[10px] uppercase opacity-60 mb-1">Días del préstamo consumidos</div>
+            <div className="text-[10px] uppercase opacity-60 mb-1">{t('tech.fin.diasDelPrestamoConsumidos')}</div>
             <div className={`text-lg font-bold font-mono ${consumoLoanPct > 80 ? 'text-red-600' : consumoLoanPct > 60 ? 'text-[#4A6880]' : 'text-emerald-600'}`}>
               {consumoLoanPct.toFixed(0)}%
             </div>
-            <div className="text-[10px] opacity-50 mt-1">{diasDesde}d de {diasTotalLoan}d</div>
+            <div className="text-[10px] opacity-50 mt-1">{diasDesde}{t('tech.fin.dDe')} {diasTotalLoan}{t('tech.dash.d')}</div>
           </div>
           <div className="bg-[#F4F1EB] rounded-xl p-3">
-            <div className="text-[10px] uppercase opacity-60 mb-1">Días restantes loan</div>
+            <div className="text-[10px] uppercase opacity-60 mb-1">{t('tech.fin.diasRestantesLoan')}</div>
             <div className={`text-lg font-bold font-mono ${diasRestantes < 60 ? 'text-red-600' : diasRestantes < 120 ? 'text-[#4A6880]' : 'text-slate-900'}`}>
-              {diasRestantes}d
+              {diasRestantes}{t('tech.dash.d')}
             </div>
             {loanExpiresOn && (
-              <div className="text-[10px] opacity-50 mt-1">Vence {formatDate(loanExpiresOn.toISOString())}</div>
+              <div className="text-[10px] opacity-50 mt-1">{t('tech.fin.vence')} {formatDate(loanExpiresOn.toISOString())}</div>
             )}
           </div>
           <div className="bg-[#F4F1EB] rounded-xl p-3">
-            <div className="text-[10px] uppercase opacity-60 mb-1">Días al target completion</div>
+            <div className="text-[10px] uppercase opacity-60 mb-1">{t('tech.fin.diasAlTargetCompletion')}</div>
             <div className={`text-lg font-bold font-mono ${
               diasParaTarget == null ? 'text-slate-400' :
               diasParaTarget < 0 ? 'text-red-600' :
@@ -859,7 +863,7 @@ export default function Financial({ projectId }: { projectId: string }) {
               {diasParaTarget == null ? '—' : `${diasParaTarget}d`}
             </div>
             <div className="text-[10px] opacity-50 mt-1">
-              {targetCompletionDate ? formatDate(targetCompletionDate.toISOString()) : 'Sin fecha objetivo'}
+              {targetCompletionDate ? formatDate(targetCompletionDate.toISOString()) : t('tech.fin.sinFechaObjetivo')}
             </div>
           </div>
         </div>
@@ -869,25 +873,25 @@ export default function Financial({ projectId }: { projectId: string }) {
           <div className="bg-[#F4F1EB] rounded-xl p-3">
             <div className="flex items-center gap-2 mb-1">
               <DollarSign className="w-3.5 h-3.5 text-[var(--brand-gold)]" />
-              <div className="text-[10px] uppercase opacity-60">Costo total de espera (estimado a expiración)</div>
+              <div className="text-[10px] uppercase opacity-60">{t('tech.fin.costoTotalDeEsperaEstimadoA')}</div>
             </div>
             <div className="text-lg font-bold font-mono text-[#4A6880]">{formatUSD(dailyBurn * diasRestantes)}</div>
-            <div className="text-[10px] opacity-50 mt-1">Si nadie compra antes</div>
+            <div className="text-[10px] opacity-50 mt-1">{t('tech.fin.siNadieCompraAntes')}</div>
           </div>
           <div className="bg-[#F4F1EB] rounded-xl p-3">
             <div className="flex items-center gap-2 mb-1">
               <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
-              <div className="text-[10px] uppercase opacity-60">Si vendo HOY (estimado)</div>
+              <div className="text-[10px] uppercase opacity-60">{t('tech.fin.siVendoHoyEstimado')}</div>
             </div>
             <div className={`text-lg font-bold font-mono ${gananciaBreve > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
               {formatUSD(gananciaBreve)}
             </div>
-            <div className="text-[10px] opacity-50 mt-1">ROI {roi.toFixed(1)}% · Margen {margen.toFixed(1)}%</div>
+            <div className="text-[10px] opacity-50 mt-1">ROI {roi.toFixed(1)}{t('tech.fin.margen')} {margen.toFixed(1)}%</div>
           </div>
           <div className="bg-[#F4F1EB] rounded-xl p-3">
             <div className="flex items-center gap-2 mb-1">
               <Calendar className="w-3.5 h-3.5 text-[var(--brand-gold)]" />
-              <div className="text-[10px] uppercase opacity-60">LOI activo</div>
+              <div className="text-[10px] uppercase opacity-60">{t('tech.fin.loiActivo')}</div>
             </div>
             {project.loiSalePrice ? (
               <>
@@ -895,12 +899,12 @@ export default function Financial({ projectId }: { projectId: string }) {
                 <div className="text-[10px] opacity-50 mt-1">
                   {loiVsArv != null
                     ? `vs ARV: ${loiVsArv >= 0 ? '+' : ''}${formatUSD(loiVsArv)}`
-                    : 'Sin ARV de referencia'}
-                  {loiClosedAlready === true && ' · ⚠ ya pasó la fecha'}
+                    : t('tech.fin.sinArvDeReferencia')}
+                  {loiClosedAlready === true && t('tech.fin.yaPasoLaFecha')}
                 </div>
               </>
             ) : (
-              <div className="text-xs opacity-60">Sin LOI cargado</div>
+              <div className="text-xs opacity-60">{t('tech.fin.sinLoiCargado')}</div>
             )}
           </div>
         </div>
@@ -919,77 +923,77 @@ export default function Financial({ projectId }: { projectId: string }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Loan */}
         <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <h2 className="text-sm font-semibold text-slate-700 mb-3">Estructura del Préstamo</h2>
-          <Row label="Lender" value={project.lender || '—'} />
-          <Row label="Loan Number" value={project.loanNumber || '—'} />
-          <Row label="Loan Amount" value={formatUSD(project.loanAmount)} />
-          <Row label="Day 1 Disbursement" value={formatUSD(project.day1Disbursement)} />
-          <Row label="Interest Reserve" value={formatUSD(project.interestReserve)} />
-          <Row label="Holdback disponible" value={formatUSD(project.holdback)} />
-          <Row label="Tasa anual" value={formatPct(project.interestRate * 100, 2)} />
-          <Row label="Tasa diaria" value={`${(dailyRate * 100).toFixed(5)}%`} />
-          <Row label="Plazo" value={`${project.loanTermMonths} meses`} />
-          <Row label="Settlement date" value={formatDate(project.settlementDate)} />
-          <Row label="Cash at Settlement" value={formatUSD(project.cashAtSettlement)} />
-          <Row label="Total closing costs" value={formatUSD(project.closingCosts)} />
+          <h2 className="text-sm font-semibold text-slate-700 mb-3">{t('tech.fin.estructuraDelPrestamo')}</h2>
+          <Row label={t('common.lender')} value={project.lender || '—'} />
+          <Row label={t('tech.fin.loanNumber')} value={project.loanNumber || '—'} />
+          <Row label={t('tech.fin.loanAmount')} value={formatUSD(project.loanAmount)} />
+          <Row label={t('tech.fin.day1Disbursement')} value={formatUSD(project.day1Disbursement)} />
+          <Row label={t('tech.fin.interestReserve')} value={formatUSD(project.interestReserve)} />
+          <Row label={t('tech.fin.holdbackDisponible')} value={formatUSD(project.holdback)} />
+          <Row label={t('tech.fin.tasaAnual')} value={formatPct(project.interestRate * 100, 2)} />
+          <Row label={t('tech.fin.tasaDiaria')} value={`${(dailyRate * 100).toFixed(5)}%`} />
+          <Row label={t('fin.debt.plazo')} value={`${project.loanTermMonths} meses`} />
+          <Row label={t('tech.fin.settlementDate')} value={formatDate(project.settlementDate)} />
+          <Row label={t('tech.fin.cashAtSettlement')} value={formatUSD(project.cashAtSettlement)} />
+          <Row label={t('tech.fin.totalClosingCosts')} value={formatUSD(project.closingCosts)} />
         </div>
 
         {/* Estado actual */}
         <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <h2 className="text-sm font-semibold text-slate-700 mb-3">Estado Actual del Préstamo</h2>
-          <Row label="UPB actual (saldo)" value={formatUSD(upb)} />
-          <Row label="Total drawns (wired)" value={formatUSD(totalDrawn)} />
-          <Row label="Saldo holdback" value={formatUSD(saldoHoldback)} warn={saldoHoldback < 50000} />
-          <Row label="Días desde settlement" value={`${diasDesde}d`} />
-          <Row label="Interés acumulado a hoy" value={formatUSD(interestSoFar)} sub="UPB × tasa diaria × días" />
-          <Row label="Interés estimado total" value={formatUSD(interestTotal)} sub={`Proyectado a ${project.loanTermMonths} meses`} />
-          <Row label="Costo diario actual" value={formatUSD(dailyBurn)} sub="Por día de UPB actual" />
+          <h2 className="text-sm font-semibold text-slate-700 mb-3">{t('tech.fin.estadoActualDelPrestamo')}</h2>
+          <Row label={t('tech.fin.upbActualSaldo')} value={formatUSD(upb)} />
+          <Row label={t('tech.fin.totalDrawnsWired')} value={formatUSD(totalDrawn)} />
+          <Row label={t('tech.draws.saldoHoldback2')} value={formatUSD(saldoHoldback)} warn={saldoHoldback < 50000} />
+          <Row label={t('tech.fin.diasDesdeSettlement')} value={`${diasDesde}d`} />
+          <Row label={t('tech.fin.interesAcumuladoAHoy2')} value={formatUSD(interestSoFar)} sub={t('tech.fin.upbTasaDiariaDias')} />
+          <Row label={t('tech.fin.interesEstimadoTotal')} value={formatUSD(interestTotal)} sub={`Proyectado a ${project.loanTermMonths} meses`} />
+          <Row label={t('tech.fin.costoDiarioActual')} value={formatUSD(dailyBurn)} sub={t('tech.fin.porDiaDeUpbActual')} />
         </div>
 
         {/* LOI Snapshot */}
         {(project.loiSalePrice || project.loiOfferDate) && (
           <div className="bg-white rounded-xl border border-slate-200 p-5">
             <h2 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
-              <FileSignature className="w-4 h-4 text-[var(--brand-gold)]" />Letter of Intent (LOI)
+              <FileSignature className="w-4 h-4 text-[var(--brand-gold)]" />{t('tech.fin.letterOfIntentLoi')}
             </h2>
-            <Row label="Precio ofertado" value={project.loiSalePrice ? formatUSD(project.loiSalePrice) : '—'} highlight />
-            <Row label="vs ARV" value={loiVsArv != null ? `${loiVsArv >= 0 ? '+' : ''}${formatUSD(loiVsArv)}` : '—'} />
-            <Row label="Fecha de oferta" value={formatDate(project.loiOfferDate)} />
-            <Row label="Cierre esperado" value={formatDate(project.loiExpectedClose)} warn={loiClosedAlready === true} />
-            <Row label="Earnest money" value={project.loiEarnestMoney ? formatUSD(project.loiEarnestMoney) : '—'} />
+            <Row label={t('tech.fin.precioOfertado')} value={project.loiSalePrice ? formatUSD(project.loiSalePrice) : '—'} highlight />
+            <Row label={t('tech.fin.vsArv')} value={loiVsArv != null ? `${loiVsArv >= 0 ? '+' : ''}${formatUSD(loiVsArv)}` : '—'} />
+            <Row label={t('tech.fin.fechaDeOferta')} value={formatDate(project.loiOfferDate)} />
+            <Row label={t('tech.fin.cierreEsperado')} value={formatDate(project.loiExpectedClose)} warn={loiClosedAlready === true} />
+            <Row label={t('tech.fin.earnestMoney')} value={project.loiEarnestMoney ? formatUSD(project.loiEarnestMoney) : '—'} />
           </div>
         )}
 
         {/* Valoración */}
         <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <h2 className="text-sm font-semibold text-slate-700 mb-3">Valoración y Rentabilidad</h2>
-          <Row label="ARV (Appraisal)" value={formatUSD(project.arv)} />
-          <Row label="ARV $/SF" value={project.sfHeated > 0 ? `$${(project.arv / project.sfHeated).toFixed(0)}/SF` : '—'} />
-          <Row label="Construction Budget" value={formatUSD(project.constructionBudget)} />
-          <Row label="Closing Costs" value={formatUSD(project.closingCosts)} />
-          <Row label="Comisiones venta" value={formatUSD(commissions)} sub={`${((project.listingCommission + project.buyerCommission) * 100).toFixed(1)}% de ARV`} />
-          <Row label="Interés total estimado" value={formatUSD(interestTotal)} />
+          <h2 className="text-sm font-semibold text-slate-700 mb-3">{t('tech.fin.valoracionYRentabilidad')}</h2>
+          <Row label={t('tech.fin.arvAppraisal')} value={formatUSD(project.arv)} />
+          <Row label={t('tech.fin.arvSf')} value={project.sfHeated > 0 ? `$${(project.arv / project.sfHeated).toFixed(0)}/SF` : '—'} />
+          <Row label={t('common.constructionBudget')} value={formatUSD(project.constructionBudget)} />
+          <Row label={t('tech.fin.closingCosts2')} value={formatUSD(project.closingCosts)} />
+          <Row label={t('tech.fin.comisionesVenta')} value={formatUSD(commissions)} sub={t('tech.fin.v0DeArv', { v0: ((project.listingCommission + project.buyerCommission) * 100).toFixed(1) })} />
+          <Row label={t('tech.fin.interesTotalEstimado')} value={formatUSD(interestTotal)} />
           <div className="mt-2 pt-2 border-t border-slate-200">
-            <Row label="GANANCIA BRUTA ESPERADA" value={formatUSD(gananciaBreve)} highlight={gananciaBreve > 0} warn={gananciaBreve <= 0} />
+            <Row label={t('tech.fin.gananciaBrutaEsperada')} value={formatUSD(gananciaBreve)} highlight={gananciaBreve > 0} warn={gananciaBreve <= 0} />
             <Row label="ROI" value={`${roi.toFixed(1)}%`} highlight={roi > 15} />
-            <Row label="Margen sobre ARV" value={`${margen.toFixed(1)}%`} highlight={margen >= project.targetMarginPct * 100} />
+            <Row label={t('tech.fin.margenSobreArv')} value={`${margen.toFixed(1)}%`} highlight={margen >= project.targetMarginPct * 100} />
           </div>
         </div>
 
         {/* Benchmark */}
         <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <h2 className="text-sm font-semibold text-slate-700 mb-3">Benchmarks y Controles</h2>
-          <Row label="SF Heated (living area)" value={`${project.sfHeated} SF`} />
-          <Row label="SF Garage" value={`${project.sfGarage} SF`} />
-          <Row label="SF Porches" value={`${project.sfPorches} SF`} />
-          <Row label="SF Total bruto" value={`${project.sfHeated + project.sfGarage + project.sfPorches} SF`} />
+          <h2 className="text-sm font-semibold text-slate-700 mb-3">{t('tech.fin.benchmarksYControles')}</h2>
+          <Row label={t('tech.fin.sfHeatedLivingArea')} value={`${project.sfHeated} SF`} />
+          <Row label={t('tech.fin.sfGarage')} value={`${project.sfGarage} SF`} />
+          <Row label={t('tech.fin.sfPorches')} value={`${project.sfPorches} SF`} />
+          <Row label={t('tech.fin.sfTotalBruto')} value={`${project.sfHeated + project.sfGarage + project.sfPorches} SF`} />
           <div className="mt-3 pt-3 border-t border-slate-200">
-            <Row label="Benchmark $/SF target" value={`$${project.benchmarkSfTarget}/SF`} />
-            <Row label="Target margin bruto" value={formatPct(project.targetMarginPct * 100)} />
-            <Row label="% Contingencia" value={formatPct(project.contingencyPct * 100)} />
+            <Row label={t('tech.fin.benchmarkSfTarget')} value={`$${project.benchmarkSfTarget}/SF`} />
+            <Row label={t('tech.fin.targetMarginBruto')} value={formatPct(project.targetMarginPct * 100)} />
+            <Row label={t('tech.fin.contingencia')} value={formatPct(project.contingencyPct * 100)} />
           </div>
           <div className="mt-3 pt-3 border-t border-slate-200">
-            <Row label="Margen real vs target" value={`${margen.toFixed(1)}% vs ${(project.targetMarginPct * 100).toFixed(0)}%`}
+            <Row label={t('tech.fin.margenRealVsTarget')} value={`${margen.toFixed(1)}% vs ${(project.targetMarginPct * 100).toFixed(0)}%`}
               highlight={margen >= project.targetMarginPct * 100}
               warn={margen < project.targetMarginPct * 100 - 5} />
           </div>

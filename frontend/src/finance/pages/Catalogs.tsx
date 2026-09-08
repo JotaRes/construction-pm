@@ -9,130 +9,142 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useConfirm } from "../../components/ConfirmDialog";
+import { useI18n, type TranslationKey } from '../../i18n'
+import { dataLabel, ACCOUNT_TYPE_LABELS, PROVIDER_TYPE_LABELS } from '../../i18n/dataLabels'
 
 // Definición rica de campos por categoría
 type FieldDef = {
   name: string;
-  label: string;
+  labelKey: TranslationKey;
   type?: "text" | "number" | "checkbox" | "email" | "textarea" | "select";
   required?: boolean;
+  placeholderKey?: TranslationKey;
   placeholder?: string;
   options?: string[];
   group?: string;
 };
 
 const TAB_CONFIG: Record<string, {
-  label: string;
+  labelKey: TranslationKey;
+  /** Nombre en singular y minúscula: "Agregar socio" / "Add partner". */
+  singularKey: TranslationKey;
   icon: any;
-  columns: { key: string; label: string }[];
+  columns: { key: string; labelKey: TranslationKey }[];
   fields: FieldDef[];
 }> = {
   spvs: {
-    label: "SPVs / Subsidiarias",
+    labelKey: 'fin.cat.spvsSubsidiarias',
+    singularKey: 'fin.cat.sing.spv',
     icon: Layers,
     columns: [
-      { key: "code", label: "Código" },
-      { key: "name", label: "Nombre" },
+      { key: "code", labelKey: 'fin.cat.codigo' },
+      { key: "name", labelKey: 'fin.cat.nombre' },
     ],
     fields: [
-      { name: "code", label: "Código *", required: true, placeholder: "SPV-001" },
-      { name: "name", label: "Nombre completo *", required: true, placeholder: "SC Desarrollo Residencial LLC" },
-      { name: "notes", label: "Notas", type: "textarea" },
+      { name: "code", labelKey: 'common.codigo', required: true, placeholderKey: 'fin.cat.spv001' },
+      { name: "name", labelKey: 'common.nombreCompleto', required: true, placeholderKey: 'fin.cat.scDesarrolloResidencialLlc' },
+      { name: "notes", labelKey: 'common.notas', type: "textarea" },
     ],
   },
   accounts: {
-    label: "Cuentas bancarias",
+    labelKey: 'common.cuentasBancarias',
+    singularKey: 'fin.cat.sing.account',
     icon: Building,
     columns: [
-      { key: "code", label: "Código" },
-      { key: "name", label: "Nombre" },
-      { key: "bank", label: "Banco" },
+      { key: "code", labelKey: 'fin.cat.codigo' },
+      { key: "name", labelKey: 'fin.cat.nombre' },
+      { key: "bank", labelKey: 'fin.cat.banco' },
     ],
     fields: [
-      { name: "code", label: "Código *", required: true, placeholder: "OB HOLDING" },
-      { name: "name", label: "Nombre cuenta *", required: true, placeholder: "OB Holding Ocean Bank" },
-      { name: "bank", label: "Banco *", required: true, placeholder: "Ocean Bank" },
-      { name: "type", label: "Tipo", type: "select", options: ["operativa", "proyecto", "personal", "ahorro"] },
-      { name: "accountNumber", label: "# Cuenta", placeholder: "********1234" },
-      { name: "routingNumber", label: "Routing # (ABA)", placeholder: "063100277" },
-      { name: "address", label: "Dirección sucursal", placeholder: "780 NW 42nd Ave, Miami, FL" },
-      { name: "initialBalance", label: "Saldo inicial USD", type: "number" },
-      { name: "notes", label: "Notas", type: "textarea" },
+      { name: "code", labelKey: 'common.codigo', required: true, placeholderKey: 'fin.accts.obHolding' },
+      { name: "name", labelKey: 'fin.cat.nombreCuenta', required: true, placeholderKey: 'fin.accts.obHoldingOceanBank' },
+      { name: "bank", labelKey: 'fin.accts.banco', required: true, placeholderKey: 'fin.accts.oceanBank' },
+      { name: "type", labelKey: 'common.tipo', type: "select", options: ["operativa", "proyecto", "personal", "ahorro"] },
+      { name: "accountNumber", labelKey: 'common.cuenta', placeholder: "********1234" },
+      { name: "routingNumber", labelKey: 'common.routingAba', placeholder: "063100277" },
+      { name: "address", labelKey: 'common.direccionSucursal', placeholderKey: 'fin.accts.780Nw42ndAveMiamiFl' },
+      { name: "initialBalance", labelKey: 'fin.accts.saldoInicialUsd', type: "number" },
+      { name: "notes", labelKey: 'common.notas', type: "textarea" },
     ],
   },
   partners: {
-    label: "Socios",
+    labelKey: 'fin.cat.socios',
+    singularKey: 'fin.cat.sing.partner',
     icon: Users,
     columns: [
-      { key: "code", label: "Código" },
-      { key: "fullName", label: "Nombre completo" },
+      { key: "code", labelKey: 'fin.cat.codigo' },
+      { key: "fullName", labelKey: 'fin.cat.nombreCompleto' },
     ],
     fields: [
-      { name: "code", label: "Código *", required: true, placeholder: "RA-01" },
-      { name: "fullName", label: "Nombre completo *", required: true, placeholder: "Juan Restrepo Avila" },
-      { name: "email", label: "Email", type: "email", placeholder: "socio@example.com" },
-      { name: "notes", label: "Notas", type: "textarea" },
+      { name: "code", labelKey: 'common.codigo', required: true, placeholderKey: 'fin.cat.ra01' },
+      { name: "fullName", labelKey: 'common.nombreCompleto', required: true, placeholderKey: 'fin.cat.juanRestrepoAvila' },
+      { name: "email", labelKey: 'common.email', type: "email", placeholderKey: 'fin.cat.socioExampleCom' },
+      { name: "notes", labelKey: 'common.notas', type: "textarea" },
     ],
   },
   lenders: {
-    label: "Prestamistas (Lenders)",
+    labelKey: 'fin.cat.prestamistasLenders',
+    singularKey: 'fin.cat.sing.lender',
     icon: Banknote,
     columns: [
-      { key: "name", label: "Nombre" },
-      { key: "type", label: "Tipo" },
+      { key: "name", labelKey: 'fin.cat.nombre' },
+      { key: "type", labelKey: 'common.tipo' },
     ],
     fields: [
-      { name: "name", label: "Nombre *", required: true, placeholder: "Kiavi LLC" },
-      { name: "type", label: "Tipo", type: "select", options: ["FinLender", "Bank", "Hard Money", "Private", "Friend/Family"] },
-      { name: "contactName", label: "Persona de contacto" },
-      { name: "email", label: "Email", type: "email" },
-      { name: "phone", label: "Teléfono" },
-      { name: "notes", label: "Notas", type: "textarea" },
+      { name: "name", labelKey: 'common.nombre', required: true, placeholderKey: 'fin.cat.kiaviLlc' },
+      { name: "type", labelKey: 'common.tipo', type: "select", options: ["FinLender", "Bank", "Hard Money", "Private", "Friend/Family"] },
+      { name: "contactName", labelKey: 'fin.cat.personaDeContacto' },
+      { name: "email", labelKey: 'common.email', type: "email" },
+      { name: "phone", labelKey: 'common.telefono' },
+      { name: "notes", labelKey: 'common.notas', type: "textarea" },
     ],
   },
   providers: {
-    label: "Proveedores / Terceros",
+    labelKey: 'fin.cat.proveedoresTerceros',
+    singularKey: 'fin.cat.sing.provider',
     icon: Briefcase,
     columns: [
-      { key: "name", label: "Nombre" },
-      { key: "type", label: "Tipo" },
+      { key: "name", labelKey: 'fin.cat.nombre' },
+      { key: "type", labelKey: 'common.tipo' },
     ],
     fields: [
-      { name: "name", label: "Nombre *", required: true, placeholder: "Home Depot" },
-      { name: "type", label: "Tipo", type: "select", options: ["Materiales", "Servicios", "Mano de obra", "Profesional", "Permisos", "Otros"] },
-      { name: "contactName", label: "Persona de contacto" },
-      { name: "email", label: "Email", type: "email" },
-      { name: "phone", label: "Teléfono" },
-      { name: "notes", label: "Notas", type: "textarea" },
+      { name: "name", labelKey: 'common.nombre', required: true, placeholderKey: 'fin.cat.homeDepot' },
+      { name: "type", labelKey: 'common.tipo', type: "select", options: ["Materiales", "Servicios", "Mano de obra", "Profesional", "Permisos", "Otros"] },
+      { name: "contactName", labelKey: 'fin.cat.personaDeContacto' },
+      { name: "email", labelKey: 'common.email', type: "email" },
+      { name: "phone", labelKey: 'common.telefono' },
+      { name: "notes", labelKey: 'common.notas', type: "textarea" },
     ],
   },
   categories: {
-    label: "Categorías de gasto",
+    labelKey: 'fin.cat.categoriasDeGasto',
+    singularKey: 'fin.cat.sing.category',
     icon: TrendingDown,
     columns: [
-      { key: "code", label: "Código" },
-      { key: "name", label: "Nombre" },
-      { key: "group", label: "Grupo" },
+      { key: "code", labelKey: 'fin.cat.codigo' },
+      { key: "name", labelKey: 'fin.cat.nombre' },
+      { key: "group", labelKey: 'fin.cat.grupo' },
     ],
     fields: [
-      { name: "code", label: "Código *", required: true, placeholder: "MAT-01" },
-      { name: "name", label: "Nombre *", required: true, placeholder: "Materiales construcción" },
-      { name: "group", label: "Grupo", placeholder: "Construcción / Operación / Corporativo" },
-      { name: "isCorporate", label: "Es gasto corporativo (no por proyecto)", type: "checkbox" },
-      { name: "notes", label: "Notas", type: "textarea" },
+      { name: "code", labelKey: 'common.codigo', required: true, placeholderKey: 'fin.cat.mat01' },
+      { name: "name", labelKey: 'common.nombre', required: true, placeholderKey: 'fin.cat.materialesConstruccion' },
+      { name: "group", labelKey: 'fin.cat.grupo', placeholderKey: 'fin.cat.construccionOperacionCorporativo' },
+      { name: "isCorporate", labelKey: 'fin.cat.esGastoCorporativoNoPorProyecto', type: "checkbox" },
+      { name: "notes", labelKey: 'common.notas', type: "textarea" },
     ],
   },
   origins: {
-    label: "Orígenes de ingreso",
+    labelKey: 'fin.cat.origenesDeIngreso',
+    singularKey: 'fin.cat.sing.origin',
     icon: TrendingUp,
     columns: [
-      { key: "code", label: "Código" },
-      { key: "name", label: "Nombre" },
+      { key: "code", labelKey: 'fin.cat.codigo' },
+      { key: "name", labelKey: 'fin.cat.nombre' },
     ],
     fields: [
-      { name: "code", label: "Código *", required: true, placeholder: "EQ-SOC" },
-      { name: "name", label: "Nombre *", required: true, placeholder: "Equity socio" },
-      { name: "notes", label: "Notas", type: "textarea" },
+      { name: "code", labelKey: 'common.codigo', required: true, placeholderKey: 'fin.cat.eqSoc' },
+      { name: "name", labelKey: 'common.nombre', required: true, placeholderKey: 'fin.cat.equitySocio' },
+      { name: "notes", labelKey: 'common.notas', type: "textarea" },
     ],
   },
 };
@@ -148,6 +160,7 @@ const API_MAP: Record<string, any> = {
 };
 
 export default function Catalogs() {
+  const { t } = useI18n()
   const qc = useQueryClient();
   const confirm = useConfirm();
   const [tab, setTab] = useState<string>("spvs");
@@ -157,8 +170,8 @@ export default function Catalogs() {
 
   const delMut = useMutation({
     mutationFn: ({ key, id }: { key: string; id: number }) => API_MAP[key].delete(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["catalogs"] }); toast.success("Eliminado"); },
-    onError: (e: any) => toast.error(e.response?.data?.error || "No se pudo eliminar"),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["catalogs"] }); toast.success(t('fin.cat.eliminado')); },
+    onError: (e: any) => toast.error(e.response?.data?.error || t('fin.cat.noSePudoEliminar')),
   });
 
   const current = TAB_CONFIG[tab];
@@ -170,13 +183,13 @@ export default function Catalogs() {
     <div className="space-y-4 page-content">
       <div className="flex items-end justify-between">
         <div>
-          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><BookOpen className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>Catálogos</span></h1>
+          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><BookOpen className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>{t('fin.cat.catalogos')}</span></h1>
           <p className="text-sm" style={{ color: 'var(--brand-teal2)' }}>
-            Listas maestras: cuentas, socios, prestamistas, categorías, proveedores y orígenes
+            {t('fin.cat.listasMaestrasCuentasSociosPrestamistasCat')}
           </p>
         </div>
         <button className="btn-primary" onClick={() => { setEditing(null); setOpen(true); }}>
-          <Plus size={14} /> Agregar {current.label.toLowerCase().replace(/s$/, "")}
+          <Plus size={14} /> {t('common.agregar')} {t(current.singularKey)}
         </button>
       </div>
 
@@ -184,8 +197,8 @@ export default function Catalogs() {
         {/* Tabs */}
         <div className="px-2 py-2 flex gap-1 overflow-x-auto" style={{ borderBottom: '1px solid rgba(29,29,31,0.1)', background: 'var(--brand-cream2)' }}>
           {tabKeys.map((key) => {
-            const t = TAB_CONFIG[key];
-            const Icon = t.icon;
+            const cfg = TAB_CONFIG[key];
+            const Icon = cfg.icon;
             const active = tab === key;
             const count = (data?.[key] || []).length;
             return (
@@ -199,7 +212,7 @@ export default function Catalogs() {
                     : { color: 'var(--brand-teal2)' }
                 }
               >
-                <Icon size={13} /> {t.label}
+                <Icon size={13} /> {t(cfg.labelKey)}
                 <span className="text-[10px] px-1.5 py-0.5 rounded" style={{
                   background: active ? 'rgba(255,255,255,0.2)' : 'rgba(29,29,31,0.08)',
                   color: active ? 'rgba(255,255,255,0.85)' : 'var(--brand-teal2)',
@@ -214,7 +227,7 @@ export default function Catalogs() {
           <table className="w-full text-sm">
             <thead style={{ background: 'rgba(29,29,31,0.04)' }}>
               <tr className="text-xs uppercase tracking-wider" style={{ color: 'var(--brand-teal2)' }}>
-                {current.columns.map((c) => <th key={c.key} className="px-4 py-3 text-left font-semibold">{c.label}</th>)}
+                {current.columns.map((c) => <th key={c.key} className="px-4 py-3 text-left font-semibold">{t(c.labelKey)}</th>)}
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
@@ -222,7 +235,7 @@ export default function Catalogs() {
               {rows.length === 0 ? (
                 <tr><td colSpan={current.columns.length + 1} className="px-4 py-12 text-center" style={{ color: 'var(--brand-teal2)' }}>
                   <FileText size={32} className="mx-auto mb-2" style={{ opacity: 0.3 }} />
-                  No hay registros en {current.label.toLowerCase()}. Usa el botón "Agregar" arriba para crear el primero.
+                  {t('fin.cat.noHayRegistrosEn')} {t(current.labelKey).toLowerCase()}{t('fin.cat.usaElBotonAgregarArribaPara')}
                 </td></tr>
               ) : rows.map((row: any) => (
                 <tr key={row.id} className="table-row" style={{ borderBottom: '1px solid rgba(29,29,31,0.06)' }}>
@@ -233,21 +246,21 @@ export default function Catalogs() {
                   ))}
                   <td className="px-4 py-3 text-right">
                     <div className="inline-flex gap-1">
-                      <button onClick={() => { setEditing(row); setOpen(true); }} className="btn-ghost p-1" title="Editar"><Edit3 size={14} /></button>
+                      <button onClick={() => { setEditing(row); setOpen(true); }} className="btn-ghost p-1" title={t('common.editar')}><Edit3 size={14} /></button>
                       <button
                         onClick={async () => {
                           const label = row.name || row.fullName || row.code;
                           const ok = await confirm({
-                            title: `Eliminar ${current.label.toLowerCase()}`,
-                            message: `¿Seguro que quieres eliminar "${label}"?`,
-                            detail: 'Si este registro está referenciado por movimientos u otros datos, la eliminación puede fallar.',
+                            title: t('fin.cat.deleteTitle', { entity: t(current.singularKey) }),
+                            message: t('fin.cat.deleteMessage', { name: label }),
+                            detail: t('fin.cat.deleteDetail'),
                             destructive: true,
-                            confirmText: 'Sí, eliminar',
+                            confirmText: t('common.yesDelete'),
                           })
                           if (ok) delMut.mutate({ key: tab, id: row.id });
                         }}
                         className="btn-ghost p-1 text-red-600"
-                        title="Eliminar"
+                        title={t('common.eliminar')}
                       ><Trash2 size={14} /></button>
                     </div>
                   </td>
@@ -276,8 +289,9 @@ function CatalogModal({
   onClose: () => void;
   tab: string;
   editing: any;
-  config: { label: string; fields: FieldDef[] };
+  config: { labelKey: TranslationKey; singularKey: TranslationKey; fields: FieldDef[] };
 }) {
+  const { t } = useI18n()
   const qc = useQueryClient();
   const [form, setForm] = useState<Record<string, any>>({});
 
@@ -295,10 +309,10 @@ function CatalogModal({
       qc.invalidateQueries({ queryKey: ["catalogs"] });
       qc.invalidateQueries({ queryKey: ["accounts"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
-      toast.success(editing ? "Actualizado" : "Creado");
+      toast.success(editing ? t('common.updated') : t('common.created'));
       onClose();
     },
-    onError: (e: any) => toast.error(e.response?.data?.error || "Error al guardar"),
+    onError: (e: any) => toast.error(e.response?.data?.error || t('common.saveError')),
   });
 
   const submit = (e: React.FormEvent) => {
@@ -306,7 +320,7 @@ function CatalogModal({
     // Validar campos requeridos
     const missing = config.fields.filter((f) => f.required && !String(form[f.name] ?? "").trim());
     if (missing.length > 0) {
-      return toast.error(`Campos requeridos: ${missing.map((f) => f.label.replace(" *", "")).join(", ")}`);
+      return toast.error(t('fin.cat.camposRequeridosV0', { v0: missing.map((f) => t(f.labelKey).replace(" *", "")).join(", ") }));
     }
     // Limpiar relations / fields irrelevantes
     const payload: any = {};
@@ -324,13 +338,13 @@ function CatalogModal({
     <Modal
       open={open}
       onClose={onClose}
-      title={editing ? `Editar ${config.label.toLowerCase().replace(/s$/, "")}` : `Nuevo ${config.label.toLowerCase().replace(/s$/, "")}`}
+      title={editing ? t('fin.cat.editEntity', { entity: t(config.singularKey) }) : t('fin.cat.newEntity', { entity: t(config.singularKey) })}
       size="md"
     >
       <form onSubmit={submit} className="grid md:grid-cols-2 gap-3">
         {config.fields.map((f) => (
           <div key={f.name} className={f.type === "textarea" ? "md:col-span-2" : ""}>
-            <label className="label">{f.label}</label>
+            <label className="label">{t(f.labelKey)}</label>
             {f.type === "checkbox" ? (
               <label className="flex items-center gap-2 p-2 rounded-lg cursor-pointer" style={{ background: 'var(--brand-cream2)' }}>
                 <input
@@ -339,7 +353,7 @@ function CatalogModal({
                   onChange={(e) => setForm({ ...form, [f.name]: e.target.checked })}
                   className="rounded"
                 />
-                <span className="text-sm" style={{ color: 'var(--brand-teal)' }}>Sí</span>
+                <span className="text-sm" style={{ color: 'var(--brand-teal)' }}>{t('fin.cat.si')}</span>
               </label>
             ) : f.type === "select" ? (
               <select
@@ -347,8 +361,8 @@ function CatalogModal({
                 value={form[f.name] ?? ""}
                 onChange={(e) => setForm({ ...form, [f.name]: e.target.value })}
               >
-                <option value="">— Seleccionar —</option>
-                {f.options?.map((o) => <option key={o} value={o}>{o}</option>)}
+                <option value="">{t('fin.cat.seleccionar')}</option>
+                {f.options?.map((o) => <option key={o} value={o}>{dataLabel({ ...ACCOUNT_TYPE_LABELS, ...PROVIDER_TYPE_LABELS }, o, t)}</option>)}
               </select>
             ) : f.type === "textarea" ? (
               <textarea
@@ -376,9 +390,9 @@ function CatalogModal({
           </div>
         ))}
         <div className="md:col-span-2 flex justify-end gap-2 pt-3" style={{ borderTop: '1px solid rgba(29,29,31,0.1)' }}>
-          <button type="button" className="btn-secondary" onClick={onClose}>Cancelar</button>
+          <button type="button" className="btn-secondary" onClick={onClose}>{t('common.cancelar')}</button>
           <button type="submit" className="btn-primary" disabled={mut.isPending}>
-            {mut.isPending ? "Guardando…" : editing ? "Guardar cambios" : "Crear"}
+            {mut.isPending ? t('common.guardando') : editing ? t('common.guardarCambios') : t('common.crear')}
           </button>
         </div>
       </form>

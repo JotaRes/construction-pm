@@ -7,8 +7,10 @@ import { API } from "../lib/api";
 import { KPI } from "../components/KPI";
 import { usd } from "../lib/format";
 import { TrendingUp, ArrowUpRight, ArrowDownRight, Activity } from "lucide-react";
+import { useI18n } from '../../i18n'
 
 export default function CashflowDashboard() {
+  const { t } = useI18n()
   const [groupBy, setGroupBy] = useState<"week" | "month">("month");
   const [months, setMonths] = useState(12);
 
@@ -26,10 +28,10 @@ export default function CashflowDashboard() {
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold" style={{ color: "var(--brand-teal)" }}>
-            Flujo de Caja Consolidado
+            {t('fin.cashflow.flujoDeCajaConsolidado')}
           </h1>
           <p className="text-sm mt-1" style={{ color: "var(--brand-teal2)" }}>
-            Ingresos, egresos y saldo corriente por período
+            {t('fin.cashflow.ingresosEgresosYSaldoCorrientePor')}
           </p>
         </div>
         <div className="flex gap-2">
@@ -40,33 +42,33 @@ export default function CashflowDashboard() {
                 style={groupBy === g
                   ? { background: "var(--accent)", color: "#fff" }
                   : { color: "var(--text-secondary)" }}>
-                {g === "week" ? "Semana" : "Mes"}
+                {g === "week" ? t('fin.cashflow.semana') : t('fin.cashflow.mes')}
               </button>
             ))}
           </div>
           <select value={months} onChange={e => setMonths(Number(e.target.value))}
             className="text-xs rounded-lg px-2 border"
             style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)", color: "var(--text-primary)" }}>
-            {[3, 6, 12, 24].map(m => <option key={m} value={m}>Últimos {m} meses</option>)}
+            {[3, 6, 12, 24].map(m => <option key={m} value={m}>{t('fin.cashflow.ultimos')} {m} {t('fin.cashflow.meses')}</option>)}
           </select>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <KPI label="Ingresos del período" value={usd(totalIng)} tone="positive" icon={<ArrowUpRight size={16} />} />
-        <KPI label="Egresos del período" value={usd(totalEgr)} tone="negative" icon={<ArrowDownRight size={16} />} />
-        <KPI label="Flujo neto" value={usd(neto)} tone={neto >= 0 ? "positive" : "negative"} icon={<TrendingUp size={16} />} />
+        <KPI label={t('fin.cashflow.ingresosDelPeriodo')} value={usd(totalIng)} tone="positive" icon={<ArrowUpRight size={16} />} />
+        <KPI label={t('fin.cashflow.egresosDelPeriodo')} value={usd(totalEgr)} tone="negative" icon={<ArrowDownRight size={16} />} />
+        <KPI label={t('fin.cashflow.flujoNeto')} value={usd(neto)} tone={neto >= 0 ? "positive" : "negative"} icon={<TrendingUp size={16} />} />
       </div>
 
       <div className="rounded-xl border p-4" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
         <h2 className="text-sm font-bold mb-3 flex items-center gap-2" style={{ color: "var(--brand-teal)" }}>
-          <Activity size={14} style={{ color: "var(--brand-gold)" }} /> Ingresos vs Egresos + saldo corriente
+          <Activity size={14} style={{ color: "var(--brand-gold)" }} /> {t('fin.cashflow.ingresosVsEgresosSaldoCorriente')}
         </h2>
         {isLoading ? (
-          <p className="text-sm py-12 text-center" style={{ color: "var(--brand-teal2)" }}>Cargando...</p>
+          <p className="text-sm py-12 text-center" style={{ color: "var(--brand-teal2)" }}>{t('common.cargando2')}</p>
         ) : data.length === 0 ? (
           <p className="text-sm py-12 text-center" style={{ color: "var(--brand-teal2)" }}>
-            Sin movimientos en el rango seleccionado. Amplía el período o registra movimientos.
+            {t('fin.cashflow.sinMovimientosEnElRangoSeleccionado')}
           </p>
         ) : (
           <div style={{ height: 340 }}>
@@ -77,9 +79,9 @@ export default function CashflowDashboard() {
                 <YAxis tick={{ fontSize: 10, fill: "var(--brand-teal3)" }} tickFormatter={(v) => usd(v, { compact: true })} />
                 <Tooltip formatter={(v: number) => usd(v)} />
                 <Legend />
-                <Bar dataKey="ingresos" name="Ingresos" fill="var(--ok)" />
-                <Bar dataKey="egresos" name="Egresos" fill="var(--err)" />
-                <Line type="monotone" dataKey="runningBalance" name="Saldo corriente" stroke="var(--accent)" strokeWidth={2} />
+                <Bar dataKey="ingresos" name={t('common.ingresos')} fill="var(--ok)" />
+                <Bar dataKey="egresos" name={t('common.egresos')} fill="var(--err)" />
+                <Line type="monotone" dataKey="runningBalance" name={t('fin.cashflow.saldoCorriente')} stroke="var(--accent)" strokeWidth={2} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>

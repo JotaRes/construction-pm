@@ -7,28 +7,31 @@ import {
   ListChecks, Plus, FolderPlus, Calendar,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import { AdminAPI, PERSON_ROLE_LABELS, shareByEmail, shareByWhatsApp, absoluteShareUrl } from "../lib/api";
+import { AdminAPI, shareByEmail, shareByWhatsApp, absoluteShareUrl } from "../lib/api";
 import { cls, date as fmtDate } from "../../finance/lib/format";
 import { useConfirm } from "../../components/ConfirmDialog";
 import { downloadAuthed } from "../../lib/api";
+import { useI18n, type TranslationKey } from '../../i18n'
+import { dataLabel, PERSON_ROLE_LABELS_I18N } from '../../i18n/dataLabels'
 
-const STATUS_META: Record<string, { label: string; color: string; bg: string; Icon: typeof CheckCircle2 }> = {
-  OK:         { label: "Al día",     color: "#22c55e", bg: "rgba(34,197,94,0.12)",  Icon: CheckCircle2 },
-  POR_VENCER: { label: "Por vencer", color: "#f59e0b", bg: "rgba(245,158,11,0.12)", Icon: Clock },
-  VENCIDO:    { label: "Vencido",    color: "#ef4444", bg: "rgba(239,68,68,0.12)",  Icon: AlertTriangle },
-  FALTANTE:   { label: "Faltante",   color: "#94a3b8", bg: "rgba(148,163,184,0.12)", Icon: HelpCircle },
+const STATUS_META: Record<string, { labelKey: TranslationKey; color: string; bg: string; Icon: typeof CheckCircle2 }> = {
+  OK:         { labelKey: 'common.alDia',     color: "#22c55e", bg: "rgba(34,197,94,0.12)",  Icon: CheckCircle2 },
+  POR_VENCER: { labelKey: 'adm.company.porVencer', color: "#f59e0b", bg: "rgba(245,158,11,0.12)", Icon: Clock },
+  VENCIDO:    { labelKey: 'common.vencido',    color: "#ef4444", bg: "rgba(239,68,68,0.12)",  Icon: AlertTriangle },
+  FALTANTE:   { labelKey: 'adm.company.faltante',   color: "#94a3b8", bg: "rgba(148,163,184,0.12)", Icon: HelpCircle },
 };
 
-const FIELDS: { k: string; label: string; ph?: string }[] = [
-  { k: "name", label: "Nombre *" },
-  { k: "position", label: "Cargo" },
-  { k: "email", label: "Email" },
-  { k: "phone", label: "Teléfono" },
-  { k: "idNumber", label: "Identificación" },
+const FIELDS: { k: string; labelKey: TranslationKey; ph?: string }[] = [
+  { k: "name", labelKey: 'common.nombre' },
+  { k: "position", labelKey: 'adm.person.cargo' },
+  { k: "email", labelKey: 'common.email' },
+  { k: "phone", labelKey: 'common.telefono' },
+  { k: "idNumber", labelKey: 'adm.person.identificacion' },
 ];
 
 // ── Fila del checklist personal con subida de archivo ─────────────────────
 function ChecklistRow({ item, personId, onChanged }: { item: any; personId: number; onChanged: () => void }) {
+  const { t } = useI18n()
   const fileRef = useRef<HTMLInputElement>(null);
   const confirm = useConfirm();
   const [issueDate, setIssueDate] = useState("");
@@ -46,7 +49,7 @@ function ChecklistRow({ item, personId, onChanged }: { item: any; personId: numb
       return AdminAPI.uploadPersonDocument(personId, fd);
     },
     onSuccess: () => {
-      toast.success(`"${item.name}" cargado`);
+      toast.success(t('adm.company.v0Cargado', { v0: item.name }));
       setOpen(false); setIssueDate(""); setExpiryDate("");
       onChanged();
     },
@@ -55,16 +58,16 @@ function ChecklistRow({ item, personId, onChanged }: { item: any; personId: numb
 
   const removeReq = async () => {
     const ok = await confirm({
-      title: "Quitar del checklist",
-      message: `¿Quitar "${item.name}" de los documentos requeridos?`,
-      detail: "Los archivos ya cargados NO se borran; quedan en la carpeta general de la persona.",
+      title: t('adm.company.quitarDelChecklist'),
+      message: t('adm.person.quitarV0DeLosDocumentosRequeridos', { v0: item.name }),
+      detail: t('adm.person.losArchivosYaCargadosNoSe'),
       destructive: true,
-      confirmText: "Sí, quitar",
+      confirmText: t('adm.company.siQuitar'),
     });
     if (!ok) return;
     try {
       await AdminAPI.deletePersonRequirement(item.requirementId);
-      toast.success("Requisito eliminado");
+      toast.success(t('adm.person.requisitoEliminado'));
       onChanged();
     } catch (e: any) { toast.error(e.message); }
   };
@@ -78,35 +81,35 @@ function ChecklistRow({ item, personId, onChanged }: { item: any; personId: numb
         <div className="flex-1 min-w-0">
           <div className="text-[13px] font-medium truncate" style={{ color: "var(--text-primary)" }}>{item.name}</div>
           <div className="text-[10.5px] flex items-center gap-2" style={{ color: "var(--text-muted)" }}>
-            <span style={{ color: meta.color, fontWeight: 600 }}>{meta.label}</span>
+            <span style={{ color: meta.color, fontWeight: 600 }}>{t(meta.labelKey)}</span>
             {item.document?.expiryDate && (
-              <span>· vence {fmtDate(item.document.expiryDate)}{typeof item.daysToExpiry === "number" ? ` (${item.daysToExpiry}d)` : ""}</span>
+              <span>{t('adm.company.vence')} {fmtDate(item.document.expiryDate)}{typeof item.daysToExpiry === "number" ? ` (${item.daysToExpiry}d)` : ""}</span>
             )}
           </div>
         </div>
         {item.document && !item.document.url?.startsWith("local:") && (
           <button
-            className="fin-btn-icon" title="Ver documento"
+            className="fin-btn-icon" title={t('common.verDocumento')}
             onClick={() => downloadAuthed(`/api/download?url=${encodeURIComponent(item.document.url)}&name=${encodeURIComponent(item.document.filename)}&inline=1`, item.document.filename).catch(() => window.open(item.document.url, "_blank"))}
           >
             <ExternalLink size={13} />
           </button>
         )}
-        <button className="fin-btn-icon" title="Subir / actualizar" onClick={() => setOpen((o) => !o)}>
+        <button className="fin-btn-icon" title={t('adm.company.subirActualizar')} onClick={() => setOpen((o) => !o)}>
           <Upload size={13} />
         </button>
-        <button className="fin-btn-icon" title="Quitar del checklist" style={{ color: "#ef4444" }} onClick={removeReq}>
+        <button className="fin-btn-icon" title={t('adm.company.quitarDelChecklist')} style={{ color: "#ef4444" }} onClick={removeReq}>
           <X size={13} />
         </button>
       </div>
       {open && (
         <div className="px-3 pb-3 pt-1 flex flex-wrap items-end gap-2" style={{ borderTop: "1px solid var(--border)" }}>
           <label className="text-[10px] font-semibold" style={{ color: "var(--text-secondary)" }}>
-            Emisión
+            {t('adm.company.emision')}
             <input type="date" className="input-base block mt-0.5" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} />
           </label>
           <label className="text-[10px] font-semibold" style={{ color: "var(--text-secondary)" }}>
-            Vencimiento
+            {t('common.vencimiento')}
             <input type="date" className="input-base block mt-0.5" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} />
           </label>
           <input
@@ -114,7 +117,7 @@ function ChecklistRow({ item, personId, onChanged }: { item: any; personId: numb
             onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadMut.mutate(f); e.currentTarget.value = ""; }}
           />
           <button className="fin-btn-cta" style={{ height: 34 }} disabled={uploadMut.isPending} onClick={() => fileRef.current?.click()}>
-            {uploadMut.isPending ? "Subiendo…" : "Seleccionar archivo"}
+            {uploadMut.isPending ? t('common.subiendo') : t('common.seleccionarArchivo')}
           </button>
         </div>
       )}
@@ -123,6 +126,7 @@ function ChecklistRow({ item, personId, onChanged }: { item: any; personId: numb
 }
 
 export default function PersonDetail() {
+  const { t } = useI18n()
   const { id } = useParams();
   const personId = Number(id);
   const qc = useQueryClient();
@@ -160,7 +164,7 @@ export default function PersonDetail() {
 
   const updateMut = useMutation({
     mutationFn: (data: any) => AdminAPI.updatePerson(personId, data),
-    onSuccess: () => { toast.success("Persona actualizada"); setEditing(false); invalidateAll(); },
+    onSuccess: () => { toast.success(t('adm.person.personaActualizada')); setEditing(false); invalidateAll(); },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -171,7 +175,7 @@ export default function PersonDetail() {
       hasExpiry: reqHasExpiry,
     }),
     onSuccess: () => {
-      toast.success("Documento agregado al checklist");
+      toast.success(t('adm.person.documentoAgregadoAlChecklist'));
       setReqName(""); setReqCategory(""); setReqHasExpiry(false); setAddingReq(false);
       invalidateAll();
     },
@@ -185,7 +189,7 @@ export default function PersonDetail() {
       priority: taskPriority,
       dueDate: taskDue || null,
     }),
-    onSuccess: () => { toast.success("Tarea creada"); setTaskTitle(""); setTaskDue(""); setTaskPriority("media"); invalidateAll(); },
+    onSuccess: () => { toast.success(t('common.tareaCreada')); setTaskTitle(""); setTaskDue(""); setTaskPriority("media"); invalidateAll(); },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -197,7 +201,7 @@ export default function PersonDetail() {
 
   const deleteDocMut = useMutation({
     mutationFn: (docId: number) => AdminAPI.deletePersonDocument(docId),
-    onSuccess: () => { toast.success("Documento eliminado"); invalidateAll(); },
+    onSuccess: () => { toast.success(t('common.documentoEliminado')); invalidateAll(); },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -206,7 +210,7 @@ export default function PersonDetail() {
   const docs = docsQ.data ?? [];
   const tasks = tasksQ.data ?? [];
 
-  if (personQ.isLoading || !p) return <div className="fin-page-sub">Cargando carpeta personal…</div>;
+  if (personQ.isLoading || !p) return <div className="fin-page-sub">{t('adm.person.cargandoCarpetaPersonal')}</div>;
 
   const startEdit = () => {
     setForm({
@@ -218,7 +222,7 @@ export default function PersonDetail() {
   };
 
   const saveEdit = () => {
-    if (!form.name?.trim()) { toast.error("El nombre es obligatorio"); return; }
+    if (!form.name?.trim()) { toast.error(t('common.elNombreEsObligatorio')); return; }
     const payload: any = { ...form };
     Object.keys(payload).forEach((k) => { if (payload[k] === "") payload[k] = null; });
     updateMut.mutate(payload);
@@ -226,16 +230,16 @@ export default function PersonDetail() {
 
   const handleDelete = async () => {
     const ok = await confirm({
-      title: "Suprimir persona",
-      message: `¿Eliminar a "${p.name}"?`,
-      detail: "Se borrará su carpeta completa (documentos incluidos) y sus tareas. Esta acción no se puede deshacer.",
+      title: t('adm.person.suprimirPersona'),
+      message: t('adm.person.eliminarAV0', { v0: p.name }),
+      detail: t('adm.person.seBorraraSuCarpetaCompletaDocumentos'),
       destructive: true,
-      confirmText: "Sí, suprimir",
+      confirmText: t('adm.company.siSuprimir'),
     });
     if (!ok) return;
     try {
       await AdminAPI.deletePerson(personId);
-      toast.success("Persona suprimida");
+      toast.success(t('adm.person.personaSuprimida'));
       qc.invalidateQueries({ queryKey: ["adm-persons"] });
       nav("/admin/persons");
     } catch (e: any) { toast.error(e.message); }
@@ -263,7 +267,7 @@ export default function PersonDetail() {
       {/* ── Cabecera ── */}
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div className="flex items-start gap-3 min-w-0">
-          <Link to="/admin/persons" className="fin-btn-icon mt-1" title="Volver al directorio"><ArrowLeft size={14} /></Link>
+          <Link to="/admin/persons" className="fin-btn-icon mt-1" title={t('adm.person.volverAlDirectorio')}><ArrowLeft size={14} /></Link>
           <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
             style={{ background: p.role === "SOCIO" ? "linear-gradient(135deg,#33495C,#3E5A70)" : "rgba(62,90,112,0.12)" }}>
             <User size={20} color={p.role === "SOCIO" ? "#D9AE52" : "#3E5A70"} />
@@ -271,15 +275,15 @@ export default function PersonDetail() {
           <div className="min-w-0">
             <div className="fin-page-title truncate">{p.name}</div>
             <div className="flex items-center gap-2 flex-wrap mt-0.5">
-              <span className="badge-active" style={{ fontSize: 10 }}>{PERSON_ROLE_LABELS[p.role] ?? p.role}</span>
+              <span className="badge-active" style={{ fontSize: 10 }}>{dataLabel(PERSON_ROLE_LABELS_I18N, p.role, t)}</span>
               {p.position && <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>{p.position}</span>}
-              {p.status !== "ACTIVO" && <span className="text-[11px]" style={{ color: "#ef4444" }}>Inactivo</span>}
+              {p.status !== "ACTIVO" && <span className="text-[11px]" style={{ color: "#ef4444" }}>{t('adm.person.inactivo')}</span>}
             </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {!editing && <button className="fin-btn-icon flex items-center gap-2 px-3" style={{ width: "auto", fontSize: 11.5, fontWeight: 600 }} onClick={startEdit}><Pencil size={12} /> Editar</button>}
-          <button className="fin-btn-icon" title="Suprimir persona" style={{ color: "#ef4444" }} onClick={handleDelete}><Trash2 size={13} /></button>
+          {!editing && <button className="fin-btn-icon flex items-center gap-2 px-3" style={{ width: "auto", fontSize: 11.5, fontWeight: 600 }} onClick={startEdit}><Pencil size={12} /> {t('common.editar')}</button>}
+          <button className="fin-btn-icon" title={t('adm.person.suprimirPersona')} style={{ color: "#ef4444" }} onClick={handleDelete}><Trash2 size={13} /></button>
         </div>
       </div>
 
@@ -290,33 +294,33 @@ export default function PersonDetail() {
             <div className="grid md:grid-cols-2 gap-3">
               {FIELDS.map((f) => (
                 <label key={f.k} className="block">
-                  <span className="text-[11px] font-semibold" style={{ color: "var(--text-secondary)" }}>{f.label}</span>
+                  <span className="text-[11px] font-semibold" style={{ color: "var(--text-secondary)" }}>{t(f.labelKey)}</span>
                   <input className="input-base w-full mt-1" placeholder={f.ph} value={form[f.k] ?? ""} onChange={(e) => setForm({ ...form, [f.k]: e.target.value })} />
                 </label>
               ))}
               <label className="block">
-                <span className="text-[11px] font-semibold" style={{ color: "var(--text-secondary)" }}>Rol</span>
+                <span className="text-[11px] font-semibold" style={{ color: "var(--text-secondary)" }}>{t('adm.person.rol')}</span>
                 <select className="input-base w-full mt-1" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-                  <option value="SOCIO">Socio</option>
-                  <option value="COLABORADOR">Colaborador</option>
-                  <option value="OTRO">Otro</option>
+                  <option value="SOCIO">{t('common.socio')}</option>
+                  <option value="COLABORADOR">{t('adm.person.colaborador')}</option>
+                  <option value="OTRO">{t('common.otro')}</option>
                 </select>
               </label>
               <label className="block">
-                <span className="text-[11px] font-semibold" style={{ color: "var(--text-secondary)" }}>Estado</span>
+                <span className="text-[11px] font-semibold" style={{ color: "var(--text-secondary)" }}>{t('common.estado')}</span>
                 <select className="input-base w-full mt-1" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
-                  <option value="ACTIVO">Activo</option>
-                  <option value="INACTIVO">Inactivo</option>
+                  <option value="ACTIVO">{t('adm.person.activo')}</option>
+                  <option value="INACTIVO">{t('adm.person.inactivo')}</option>
                 </select>
               </label>
             </div>
             <label className="block">
-              <span className="text-[11px] font-semibold" style={{ color: "var(--text-secondary)" }}>Notas</span>
+              <span className="text-[11px] font-semibold" style={{ color: "var(--text-secondary)" }}>{t('common.notas')}</span>
               <textarea className="input-base w-full mt-1" rows={2} value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
             </label>
             <div className="flex items-center gap-2">
-              <button className="fin-btn-cta flex items-center gap-2" disabled={updateMut.isPending} onClick={saveEdit}><Save size={13} /> {updateMut.isPending ? "Guardando…" : "Guardar cambios"}</button>
-              <button className="fin-btn-icon flex items-center gap-2 px-3" style={{ width: "auto", fontSize: 11.5 }} onClick={() => setEditing(false)}><X size={13} /> Cancelar</button>
+              <button className="fin-btn-cta flex items-center gap-2" disabled={updateMut.isPending} onClick={saveEdit}><Save size={13} /> {updateMut.isPending ? t('common.guardando') : t('common.guardarCambios')}</button>
+              <button className="fin-btn-icon flex items-center gap-2 px-3" style={{ width: "auto", fontSize: 11.5 }} onClick={() => setEditing(false)}><X size={13} /> {t('common.cancelar')}</button>
             </div>
           </div>
         </div>
@@ -326,7 +330,7 @@ export default function PersonDetail() {
       {!editing && (
         <div className="fin-cpanel">
           <div className="fin-cpanel-body grid md:grid-cols-3 gap-y-3 gap-x-6">
-            {[["Email", p.email], ["Teléfono", p.phone], ["Identificación", p.idNumber]].map(([label, val]) => (
+            {[["Email", p.email], [t('common.telefono'), p.phone], [t('adm.person.identificacion'), p.idNumber]].map(([label, val]) => (
               <div key={label as string}>
                 <div className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>{label}</div>
                 <div className="text-[13px]" style={{ color: "var(--text-primary)" }}>{(val as string) || "—"}</div>
@@ -341,11 +345,11 @@ export default function PersonDetail() {
       {checklist && (
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {[
-            { label: "Cumplimiento", value: `${checklist.compliancePct}%`, tone: checklist.vencidos > 0 ? "#ef4444" : checklist.compliancePct >= 85 ? "#22c55e" : "#f59e0b" },
-            { label: "Al día", value: checklist.ok, tone: "#22c55e" },
-            { label: "Por vencer", value: checklist.porVencer, tone: "#f59e0b" },
-            { label: "Vencidos", value: checklist.vencidos, tone: "#ef4444" },
-            { label: "Faltantes", value: checklist.faltantes, tone: "#94a3b8" },
+            { label: t('adm.company.cumplimiento'), value: `${checklist.compliancePct}%`, tone: checklist.vencidos > 0 ? "#ef4444" : checklist.compliancePct >= 85 ? "#22c55e" : "#f59e0b" },
+            { label: t('common.alDia'), value: checklist.ok, tone: "#22c55e" },
+            { label: t('adm.company.porVencer'), value: checklist.porVencer, tone: "#f59e0b" },
+            { label: t('adm.company.vencidos'), value: checklist.vencidos, tone: "#ef4444" },
+            { label: t('adm.company.faltantes'), value: checklist.faltantes, tone: "#94a3b8" },
           ].map((k) => (
             <div key={k.label} className="fin-kpi-v2">
               <div className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>{k.label}</div>
@@ -359,36 +363,36 @@ export default function PersonDetail() {
       <div className="fin-cpanel">
         <div className="fin-cpanel-body">
           <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-            <div className="fin-tb-title flex items-center gap-2"><ListChecks size={15} /> Carpeta documental</div>
+            <div className="fin-tb-title flex items-center gap-2"><ListChecks size={15} /> {t('adm.person.carpetaDocumental')}</div>
             <button className="fin-btn-icon flex items-center gap-1.5 px-3" style={{ width: "auto", fontSize: 11, fontWeight: 600 }} onClick={() => setAddingReq((a) => !a)}>
-              {addingReq ? <><X size={12} /> Cancelar</> : <><FolderPlus size={12} /> Agregar documento / categoría</>}
+              {addingReq ? <><X size={12} /> {t('common.cancelar')}</> : <><FolderPlus size={12} /> {t('adm.company.agregarDocumentoCategoria')}</>}
             </button>
           </div>
 
           {addingReq && (
             <div className="rounded-lg p-3 mb-3 flex flex-wrap items-end gap-2" style={{ border: "1px dashed var(--border)", background: "var(--bg-base)" }}>
               <label className="text-[10px] font-semibold flex-1 min-w-[180px]" style={{ color: "var(--text-secondary)" }}>
-                Nombre del documento *
-                <input className="input-base block w-full mt-0.5" placeholder="Ej: Licencia de conducción" value={reqName} onChange={(e) => setReqName(e.target.value)} />
+                {t('common.nombreDelDocumento')}
+                <input className="input-base block w-full mt-0.5" placeholder={t('adm.person.ejLicenciaDeConduccion')} value={reqName} onChange={(e) => setReqName(e.target.value)} />
               </label>
               <label className="text-[10px] font-semibold min-w-[160px]" style={{ color: "var(--text-secondary)" }}>
-                Categoría (existente o nueva)
-                <input className="input-base block w-full mt-0.5" placeholder="Ej: LEGAL" list={`cats-${personId}`} value={reqCategory} onChange={(e) => setReqCategory(e.target.value)} />
+                {t('adm.company.categoriaExistenteONueva')}
+                <input className="input-base block w-full mt-0.5" placeholder={t('adm.person.ejLegal')} list={`cats-${personId}`} value={reqCategory} onChange={(e) => setReqCategory(e.target.value)} />
                 <datalist id={`cats-${personId}`}>
                   {existingCategories.map((c) => <option key={c} value={c} />)}
                 </datalist>
               </label>
               <label className="flex items-center gap-1.5 text-[11px] pb-2" style={{ color: "var(--text-secondary)" }}>
-                <input type="checkbox" checked={reqHasExpiry} onChange={(e) => setReqHasExpiry(e.target.checked)} /> Tiene vencimiento
+                <input type="checkbox" checked={reqHasExpiry} onChange={(e) => setReqHasExpiry(e.target.checked)} /> {t('adm.company.tieneVencimiento')}
               </label>
               <button className="fin-btn-cta" style={{ height: 34 }} disabled={!reqName.trim() || addReqMut.isPending} onClick={() => addReqMut.mutate()}>
-                {addReqMut.isPending ? "Agregando…" : "Agregar"}
+                {addReqMut.isPending ? t('adm.company.agregando') : t('common.agregar')}
               </button>
             </div>
           )}
 
           {groups.length === 0 ? (
-            <div className="fin-page-sub">Sin documentos requeridos. Agrega el primero con "Agregar documento / categoría".</div>
+            <div className="fin-page-sub">{t('adm.person.sinDocumentosRequeridosAgregaElPrimero')}</div>
           ) : (
             <div className="space-y-4">
               {groups.map(([cat, items]) => (
@@ -407,9 +411,9 @@ export default function PersonDetail() {
       {/* ── Todos los archivos cargados ── */}
       <div className="fin-cpanel">
         <div className="fin-cpanel-body">
-          <div className="fin-tb-title mb-3 flex items-center gap-2"><FileText size={15} /> Archivos cargados ({docs.length})</div>
+          <div className="fin-tb-title mb-3 flex items-center gap-2"><FileText size={15} /> {t('adm.person.archivosCargados')}{docs.length})</div>
           {docs.length === 0 ? (
-            <div className="fin-page-sub">Aún no hay archivos en la carpeta.</div>
+            <div className="fin-page-sub">{t('adm.person.aunNoHayArchivosEnLa')}</div>
           ) : (
             <div className="space-y-1.5">
               {docs.map((d: any) => {
@@ -420,19 +424,19 @@ export default function PersonDetail() {
                     <div className="flex-1 min-w-0">
                       <div className="text-[12.5px] font-medium truncate" style={{ color: "var(--text-primary)" }}>{d.filename}</div>
                       <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-                        {d.requirement?.name ?? "Sin clasificar"}
-                        {d.expiryDate ? ` · vence ${fmtDate(d.expiryDate)}` : ""}
+                        {d.requirement?.name ?? t('adm.company.sinClasificar')}
+                        {d.expiryDate ? t('adm.company.vence') + " " + fmtDate(d.expiryDate) : ""}
                       </div>
                     </div>
                     {!local && (
                       <>
-                        <button className="fin-btn-icon" title="Descargar" onClick={() => downloadAuthed(`/api/download?url=${encodeURIComponent(d.url)}&name=${encodeURIComponent(d.filename)}`, d.filename).catch(() => window.open(d.url, "_blank"))}><Download size={13} /></button>
-                        <button className="fin-btn-icon" title="Compartir por correo" onClick={() => shareDoc(d.id, "email")}><Mail size={13} /></button>
-                        <button className="fin-btn-icon" title="Compartir por WhatsApp" onClick={() => shareDoc(d.id, "whatsapp")} style={{ color: "#22c55e" }}><MessageCircle size={13} /></button>
+                        <button className="fin-btn-icon" title={t('common.descargar')} onClick={() => downloadAuthed(`/api/download?url=${encodeURIComponent(d.url)}&name=${encodeURIComponent(d.filename)}`, d.filename).catch(() => window.open(d.url, "_blank"))}><Download size={13} /></button>
+                        <button className="fin-btn-icon" title={t('adm.company.compartirPorCorreo')} onClick={() => shareDoc(d.id, "email")}><Mail size={13} /></button>
+                        <button className="fin-btn-icon" title={t('common.compartirPorWhatsapp')} onClick={() => shareDoc(d.id, "whatsapp")} style={{ color: "#22c55e" }}><MessageCircle size={13} /></button>
                       </>
                     )}
-                    {local && <span className="text-[9px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>solo local</span>}
-                    <button className="fin-btn-icon" title="Eliminar" style={{ color: "#ef4444" }} onClick={() => deleteDocMut.mutate(d.id)}><Trash2 size={13} /></button>
+                    {local && <span className="text-[9px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>{t('adm.company.soloLocal')}</span>}
+                    <button className="fin-btn-icon" title={t('common.eliminar')} style={{ color: "#ef4444" }} onClick={() => deleteDocMut.mutate(d.id)}><Trash2 size={13} /></button>
                   </div>
                 );
               })}
@@ -445,36 +449,36 @@ export default function PersonDetail() {
       <div className="fin-cpanel">
         <div className="fin-cpanel-body">
           <div className="flex items-center justify-between mb-3">
-            <div className="fin-tb-title flex items-center gap-2"><ListChecks size={15} /> Pendientes ({pendingTasks.length})</div>
-            <Link to="/admin/tasks" className="fin-btn-icon flex items-center gap-1.5 px-3" style={{ width: "auto", fontSize: 11, fontWeight: 600 }}>Ver todas</Link>
+            <div className="fin-tb-title flex items-center gap-2"><ListChecks size={15} /> {t('adm.person.pendientes')}{pendingTasks.length})</div>
+            <Link to="/admin/tasks" className="fin-btn-icon flex items-center gap-1.5 px-3" style={{ width: "auto", fontSize: 11, fontWeight: 600 }}>{t('adm.person.verTodas')}</Link>
           </div>
 
           {/* Alta rápida */}
           <div className="flex flex-wrap items-end gap-2 mb-3 rounded-lg p-3" style={{ border: "1px dashed var(--border)", background: "var(--bg-base)" }}>
             <label className="text-[10px] font-semibold flex-1 min-w-[200px]" style={{ color: "var(--text-secondary)" }}>
-              Nueva tarea para {p.name.split(" ")[0]}
-              <input className="input-base block w-full mt-0.5" placeholder="Ej: Renovar visa, firmar operating agreement…" value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)}
+              {t('adm.company.nuevaTareaPara')} {p.name.split(" ")[0]}
+              <input className="input-base block w-full mt-0.5" placeholder={t('adm.person.ejRenovarVisaFirmarOperatingAgreement')} value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && taskTitle.trim()) addTaskMut.mutate(); }} />
             </label>
             <label className="text-[10px] font-semibold" style={{ color: "var(--text-secondary)" }}>
-              Fecha límite
+              {t('common.fechaLimite')}
               <input type="date" className="input-base block mt-0.5" value={taskDue} onChange={(e) => setTaskDue(e.target.value)} />
             </label>
             <label className="text-[10px] font-semibold" style={{ color: "var(--text-secondary)" }}>
-              Prioridad
+              {t('common.prioridad')}
               <select className="input-base block mt-0.5" value={taskPriority} onChange={(e) => setTaskPriority(e.target.value)}>
-                <option value="alta">Alta</option>
-                <option value="media">Media</option>
-                <option value="baja">Baja</option>
+                <option value="alta">{t('common.alta')}</option>
+                <option value="media">{t('common.media')}</option>
+                <option value="baja">{t('common.baja')}</option>
               </select>
             </label>
             <button className="fin-btn-cta flex items-center gap-1.5" style={{ height: 34 }} disabled={!taskTitle.trim() || addTaskMut.isPending} onClick={() => addTaskMut.mutate()}>
-              <Plus size={12} /> Agregar
+              <Plus size={12} /> {t('common.agregar')}
             </button>
           </div>
 
           {tasks.length === 0 ? (
-            <div className="fin-page-sub">Sin pendientes para esta persona.</div>
+            <div className="fin-page-sub">{t('adm.person.sinPendientesParaEstaPersona')}</div>
           ) : (
             <div className="space-y-1">
               {tasks.map((t: any) => {
@@ -482,12 +486,12 @@ export default function PersonDetail() {
                 const done = t.status === "completada";
                 return (
                   <div key={t.id} className={cls("flex items-center gap-2 px-2 py-1.5 rounded-md text-[12.5px]")} style={{ background: overdue ? "rgba(239,68,68,0.06)" : undefined }}>
-                    <button title={done ? "Reabrir" : "Marcar completada"} onClick={() => toggleTaskMut.mutate({ tid: t.id, status: done ? "pendiente" : "completada" })}>
+                    <button title={done ? t('common.reabrir') : t('adm.company.marcarCompletada')} onClick={() => toggleTaskMut.mutate({ tid: t.id, status: done ? "pendiente" : "completada" })}>
                       <CheckCircle2 size={15} color={done ? "#22c55e" : overdue ? "#ef4444" : "var(--text-muted)"} />
                     </button>
                     <span className="flex-1 min-w-0 truncate" style={{ color: "var(--text-primary)", textDecoration: done ? "line-through" : undefined }}>{t.title}</span>
-                    {t.priority === "alta" && !done && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded" style={{ background: "rgba(239,68,68,0.12)", color: "#ef4444" }}>Alta</span>}
-                    {t.dueDate && <span className="flex items-center gap-1 text-[10px]" style={{ color: overdue ? "#ef4444" : "var(--text-muted)" }}><Calendar size={10} />{overdue ? "VENCIDA · " : ""}{fmtDate(t.dueDate)}</span>}
+                    {t.priority === "alta" && !done && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded" style={{ background: "rgba(239,68,68,0.12)", color: "#ef4444" }}>{t('common.alta')}</span>}
+                    {t.dueDate && <span className="flex items-center gap-1 text-[10px]" style={{ color: overdue ? "#ef4444" : "var(--text-muted)" }}><Calendar size={10} />{overdue ? t('common.vencida') : ""}{fmtDate(t.dueDate)}</span>}
                   </div>
                 );
               })}

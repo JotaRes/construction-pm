@@ -2,6 +2,7 @@ import { useEffect, lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import AuthGate from './components/AuthGate'
 import Splash from './components/Splash'
+import LanguageToggle from './components/LanguageToggle'
 import { ConfirmProvider } from './components/ConfirmDialog'
 import ModuleGate from './components/ModuleGate'
 import { useQuery } from '@tanstack/react-query'
@@ -64,6 +65,12 @@ function TechModule() {
           <div className="text-xs font-mono" style={{ color: 'rgba(255,255,255,0.4)' }}>{t('layout.noActiveProject')}</div>
         </aside>
         <main className="flex-1 overflow-y-auto p-6">
+          {/* Sin proyecto activo no se monta el Layout (ni su topbar), así que
+              el conmutador de idioma se ancla aquí: debe existir en TODOS los
+              estados de la aplicación, no solo cuando hay proyecto. */}
+          <div className="flex justify-end mb-4">
+            <LanguageToggle variant="light" />
+          </div>
           <Projects />
         </main>
       </div>

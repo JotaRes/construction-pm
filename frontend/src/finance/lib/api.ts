@@ -1,10 +1,13 @@
 import axios from "axios";
+import { currentLang } from '../../i18n'
 
 // Prefijo /api/finance/* — el backend monta todas las rutas del módulo financiero bajo este prefijo.
 const api = axios.create({ baseURL: "/api/finance" });
 
 // Token unificado: misma clave que el módulo técnico (pm_auth_token).
 api.interceptors.request.use((config) => {
+  // El backend traduce sus mensajes de error con esta cabecera.
+  config.headers['Accept-Language'] = currentLang()
   const token = localStorage.getItem("pm_auth_token");
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;

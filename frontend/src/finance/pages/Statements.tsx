@@ -6,8 +6,10 @@ import { dateShort, cls } from "../lib/format";
 import { Upload, FileSpreadsheet, Trash2, ChevronRight, AlertCircle, CheckCircle2, FileText, Info, Download, Mail, MessageCircle } from "lucide-react";
 import toast from "react-hot-toast";
 import { useConfirm } from "../../components/ConfirmDialog";
+import { useI18n } from '../../i18n'
 
 export default function Statements() {
+  const { t } = useI18n()
   const qc = useQueryClient();
   const confirm = useConfirm();
   const { data: catalogs } = useQuery({ queryKey: ["catalogs"], queryFn: API.getCatalogs });
@@ -18,14 +20,14 @@ export default function Statements() {
 
   const del = useMutation({
     mutationFn: (id: number) => API.deleteStatement(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["statements"] }); toast.success("Extracto eliminado"); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["statements"] }); toast.success(t('fin.acctDet.extractoEliminado')); },
   });
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
     if (!accountId) {
-      toast.error("Selecciona primero la cuenta bancaria");
+      toast.error(t('fin.stmts.seleccionaPrimeroLaCuentaBancaria'));
       e.target.value = "";
       return;
     }
@@ -36,17 +38,17 @@ export default function Statements() {
       const linesCount = res.statement.lines?.length || 0;
       const matched = res.reconciliation?.matched || 0;
       const created = res.reconciliation?.created || 0;
-      toast.success(`Extracto procesado: ${linesCount} líneas, ${matched} conciliadas con movimientos existentes`);
+      toast.success(t('fin.acctDet.extractoProcesadoV0LineasV1Conciliadas', { v0: linesCount, v1: matched }));
       setLastResult({
         ok: true,
-        message: `Procesado exitosamente`,
+        message: t('fin.stmts.procesadoExitosamente'),
         details: { linesCount, matched, created, filename: f.name },
       });
       qc.invalidateQueries({ queryKey: ["statements"] });
       qc.invalidateQueries({ queryKey: ["movements"] });
       qc.invalidateQueries({ queryKey: ["unreconciledLines"] });
     } catch (err: any) {
-      const msg = err?.response?.data?.error || err?.message || "Error al subir extracto";
+      const msg = err?.response?.data?.error || err?.message || t('fin.acctDet.errorAlSubirExtracto');
       toast.error(msg, { duration: 6000 });
       setLastResult({ ok: false, message: msg });
     } finally {
@@ -58,9 +60,9 @@ export default function Statements() {
   return (
     <div className="space-y-5 page-content">
       <div>
-        <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><FileText className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>Extractos bancarios</span></h1>
+        <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><FileText className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>{t('fin.stmts.extractosBancarios')}</span></h1>
         <p className="text-sm mt-1" style={{ color: 'var(--brand-teal2)' }}>
-          Sube CSV, Excel o PDF · El sistema concilia automáticamente con tus movimientos manuales para detectar omisiones
+          {t('fin.stmts.subeCsvExcelOPdfEl')}
         </p>
       </div>
 
@@ -68,12 +70,12 @@ export default function Statements() {
       <div className="card p-4 flex items-start gap-3" style={{ background: 'var(--brand-cream2)' }}>
         <Info size={18} style={{ color: 'var(--brand-gold)', flexShrink: 0, marginTop: 2 }} />
         <div className="text-sm" style={{ color: 'var(--brand-teal)' }}>
-          <strong>¿Cómo funciona?</strong> Al subir un extracto, el sistema:
+          <strong>{t('fin.stmts.comoFunciona')}</strong> {t('fin.stmts.alSubirUnExtractoElSistema')}
           <ol className="list-decimal ml-5 mt-1 space-y-0.5 text-xs" style={{ color: 'var(--brand-teal2)' }}>
-            <li>Lee cada línea (fecha, concepto, monto)</li>
-            <li>Compara con los movimientos que registraste manualmente</li>
-            <li>Marca como <span className="text-emerald-600 font-semibold">coincide</span> los que están en ambos lados</li>
-            <li>Te alerta de los que están en el extracto pero no registraste (te falta capturar) — aparecen en <Link to="/finance/movements" className="font-semibold hover:underline" style={{ color: 'var(--brand-gold)' }}>Movimientos</Link></li>
+            <li>{t('fin.stmts.leeCadaLineaFechaConceptoMonto')}</li>
+            <li>{t('fin.stmts.comparaConLosMovimientosQueRegistraste')}</li>
+            <li>{t('fin.stmts.marcaComo')} <span className="text-emerald-600 font-semibold">{t('fin.stmts.coincide')}</span> {t('fin.stmts.losQueEstanEnAmbosLados')}</li>
+            <li>{t('fin.stmts.teAlertaDeLosQueEstan')} <Link to="/finance/movements" className="font-semibold hover:underline" style={{ color: 'var(--brand-gold)' }}>{t('common.movimientos')}</Link></li>
           </ol>
         </div>
       </div>
@@ -81,13 +83,13 @@ export default function Statements() {
       {/* Subir nuevo extracto */}
       <div className="card p-5">
         <h2 className="text-base font-bold mb-3 flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}>
-          <Upload size={16} style={{ color: 'var(--brand-gold)' }} /> Subir nuevo extracto
+          <Upload size={16} style={{ color: 'var(--brand-gold)' }} /> {t('fin.stmts.subirNuevoExtracto')}
         </h2>
         <div className="flex flex-wrap gap-3 items-end">
           <div className="flex-1 min-w-[240px]">
-            <label className="label">Cuenta bancaria *</label>
+            <label className="label">{t('fin.stmts.cuentaBancaria')}</label>
             <select className="select w-full" value={accountId} onChange={(e) => setAccountId(e.target.value)}>
-              <option value="">— seleccionar cuenta —</option>
+              <option value="">{t('fin.stmts.seleccionarCuenta')}</option>
               {catalogs?.accounts?.map((a: any) => <option key={a.id} value={a.id}>{a.name} ({a.bank})</option>)}
             </select>
           </div>
@@ -96,7 +98,7 @@ export default function Statements() {
             (uploading || !accountId) && "opacity-60 pointer-events-none"
           )}>
             <Upload size={14} />
-            {uploading ? "Procesando..." : "Subir archivo"}
+            {uploading ? t('common.procesando') : t('common.subirArchivo')}
             <input
               type="file"
               className="hidden"
@@ -108,11 +110,11 @@ export default function Statements() {
         </div>
 
         <div className="mt-4 p-3 rounded-lg" style={{ background: 'var(--brand-cream2)', border: '1px solid rgba(29,29,31,0.08)' }}>
-          <div className="text-xs font-semibold mb-1" style={{ color: 'var(--brand-teal)' }}>Formatos y columnas soportadas:</div>
+          <div className="text-xs font-semibold mb-1" style={{ color: 'var(--brand-teal)' }}>{t('fin.stmts.formatosYColumnasSoportadas')}</div>
           <ul className="text-xs space-y-0.5" style={{ color: 'var(--brand-teal2)' }}>
-            <li>✓ <span className="font-mono">CSV</span> · <span className="font-mono">.xlsx</span> · <span className="font-mono">.xls</span> · <span className="font-mono">.pdf</span></li>
-            <li>✓ Detecta columnas: <span className="font-mono">Fecha/Date</span>, <span className="font-mono">Descripción/Memo</span>, <span className="font-mono">Monto/Amount</span> o <span className="font-mono">Debit/Credit</span></li>
-            <li>✓ Compatible con Ocean Bank, Chase, Bank of America, Wells Fargo</li>
+            <li>✓ <span className="font-mono">CSV</span> · <span className="font-mono">{t('fin.stmts.xlsx')}</span> · <span className="font-mono">{t('fin.stmts.xls')}</span> · <span className="font-mono">{t('fin.stmts.pdf')}</span></li>
+            <li>{t('fin.stmts.detectaColumnas')} <span className="font-mono">Fecha/Date</span>, <span className="font-mono">{t('fin.stmts.descripcionMemo')}</span>, <span className="font-mono">Monto/Amount</span> {t('fin.stmts.o')} <span className="font-mono">Debit/Credit</span></li>
+            <li>{t('fin.stmts.compatibleConOceanBankChaseBank')}</li>
           </ul>
         </div>
 
@@ -133,13 +135,13 @@ export default function Statements() {
               </div>
               {lastResult.ok && lastResult.details && (
                 <div className="text-xs text-emerald-600 mt-1">
-                  Archivo: <span className="font-mono">{lastResult.details.filename}</span> · {lastResult.details.linesCount} líneas extraídas
+                  {t('fin.stmts.archivo')} <span className="font-mono">{lastResult.details.filename}</span> · {lastResult.details.linesCount} {t('fin.stmts.lineasExtraidas')}
                   {lastResult.details.matched > 0 && ` · ${lastResult.details.matched} conciliadas`}
                 </div>
               )}
               {!lastResult.ok && (
                 <div className="text-xs text-red-600 mt-1">
-                  Verifica que el archivo tenga columnas Fecha, Concepto y Monto. Si el formato es de tu banco específico, asegúrate que las columnas sean reconocibles.
+                  {t('fin.stmts.verificaQueElArchivoTengaColumnas')}
                 </div>
               )}
             </div>
@@ -151,18 +153,18 @@ export default function Statements() {
       <div className="card overflow-hidden">
         <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(29,29,31,0.1)', background: 'var(--brand-cream2)' }}>
           <h2 className="text-base font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}>
-            <FileText size={16} style={{ color: 'var(--brand-gold)' }} /> Extractos cargados
+            <FileText size={16} style={{ color: 'var(--brand-gold)' }} /> {t('fin.stmts.extractosCargados')}
           </h2>
-          <span className="text-xs font-semibold" style={{ color: 'var(--brand-teal2)' }}>{data?.length || 0} archivos</span>
+          <span className="text-xs font-semibold" style={{ color: 'var(--brand-teal2)' }}>{data?.length || 0} {t('fin.stmts.archivos')}</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead style={{ background: 'rgba(29,29,31,0.04)' }}>
               <tr className="text-xs uppercase tracking-wider" style={{ color: 'var(--brand-teal2)' }}>
-                <th className="px-4 py-3 text-left font-semibold">Archivo</th>
-                <th className="px-4 py-3 text-left font-semibold">Cuenta</th>
-                <th className="px-4 py-3 text-left font-semibold">Período</th>
-                <th className="px-4 py-3 text-right font-semibold">Líneas</th>
+                <th className="px-4 py-3 text-left font-semibold">{t('fin.stmts.archivo2')}</th>
+                <th className="px-4 py-3 text-left font-semibold">{t('common.cuenta2')}</th>
+                <th className="px-4 py-3 text-left font-semibold">{t('fin.stmts.periodo')}</th>
+                <th className="px-4 py-3 text-right font-semibold">{t('fin.stmts.lineas')}</th>
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
@@ -170,7 +172,7 @@ export default function Statements() {
               {!data || data.length === 0 ? (
                 <tr><td colSpan={5} className="p-8 text-center" style={{ color: 'var(--brand-teal2)' }}>
                   <FileSpreadsheet size={36} className="mx-auto mb-2" style={{ opacity: 0.3 }} />
-                  Aún no hay extractos cargados. Sube tu primer archivo arriba.
+                  {t('fin.stmts.aunNoHayExtractosCargadosSube')}
                 </td></tr>
               ) : data.map((s: any) => (
                 <tr key={s.id} className="table-row" style={{ borderBottom: '1px solid rgba(29,29,31,0.06)' }}>
@@ -189,16 +191,16 @@ export default function Statements() {
                     <div className="inline-flex gap-1 items-center">
                       {s.url ? (
                         <>
-                          <a href={s.url} target="_blank" rel="noreferrer" className="btn-ghost p-1" title="Ver archivo original">
+                          <a href={s.url} target="_blank" rel="noreferrer" className="btn-ghost p-1" title={t('fin.stmtDet.verArchivoOriginal')}>
                             <FileText size={14} />
                           </a>
-                          <a href={s.url} download className="btn-ghost p-1" title="Descargar archivo">
+                          <a href={s.url} download className="btn-ghost p-1" title={t('fin.stmts.descargarArchivo')}>
                             <Download size={14} />
                           </a>
                           <a
-                            href={`mailto:?subject=${encodeURIComponent(`Extracto ${s.account?.name ?? ''} ${dateShort(s.periodStart)}–${dateShort(s.periodEnd)}`)}&body=${encodeURIComponent(`Adjunto el extracto bancario:\n\n${s.url}`)}`}
+                            href={`mailto:?subject=${encodeURIComponent(t('fin.stmts.shareSubject', { account: s.account?.name ?? '', from: dateShort(s.periodStart), to: dateShort(s.periodEnd) }))}&body=${encodeURIComponent(t('fin.stmts.shareBody', { url: s.url ?? '' }))}`}
                             className="btn-ghost p-1"
-                            title="Enviar por email"
+                            title={t('common.enviarPorEmail')}
                           >
                             <Mail size={14} />
                           </a>
@@ -207,32 +209,32 @@ export default function Statements() {
                             target="_blank"
                             rel="noreferrer"
                             className="btn-ghost p-1"
-                            title="Compartir por WhatsApp"
+                            title={t('common.compartirPorWhatsapp')}
                           >
                             <MessageCircle size={14} />
                           </a>
                         </>
                       ) : (
-                        <span className="text-[10px] italic mr-2" style={{ color: 'var(--brand-teal2)' }} title="Sube el extracto de nuevo para ver/descargar el archivo">
-                          archivo no guardado
+                        <span className="text-[10px] italic mr-2" style={{ color: 'var(--brand-teal2)' }} title={t('fin.stmts.subeElExtractoDeNuevoPara')}>
+                          {t('fin.stmts.archivoNoGuardado')}
                         </span>
                       )}
-                      <Link to={`/finance/statements/${s.id}`} className="btn-ghost p-1" title="Ver detalle de líneas">
+                      <Link to={`/finance/statements/${s.id}`} className="btn-ghost p-1" title={t('fin.stmts.verDetalleDeLineas')}>
                         <ChevronRight size={14} />
                       </Link>
                       <button
                         onClick={async () => {
                           const ok = await confirm({
-                            title: 'Eliminar extracto bancario',
-                            message: `¿Seguro que quieres eliminar el extracto "${s.filename}"?`,
-                            detail: `Se eliminarán también todas las líneas del extracto y la conciliación con movimientos.`,
+                            title: t('fin.acctDet.eliminarExtractoBancario'),
+                            message: t('fin.acctDet.seguroQueQuieresEliminarElExtracto', { v0: s.filename }),
+                            detail: t('fin.stmts.seEliminaranTambienTodasLasLineas'),
                             destructive: true,
-                            confirmText: 'Sí, eliminar',
+                            confirmText: t('tech.projects.siEliminar'),
                           })
                           if (ok) del.mutate(s.id);
                         }}
                         className="btn-ghost p-1 text-red-600"
-                        title="Eliminar"
+                        title={t('common.eliminar')}
                       >
                         <Trash2 size={14} />
                       </button>

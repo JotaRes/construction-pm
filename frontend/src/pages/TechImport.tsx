@@ -6,8 +6,10 @@ import {
   Archive, RotateCcw, Lock, CheckCircle2, ShieldAlert, RefreshCw, X,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useI18n } from '../i18n'
 
 export default function TechImport() {
+  const { t } = useI18n()
   const qc = useQueryClient()
   const [resetModal, setResetModal] = useState(false)
   const [restoreModal, setRestoreModal] = useState(false)
@@ -18,10 +20,10 @@ export default function TechImport() {
     mutationFn: (password: string) => techBackupApi.wipeAll(password),
     onSuccess: () => {
       qc.invalidateQueries()
-      toast.success('Módulo técnico borrado completamente', { duration: 5000 })
+      toast.success(t('tech.import.moduloTecnicoBorradoCompletamente'), { duration: 5000 })
       setResetModal(false)
     },
-    onError: (e: any) => toast.error(e.response?.data?.error || 'Error al borrar datos'),
+    onError: (e: any) => toast.error(e.response?.data?.error || t('fin.import.errorAlBorrarDatos')),
   })
 
   const restore = useMutation({
@@ -30,25 +32,25 @@ export default function TechImport() {
     onSuccess: (r: any) => {
       qc.invalidateQueries()
       const total = Object.values(r.counts || {}).reduce((s: number, v: any) => s + (Number(v) || 0), 0)
-      toast.success(`✓ Restauración completa: ${total} registros`, { duration: 6000 })
+      toast.success(t('tech.import.restauracionCompletaV0Registros', { v0: total }), { duration: 6000 })
       setRestoreModal(false)
       setRestoreFile(null)
     },
-    onError: (e: any) => toast.error(e.response?.data?.error || 'Error al restaurar'),
+    onError: (e: any) => toast.error(e.response?.data?.error || t('fin.import.errorAlRestaurar')),
   })
 
   const downloadFile = (url: string, filename: string) => {
     downloadAuthed(url, filename).catch(() =>
-      window.alert('Error al descargar el archivo. Verifica tu sesión e intenta de nuevo.')
+      window.alert(t('tech.import.errorAlDescargarElArchivoVerifica'))
     )
   }
 
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold" style={{ color: 'var(--brand-teal)' }}>Importar / Backup — Módulo Técnico</h1>
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--brand-teal)' }}>{t('tech.import.importarBackupModuloTecnico')}</h1>
         <p className="text-sm mt-1" style={{ color: 'var(--brand-teal2)' }}>
-          Exporta proyectos, fases, ítems, draws, providers, notes, files y inspecciones · Restaura desde backup · Reset completo
+          {t('tech.import.exportaProyectosFasesItemsDrawsProviders')}
         </p>
       </div>
 
@@ -56,10 +58,10 @@ export default function TechImport() {
       <div className="bg-white rounded-2xl p-5" style={{ border: '1px solid rgba(29,29,31,0.1)', boxShadow: '0 1px 4px rgba(29,29,31,0.06)' }}>
         <div className="flex items-center gap-2 mb-3">
           <Download size={18} style={{ color: 'var(--brand-gold)' }} />
-          <h2 className="text-base font-bold" style={{ color: 'var(--brand-teal)' }}>Exportar datos</h2>
+          <h2 className="text-base font-bold" style={{ color: 'var(--brand-teal)' }}>{t('fin.import.exportarDatos')}</h2>
         </div>
         <p className="text-sm mb-4" style={{ color: 'var(--brand-teal2)' }}>
-          Descarga toda la información del módulo técnico. Ambos formatos son <strong>re-importables</strong>: si reseteas o pierdes datos, puedes cargarlos de vuelta y recuperar el estado exacto.
+          {t('tech.import.descargaTodaLaInformacionDelModulo')} <strong>{t('fin.import.reImportables')}</strong>{t('fin.import.siReseteasOPierdesDatosPuedes')}
         </p>
 
         <div className="grid md:grid-cols-2 gap-3">
@@ -69,9 +71,9 @@ export default function TechImport() {
                 <FileSpreadsheet size={20} />
               </div>
               <div>
-                <div className="font-semibold" style={{ color: 'var(--brand-teal)' }}>Excel (.xlsx)</div>
+                <div className="font-semibold" style={{ color: 'var(--brand-teal)' }}>{t('fin.import.excelXlsx')}</div>
                 <div className="text-xs mt-0.5" style={{ color: 'var(--brand-teal2)' }}>
-                  Multi-hoja legible — proyectos, items, draws, providers, files
+                  {t('tech.import.multiHojaLegibleProyectosItemsDraws')}
                 </div>
               </div>
             </div>
@@ -80,7 +82,7 @@ export default function TechImport() {
               className="w-full py-2 rounded-lg text-sm font-semibold text-white"
               style={{ background: 'linear-gradient(135deg, var(--brand-gold) 0%, var(--brand-gold2) 100%)' }}
             >
-              <Download size={14} className="inline mr-1" /> Descargar Excel
+              <Download size={14} className="inline mr-1" /> {t('fin.import.descargarExcel')}
             </button>
           </div>
 
@@ -90,9 +92,9 @@ export default function TechImport() {
                 <Archive size={20} />
               </div>
               <div>
-                <div className="font-semibold" style={{ color: 'var(--brand-teal)' }}>Backup universal (ZIP)</div>
+                <div className="font-semibold" style={{ color: 'var(--brand-teal)' }}>{t('tech.import.backupUniversalZip')}</div>
                 <div className="text-xs mt-0.5" style={{ color: 'var(--brand-teal2)' }}>
-                  Incluye tech + finance + código fuente · <strong>Recomendado</strong>
+                  {t('tech.import.incluyeTechFinanceCodigoFuente')} <strong>{t('tech.import.recomendado')}</strong>
                 </div>
               </div>
             </div>
@@ -101,7 +103,7 @@ export default function TechImport() {
               className="w-full py-2 rounded-lg text-sm font-semibold text-white"
               style={{ background: 'var(--brand-teal)' }}
             >
-              <Archive size={14} className="inline mr-1" /> Descargar ZIP completo
+              <Archive size={14} className="inline mr-1" /> {t('tech.import.descargarZipCompleto')}
             </button>
           </div>
         </div>
@@ -111,18 +113,18 @@ export default function TechImport() {
       <div className="bg-white rounded-2xl p-5" style={{ border: '1px solid rgba(29,29,31,0.1)', boxShadow: '0 1px 4px rgba(29,29,31,0.06)' }}>
         <div className="flex items-center gap-2 mb-3">
           <RefreshCw size={18} style={{ color: 'var(--brand-gold)' }} />
-          <h2 className="text-base font-bold" style={{ color: 'var(--brand-teal)' }}>Restaurar desde backup</h2>
+          <h2 className="text-base font-bold" style={{ color: 'var(--brand-teal)' }}>{t('fin.import.restaurarDesdeBackup')}</h2>
         </div>
         <p className="text-sm mb-3" style={{ color: 'var(--brand-teal2)' }}>
-          Carga un backup ZIP o el JSON técnico para restaurar tus proyectos al estado exacto cuando lo descargaste.
-          <strong className="text-red-600 ml-1">Esta acción BORRA todos los datos técnicos actuales.</strong>
+          {t('tech.import.cargaUnBackupZipOEl')}
+          <strong className="text-red-600 ml-1">{t('tech.import.estaAccionBorraTodosLosDatos')}</strong>
         </p>
         <button
           onClick={() => setRestoreModal(true)}
           className="px-4 py-2 rounded-lg text-sm font-semibold text-white"
           style={{ background: 'linear-gradient(135deg, var(--brand-gold) 0%, var(--brand-gold2) 100%)' }}
         >
-          <Upload size={14} className="inline mr-1" /> Cargar backup y restaurar
+          <Upload size={14} className="inline mr-1" /> {t('fin.import.cargarBackupYRestaurar')}
         </button>
       </div>
 
@@ -130,11 +132,11 @@ export default function TechImport() {
       <div className="bg-white rounded-2xl p-5" style={{ borderColor: 'rgba(220,38,38,0.3)', borderWidth: 2 }}>
         <div className="flex items-center gap-2 mb-2">
           <ShieldAlert size={18} className="text-red-600" />
-          <h2 className="text-base font-bold text-red-600">Zona peligrosa: Reset completo del módulo técnico</h2>
+          <h2 className="text-base font-bold text-red-600">{t('tech.import.zonaPeligrosaResetCompletoDelModulo')}</h2>
         </div>
         <p className="text-sm mb-4" style={{ color: 'var(--brand-teal2)' }}>
-          Borra <strong>TODOS</strong> los datos del módulo técnico: proyectos, fases, ítems, draws, providers, notas, archivos, inspecciones. <strong className="text-red-600">No se puede deshacer.</strong>
-          <span className="block mt-1">🔒 Requiere <strong>contraseña de confirmación</strong> para evitar borrados accidentales.</span>
+          {t('fin.import.borra')} <strong>TODOS</strong> {t('tech.import.losDatosDelModuloTecnicoProyectos')} <strong className="text-red-600">{t('fin.import.noSePuedeDeshacer')}</strong>
+          <span className="block mt-1">{t('tech.import.requiere')} <strong>{t('fin.import.contrasenaDeConfirmacion')}</strong> {t('fin.import.paraEvitarBorradosAccidentales')}</span>
         </p>
         <div className="flex flex-wrap gap-2">
           <button
@@ -142,13 +144,13 @@ export default function TechImport() {
             className="px-4 py-2 rounded-lg text-sm font-semibold text-white"
             style={{ background: 'var(--brand-teal)' }}
           >
-            <Archive size={14} className="inline mr-1" /> Descargar backup primero
+            <Archive size={14} className="inline mr-1" /> {t('fin.import.descargarBackupPrimero')}
           </button>
           <button
             onClick={() => setResetModal(true)}
             className="px-4 py-2 rounded-lg text-sm font-semibold text-white bg-red-600 hover:bg-red-700"
           >
-            <RotateCcw size={14} className="inline mr-1" /> Resetear módulo técnico
+            <RotateCcw size={14} className="inline mr-1" /> {t('tech.import.resetearModuloTecnico')}
           </button>
         </div>
       </div>
@@ -164,7 +166,7 @@ export default function TechImport() {
         setFile={setRestoreFile}
         fileRef={restoreFileRef}
         onConfirm={(password) => {
-          if (!restoreFile) return toast.error('Selecciona un archivo')
+          if (!restoreFile) return toast.error(t('fin.import.seleccionaUnArchivo'))
           restore.mutate({ file: restoreFile, password })
         }}
         isPending={restore.isPending}
@@ -174,6 +176,7 @@ export default function TechImport() {
 }
 
 function ResetPasswordModal({ open, onClose, onConfirm, isPending }: { open: boolean; onClose: () => void; onConfirm: (p: string) => void; isPending: boolean }) {
+  const { t } = useI18n()
   const [pwd, setPwd] = useState('')
   const [step, setStep] = useState<1 | 2>(1)
   if (!open) return null
@@ -182,7 +185,7 @@ function ResetPasswordModal({ open, onClose, onConfirm, isPending }: { open: boo
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={handleClose}>
       <div className="bg-white rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom: '1px solid rgba(29,29,31,0.1)', background: 'var(--brand-cream2)' }}>
-          <h3 className="text-base font-bold text-red-600">⚠ Confirmar reset técnico</h3>
+          <h3 className="text-base font-bold text-red-600">{t('tech.import.confirmarResetTecnico')}</h3>
           <button onClick={handleClose} className="p-1 rounded-lg hover:bg-stone-100"><X size={18} /></button>
         </div>
         <div className="p-5 space-y-4">
@@ -191,16 +194,14 @@ function ResetPasswordModal({ open, onClose, onConfirm, isPending }: { open: boo
               <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-200">
                 <ShieldAlert size={16} className="text-red-600 flex-shrink-0 mt-0.5" />
                 <div className="text-sm text-red-700">
-                  Vas a borrar <strong>TODOS los datos del módulo técnico</strong>: proyectos, fases, ítems, draws, providers, notas, archivos, inspecciones.
-                  <strong className="block mt-1">Esta acción NO se puede deshacer.</strong>
+                  {t('tech.import.vasABorrar')} <strong>{t('tech.import.todosLosDatosDelModuloTecnico')}</strong>{t('tech.import.proyectosFasesItemsDrawsProvidersNotas')}
+                  <strong className="block mt-1">{t('fin.import.estaAccionNoSePuedeDeshacer')}</strong>
                 </div>
               </div>
               <div>
-                <label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'var(--brand-teal)' }}><Lock size={12} /> Contraseña de RESETEO</label>
+                <label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'var(--brand-teal)' }}><Lock size={12} /> {t('tech.import.contrasenaDeReseteo')}</label>
                 <p className="text-[11px] mb-1.5" style={{ color: 'var(--brand-teal2)' }}>
-                  ⚠ No es la clave de acceso al portal: es la contraseña especial de reseteo (WIPE),
-                  configurada en Render → Environment. Protección extra para que un borrado total
-                  nunca pueda ocurrir por accidente.
+                  {t('tech.import.noEsLaClaveDeAcceso')}
                 </p>
                 <input
                   type="password" autoFocus
@@ -213,8 +214,8 @@ function ResetPasswordModal({ open, onClose, onConfirm, isPending }: { open: boo
                 />
               </div>
               <div className="flex justify-end gap-2 pt-3" style={{ borderTop: '1px solid rgba(29,29,31,0.1)' }}>
-                <button onClick={handleClose} className="px-3 py-1.5 rounded-lg text-sm border" style={{ borderColor: 'rgba(29,29,31,0.2)' }}>Cancelar</button>
-                <button onClick={() => setStep(2)} disabled={!pwd} className="px-3 py-1.5 rounded-lg text-sm font-semibold text-white bg-red-600 disabled:opacity-50">Continuar</button>
+                <button onClick={handleClose} className="px-3 py-1.5 rounded-lg text-sm border" style={{ borderColor: 'rgba(29,29,31,0.2)' }}>{t('common.cancelar')}</button>
+                <button onClick={() => setStep(2)} disabled={!pwd} className="px-3 py-1.5 rounded-lg text-sm font-semibold text-white bg-red-600 disabled:opacity-50">{t('fin.import.continuar')}</button>
               </div>
             </>
           ) : (
@@ -222,13 +223,13 @@ function ResetPasswordModal({ open, onClose, onConfirm, isPending }: { open: boo
               <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-200">
                 <ShieldAlert size={16} className="text-red-600 flex-shrink-0 mt-0.5" />
                 <div className="text-sm text-red-700">
-                  <strong>Última confirmación:</strong> ¿Estás 100% seguro? Esta es tu última oportunidad para cancelar.
+                  <strong>{t('fin.import.ultimaConfirmacion')}</strong> {t('fin.import.estas100SeguroEstaEsTu')}
                 </div>
               </div>
               <div className="flex justify-end gap-2 pt-3" style={{ borderTop: '1px solid rgba(29,29,31,0.1)' }}>
-                <button onClick={handleClose} className="px-3 py-1.5 rounded-lg text-sm border" style={{ borderColor: 'rgba(29,29,31,0.2)' }}>Cancelar</button>
+                <button onClick={handleClose} className="px-3 py-1.5 rounded-lg text-sm border" style={{ borderColor: 'rgba(29,29,31,0.2)' }}>{t('common.cancelar')}</button>
                 <button onClick={() => onConfirm(pwd)} disabled={isPending} className="px-3 py-1.5 rounded-lg text-sm font-semibold text-white bg-red-600">
-                  {isPending ? 'Borrando…' : 'Sí, BORRAR TODO ahora'}
+                  {isPending ? t('common.borrando') : t('fin.import.siBorrarTodoAhora')}
                 </button>
               </div>
             </>
@@ -243,6 +244,7 @@ function RestoreModal({ open, onClose, file, setFile, fileRef, onConfirm, isPend
   open: boolean; onClose: () => void; file: File | null; setFile: (f: File | null) => void;
   fileRef: React.RefObject<HTMLInputElement>; onConfirm: (p: string) => void; isPending: boolean;
 }) {
+  const { t } = useI18n()
   const [pwd, setPwd] = useState('')
   if (!open) return null
   const handleClose = () => { setPwd(''); onClose() }
@@ -250,19 +252,19 @@ function RestoreModal({ open, onClose, file, setFile, fileRef, onConfirm, isPend
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={handleClose}>
       <div className="bg-white rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom: '1px solid rgba(29,29,31,0.1)', background: 'var(--brand-cream2)' }}>
-          <h3 className="text-base font-bold" style={{ color: 'var(--brand-teal)' }}>Restaurar módulo técnico</h3>
+          <h3 className="text-base font-bold" style={{ color: 'var(--brand-teal)' }}>{t('tech.import.restaurarModuloTecnico')}</h3>
           <button onClick={handleClose} className="p-1 rounded-lg hover:bg-stone-100"><X size={18} /></button>
         </div>
         <div className="p-5 space-y-4">
           <div className="flex items-start gap-2 p-3 rounded-lg" style={{ background: 'rgba(62,90,112,0.08)', border: '1px solid rgba(62,90,112,0.25)' }}>
             <AlertTriangle size={16} style={{ color: 'var(--brand-gold)' }} className="flex-shrink-0 mt-0.5" />
             <div className="text-sm" style={{ color: 'var(--brand-teal)' }}>
-              <strong>El restore BORRA todos los datos técnicos actuales</strong> antes de cargar el backup. Descarga un backup ZIP del estado actual primero (por si quieres deshacer).
+              <strong>{t('tech.import.elRestoreBorraTodosLosDatos')}</strong> {t('tech.import.antesDeCargarElBackupDescarga')}
             </div>
           </div>
 
           <div>
-            <label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'var(--brand-teal)' }}>Archivo de backup *</label>
+            <label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'var(--brand-teal)' }}>{t('fin.import.archivoDeBackup')}</label>
             <input ref={fileRef} type="file" accept=".json,.zip,.xlsx" className="hidden" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
             <button type="button" onClick={() => fileRef.current?.click()}
               className="w-full px-3 py-3 rounded-lg flex items-center gap-2 transition-all"
@@ -276,14 +278,14 @@ function RestoreModal({ open, onClose, file, setFile, fileRef, onConfirm, isPend
               ) : (
                 <>
                   <Upload size={16} style={{ color: 'var(--brand-gold)' }} />
-                  <span className="text-sm" style={{ color: 'var(--brand-teal2)' }}>Seleccionar archivo .xlsx, .json o .zip</span>
+                  <span className="text-sm" style={{ color: 'var(--brand-teal2)' }}>{t('tech.import.seleccionarArchivoXlsxJsonOZip')}</span>
                 </>
               )}
             </button>
           </div>
 
           <div>
-            <label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'var(--brand-teal)' }}><Lock size={12} /> Contraseña</label>
+            <label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'var(--brand-teal)' }}><Lock size={12} /> {t('fin.import.contrasena')}</label>
             <input type="password" className="w-full px-3 py-2 rounded-lg text-sm border"
               style={{ borderColor: 'rgba(29,29,31,0.2)' }}
               value={pwd} onChange={(e) => setPwd(e.target.value)}
@@ -292,11 +294,11 @@ function RestoreModal({ open, onClose, file, setFile, fileRef, onConfirm, isPend
           </div>
 
           <div className="flex justify-end gap-2 pt-3" style={{ borderTop: '1px solid rgba(29,29,31,0.1)' }}>
-            <button onClick={handleClose} className="px-3 py-1.5 rounded-lg text-sm border" style={{ borderColor: 'rgba(29,29,31,0.2)' }}>Cancelar</button>
+            <button onClick={handleClose} className="px-3 py-1.5 rounded-lg text-sm border" style={{ borderColor: 'rgba(29,29,31,0.2)' }}>{t('common.cancelar')}</button>
             <button onClick={() => onConfirm(pwd)} disabled={!file || !pwd || isPending}
               className="px-3 py-1.5 rounded-lg text-sm font-semibold text-white disabled:opacity-50"
               style={{ background: 'linear-gradient(135deg, var(--brand-gold) 0%, var(--brand-gold2) 100%)' }}>
-              <RefreshCw size={14} className="inline mr-1" /> {isPending ? 'Restaurando…' : 'Restaurar ahora'}
+              <RefreshCw size={14} className="inline mr-1" /> {isPending ? t('fin.import.restaurando') : t('fin.import.restaurarAhora')}
             </button>
           </div>
         </div>

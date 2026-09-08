@@ -7,18 +7,19 @@ import { ChevronDown, ChevronRight, X, Calendar, User, FileText, Plus, Trash2, P
 import { useConfirm } from '../components/ConfirmDialog'
 import MiniDonut from '../components/MiniDonut'
 import toast from 'react-hot-toast'
+import { useI18n, type TranslationKey } from '../i18n'
 
-const ESTADOS: { value: ItemEstado; label: string; color: string; bg: string }[] = [
-  { value: 'PENDIENTE', label: 'Pendiente', color: 'text-slate-500',  bg: 'bg-slate-200/60 hover:bg-slate-100' },
-  { value: 'EN_CURSO',  label: 'En curso',  color: 'text-[var(--brand-gold)]',  bg: 'bg-[#3E5A70]/15 hover:bg-[#3E5A70]/25' },
-  { value: 'DONE',      label: 'Hecho',     color: 'text-emerald-400', bg: 'bg-emerald-500/15 hover:bg-emerald-500/25' },
-  { value: 'NA',        label: 'N/A',       color: 'text-slate-400',  bg: 'bg-white hover:bg-slate-100' },
+const ESTADOS: { value: ItemEstado; labelKey: TranslationKey; color: string; bg: string }[] = [
+  { value: 'PENDIENTE', labelKey: 'common.pendiente', color: 'text-slate-500',  bg: 'bg-slate-200/60 hover:bg-slate-100' },
+  { value: 'EN_CURSO',  labelKey: 'tech.exec.enCurso',  color: 'text-[var(--brand-gold)]',  bg: 'bg-[#3E5A70]/15 hover:bg-[#3E5A70]/25' },
+  { value: 'DONE',      labelKey: 'tech.exec.hecho',     color: 'text-emerald-400', bg: 'bg-emerald-500/15 hover:bg-emerald-500/25' },
+  { value: 'NA',        labelKey: 'tech.exec.na',       color: 'text-slate-400',  bg: 'bg-white hover:bg-slate-100' },
 ]
 
-const DOC_TYPES = [
-  { value: 'COTIZACION', label: 'Cotización', color: 'text-sky-300 bg-sky-500/20 border-sky-500/40' },
-  { value: 'FACTURA',    label: 'Factura',    color: 'text-emerald-300 bg-emerald-500/20 border-emerald-500/40' },
-  { value: 'OTRO',       label: 'Otro',       color: 'text-slate-700 bg-slate-200 border-slate-300/40' },
+const DOC_TYPES: { value: string; labelKey: TranslationKey; color: string }[] = [
+  { value: 'COTIZACION', labelKey: 'tech.exec.cotizacion', color: 'text-sky-300 bg-sky-500/20 border-sky-500/40' },
+  { value: 'FACTURA',    labelKey: 'tech.exec.factura',    color: 'text-emerald-300 bg-emerald-500/20 border-emerald-500/40' },
+  { value: 'OTRO',       labelKey: 'common.otro',       color: 'text-slate-700 bg-slate-200 border-slate-300/40' },
 ]
 
 function docTypeStyle(type: string) {
@@ -26,6 +27,7 @@ function docTypeStyle(type: string) {
 }
 
 function DocumentSection({ item }: { item: Item }) {
+  const { t } = useI18n()
   const queryClient = useQueryClient()
   const [showForm, setShowForm] = useState(false)
   const [docType, setDocType] = useState<'COTIZACION' | 'FACTURA' | 'OTRO'>('COTIZACION')
@@ -75,13 +77,13 @@ function DocumentSection({ item }: { item: Item }) {
   }
 
   const shareViaEmail = (doc: ItemDocument) => {
-    const subject = encodeURIComponent(`Documento del ítem ${item.itemCode}: ${doc.vendor || doc.name}`)
+    const subject = encodeURIComponent(t('tech.exec.documentoDelItemV0V1', { v0: item.itemCode, v1: doc.vendor || doc.name }))
     const body = encodeURIComponent(
-      `Hola,\n\nComparto el siguiente documento del ítem de construcción:\n\n` +
-      `Ítem: ${item.itemCode} — ${item.activity}\n` +
+      t('tech.exec.holaCompartoElSiguienteDocumentoDel') +
+      t('tech.exec.itemV0V1', { v0: item.itemCode, v1: item.activity }) +
       `Tipo: ${doc.type}\n` +
       `Proveedor: ${doc.vendor || '—'}\n` +
-      (doc.amount ? `Monto: ${formatUSD(doc.amount)}\n` : '') +
+      (doc.amount ? t('tech.exec.montoV0', { v0: formatUSD(doc.amount) }) : '') +
       (doc.fileUrl ? `Descargar: ${buildDownloadUrl(doc.fileUrl, doc.name)}\n` : '') +
       (doc.notes ? `\nNotas: ${doc.notes}\n` : '') +
       `\nSaludos.`
@@ -93,15 +95,15 @@ function DocumentSection({ item }: { item: Item }) {
   // Fallback inteligente: wa.me con link de descarga proxy (Content-Disposition correcto).
   const shareViaWhatsApp = async (doc: ItemDocument) => {
     if (!doc.fileUrl) {
-      window.alert('Este documento no tiene archivo adjunto.')
+      window.alert(t('tech.exec.esteDocumentoNoTieneArchivoAdjunto'))
       return
     }
     const downloadUrl = buildDownloadUrl(doc.fileUrl, doc.name)
     const captionText =
       `📄 *${doc.type}*\n\n` +
-      `*Ítem:* ${item.itemCode} — ${item.activity}\n` +
+      t('tech.exec.itemV0V12', { v0: item.itemCode, v1: item.activity }) +
       `*Proveedor:* ${doc.vendor || '—'}\n` +
-      (doc.amount ? `*Monto:* ${formatUSD(doc.amount)}` : '')
+      (doc.amount ? t('tech.exec.montoV02', { v0: formatUSD(doc.amount) }) : '')
 
     if (typeof navigator !== 'undefined' && (navigator as any).canShare && (navigator as any).share) {
       try {
@@ -141,7 +143,7 @@ function DocumentSection({ item }: { item: Item }) {
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5 text-[10px] text-slate-400 uppercase tracking-wider">
           <Paperclip className="w-3 h-3" />
-          Documentos
+          {t('common.documentos')}
           {docs.length > 0 && (
             <span className="ml-1 bg-slate-200/60 text-slate-500 rounded-full px-1.5 py-0.5 text-[9px] font-mono">
               {docs.length}
@@ -150,7 +152,7 @@ function DocumentSection({ item }: { item: Item }) {
         </div>
         <button onClick={() => setShowForm(v => !v)}
           className="text-[10px] text-[#3E5A70]/70 hover:text-[var(--brand-gold)] transition-colors flex items-center gap-1">
-          <Plus className="w-3 h-3" /> Adjuntar
+          <Plus className="w-3 h-3" /> {t('tech.exec.adjuntar')}
         </button>
       </div>
 
@@ -158,9 +160,8 @@ function DocumentSection({ item }: { item: Item }) {
         <div className="flex items-start gap-2 bg-red-50 border border-red-300 rounded-lg px-3 py-2 mb-2">
           <AlertTriangle className="w-3.5 h-3.5 text-red-600 flex-shrink-0 mt-0.5" />
           <div className="text-[11px] text-red-700">
-            <strong>⚠ FALTA FACTURA:</strong> Este ítem tiene valor ejecutado de <strong>{formatUSD(item.valorEjecutado || 0)}</strong>
-            {item.completado && ' y está marcado como HECHO'} pero NO tiene factura adjunta.
-            Adjunta el soporte usando el botón "+ Adjuntar" arriba.
+            <strong>{t('tech.exec.faltaFactura')}</strong> {t('tech.exec.esteItemTieneValorEjecutadoDe')} <strong>{formatUSD(item.valorEjecutado || 0)}</strong>
+            {item.completado && t('tech.exec.yEstaMarcadoComoHecho')} {t('tech.exec.peroNoTieneFacturaAdjuntaAdjunta')}
           </div>
         </div>
       )}
@@ -173,7 +174,7 @@ function DocumentSection({ item }: { item: Item }) {
                 onClick={() => setDocType(dt.value as 'COTIZACION' | 'FACTURA' | 'OTRO')}
                 className={`px-2.5 py-1 rounded-lg text-[10px] font-medium border transition-all
                   ${docType === dt.value ? dt.color : 'text-slate-400 bg-white border-slate-200/40'}`}>
-                {dt.label}
+                {t(dt.labelKey)}
               </button>
             ))}
           </div>
@@ -182,40 +183,40 @@ function DocumentSection({ item }: { item: Item }) {
             <select value={providerId}
               onChange={e => { setProviderId(e.target.value); if (e.target.value !== 'OTRO') setVendor('') }}
               className="col-span-2 bg-white border border-slate-200 text-slate-800 text-xs px-2.5 py-1.5 rounded-lg focus:outline-none focus:border-[#3E5A70]/60">
-              <option value="">Proveedor (elige del catálogo)…</option>
+              <option value="">{t('tech.exec.proveedorEligeDelCatalogo')}</option>
               {allProviders.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-              <option value="OTRO">Otro (escribir manualmente)</option>
+              <option value="OTRO">{t('tech.exec.otroEscribirManualmente')}</option>
             </select>
             {providerId === 'OTRO' && (
-              <input type="text" placeholder="Nombre del proveedor / contratista" value={vendor}
+              <input type="text" placeholder={t('tech.exec.nombreDelProveedorContratista')} value={vendor}
                 onChange={e => setVendor(e.target.value)}
                 className="col-span-2 bg-white border border-slate-200 text-slate-800 text-xs px-2.5 py-1.5 rounded-lg focus:outline-none focus:border-[#3E5A70]/60 placeholder-slate-400" />
             )}
-            <input type="number" placeholder="Monto ($)" value={amount}
+            <input type="number" placeholder={t('tech.exec.monto')} value={amount}
               onChange={e => setAmount(e.target.value)}
               className="bg-white border border-slate-200 text-slate-800 text-xs px-2.5 py-1.5 rounded-lg focus:outline-none focus:border-[#3E5A70]/60 placeholder-slate-400 font-mono" />
             <button onClick={() => fileRef.current?.click()}
               className="flex items-center gap-1.5 bg-white border border-slate-200 text-xs text-slate-500 hover:text-slate-800 px-2.5 py-1.5 rounded-lg transition-colors">
               <Upload className="w-3 h-3" />
-              {file ? <span className="truncate text-emerald-400 text-[11px]">{file.name}</span> : <span>Subir PDF / imagen</span>}
+              {file ? <span className="truncate text-emerald-400 text-[11px]">{file.name}</span> : <span>{t('tech.exec.subirPdfImagen')}</span>}
             </button>
             <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.heic" className="hidden"
               onChange={e => setFile(e.target.files?.[0] ?? null)} />
           </div>
-          <textarea placeholder="Notas..." value={notes} onChange={e => setNotes(e.target.value)} rows={2}
+          <textarea placeholder={t('tech.exec.notas')} value={notes} onChange={e => setNotes(e.target.value)} rows={2}
             className="w-full bg-white border border-slate-200 text-slate-800 text-xs px-2.5 py-1.5 rounded-lg focus:outline-none focus:border-[#3E5A70]/60 placeholder-slate-400 resize-none" />
           <div className="flex gap-2 justify-end">
-            <button onClick={() => setShowForm(false)} className="text-xs text-slate-400 hover:text-slate-700 transition-colors">Cancelar</button>
+            <button onClick={() => setShowForm(false)} className="text-xs text-slate-400 hover:text-slate-700 transition-colors">{t('common.cancelar')}</button>
             <button onClick={handleSubmit} disabled={createDoc.isPending}
               className="px-3 py-1 bg-[var(--brand-gold)] hover:bg-[#4A6880] text-white text-xs rounded-lg transition-colors disabled:opacity-50">
-              {createDoc.isPending ? 'Guardando...' : 'Guardar'}
+              {createDoc.isPending ? t('common.guardando2') : t('common.guardar')}
             </button>
           </div>
         </div>
       )}
 
       {docs.length === 0 && !showForm && (
-        <p className="text-[10px] text-slate-500 italic">Sin documentos adjuntos.</p>
+        <p className="text-[10px] text-slate-500 italic">{t('tech.exec.sinDocumentosAdjuntos')}</p>
       )}
 
       <div className="space-y-1.5">
@@ -223,7 +224,7 @@ function DocumentSection({ item }: { item: Item }) {
           const st = docTypeStyle(doc.type)
           return (
             <div key={doc.id} className="flex items-center gap-2 bg-white/40 rounded-lg px-3 py-2 group">
-              <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded border flex-shrink-0 ${st.color}`}>{st.label}</span>
+              <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded border flex-shrink-0 ${st.color}`}>{t(st.labelKey)}</span>
               <div className="flex-1 min-w-0">
                 <div className="text-xs text-slate-700 truncate">{doc.vendor || doc.name}</div>
                 {doc.amount && <div className="text-[10px] font-mono text-[#3E5A70]/80">{formatUSD(doc.amount)}</div>}
@@ -231,27 +232,27 @@ function DocumentSection({ item }: { item: Item }) {
               {doc.fileUrl && (
                 <>
                   <a href={`/api/download?url=${encodeURIComponent(doc.fileUrl)}&name=${encodeURIComponent(doc.name)}&inline=1`} target="_blank" rel="noreferrer"
-                    title="Ver"
+                    title={t('common.ver')}
                     className="text-slate-400 hover:text-[var(--brand-gold)] transition-colors flex-shrink-0">
                     <ExternalLink className="w-3.5 h-3.5" />
                   </a>
                   <a href={`/api/download?url=${encodeURIComponent(doc.fileUrl)}&name=${encodeURIComponent(doc.name)}`} download={doc.name}
-                    title="Descargar"
+                    title={t('common.descargar')}
                     className="text-slate-400 hover:text-[var(--brand-teal)] transition-colors flex-shrink-0">
                     <Download className="w-3.5 h-3.5" />
                   </a>
-                  <button onClick={() => shareViaEmail(doc)} title="Enviar por correo"
+                  <button onClick={() => shareViaEmail(doc)} title={t('ui.docs.enviarPorCorreo')}
                     className="text-slate-400 hover:text-blue-500 transition-colors flex-shrink-0">
                     <Mail className="w-3.5 h-3.5" />
                   </button>
-                  <button onClick={() => shareViaWhatsApp(doc)} title="Enviar por WhatsApp"
+                  <button onClick={() => shareViaWhatsApp(doc)} title={t('ui.docs.enviarPorWhatsapp')}
                     className="text-slate-400 hover:text-green-500 transition-colors flex-shrink-0">
                     <MessageCircle className="w-3.5 h-3.5" />
                   </button>
                 </>
               )}
               <button onClick={() => deleteDoc.mutate(doc.id)}
-                title="Eliminar"
+                title={t('common.eliminar')}
                 className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-red-400 transition-all flex-shrink-0">
                 <Trash2 className="w-3 h-3" />
               </button>
@@ -269,6 +270,7 @@ function ItemPanel({ item, budgetLines = [], onUpdate, onClose }: {
   onUpdate: (id: string, data: Record<string, unknown>) => void
   onClose: () => void
 }) {
+  const { t } = useI18n()
   const [obsText, setObsText] = useState(item.observaciones ?? '')
   // R2: proveedor asignado a la actividad (catálogo global del holding)
   const { data: panelProviders = [] } = useQuery<Array<{ id: string; name: string }>>({
@@ -296,7 +298,7 @@ function ItemPanel({ item, budgetLines = [], onUpdate, onClose }: {
         </div>
         <div className="flex-1 px-5 py-4 space-y-5">
           <div>
-            <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-2">Estado</div>
+            <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-2">{t('common.estado')}</div>
             <div className="flex flex-wrap gap-2">
               {ESTADOS.map(e => (
                 <button key={e.value}
@@ -309,35 +311,35 @@ function ItemPanel({ item, budgetLines = [], onUpdate, onClose }: {
                     onUpdate(item.id, updates)
                   }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${e.color} ${e.bg} ${item.estado === e.value ? 'ring-1 ring-current' : ''}`}>
-                  {e.label}
+                  {t(e.labelKey)}
                 </button>
               ))}
             </div>
           </div>
           {/* R2: PROVEEDOR DE LA ACTIVIDAD — quién ejecuta/ejecutó este ítem */}
           <div>
-            <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-2">Proveedor de la actividad</div>
+            <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-2">{t('tech.exec.proveedorDeLaActividad')}</div>
             <select
               value={item.providerId ?? ''}
               onChange={e => onUpdate(item.id, { providerId: e.target.value || null })}
               className="w-full bg-white border border-slate-200 text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)] text-slate-700">
-              <option value="">Sin proveedor asignado</option>
+              <option value="">{t('tech.exec.sinProveedorAsignado')}</option>
               {panelProviders.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
-            <p className="text-[10px] text-slate-400 mt-1">Del catálogo general. Las facturas que adjuntes abajo pueden usar este u otro proveedor.</p>
+            <p className="text-[10px] text-slate-400 mt-1">{t('tech.exec.delCatalogoGeneralLasFacturasQue')}</p>
           </div>
 
           {/* Asociación al Construction Budget — también editable desde el panel */}
           {budgetLines.length > 0 && (
             <div>
               <div className="flex items-center gap-1.5 text-[10px] text-slate-400 uppercase tracking-wider mb-2">
-                <Link2 className="w-3 h-3" />Asociación al Construction Budget
+                <Link2 className="w-3 h-3" />{t('tech.exec.asociacionAlConstructionBudget')}
               </div>
               <select
                 value={item.budgetLineId ?? ''}
                 onChange={e => onUpdate(item.id, { budgetLineId: e.target.value || null })}
                 className="w-full bg-white border border-slate-200 text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)] text-slate-700">
-                <option value="">Sin asociar (se controla con el presupuesto manual)</option>
+                <option value="">{t('tech.exec.sinAsociarSeControlaConEl')}</option>
                 {budgetLines.map(bl => (
                   <option key={bl.id} value={bl.id}>
                     {bl.divCode} · {bl.itemCode} — {bl.description.slice(0, 45)} · {formatUSD(bl.valorInicial)}
@@ -346,49 +348,49 @@ function ItemPanel({ item, budgetLines = [], onUpdate, onClose }: {
               </select>
               {item.budgetLine && (
                 <p className="text-[10px] text-slate-400 mt-1">
-                  La desviación de esta actividad se mide contra <b className="font-mono">{formatUSD(item.budgetLine.valorInicial)}</b> del budget del lender.
+                  {t('tech.exec.laDesviacionDeEstaActividadSe')} <b className="font-mono">{formatUSD(item.budgetLine.valorInicial)}</b> {t('tech.exec.delBudgetDelLender')}
                 </p>
               )}
             </div>
           )}
 
           <div>
-            <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-2">Valores</div>
+            <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-2">{t('tech.exec.valores')}</div>
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-white rounded-lg p-3">
-                <div className="text-[10px] text-slate-400 mb-1">Presupuestado</div>
+                <div className="text-[10px] text-slate-400 mb-1">{t('tech.budget.presupuestado')}</div>
                 <div className="text-sm font-mono text-slate-700">{formatUSD(item.valorPresupuestado)}</div>
               </div>
               <div className="bg-white rounded-lg p-3">
-                <div className="text-[10px] text-slate-400 mb-1">Ejecutado (base)</div>
+                <div className="text-[10px] text-slate-400 mb-1">{t('tech.exec.ejecutadoBase')}</div>
                 <input type="number" defaultValue={Math.max(0, item.valorEjecutado - (item.subactivities ?? []).reduce((s, x) => s + (x.valorEjecutado || 0), 0)) || ''}
                   onBlur={e => onUpdate(item.id, { valorEjecutadoBase: parseFloat(e.target.value) || 0 })}
                   onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
                   placeholder="0"
                   className="w-full bg-transparent text-sm font-mono text-[var(--brand-teal)] focus:outline-none placeholder-slate-400" />
                 {(item.subactivities?.length ?? 0) > 0 && (
-                  <div className="text-[10px] text-slate-400 mt-1">Total con subactividades: <span className="font-mono text-[var(--brand-teal)]">{formatUSD(item.valorEjecutado)}</span></div>
+                  <div className="text-[10px] text-slate-400 mt-1">{t('tech.exec.totalConSubactividades')} <span className="font-mono text-[var(--brand-teal)]">{formatUSD(item.valorEjecutado)}</span></div>
                 )}
               </div>
             </div>
-            <p className="text-[10px] text-slate-400 mt-2">Las subactividades (desglose) se agregan desde la tabla de Ejecución con el botón verde ＋ junto al nombre de la actividad.</p>
+            <p className="text-[10px] text-slate-400 mt-2">{t('tech.exec.lasSubactividadesDesgloseSeAgreganDesde')}</p>
             {item.valorPresupuestado > 0 && item.valorEjecutado > 0 && (
               <div className={`mt-2 text-xs font-mono px-2 py-1 rounded ${item.valorEjecutado > item.valorPresupuestado ? 'text-red-400 bg-red-500/10' : 'text-emerald-400 bg-emerald-500/10'}`}>
-                {item.valorEjecutado > item.valorPresupuestado ? '▲ Sobreejecutado' : '▼ Bajo presupuesto'}{' '}
+                {item.valorEjecutado > item.valorPresupuestado ? t('tech.exec.sobreejecutado') : t('tech.exec.bajoPresupuesto')}{' '}
                 {formatUSD(Math.abs(item.valorEjecutado - item.valorPresupuestado))}
               </div>
             )}
             {/* Unidad + cantidad → alimentan Precios de Referencia por unidad ($/pie², $/yarda³...) */}
             <div className="grid grid-cols-2 gap-3 mt-2">
               <div className="bg-white rounded-lg p-3">
-                <div className="text-[10px] text-slate-400 mb-1">Unidad</div>
+                <div className="text-[10px] text-slate-400 mb-1">{t('tech.exec.unidad')}</div>
                 <input type="text" defaultValue={item.unit ?? ''}
                   onBlur={e => onUpdate(item.id, { unit: e.target.value || null })}
-                  placeholder="SF / LF / CY / EA"
+                  placeholder={t('tech.exec.sfLfCyEa')}
                   className="w-full bg-slate-50 border border-slate-200 text-sm text-slate-800 px-2 py-1 rounded focus:outline-none focus:border-[var(--brand-gold)] placeholder-slate-400" />
               </div>
               <div className="bg-white rounded-lg p-3">
-                <div className="text-[10px] text-slate-400 mb-1">Cantidad</div>
+                <div className="text-[10px] text-slate-400 mb-1">{t('tech.exec.cantidad')}</div>
                 <input type="number" defaultValue={item.quantity ?? ''}
                   onBlur={e => onUpdate(item.id, { quantity: e.target.value === '' ? null : parseFloat(e.target.value) })}
                   placeholder="0"
@@ -398,17 +400,17 @@ function ItemPanel({ item, budgetLines = [], onUpdate, onClose }: {
           </div>
           <div>
             <div className="flex items-center gap-1.5 text-[10px] text-slate-400 uppercase tracking-wider mb-2">
-              <Calendar className="w-3 h-3" />Cronograma
+              <Calendar className="w-3 h-3" />{t('tech.exec.cronograma')}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <div className="text-[10px] text-slate-400 mb-1">Inicio real</div>
+                <div className="text-[10px] text-slate-400 mb-1">{t('tech.exec.inicioReal')}</div>
                 <input type="date" defaultValue={item.fechaInicioReal?.slice(0, 10) ?? ''}
                   onChange={e => onUpdate(item.id, { fechaInicioReal: e.target.value || null })}
                   className="w-full bg-white border border-slate-200 text-slate-700 px-2 py-1.5 rounded-lg text-xs focus:outline-none focus:border-[var(--brand-gold)]" />
               </div>
               <div>
-                <div className="text-[10px] text-slate-400 mb-1">Fin real</div>
+                <div className="text-[10px] text-slate-400 mb-1">{t('tech.exec.finReal')}</div>
                 <input type="date" defaultValue={item.fechaFinReal?.slice(0, 10) ?? ''}
                   onChange={e => onUpdate(item.id, { fechaFinReal: e.target.value || null })}
                   className="w-full bg-white border border-slate-200 text-slate-700 px-2 py-1.5 rounded-lg text-xs focus:outline-none focus:border-[var(--brand-gold)]" />
@@ -417,17 +419,17 @@ function ItemPanel({ item, budgetLines = [], onUpdate, onClose }: {
           </div>
           {item.description && (
             <div>
-              <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-2">Descripción técnica</div>
+              <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-2">{t('tech.exec.descripcionTecnica')}</div>
               <div className="text-xs text-slate-500 leading-relaxed bg-white/60 rounded-lg px-3 py-2.5">{item.description}</div>
             </div>
           )}
           <div>
             <div className="flex items-center gap-1.5 text-[10px] text-slate-400 uppercase tracking-wider mb-2">
-              <FileText className="w-3 h-3" />Observaciones
+              <FileText className="w-3 h-3" />{t('tech.exec.observaciones')}
             </div>
             <textarea value={obsText} onChange={e => setObsText(e.target.value)}
               onBlur={() => onUpdate(item.id, { observaciones: obsText })}
-              placeholder="Agregar notas, incidencias, detalles..." rows={3}
+              placeholder={t('tech.exec.agregarNotasIncidenciasDetalles')} rows={3}
               className="w-full bg-white border border-slate-200 text-slate-700 px-3 py-2.5 rounded-lg text-xs resize-none focus:outline-none focus:border-[var(--brand-gold)] placeholder-slate-400" />
           </div>
           <div className="border-t border-slate-200" />
@@ -448,6 +450,7 @@ function BudgetLinkCell({ item, budgetLines, onUpdate }: {
   budgetLines: BudgetLineLite[]
   onUpdate: (id: string, data: Record<string, unknown>) => void
 }) {
+  const { t } = useI18n()
   const [editing, setEditing] = useState(false)
   const linked = item.budgetLine ?? null
 
@@ -466,7 +469,7 @@ function BudgetLinkCell({ item, budgetLines, onUpdate }: {
         onBlur={() => setEditing(false)}
         onChange={e => { onUpdate(item.id, { budgetLineId: e.target.value || null }); setEditing(false) }}
         className="w-full max-w-[220px] bg-white border border-[var(--brand-gold)] text-[10px] text-slate-700 rounded px-1 py-1 focus:outline-none">
-        <option value="">Sin asociar al budget</option>
+        <option value="">{t('tech.exec.sinAsociarAlBudget')}</option>
         {Array.from(byDiv.entries()).map(([div, lines]) => (
           <optgroup key={div} label={div}>
             {lines.map(bl => (
@@ -484,8 +487,8 @@ function BudgetLinkCell({ item, budgetLines, onUpdate }: {
     <button
       onClick={() => setEditing(true)}
       title={linked
-        ? `Asociado al budget: ${linked.itemCode} — ${linked.description} (${formatUSD(linked.valorInicial)}). Clic para cambiar o quitar.`
-        : 'Asociar esta actividad a una línea del Construction Budget'}
+        ? t('tech.exec.asociadoAlBudgetV0V1V2', { v0: linked.itemCode, v1: linked.description, v2: formatUSD(linked.valorInicial) })
+        : t('tech.exec.asociarEstaActividadAUnaLinea')}
       className={`w-full flex items-center justify-end gap-1 text-[11px] font-mono transition-colors ${
         linked ? 'text-indigo-600 hover:text-indigo-800' : 'text-slate-300 hover:text-[var(--brand-gold)]'
       }`}>
@@ -502,6 +505,7 @@ function SubActivityRow({ sub, code, onUpdate, onDelete }: {
   onUpdate: (data: Record<string, unknown>) => void
   onDelete: () => void
 }) {
+  const { t } = useI18n()
   const qc = useQueryClient()
   const fileRef = useRef<HTMLInputElement>(null)
   // Catálogo global de proveedores (mismo del resto del sistema, cacheado)
@@ -515,8 +519,8 @@ function SubActivityRow({ sub, code, onUpdate, onDelete }: {
   const invalidate = () => qc.invalidateQueries({ queryKey: ['phases'] })
   const uploadInvoice = useMutation({
     mutationFn: (file: File) => subactivitiesApi.uploadInvoice(sub.id, file),
-    onSuccess: () => { invalidate(); toast.success('Invoice adjuntado') },
-    onError: (e: any) => toast.error(e?.response?.data?.error || 'Error al subir el invoice'),
+    onSuccess: () => { invalidate(); toast.success(t('tech.exec.invoiceAdjuntado')) },
+    onError: (e: any) => toast.error(e?.response?.data?.error || t('tech.exec.errorAlSubirElInvoice')),
   })
   const removeInvoice = useMutation({
     mutationFn: () => subactivitiesApi.deleteInvoice(sub.id),
@@ -537,56 +541,56 @@ function SubActivityRow({ sub, code, onUpdate, onDelete }: {
           onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
           placeholder="0"
           className="w-28 bg-slate-50 border border-slate-200 text-[11px] font-mono text-right text-slate-800 rounded px-1.5 py-1 focus:outline-none focus:border-[var(--brand-gold)]" />
-        <button onClick={onDelete} title="Eliminar subactividad"
+        <button onClick={onDelete} title={t('tech.exec.eliminarSubactividad')}
           className="text-slate-400 hover:text-red-500 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
       </div>
       {/* Línea 2: fecha · proveedor · responsable · invoice · observaciones */}
       <div className="px-3 pb-1.5 pt-1 flex items-center gap-2 flex-wrap ml-20">
         <input type="date" defaultValue={sub.fecha?.slice(0, 10) ?? ''}
-          title="Fecha en que se hizo / pagó"
+          title={t('tech.exec.fechaEnQueSeHizoPago')}
           onChange={e => onUpdate({ fecha: e.target.value || null })}
           className="bg-white border border-slate-200 text-[10px] text-slate-600 rounded px-1.5 py-0.5 focus:outline-none focus:border-[var(--brand-gold)]" />
         {/* Proveedor del catálogo global — alimenta el récord en Proveedores */}
         <select
           value={sub.providerId ?? ''}
           onChange={e => onUpdate({ providerId: e.target.value || null })}
-          title="Proveedor / contratista del catálogo — este servicio queda en su récord"
+          title={t('tech.exec.proveedorContratistaDelCatalogoEsteServici')}
           className={`max-w-[150px] bg-white border text-[10px] rounded px-1.5 py-0.5 focus:outline-none focus:border-[var(--brand-gold)] ${sub.providerId ? 'border-slate-200 text-slate-700' : 'border-slate-200 text-slate-400'}`}>
-          <option value="">Proveedor…</option>
+          <option value="">{t('tech.exec.proveedor')}</option>
           {subProviders.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
-        <input defaultValue={sub.responsable ?? ''} placeholder="Quién lo hizo"
-          title="Responsable / persona que ejecutó (si no es un proveedor del catálogo)"
+        <input defaultValue={sub.responsable ?? ''} placeholder={t('tech.exec.quienLoHizo')}
+          title={t('tech.exec.responsablePersonaQueEjecutoSiNo')}
           onBlur={e => { const v = e.target.value.trim(); if (v !== (sub.responsable ?? '')) onUpdate({ responsable: v || null }) }}
           onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
           className="w-28 bg-white border border-slate-200 text-[10px] text-slate-600 rounded px-1.5 py-0.5 focus:outline-none focus:border-[var(--brand-gold)] placeholder-slate-300" />
         {sub.invoiceUrl ? (
           <span className="flex items-center gap-1">
             <a href={`/api/download?url=${encodeURIComponent(sub.invoiceUrl)}&name=${encodeURIComponent(sub.invoiceName ?? 'invoice')}&inline=1`}
-              target="_blank" rel="noreferrer" title={`Ver invoice: ${sub.invoiceName ?? ''}`}
+              target="_blank" rel="noreferrer" title={t('tech.exec.verInvoiceV0', { v0: sub.invoiceName ?? '' })}
               className="flex items-center gap-1 text-[10px] text-emerald-600 hover:text-emerald-800 bg-emerald-50 border border-emerald-200 rounded px-1.5 py-0.5">
               <Paperclip className="w-3 h-3" />
-              <span className="max-w-[110px] truncate">{sub.invoiceName ?? 'Invoice'}</span>
+              <span className="max-w-[110px] truncate">{sub.invoiceName ?? t('tech.exec.invoice')}</span>
             </a>
-            <button onClick={() => removeInvoice.mutate()} title="Quitar invoice"
+            <button onClick={() => removeInvoice.mutate()} title={t('tech.exec.quitarInvoice')}
               className="text-slate-300 hover:text-red-500"><X className="w-3 h-3" /></button>
           </span>
         ) : (
           <button onClick={() => fileRef.current?.click()} disabled={uploadInvoice.isPending}
             title={warnInvoice
-              ? '⚠ CONTROL: esta subactividad tiene gasto registrado SIN soporte documental — adjunta el invoice'
-              : 'Adjuntar invoice o documento equivalente (PDF/JPG/PNG)'}
+              ? t('tech.exec.controlEstaSubactividadTieneGastoRegistrad')
+              : t('tech.exec.adjuntarInvoiceODocumentoEquivalentePdf')}
             className={`flex items-center gap-1 text-[10px] rounded px-1.5 py-0.5 transition-colors disabled:opacity-50 border ${
               warnInvoice
                 ? 'text-red-600 bg-red-50 border-red-300 hover:bg-red-100 font-semibold animate-pulse'
                 : 'text-slate-400 hover:text-[var(--brand-gold)] border-dashed border-slate-300 hover:border-[var(--brand-gold)]'}`}>
             {warnInvoice ? <AlertTriangle className="w-3 h-3" /> : <Upload className="w-3 h-3" />}
-            {uploadInvoice.isPending ? 'Subiendo…' : warnInvoice ? 'Falta invoice' : 'Invoice'}
+            {uploadInvoice.isPending ? t('common.subiendo') : warnInvoice ? t('tech.exec.faltaInvoice') : t('tech.exec.invoice')}
           </button>
         )}
         <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.heic" className="hidden"
           onChange={e => { const f = e.target.files?.[0]; if (f) uploadInvoice.mutate(f); e.target.value = '' }} />
-        <input defaultValue={sub.observaciones ?? ''} placeholder="Observaciones…"
+        <input defaultValue={sub.observaciones ?? ''} placeholder={t('tech.exec.observaciones2')}
           onBlur={e => { const v = e.target.value.trim(); if (v !== (sub.observaciones ?? '')) onUpdate({ observaciones: v || null }) }}
           onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
           className="flex-1 min-w-[120px] bg-white border border-slate-200 text-[10px] text-slate-600 rounded px-1.5 py-0.5 focus:outline-none focus:border-[var(--brand-gold)] placeholder-slate-300" />
@@ -602,6 +606,7 @@ function ItemRow({ item, budgetLines, onUpdate, onOpenPanel, onDelete }: {
   onOpenPanel: (item: Item) => void
   onDelete?: (item: Item) => void
 }) {
+  const { t } = useI18n()
   const qc = useQueryClient()
   const [expanded, setExpanded] = useState(false)
   const [newSubDesc, setNewSubDesc] = useState('')
@@ -613,7 +618,7 @@ function ItemRow({ item, budgetLines, onUpdate, onOpenPanel, onDelete }: {
       setNewSubDesc(''); setNewSubVal(''); invalidate()
       // Señal de control inmediata: se registró gasto sin soporte documental
       if ((Number(vars?.valorEjecutado) || 0) > 0) {
-        toast('⚠ Subactividad registrada SIN invoice — adjunta el soporte para mantener la trazabilidad', {
+        toast(t('tech.exec.subactividadRegistradaSinInvoiceAdjuntaEl'), {
           icon: '📎', duration: 6000,
           style: { background: '#FEF2F2', color: '#B91C1C', border: '1px solid #FECACA' },
         })
@@ -627,7 +632,7 @@ function ItemRow({ item, budgetLines, onUpdate, onOpenPanel, onDelete }: {
   if (isSlot && !item.completado && !item.valorEjecutado) {
     return (
       <tr className="slot-row border-b border-slate-100">
-        <td colSpan={10} className="px-4 font-mono" title="Espacio reservado para actividades futuras de esta fase">{item.itemCode} · reservado</td>
+        <td colSpan={10} className="px-4 font-mono" title={t('tech.exec.espacioReservadoParaActividadesFuturasDe')}>{item.itemCode} {t('tech.exec.reservado')}</td>
       </tr>
     )
   }
@@ -659,13 +664,13 @@ function ItemRow({ item, budgetLines, onUpdate, onOpenPanel, onDelete }: {
         <td className="pl-3 pr-1 py-2.5 w-16">
           <button
             onClick={() => onUpdate(item.id, { esNA: !item.esNA })}
-            title={item.esNA ? 'Re-habilitar ítem (sí aplica)' : 'Marcar como NO APLICA'}
+            title={item.esNA ? t('tech.exec.reHabilitarItemSiAplica') : t('tech.exec.marcarComoNoAplica')}
             className={`w-7 h-7 rounded-md flex items-center justify-center transition-all ${item.esNA ? 'bg-slate-300 text-slate-600 hover:bg-slate-400' : 'bg-white border border-slate-200 text-slate-300 hover:border-slate-400 hover:text-slate-500'}`}>
             {item.esNA ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
           </button>
         </td>
         {/* Cód. — abre el panel de detalle */}
-        <td className="px-2 py-2.5 w-16 cursor-pointer" onClick={() => onOpenPanel(item)} title="Ver detalle de la actividad">
+        <td className="px-2 py-2.5 w-16 cursor-pointer" onClick={() => onOpenPanel(item)} title={t('tech.exec.verDetalleDeLaActividad')}>
           <span className="text-[10px] font-mono text-slate-400 hover:text-[var(--brand-gold)]">{item.itemCode}</span>
         </td>
         {/* Actividad — nombre editable + toggle de subactividades */}
@@ -674,7 +679,7 @@ function ItemRow({ item, budgetLines, onUpdate, onOpenPanel, onDelete }: {
             {/* Botón + SIEMPRE visible: abre el desglose de subactividades */}
             <button
               onClick={() => setExpanded(e => !e)}
-              title={expanded ? 'Cerrar subactividades' : 'Agregar / ver subactividades (desglose)'}
+              title={expanded ? t('tech.exec.cerrarSubactividades') : t('tech.exec.agregarVerSubactividadesDesglose')}
               className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center border transition-all
                 ${expanded
                   ? 'bg-emerald-500 border-emerald-500 text-white rotate-45'
@@ -688,7 +693,7 @@ function ItemRow({ item, budgetLines, onUpdate, onOpenPanel, onDelete }: {
               onBlur={e => { const v = e.target.value.trim(); if (v && v !== item.activity) onUpdate(item.id, { activity: v }) }}
               onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
               className={`w-full bg-transparent text-xs font-medium leading-tight rounded px-1 py-0.5 border border-transparent hover:border-slate-200 focus:bg-white focus:border-[var(--brand-gold)] focus:outline-none transition-colors ${item.completado ? 'line-through text-slate-400' : 'text-slate-800'}`}
-              title="Clic para editar el nombre de la actividad" />
+              title={t('tech.exec.clicParaEditarElNombreDe')} />
             {hasSubs && <span className="text-[8px] px-1 rounded bg-emerald-100 text-emerald-700 font-mono flex-shrink-0" title={`${subs.length} subactividad(es)`}>Σ{subs.length}</span>}
           </div>
           {(item.responsable || item.provider) && (
@@ -706,7 +711,7 @@ function ItemRow({ item, budgetLines, onUpdate, onOpenPanel, onDelete }: {
                   ? active ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-600 hover:bg-amber-100'
                   : active ? 'bg-slate-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
               return (
-                <button key={e.value} title={e.label} disabled={item.esNA}
+                <button key={e.value} title={t(e.labelKey)} disabled={item.esNA}
                   onClick={() => { const u: Record<string, unknown> = { estado: e.value }; if (e.value === 'DONE') u.completado = true; if (e.value === 'PENDIENTE') u.completado = false; onUpdate(item.id, u) }}
                   className={`flex-1 px-1.5 py-1 rounded text-[9px] font-bold uppercase tracking-wider transition-all disabled:opacity-30 disabled:cursor-not-allowed ${colors}`}>
                   {e.value === 'DONE' ? '✓' : e.value === 'EN_CURSO' ? '⋯' : '—'}
@@ -722,7 +727,7 @@ function ItemRow({ item, budgetLines, onUpdate, onOpenPanel, onDelete }: {
             onBlur={e => { const v = parseFloat(e.target.value) || 0; if (v !== item.valorPresupuestado) onUpdate(item.id, { valorPresupuestado: v }) }}
             onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
             placeholder="—"
-            title="Presupuesto de planeación (editable)"
+            title={t('tech.exec.presupuestoDePlaneacionEditable')}
             className="w-full bg-transparent border border-transparent hover:border-slate-200 text-[11px] font-mono text-right text-slate-600 rounded px-1.5 py-1 focus:outline-none focus:bg-white focus:border-[var(--brand-gold)] placeholder-slate-300 transition-colors" />
         </td>
         {/* Presup. según Construction Budget (cuando la actividad está asociada) */}
@@ -752,13 +757,13 @@ function ItemRow({ item, budgetLines, onUpdate, onOpenPanel, onDelete }: {
             {baseline > 0 && totalEjec > 0 ? (
               <span
                 title={item.budgetLine
-                  ? `Gastado ${formatUSD(totalEjec)} vs ${formatUSD(baseline)} del Construction Budget${overBaseline ? ' — SOBRE lo presupuestado por el lender' : ''}`
-                  : `Gastado ${formatUSD(totalEjec)} vs ${formatUSD(baseline)} del presupuesto manual`}
+                  ? t('tech.exec.gastadoV0VsV1DelConstruction', { v0: formatUSD(totalEjec), v1: formatUSD(baseline), v2: overBaseline ? ' — SOBRE lo presupuestado por el lender' : '' })
+                  : t('tech.exec.gastadoV0VsV1DelPresupuesto', { v0: formatUSD(totalEjec), v1: formatUSD(baseline) })}
                 className={`text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded ${desviacion > 0 ? 'text-red-700 bg-red-50' : 'text-emerald-700 bg-emerald-50'}`}>
                 {desviacion > 0 ? '▲ +' : '▼ '}{formatUSD(Math.abs(desviacion))}
               </span>
             ) : (
-              <span className="text-[10px] text-slate-300" title="Sin presupuesto o sin gasto aún — no hay desviación que medir">—</span>
+              <span className="text-[10px] text-slate-300" title={t('tech.exec.sinPresupuestoOSinGastoAun')}>—</span>
             )}
             {overBaseline && item.budgetLine && (
               <AlertTriangle className="w-3 h-3 text-red-500 flex-shrink-0" />
@@ -769,7 +774,7 @@ function ItemRow({ item, budgetLines, onUpdate, onOpenPanel, onDelete }: {
         <td className="px-1 py-2.5 w-12 text-center border-l border-slate-100">
           <button onClick={() => onOpenPanel(item)}
             className={`inline-flex items-center justify-center gap-0.5 text-[10px] font-mono font-semibold transition-colors ${warnDoc ? 'text-red-500' : docCount > 0 ? 'text-emerald-600' : 'text-slate-400 hover:text-slate-600'}`}
-            title={warnDoc ? '⚠ Sin factura adjunta — súbela en el panel del ítem' : docCount > 0 ? `${docCount} documento(s) adjunto(s)` : 'Adjuntar documento / factura'}>
+            title={warnDoc ? t('tech.exec.sinFacturaAdjuntaSubelaEnEl') : docCount > 0 ? `${docCount} documento(s) adjunto(s)` : t('tech.exec.adjuntarDocumentoFactura')}>
             {warnDoc ? <AlertTriangle className="w-3.5 h-3.5" /> : <Paperclip className="w-3.5 h-3.5" />}
             {docCount > 0 && <span>{docCount}</span>}
           </button>
@@ -777,7 +782,7 @@ function ItemRow({ item, budgetLines, onUpdate, onOpenPanel, onDelete }: {
         {/* Eliminar — columna PROPIA, siempre visible */}
         <td className="pr-3 pl-1 py-2.5 w-10 text-center border-l border-slate-100">
           {onDelete && (
-            <button onClick={() => onDelete(item)} title="Eliminar esta actividad (pide confirmación)"
+            <button onClick={() => onDelete(item)} title={t('tech.exec.eliminarEstaActividadPideConfirmacion')}
               className="w-6 h-6 inline-flex items-center justify-center rounded-md text-slate-400 bg-slate-50 border border-slate-200 hover:text-white hover:bg-red-500 hover:border-red-500 transition-all">
               <Trash2 className="w-3.5 h-3.5" />
             </button>
@@ -792,15 +797,15 @@ function ItemRow({ item, budgetLines, onUpdate, onOpenPanel, onDelete }: {
             <div className="reveal ml-10 mr-4 my-2 rounded-lg border border-slate-200 bg-white">
               <div className="px-3 py-2 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
                 <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
-                  Desglose · Fase {phaseCode} · Actividad {item.itemCode}
+                  {t('tech.exec.desgloseFase')} {phaseCode} {t('tech.exec.actividad')} {item.itemCode}
                 </div>
                 <div className="text-[10px] font-mono text-slate-500">
-                  Base {formatUSD(base)} + Sub {formatUSD(Math.max(0, totalEjec - base))} = <span className="font-bold text-[var(--brand-teal)]">{formatUSD(totalEjec)}</span>
+                  {t('tech.exec.base')} {formatUSD(base)} {t('tech.exec.sub')} {formatUSD(Math.max(0, totalEjec - base))} = <span className="font-bold text-[var(--brand-teal)]">{formatUSD(totalEjec)}</span>
                 </div>
               </div>
               {/* Valor base de la actividad (se respeta y las subactividades se suman) */}
               <div className="px-3 py-2 flex items-center gap-2 border-b border-slate-100">
-                <span className="text-[11px] text-slate-500 flex-1">Valor de la actividad (base)</span>
+                <span className="text-[11px] text-slate-500 flex-1">{t('tech.exec.valorDeLaActividadBase')}</span>
                 <input type="number" min="0" defaultValue={base || ''}
                   onBlur={e => onUpdate(item.id, { valorEjecutadoBase: parseFloat(e.target.value) || 0 })}
                   onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
@@ -821,10 +826,10 @@ function ItemRow({ item, budgetLines, onUpdate, onOpenPanel, onDelete }: {
               <div className="px-3 py-2 flex items-center gap-2 bg-slate-50/50">
                 <span className="text-[10px] font-mono text-slate-300 w-20 flex-shrink-0">{item.itemCode}.{String(subs.length + 1).padStart(3, '0')}</span>
                 <input value={newSubDesc} onChange={e => setNewSubDesc(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addSub() }}
-                  placeholder="Nueva subactividad…" className="flex-1 min-w-0 bg-white border border-slate-200 text-[11px] text-slate-700 rounded px-2 py-1 focus:outline-none focus:border-[var(--brand-gold)] placeholder-slate-400" />
+                  placeholder={t('tech.exec.nuevaSubactividad')} className="flex-1 min-w-0 bg-white border border-slate-200 text-[11px] text-slate-700 rounded px-2 py-1 focus:outline-none focus:border-[var(--brand-gold)] placeholder-slate-400" />
                 <input type="number" min="0" value={newSubVal} onChange={e => setNewSubVal(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addSub() }}
-                  placeholder="Valor" className="w-28 bg-white border border-slate-200 text-[11px] font-mono text-right text-slate-700 rounded px-1.5 py-1 focus:outline-none focus:border-[var(--brand-gold)] placeholder-slate-400" />
-                <button onClick={addSub} disabled={!newSubDesc.trim() || createSub.isPending} title="Agregar subactividad" className="flex items-center px-1.5 py-1 bg-[var(--brand-gold)] hover:bg-[#4A6880] text-white rounded disabled:opacity-40"><Plus className="w-3.5 h-3.5" /></button>
+                  placeholder={t('tech.exec.valor')} className="w-28 bg-white border border-slate-200 text-[11px] font-mono text-right text-slate-700 rounded px-1.5 py-1 focus:outline-none focus:border-[var(--brand-gold)] placeholder-slate-400" />
+                <button onClick={addSub} disabled={!newSubDesc.trim() || createSub.isPending} title={t('tech.exec.agregarSubactividad')} className="flex items-center px-1.5 py-1 bg-[var(--brand-gold)] hover:bg-[#4A6880] text-white rounded disabled:opacity-40"><Plus className="w-3.5 h-3.5" /></button>
               </div>
             </div>
           </td>
@@ -846,6 +851,7 @@ function PhaseSection({ phase, budgetLines, budgetDivisions, defaultOpen = false
   onRenamePhase: (phaseId: string, name: string) => void
   onSetPhaseBudgetLink: (phaseId: string, budgetDivCode: string | null) => void
 }) {
+  const { t } = useI18n()
   // FASE 1: colapsadas por defecto para una vista más limpia y amigable
   const [open, setOpen] = useState(defaultOpen)
   const [showNewForm, setShowNewForm] = useState(false)
@@ -904,7 +910,7 @@ function PhaseSection({ phase, budgetLines, budgetDivisions, defaultOpen = false
             <span className="text-sm font-semibold text-slate-800 leading-tight truncate">{phase.name}</span>
             <button
               onClick={e => { e.stopPropagation(); setEditingName(true) }}
-              title="Renombrar fase (para alinearla con tu Construction Budget)"
+              title={t('tech.exec.renombrarFaseParaAlinearlaConTu')}
               className="opacity-0 group-hover/name:opacity-100 text-slate-300 hover:text-[var(--brand-gold)] transition-all flex-shrink-0">
               <Pencil className="w-3 h-3" />
             </button>
@@ -912,9 +918,9 @@ function PhaseSection({ phase, budgetLines, budgetDivisions, defaultOpen = false
         )}
         {phaseOver && (
           <span className="flex items-center gap-1 text-[9px] font-bold text-red-600 bg-red-50 border border-red-200 rounded-full px-1.5 py-0.5 flex-shrink-0"
-            title={`Ejecutado ${formatUSD(ejecutado)} supera el presupuesto de la fase ${formatUSD(budget)}`}>
+            title={t('tech.exec.ejecutadoV0SuperaElPresupuestoDe', { v0: formatUSD(ejecutado), v1: formatUSD(budget) })}>
             <AlertTriangle className="w-3 h-3" />
-            <span className="hidden sm:inline">SOBRE PRESUPUESTO</span>
+            <span className="hidden sm:inline">{t('tech.exec.sobrePresupuesto')}</span>
           </span>
         )}
         <div className="flex items-center gap-2 sm:gap-4 text-xs shrink-0">
@@ -936,7 +942,7 @@ function PhaseSection({ phase, budgetLines, budgetDivisions, defaultOpen = false
             <div className="px-4 py-2 border-b border-slate-200/60 bg-white/60">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="flex items-center gap-1 text-[10px] font-semibold text-indigo-500 uppercase tracking-wider">
-                  <Link2 className="w-3 h-3" />Budget de la fase
+                  <Link2 className="w-3 h-3" />{t('tech.exec.budgetDeLaFase')}
                 </span>
                 {linkedDivs.length > 0 ? (
                   <>
@@ -946,19 +952,19 @@ function PhaseSection({ phase, budgetLines, budgetDivisions, defaultOpen = false
                       </span>
                     ))}
                     <span className={`text-[11px] font-mono font-semibold ${ejecutado > phaseLenderBudget ? 'text-red-600' : 'text-slate-600'}`}
-                      title="Total presupuestado por el lender para las divisiones asociadas a esta fase, vs lo ejecutado">
-                      = {formatUSD(phaseLenderBudget)} · ejec. {formatUSD(ejecutado)}
+                      title={t('tech.exec.totalPresupuestadoPorElLenderPara')}>
+                      = {formatUSD(phaseLenderBudget)} {t('tech.exec.ejec')} {formatUSD(ejecutado)}
                       {phaseLenderBudget > 0 && (
                         <> · Δ {ejecutado - phaseLenderBudget > 0 ? '+' : ''}{formatUSD(ejecutado - phaseLenderBudget)}</>
                       )}
                     </span>
                   </>
                 ) : (
-                  <span className="text-[10px] text-slate-400 italic">sin asociar — esta fase se controla con el presupuesto manual</span>
+                  <span className="text-[10px] text-slate-400 italic">{t('tech.exec.sinAsociarEstaFaseSeControla')}</span>
                 )}
                 <button onClick={() => setShowDivPicker(v => !v)}
                   className="ml-auto text-[10px] text-slate-400 hover:text-[var(--brand-gold)] underline decoration-dotted">
-                  {showDivPicker ? 'cerrar' : linkedDivs.length > 0 ? 'editar asociación' : 'asociar divisiones del budget'}
+                  {showDivPicker ? 'cerrar' : linkedDivs.length > 0 ? t('tech.exec.editarAsociacion') : t('tech.exec.asociarDivisionesDelBudget')}
                 </button>
               </div>
               {showDivPicker && (
@@ -984,30 +990,30 @@ function PhaseSection({ phase, budgetLines, budgetDivisions, defaultOpen = false
           {phaseLenderBudget > 0 && ejecutado > phaseLenderBudget && (
             <div className="flex items-center gap-2 px-4 py-2 bg-red-50 border-b border-red-200 text-[11px] text-red-700 font-medium">
               <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
-              Esta fase ({formatUSD(ejecutado)}) supera el budget del lender asociado ({formatUSD(phaseLenderBudget)}) por <b className="font-mono">{formatUSD(ejecutado - phaseLenderBudget)}</b> — la diferencia sale de caja propia.
+              {t('tech.exec.estaFase')}{formatUSD(ejecutado)}{t('tech.exec.superaElBudgetDelLenderAsociado')}{formatUSD(phaseLenderBudget)}{t('tech.exec.por')} <b className="font-mono">{formatUSD(ejecutado - phaseLenderBudget)}</b> {t('tech.exec.laDiferenciaSaleDeCajaPropia')}
             </div>
           )}
           {/* Alerta de sobrecosto de la fase — presupuesto de obra vs ejecutado (misma fuente, ítem a ítem) */}
           {phaseOver && (
             <div className="flex items-center gap-2 px-4 py-2 bg-red-50 border-b border-red-200 text-[11px] text-red-700 font-medium">
               <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
-              La ejecución de esta fase ({formatUSD(ejecutado)}) supera su presupuesto de obra ({formatUSD(budget)}) por <b className="font-mono">{formatUSD(ejecutado - budget)}</b>.
+              {t('tech.exec.laEjecucionDeEstaFase')}{formatUSD(ejecutado)}{t('tech.exec.superaSuPresupuestoDeObra')}{formatUSD(budget)}{t('tech.exec.por')} <b className="font-mono">{formatUSD(ejecutado - budget)}</b>.
             </div>
           )}
           <div className="overflow-x-auto">
           <table className="w-full min-w-[780px]">
             <thead>
               <tr className="border-b-2 border-slate-300 bg-slate-100">
-                <th className="pl-4 pr-2 py-2 text-left text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-16">St.</th>
-                <th className="px-2 py-2 text-left text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-16">Cód.</th>
-                <th className="px-2 py-2 text-left text-[10px] font-semibold text-slate-600 uppercase tracking-wider">Actividad</th>
-                <th className="px-2 py-2 text-left text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-24">Estado</th>
-                <th className="px-2 py-2 text-right text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-24" title="Presupuesto de planeación (editable)">Presup. ✏</th>
-                <th className="px-2 py-2 text-right text-[10px] font-semibold text-indigo-500 uppercase tracking-wider w-24" title="Presupuesto según Construction Budget (cuando la actividad está asociada)">Budget 🔗</th>
-                <th className="px-2 py-2 text-right text-[10px] font-semibold text-[var(--brand-gold)] uppercase tracking-wider w-24">Ejecutado</th>
-                <th className="px-2 py-2 text-right text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-20" title="Desviación del gasto: ▲ rojo = gastado de más · ▼ verde = por debajo. Se mide contra el budget asociado 🔗 si existe; si no, contra Presup. ✏">Desv.</th>
-                <th className="px-1 py-2 text-center text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-12">Doc</th>
-                <th className="pr-3 pl-1 py-2 text-center text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-10" title="Eliminar actividad">
+                <th className="pl-4 pr-2 py-2 text-left text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-16">{t('tech.exec.st')}</th>
+                <th className="px-2 py-2 text-left text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-16">{t('common.cod')}</th>
+                <th className="px-2 py-2 text-left text-[10px] font-semibold text-slate-600 uppercase tracking-wider">{t('common.actividad')}</th>
+                <th className="px-2 py-2 text-left text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-24">{t('common.estado')}</th>
+                <th className="px-2 py-2 text-right text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-24" title={t('tech.exec.presupuestoDePlaneacionEditable')}>{t('tech.budget.presup')}</th>
+                <th className="px-2 py-2 text-right text-[10px] font-semibold text-indigo-500 uppercase tracking-wider w-24" title={t('tech.exec.presupuestoSegunConstructionBudgetCuandoLa')}>{t('tech.exec.budget')}</th>
+                <th className="px-2 py-2 text-right text-[10px] font-semibold text-[var(--brand-gold)] uppercase tracking-wider w-24">{t('common.ejecutado')}</th>
+                <th className="px-2 py-2 text-right text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-20" title={t('tech.exec.desviacionDelGastoRojoGastadoDe')}>{t('tech.budget.desv')}</th>
+                <th className="px-1 py-2 text-center text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-12">{t('tech.exec.doc')}</th>
+                <th className="pr-3 pl-1 py-2 text-center text-[10px] font-semibold text-slate-600 uppercase tracking-wider w-10" title={t('tech.exec.eliminarActividad')}>
                   <Trash2 className="w-3 h-3 inline-block" />
                 </th>
               </tr>
@@ -1026,17 +1032,17 @@ function PhaseSection({ phase, budgetLines, budgetDivisions, defaultOpen = false
               className="flex items-center gap-2 px-4 py-2 w-full border-t border-slate-100 bg-white">
               <Plus className="w-3.5 h-3.5 text-[var(--brand-gold)] flex-shrink-0" />
               <input autoFocus value={newName} onChange={e => setNewName(e.target.value)}
-                placeholder={`Nombre de la nueva actividad en ${phase.code}…`}
+                placeholder={t('tech.exec.nombreDeLaNuevaActividadEn', { v0: phase.code })}
                 className="flex-1 bg-slate-50 border border-slate-200 text-xs px-2 py-1.5 rounded-lg focus:outline-none focus:border-[var(--brand-gold)]" />
               <button type="submit" disabled={!newName.trim()}
-                className="px-3 py-1.5 bg-[var(--brand-gold)] text-white text-xs font-semibold rounded-lg disabled:opacity-40">Crear</button>
+                className="px-3 py-1.5 bg-[var(--brand-gold)] text-white text-xs font-semibold rounded-lg disabled:opacity-40">{t('common.crear')}</button>
               <button type="button" onClick={() => { setShowNewForm(false); setNewName('') }}
-                className="text-xs text-slate-400 hover:underline">Cancelar</button>
+                className="text-xs text-slate-400 hover:underline">{t('common.cancelar')}</button>
             </form>
           ) : (
             <button onClick={() => setShowNewForm(true)}
               className="flex items-center gap-2 px-4 py-2 text-xs text-slate-500 hover:text-[var(--brand-gold)] hover:bg-[#3E5A70]/5 transition-colors w-full border-t border-slate-100">
-              <Plus className="w-3.5 h-3.5" />Agregar actividad a {phase.code}
+              <Plus className="w-3.5 h-3.5" />{t('tech.exec.agregarActividadA')} {phase.code}
             </button>
           )}
         </div>
@@ -1046,6 +1052,7 @@ function PhaseSection({ phase, budgetLines, budgetDivisions, defaultOpen = false
 }
 
 export default function Execution({ projectId }: { projectId: string }) {
+  const { t } = useI18n()
   const queryClient = useQueryClient()
   const confirm = useConfirm()
   const [filter, setFilter] = useState<string>('ALL')
@@ -1094,15 +1101,15 @@ export default function Execution({ projectId }: { projectId: string }) {
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => itemsApi.delete(id),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['phases', projectId] }); setPanelItem(null); toast.success('Actividad eliminada') },
-    onError: (e: any) => toast.error(e?.response?.data?.error || 'Error al eliminar la actividad'),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['phases', projectId] }); setPanelItem(null); toast.success(t('tech.exec.actividadEliminada')) },
+    onError: (e: any) => toast.error(e?.response?.data?.error || t('tech.exec.errorAlEliminarLaActividad')),
   })
 
   // Renombrar fase (alineación con el Construction Budget de cada proyecto)
   const renamePhaseMutation = useMutation({
     mutationFn: ({ phaseId, name }: { phaseId: string; name: string }) => phasesApi.rename(projectId, phaseId, name),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['phases', projectId] }); toast.success('Fase renombrada') },
-    onError: (e: any) => toast.error(e?.response?.data?.error || 'Error al renombrar la fase'),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['phases', projectId] }); toast.success(t('tech.exec.faseRenombrada')) },
+    onError: (e: any) => toast.error(e?.response?.data?.error || t('tech.exec.errorAlRenombrarLaFase')),
   })
 
   // Eliminar CUALQUIER actividad (nueva o precargada) con confirmación explícita.
@@ -1110,13 +1117,13 @@ export default function Execution({ projectId }: { projectId: string }) {
   const handleDeleteItem = async (item: Item) => {
     const esPlantilla = !item.itemCode.includes('.A')
     const ok = await confirm({
-      title: 'Eliminar actividad',
-      message: `¿Eliminar "${item.itemCode} — ${item.activity}"?`,
+      title: t('tech.exec.eliminarActividad'),
+      message: t('tech.exec.eliminarV0V1', { v0: item.itemCode, v1: item.activity }),
       detail: esPlantilla
-        ? 'Esta actividad es de la plantilla base de control. Si la eliminas, desaparece de la ejecución, el presupuesto y el avance de la fase. Esta acción no se puede deshacer.'
-        : 'Se eliminará junto con su valor ejecutado y documentos adjuntos. Esta acción no se puede deshacer.',
+        ? t('tech.exec.estaActividadEsDeLaPlantilla')
+        : t('tech.exec.seEliminaraJuntoConSuValor'),
       destructive: true,
-      confirmText: 'Sí, eliminar',
+      confirmText: t('tech.projects.siEliminar'),
     })
     if (ok) deleteMutation.mutate(item.id)
   }
@@ -1133,7 +1140,7 @@ export default function Execution({ projectId }: { projectId: string }) {
     mutationFn: ({ phaseId, budgetDivCode }: { phaseId: string; budgetDivCode: string | null }) =>
       phasesApi.setBudgetLink(projectId, phaseId, budgetDivCode),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['phases', projectId] }),
-    onError: (e: any) => toast.error(e?.response?.data?.error || 'Error al asociar el budget'),
+    onError: (e: any) => toast.error(e?.response?.data?.error || t('tech.exec.errorAlAsociarElBudget')),
   })
 
   // Borrar SOLO los valores presupuestados (paridad con la antigua página Presupuesto)
@@ -1141,18 +1148,18 @@ export default function Execution({ projectId }: { projectId: string }) {
     mutationFn: () => projectsApi.resetBudget(projectId),
     onSuccess: (r: any) => {
       queryClient.invalidateQueries({ queryKey: ['phases', projectId] })
-      toast.success(r?.message || 'Presupuesto reseteado — la ejecución no se tocó')
+      toast.success(r?.message || t('tech.exec.presupuestoReseteadoLaEjecucionNoSe'))
     },
-    onError: (e: any) => toast.error(e?.response?.data?.error || 'Error'),
+    onError: (e: any) => toast.error(e?.response?.data?.error || t('common.error')),
   })
   const handleClearBudget = async () => {
     const ok = await confirm({
-      title: 'Borrar todos los valores presupuestados',
-      message: '¿Seguro que quieres borrar TODOS los valores presupuestados?',
+      title: t('tech.exec.borrarTodosLosValoresPresupuestados'),
+      message: t('tech.budget.seguroQueQuieresBorrarTodosLos'),
       detail: 'Esta acción resetea el presupuesto manual (Presup. ✏) de TODOS los items a 0. La ejecución, las asociaciones al budget y la estructura NO se tocan. Esta acción no se puede deshacer.',
       destructive: true,
-      confirmText: 'Sí, borrar presupuesto',
-      typeToConfirm: 'BORRAR PRESUPUESTO',
+      confirmText: t('tech.budget.siBorrarPresupuesto'),
+      typeToConfirm: t('tech.budget.borrarPresupuesto2'),
     })
     if (ok) resetBudget.mutate()
   }
@@ -1162,19 +1169,19 @@ export default function Execution({ projectId }: { projectId: string }) {
     mutationFn: () => projectsApi.resetExecution(projectId),
     onSuccess: (r: any) => {
       queryClient.invalidateQueries({ queryKey: ['phases', projectId] })
-      toast.success(r?.message || 'Datos de ejecución borrados — estructura mantenida')
+      toast.success(r?.message || t('tech.exec.datosDeEjecucionBorradosEstructuraMantenid'))
     },
-    onError: (e: any) => toast.error(e?.response?.data?.error || 'Error al borrar datos'),
+    onError: (e: any) => toast.error(e?.response?.data?.error || t('fin.import.errorAlBorrarDatos')),
   })
 
   const handleClearAll = async () => {
     const ok = await confirm({
-      title: 'Borrar todos los datos de ejecución',
-      message: '¿Seguro que quieres borrar TODOS los datos de ejecución?',
+      title: t('tech.exec.borrarTodosLosDatosDeEjecucion'),
+      message: t('tech.exec.seguroQueQuieresBorrarTodosLos'),
       detail: 'Esta acción resetea: valor ejecutado, estado, fechas reales, observaciones y marcas de N/A de TODOS los items en TODAS las fases. La estructura de fases e items se conserva. Esta acción no se puede deshacer.',
       destructive: true,
-      confirmText: 'Sí, borrar todos los datos',
-      typeToConfirm: 'BORRAR EJECUCIÓN',
+      confirmText: t('tech.exec.siBorrarTodosLosDatos'),
+      typeToConfirm: t('tech.exec.borrarEjecucion'),
     })
     if (ok) clearAllExecution.mutate()
   }
@@ -1237,16 +1244,16 @@ export default function Execution({ projectId }: { projectId: string }) {
   const lenderBase = project ? (project.holdback > 0 ? project.holdback : (project.loanAmount || 0)) : 0
   const saldoLender = lenderBase > 0 ? lenderBase - wiredTotal : null
 
-  if (isLoading) return <div className="text-slate-500 text-sm animate-pulse">Cargando ejecución...</div>
+  if (isLoading) return <div className="text-slate-500 text-sm animate-pulse">{t('tech.exec.cargandoEjecucion')}</div>
 
   return (
     <>
       <div className="space-y-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           <div>
-            <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><HardHat className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>Presupuesto & Ejecución</span></h1>
+            <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><HardHat className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>{t('tech.exec.presupuestoEjecucion')}</span></h1>
             <div className="flex items-center gap-3 mt-1">
-              <span className="text-sm text-slate-500">{doneTotal.length}/{totalItems.length} ítems</span>
+              <span className="text-sm text-slate-500">{doneTotal.length}/{totalItems.length} {t('common.items')}</span>
               <div className="flex items-center gap-2">
                 <div className="w-32 h-1.5 bg-white rounded-full overflow-hidden">
                   <div className="h-full bg-emerald-500 rounded-full transition-all bar-fill" style={{ width: `${pctGeneral}%` }} />
@@ -1256,10 +1263,10 @@ export default function Execution({ projectId }: { projectId: string }) {
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <input type="text" placeholder="Buscar actividad..." value={search} onChange={e => setSearch(e.target.value)}
+            <input type="text" placeholder={t('tech.exec.buscarActividad')} value={search} onChange={e => setSearch(e.target.value)}
               className="bg-white border border-slate-200 text-xs text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)] w-full sm:w-44 placeholder-slate-400" />
             <div className="flex gap-0.5 bg-white rounded-lg p-0.5 border border-slate-200">
-              {[{ v: 'ALL', l: 'Todos' }, { v: 'PENDIENTE', l: 'Pendiente' }, { v: 'EN_CURSO', l: 'En curso' }, { v: 'DONE', l: 'Hecho' }].map(f => (
+              {[{ v: 'ALL', l: t('fin.movs.todos') }, { v: 'PENDIENTE', l: 'Pendiente' }, { v: 'EN_CURSO', l: 'En curso' }, { v: 'DONE', l: 'Hecho' }].map(f => (
                 <button key={f.v} onClick={() => setFilter(f.v)}
                   className={`px-2.5 sm:px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${filter === f.v ? 'bg-[var(--brand-teal)] text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
                   {f.l}
@@ -1270,30 +1277,30 @@ export default function Execution({ projectId }: { projectId: string }) {
             <button
               onClick={() => { setExpandAll(!expandAll); setExpandTrigger(t => t + 1) }}
               className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:border-[var(--brand-gold)] text-slate-700 text-xs font-semibold rounded-lg transition-colors"
-              title={expandAll ? 'Colapsar todas las fases' : 'Expandir todas las fases'}
+              title={expandAll ? t('tech.exec.colapsarTodasLasFases') : t('tech.exec.expandirTodasLasFases')}
             >
               {expandAll ? <ChevronsUp className="w-3.5 h-3.5" /> : <ChevronsDown className="w-3.5 h-3.5" />}
-              {expandAll ? 'Colapsar' : 'Expandir'} todo
+              {expandAll ? t('tech.cbudget.colapsar') : t('tech.cbudget.expandir')} {t('tech.cbudget.todo')}
             </button>
             {/* Borrar SOLO el presupuesto manual (paridad con la antigua página Presupuesto) */}
             <button
               onClick={handleClearBudget}
               disabled={resetBudget.isPending}
               className="flex items-center gap-1.5 px-3 py-2 bg-white border border-amber-300 hover:bg-amber-50 text-amber-700 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
-              title="Borrar todos los valores presupuestados (la ejecución no se toca)"
+              title={t('tech.exec.borrarTodosLosValoresPresupuestadosLa')}
             >
               <Eraser className="w-3.5 h-3.5" />
-              {resetBudget.isPending ? 'Borrando…' : 'Borrar presupuesto'}
+              {resetBudget.isPending ? t('common.borrando') : t('tech.budget.borrarPresupuesto')}
             </button>
             {/* Borrar todos los datos de ejecución */}
             <button
               onClick={handleClearAll}
               disabled={clearAllExecution.isPending}
               className="flex items-center gap-1.5 px-3 py-2 bg-white border border-red-200 hover:bg-red-50 text-red-600 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
-              title="Borrar todos los datos de ejecución (mantiene la estructura)"
+              title={t('tech.exec.borrarTodosLosDatosDeEjecucion2')}
             >
               <Eraser className="w-3.5 h-3.5" />
-              {clearAllExecution.isPending ? 'Borrando…' : 'Borrar datos'}
+              {clearAllExecution.isPending ? t('common.borrando') : t('tech.exec.borrarDatos')}
             </button>
           </div>
         </div>
@@ -1303,52 +1310,52 @@ export default function Execution({ projectId }: { projectId: string }) {
             Desv. asociados al budget · Avance físico */}
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
           <div className="kpi-card">
-            <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Presupuesto total</div>
+            <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">{t('tech.exec.presupuestoTotal')}</div>
             <div className="text-lg font-bold font-mono text-slate-800">{formatUSD(grandPresupuestado)}</div>
-            <div className="text-[10px] text-slate-400 mt-1">Σ planeación de todas las fases</div>
+            <div className="text-[10px] text-slate-400 mt-1">{t('tech.exec.planeacionDeTodasLasFases')}</div>
           </div>
           <div className="kpi-card">
-            <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Total ejecutado</div>
+            <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">{t('tech.budget.totalEjecutado')}</div>
             <div className="text-lg font-bold font-mono text-[var(--brand-teal)]">{formatUSD(grandEjecutado)}</div>
             <div className="mt-2 h-1.5 bg-slate-100 rounded-full overflow-hidden">
               <div className="h-full bg-emerald-500 rounded-full bar-fill" style={{ width: `${grandPresupuestado > 0 ? Math.min(100, (grandEjecutado / grandPresupuestado) * 100) : 0}%` }} />
             </div>
-            <div className="text-[10px] text-slate-400 mt-1">{grandPresupuestado > 0 ? `${((grandEjecutado / grandPresupuestado) * 100).toFixed(1)}% del presupuesto` : '—'}</div>
+            <div className="text-[10px] text-slate-400 mt-1">{grandPresupuestado > 0 ? t('tech.exec.v0DelPresupuesto', { v0: ((grandEjecutado / grandPresupuestado) * 100).toFixed(1) }) : '—'}</div>
           </div>
           <div className={`kpi-card ${saldoLender !== null && saldoLender < 0 ? 'kpi-card-red border-red-300 bg-red-50/60' : ''}`}>
             <div className="flex items-center gap-1 text-[10px] text-slate-400 uppercase tracking-wider mb-1">
-              <Landmark className="w-3 h-3" />Saldo por girar (lender)
+              <Landmark className="w-3 h-3" />{t('tech.exec.saldoPorGirarLender')}
             </div>
             <div className={`text-lg font-bold font-mono ${saldoLender !== null && saldoLender < 0 ? 'text-red-600' : 'text-indigo-600'}`}>
               {saldoLender !== null ? formatUSD(saldoLender) : '—'}
             </div>
-            <div className="text-[10px] text-slate-400 mt-1" title="Holdback de construcción menos draws desembolsados (wired)">
-              {saldoLender !== null ? `${formatUSD(lenderBase)} − ${formatUSD(wiredTotal)} wired` : 'sin datos del lender'}
+            <div className="text-[10px] text-slate-400 mt-1" title={t('tech.exec.holdbackDeConstruccionMenosDrawsDesembolsa')}>
+              {saldoLender !== null ? `${formatUSD(lenderBase)} − ${formatUSD(wiredTotal)} wired` : t('tech.exec.sinDatosDelLender')}
             </div>
           </div>
           <div className={`kpi-card ${overBudget ? 'kpi-card-red border-red-300 bg-red-50/60' : 'kpi-card-green'}`}>
-            <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Desv. total</div>
+            <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">{t('tech.exec.desvTotal')}</div>
             <div className={`text-lg font-bold font-mono ${overBudget ? 'text-red-600' : 'text-emerald-600'}`}>
               {grandPresupuestado > 0 ? `${deltaVsBudget > 0 ? '+' : ''}${formatUSD(deltaVsBudget)}` : '—'}
             </div>
-            <div className="text-[10px] text-slate-400 mt-1">{overBudget ? 'sobre presupuesto de obra' : 'bajo presupuesto de obra'}</div>
+            <div className="text-[10px] text-slate-400 mt-1">{overBudget ? t('tech.exec.sobrePresupuestoDeObra') : t('tech.exec.bajoPresupuestoDeObra')}</div>
           </div>
           <div className={`kpi-card ${linkedOver ? 'kpi-card-red border-red-300 bg-red-50/60' : ''}`}>
             <div className="flex items-center gap-1 text-[10px] text-slate-400 uppercase tracking-wider mb-1">
-              <Link2 className="w-3 h-3" />Desv. vs budget
+              <Link2 className="w-3 h-3" />{t('tech.exec.desvVsBudget')}
             </div>
             <div className={`text-lg font-bold font-mono ${linkedOver ? 'text-red-600' : linkedByLine.size > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>
               {linkedByLine.size > 0 ? `${linkedDelta > 0 ? '+' : ''}${formatUSD(linkedDelta)}` : '—'}
             </div>
-            <div className="text-[10px] text-slate-400 mt-1" title="Solo actividades asociadas a líneas del Construction Budget">
-              {linkedCount > 0 ? `${linkedCount} actividad(es) asociada(s)` : 'asocia actividades con 🔗'}
+            <div className="text-[10px] text-slate-400 mt-1" title={t('tech.exec.soloActividadesAsociadasALineasDel')}>
+              {linkedCount > 0 ? `${linkedCount} actividad(es) asociada(s)` : t('tech.exec.asociaActividadesCon')}
             </div>
           </div>
           <div className="kpi-card flex items-center gap-3">
             <MiniDonut pct={pctGeneral} size={56} />
             <div>
-              <div className="text-[10px] text-slate-400 uppercase tracking-wider">Avance físico</div>
-              <div className="text-xs text-slate-500 mt-0.5">{doneTotal.length}/{totalItems.length} ítems</div>
+              <div className="text-[10px] text-slate-400 uppercase tracking-wider">{t('tech.exec.avanceFisico')}</div>
+              <div className="text-xs text-slate-500 mt-0.5">{doneTotal.length}/{totalItems.length} {t('common.items')}</div>
             </div>
           </div>
         </div>
@@ -1357,7 +1364,7 @@ export default function Execution({ projectId }: { projectId: string }) {
           <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
             <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0" />
             <span className="text-sm text-red-600 font-medium">
-              Las actividades asociadas al Construction Budget ({formatUSD(linkedEjecTotal)}) superan lo presupuestado por el lender ({formatUSD(linkedBudgetTotal)}) por {formatUSD(linkedDelta)}. Revisa antes del próximo draw.
+              {t('tech.exec.lasActividadesAsociadasAlConstructionBudge')}{formatUSD(linkedEjecTotal)}{t('tech.exec.superanLoPresupuestadoPorElLender')}{formatUSD(linkedBudgetTotal)}{t('tech.exec.por')} {formatUSD(linkedDelta)}{t('tech.exec.revisaAntesDelProximoDraw')}
             </span>
           </div>
         )}
@@ -1365,7 +1372,7 @@ export default function Execution({ projectId }: { projectId: string }) {
           <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
             <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0" />
             <span className="text-sm text-red-600 font-medium">
-              La ejecución ({formatUSD(grandEjecutado)}) supera el presupuesto de obra ({formatUSD(grandPresupuestado)}) por {formatUSD(deltaVsBudget)}.
+              {t('tech.exec.laEjecucion')}{formatUSD(grandEjecutado)}{t('tech.exec.superaElPresupuestoDeObra')}{formatUSD(grandPresupuestado)}{t('tech.exec.por')} {formatUSD(deltaVsBudget)}.
             </span>
           </div>
         )}
@@ -1386,18 +1393,18 @@ export default function Execution({ projectId }: { projectId: string }) {
           />
         ))}
         {filteredPhases.length === 0 && (
-          <div className="text-center py-16 text-slate-400 text-sm">No hay ítems con el filtro seleccionado.</div>
+          <div className="text-center py-16 text-slate-400 text-sm">{t('tech.exec.noHayItemsConElFiltro')}</div>
         )}
 
         {/* Total general de ejecución (sumatoria de todas las fases) */}
         {filteredPhases.length > 0 && (
           <div className="flex items-center flex-wrap gap-x-6 gap-y-1 px-4 py-3 bg-white rounded-xl border border-slate-200 text-sm">
-            <span className="font-bold text-slate-800 uppercase tracking-wider">Total Ejecución</span>
-            <span className="text-slate-500">Presupuesto obra: <b className="font-mono text-slate-800">{formatUSD(grandPresupuestado)}</b></span>
-            <span className="text-slate-500">Ejecutado: <b className="font-mono text-[var(--brand-teal)]">{formatUSD(grandEjecutado)}</b></span>
+            <span className="font-bold text-slate-800 uppercase tracking-wider">{t('tech.exec.totalEjecucion')}</span>
+            <span className="text-slate-500">{t('tech.exec.presupuestoObra')} <b className="font-mono text-slate-800">{formatUSD(grandPresupuestado)}</b></span>
+            <span className="text-slate-500">{t('tech.exec.ejecutado')} <b className="font-mono text-[var(--brand-teal)]">{formatUSD(grandEjecutado)}</b></span>
             {grandPresupuestado > 0 && (
               <span className={`ml-auto font-mono font-semibold ${overBudget ? 'text-red-600' : 'text-emerald-600'}`}>
-                Δ {deltaVsBudget > 0 ? '+' : ''}{formatUSD(deltaVsBudget)} {overBudget ? '(sobre presupuesto)' : '(bajo presupuesto)'}
+                Δ {deltaVsBudget > 0 ? '+' : ''}{formatUSD(deltaVsBudget)} {overBudget ? t('tech.exec.sobrePresupuesto2') : t('tech.exec.bajoPresupuesto2')}
               </span>
             )}
           </div>

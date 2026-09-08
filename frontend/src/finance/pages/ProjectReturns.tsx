@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { API } from "../lib/api";
 import { usd } from "../lib/format";
 import { Briefcase } from "lucide-react";
+import { useI18n } from '../../i18n'
 
 function marginColor(pct: number) {
   if (pct > 20) return "var(--ok)";
@@ -10,6 +11,7 @@ function marginColor(pct: number) {
 }
 
 export default function ProjectReturns() {
+  const { t } = useI18n()
   const { data = [], isLoading } = useQuery<any[]>({
     queryKey: ["project-returns"],
     queryFn: () => API.getProjectReturns(),
@@ -19,30 +21,30 @@ export default function ProjectReturns() {
     <div className="space-y-5">
       <div>
         <h1 className="text-2xl font-bold" style={{ color: "var(--brand-teal)" }}>
-          Retorno por Proyecto
+          {t('fin.returns.retornoPorProyecto')}
         </h1>
         <p className="text-sm mt-1" style={{ color: "var(--brand-teal2)" }}>
-          ROI, margen de utilidad y apalancamiento por proyecto del portafolio financiero
+          {t('fin.returns.roiMargenDeUtilidadYApalancamiento')}
         </p>
       </div>
 
       <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
         <div className="px-5 py-3 flex items-center gap-2" style={{ borderBottom: "1px solid var(--border)", background: "var(--bg-surface-2)" }}>
           <Briefcase size={15} style={{ color: "var(--brand-gold)" }} />
-          <h2 className="text-sm font-bold" style={{ color: "var(--brand-teal)" }}>Ratios de rentabilidad</h2>
+          <h2 className="text-sm font-bold" style={{ color: "var(--brand-teal)" }}>{t('fin.returns.ratiosDeRentabilidad')}</h2>
         </div>
         {isLoading ? (
-          <p className="text-sm py-12 text-center" style={{ color: "var(--brand-teal2)" }}>Cargando...</p>
+          <p className="text-sm py-12 text-center" style={{ color: "var(--brand-teal2)" }}>{t('common.cargando2')}</p>
         ) : data.length === 0 ? (
           <p className="text-sm py-12 text-center" style={{ color: "var(--brand-teal2)" }}>
-            Aún no hay proyectos cargados en el portafolio financiero (módulo Inversión → Proyectos).
+            {t('fin.returns.aunNoHayProyectosCargadosEn')}
           </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ color: "var(--text-secondary)", background: "var(--bg-surface-2)" }} className="text-left">
-                  {["Proyecto", "ARV", "Costo real", "Ingreso", "Profit", "Margen", "ROI", "Deuda/Equity"].map(h => (
+                  {[t('fin.table.project'), "ARV", "Costo real", "Ingreso", "Profit", "Margen", "ROI", "Deuda/Equity"].map(h => (
                     <th key={h} className="px-4 py-2 text-[10px] font-bold uppercase tracking-wider whitespace-nowrap">{h}</th>
                   ))}
                 </tr>

@@ -1,4 +1,5 @@
 import { Item, Phase, Draw } from './types'
+import { currentLocale } from '../i18n'
 
 export function avanceFase(items: Item[]): number {
   const activos = items.filter(i => !i.esNA)
@@ -57,7 +58,7 @@ export function formatPct(value: number, decimals = 1): string {
 export function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return '—'
   const d = new Date(dateStr)
-  return d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })
+  return d.toLocaleDateString(currentLocale(), { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
 export function diasRestantes(dateStr: string | null | undefined): number | null {

@@ -8,8 +8,10 @@ import {
   MapPin, Layers, Calendar, ArrowDownLeft, ArrowUpRight,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { useI18n } from '../../i18n'
 
 export default function ProjectDetail() {
+  const { t } = useI18n()
   const { id } = useParams();
   const pid = +(id || 0);
   const qc = useQueryClient();
@@ -18,15 +20,15 @@ export default function ProjectDetail() {
 
   const upload = useMutation({
     mutationFn: (file: File) => API.uploadProjectDoc(pid, file),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["project-full", pid] }); toast.success("Documento subido"); },
-    onError: (e: any) => toast.error(e.response?.data?.error || "Error al subir"),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["project-full", pid] }); toast.success(t('fin.projDet.documentoSubido')); },
+    onError: (e: any) => toast.error(e.response?.data?.error || t('ui.docs.errorAlSubir')),
   });
 
   if (isLoading || !data || !full) {
     return (
       <div className="space-y-4 page-content">
-        <Link to="/finance/projects" className="btn-ghost inline-flex items-center gap-1 text-sm"><ArrowLeft size={14} /> Proyectos</Link>
-        <div className="card p-12 text-center" style={{ color: 'var(--brand-teal)' }}>Cargando datos del proyecto…</div>
+        <Link to="/finance/projects" className="btn-ghost inline-flex items-center gap-1 text-sm"><ArrowLeft size={14} /> {t('common.proyectos')}</Link>
+        <div className="card p-12 text-center" style={{ color: 'var(--brand-teal)' }}>{t('fin.projDet.cargandoDatosDelProyecto')}</div>
       </div>
     );
   }
@@ -51,7 +53,7 @@ export default function ProjectDetail() {
   return (
     <div className="space-y-5 page-content">
       <Link to="/finance/projects" className="btn-ghost inline-flex items-center gap-1 text-sm">
-        <ArrowLeft size={14} /> Proyectos
+        <ArrowLeft size={14} /> {t('common.proyectos')}
       </Link>
 
       {/* Header del proyecto */}
@@ -96,12 +98,12 @@ export default function ProjectDetail() {
             </div>
 
             <div className="text-right">
-              <div className="text-[10px] uppercase tracking-wider font-semibold mb-1" style={{ color: 'var(--brand-teal2)' }}>Ganancia proyectada</div>
+              <div className="text-[10px] uppercase tracking-wider font-semibold mb-1" style={{ color: 'var(--brand-teal2)' }}>{t('fin.projDet.gananciaProyectada')}</div>
               <div className={cls("text-3xl font-bold font-mono", gananciaProyectada >= 0 ? "text-emerald-600" : "text-red-600")}>
                 {usd(gananciaProyectada)}
               </div>
               <div className="text-xs mt-1" style={{ color: 'var(--brand-teal2)' }}>
-                Margen: <span className={cls("font-semibold font-mono", margenProyectado >= 0 ? "text-emerald-600" : "text-red-600")}>{pct(margenProyectado)}</span>
+                {t('fin.projDet.margen')} <span className={cls("font-semibold font-mono", margenProyectado >= 0 ? "text-emerald-600" : "text-red-600")}>{pct(margenProyectado)}</span>
               </div>
             </div>
           </div>
@@ -116,41 +118,41 @@ export default function ProjectDetail() {
             <Target size={12} style={{ color: 'var(--brand-gold)' }} />
           </div>
           <div className="text-xl font-bold font-mono" style={{ color: 'var(--brand-teal)' }}>{usd(p.arv, { compact: true })}</div>
-          <div className="text-[10px] mt-1" style={{ color: 'var(--brand-teal2)' }}>Valor proyectado</div>
+          <div className="text-[10px] mt-1" style={{ color: 'var(--brand-teal2)' }}>{t('fin.projDet.valorProyectado')}</div>
         </div>
         <div className="kpi-card">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>Costo esperado</span>
+            <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>{t('fin.projDet.costoEsperado')}</span>
             <DollarSign size={12} style={{ color: 'var(--brand-gold)' }} />
           </div>
           <div className="text-xl font-bold font-mono" style={{ color: 'var(--brand-teal)' }}>{usd(p.expectedCost, { compact: true })}</div>
-          <div className="text-[10px] mt-1" style={{ color: 'var(--brand-teal2)' }}>Presupuesto inicial</div>
+          <div className="text-[10px] mt-1" style={{ color: 'var(--brand-teal2)' }}>{t('fin.projDet.presupuestoInicial')}</div>
         </div>
         <div className="kpi-card kpi-card-green">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>Ingresos</span>
+            <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>{t('common.ingresos')}</span>
             <ArrowDownLeft size={12} className="text-emerald-600" />
           </div>
           <div className="text-xl font-bold font-mono text-emerald-600">{usd(k.ingresos, { compact: true })}</div>
         </div>
         <div className="kpi-card kpi-card-red">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>Egresos</span>
+            <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>{t('common.egresos')}</span>
             <ArrowUpRight size={12} className="text-red-600" />
           </div>
           <div className="text-xl font-bold font-mono text-red-600">{usd(k.egresos, { compact: true })}</div>
         </div>
         <div className="kpi-card">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>Costo acumulado</span>
+            <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>{t('fin.projDet.costoAcumulado')}</span>
             <Activity size={12} style={{ color: 'var(--brand-gold)' }} />
           </div>
           <div className="text-xl font-bold font-mono" style={{ color: 'var(--brand-teal)' }}>{usd(costoTotal, { compact: true })}</div>
-          <div className="text-[10px] mt-1" style={{ color: 'var(--brand-teal2)' }}>Compra + egresos</div>
+          <div className="text-[10px] mt-1" style={{ color: 'var(--brand-teal2)' }}>{t('fin.projDet.compraEgresos')}</div>
         </div>
         <div className={cls("kpi-card", k.roiEst >= 0 ? "kpi-card-green" : "kpi-card-red")}>
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>ROI estimado</span>
+            <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>{t('fin.projDet.roiEstimado')}</span>
             <TrendingUp size={12} className={k.roiEst >= 0 ? "text-emerald-600" : "text-red-600"} />
           </div>
           <div className={cls("text-xl font-bold font-mono", k.roiEst >= 0 ? "text-emerald-600" : "text-red-600")}>
@@ -162,19 +164,19 @@ export default function ProjectDetail() {
       {/* === ANÁLISIS PROYECTADO: VENTA VS COSTO === */}
       <div className="card p-5">
         <h2 className="text-base font-bold mb-4 flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}>
-          <Target size={16} style={{ color: 'var(--brand-gold)' }} /> Proyección venta vs. costo
+          <Target size={16} style={{ color: 'var(--brand-gold)' }} /> {t('fin.projDet.proyeccionVentaVsCosto')}
         </h2>
         <div className="grid md:grid-cols-3 gap-4">
           <div className="p-4 rounded-xl" style={{ background: 'var(--brand-cream2)' }}>
-            <div className="text-[10px] uppercase tracking-wider font-semibold mb-2" style={{ color: 'var(--brand-teal2)' }}>1) Precio de compra</div>
+            <div className="text-[10px] uppercase tracking-wider font-semibold mb-2" style={{ color: 'var(--brand-teal2)' }}>{t('fin.projDet.1PrecioDeCompra')}</div>
             <div className="text-2xl font-bold font-mono mb-1" style={{ color: 'var(--brand-teal)' }}>{usd(p.purchasePrice)}</div>
-            <div className="text-xs" style={{ color: 'var(--brand-teal2)' }}>Inversión inicial</div>
+            <div className="text-xs" style={{ color: 'var(--brand-teal2)' }}>{t('fin.projDet.inversionInicial')}</div>
           </div>
           <div className="p-4 rounded-xl" style={{ background: 'var(--brand-cream2)' }}>
-            <div className="text-[10px] uppercase tracking-wider font-semibold mb-2" style={{ color: 'var(--brand-teal2)' }}>2) Costo de construcción/renovación</div>
+            <div className="text-[10px] uppercase tracking-wider font-semibold mb-2" style={{ color: 'var(--brand-teal2)' }}>{t('fin.projDet.2CostoDeConstruccionRenovacion')}</div>
             <div className="text-2xl font-bold font-mono mb-1 text-red-600">{usd(k.egresos)}</div>
             <div className="text-xs" style={{ color: 'var(--brand-teal2)' }}>
-              {pct(pctEjecutado)} del esperado ({usd(p.expectedCost, { compact: true })})
+              {pct(pctEjecutado)} {t('fin.projDet.delEsperado')}{usd(p.expectedCost, { compact: true })})
             </div>
             {/* Barra de progreso */}
             <div className="mt-2 h-2 rounded-full overflow-hidden" style={{ background: 'rgba(29,29,31,0.1)' }}>
@@ -188,12 +190,12 @@ export default function ProjectDetail() {
             </div>
           </div>
           <div className="p-4 rounded-xl" style={{ background: gananciaProyectada >= 0 ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)', border: `1px solid ${gananciaProyectada >= 0 ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}` }}>
-            <div className="text-[10px] uppercase tracking-wider font-semibold mb-2" style={{ color: 'var(--brand-teal2)' }}>3) Ganancia proyectada</div>
+            <div className="text-[10px] uppercase tracking-wider font-semibold mb-2" style={{ color: 'var(--brand-teal2)' }}>{t('fin.projDet.3GananciaProyectada')}</div>
             <div className={cls("text-2xl font-bold font-mono mb-1", gananciaProyectada >= 0 ? "text-emerald-600" : "text-red-600")}>
               {usd(gananciaProyectada)}
             </div>
             <div className="text-xs" style={{ color: 'var(--brand-teal2)' }}>
-              ARV {usd(p.arv, { compact: true })} − Costo total {usd(costoTotal, { compact: true })}
+              ARV {usd(p.arv, { compact: true })} {t('fin.projDet.costoTotal')} {usd(costoTotal, { compact: true })}
             </div>
           </div>
         </div>
@@ -203,7 +205,7 @@ export default function ProjectDetail() {
           <div className="mt-4 flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-200">
             <AlertTriangle size={16} className="text-red-600 flex-shrink-0 mt-0.5" />
             <div className="text-sm text-red-700">
-              <strong>Sobrecosto detectado:</strong> los egresos ({usd(k.egresos)}) superan el costo esperado ({usd(p.expectedCost)}) en {usd(k.egresos - p.expectedCost, { sign: true })}.
+              <strong>{t('fin.projDet.sobrecostoDetectado')}</strong> {t('fin.projDet.losEgresos')}{usd(k.egresos)}{t('fin.projDet.superanElCostoEsperado')}{usd(p.expectedCost)}{t('fin.projDet.en')} {usd(k.egresos - p.expectedCost, { sign: true })}.
             </div>
           </div>
         )}
@@ -211,7 +213,7 @@ export default function ProjectDetail() {
           <div className="mt-4 flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-200">
             <AlertTriangle size={16} className="text-red-600 flex-shrink-0 mt-0.5" />
             <div className="text-sm text-red-700">
-              <strong>Proyecto en pérdida proyectada:</strong> Costo total ({usd(costoTotal)}) supera ARV ({usd(p.arv)}).
+              <strong>{t('fin.projDet.proyectoEnPerdidaProyectada')}</strong> {t('fin.projDet.costoTotal2')}{usd(costoTotal)}{t('fin.projDet.superaArv')}{usd(p.arv)}).
             </div>
           </div>
         )}
@@ -221,29 +223,29 @@ export default function ProjectDetail() {
       <div className="grid lg:grid-cols-3 gap-4">
         <div className="kpi-card kpi-card-green">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>Equity inyectado</span>
+            <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>{t('fin.projDet.equityInyectado')}</span>
             <Wallet size={14} className="text-emerald-600" />
           </div>
           <div className="text-2xl font-bold font-mono text-emerald-600">{usd(k.equityTotal)}</div>
-          <div className="text-[11px] mt-1" style={{ color: 'var(--brand-teal2)' }}>{data.capitalContribs.length} aporte(s)</div>
+          <div className="text-[11px] mt-1" style={{ color: 'var(--brand-teal2)' }}>{data.capitalContribs.length} {t('fin.projDet.aporteS')}</div>
         </div>
         <div className="kpi-card kpi-card-amber">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>Deuda recibida</span>
+            <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>{t('fin.projDet.deudaRecibida')}</span>
             <Banknote size={14} className="text-amber-600" />
           </div>
           <div className="text-2xl font-bold font-mono text-amber-600">{usd(k.debtTotal)}</div>
           <div className="text-[11px] mt-1" style={{ color: 'var(--brand-teal2)' }}>
-            Viva: <span className="font-mono">{usd(k.debtOutstanding, { compact: true })}</span> · {data.loans.length} préstamo(s)
+            {t('fin.projDet.viva')} <span className="font-mono">{usd(k.debtOutstanding, { compact: true })}</span> · {data.loans.length} {t('fin.projDet.prestamoS')}
           </div>
         </div>
         <div className="kpi-card">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>Cash In</span>
+            <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>{t('fin.projDet.cashIn')}</span>
             <DollarSign size={14} style={{ color: 'var(--brand-gold)' }} />
           </div>
           <div className="text-2xl font-bold font-mono" style={{ color: 'var(--brand-teal)' }}>{usd(cashIn)}</div>
-          <div className="text-[11px] mt-1" style={{ color: 'var(--brand-teal2)' }}>Capital propio total</div>
+          <div className="text-[11px] mt-1" style={{ color: 'var(--brand-teal2)' }}>{t('fin.projDet.capitalPropioTotal')}</div>
         </div>
       </div>
 
@@ -251,28 +253,28 @@ export default function ProjectDetail() {
       <div className="card overflow-hidden">
         <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(29,29,31,0.1)', background: 'var(--brand-cream2)' }}>
           <h2 className="text-base font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}>
-            <Activity size={16} style={{ color: 'var(--brand-gold)' }} /> Movimientos del proyecto
+            <Activity size={16} style={{ color: 'var(--brand-gold)' }} /> {t('fin.projDet.movimientosDelProyecto')}
           </h2>
           <span className="text-xs font-semibold" style={{ color: 'var(--brand-teal2)' }}>
-            {full.movements?.length || 0} movimientos
+            {full.movements?.length || 0} {t('fin.projDet.movimientos')}
           </span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead style={{ background: 'rgba(29,29,31,0.04)' }}>
               <tr className="text-xs uppercase tracking-wider" style={{ color: 'var(--brand-teal2)' }}>
-                <th className="px-4 py-3 text-left font-semibold">Fecha</th>
-                <th className="px-4 py-3 text-left font-semibold">Tipo</th>
-                <th className="px-4 py-3 text-left font-semibold">Concepto</th>
-                <th className="px-4 py-3 text-left font-semibold">Categoría</th>
-                <th className="px-4 py-3 text-left font-semibold">Cuenta</th>
-                <th className="px-4 py-3 text-right font-semibold">Monto</th>
+                <th className="px-4 py-3 text-left font-semibold">{t('common.fecha')}</th>
+                <th className="px-4 py-3 text-left font-semibold">{t('common.tipo')}</th>
+                <th className="px-4 py-3 text-left font-semibold">{t('common.concepto')}</th>
+                <th className="px-4 py-3 text-left font-semibold">{t('common.categoria')}</th>
+                <th className="px-4 py-3 text-left font-semibold">{t('common.cuenta2')}</th>
+                <th className="px-4 py-3 text-right font-semibold">{t('common.monto')}</th>
               </tr>
             </thead>
             <tbody>
               {!full.movements || full.movements.length === 0 ? (
                 <tr><td colSpan={6} className="p-8 text-center" style={{ color: 'var(--brand-teal2)' }}>
-                  Sin movimientos asociados a este proyecto todavía.
+                  {t('fin.projDet.sinMovimientosAsociadosAEsteProyecto')}
                 </td></tr>
               ) : full.movements.map((m: any) => (
                 <tr key={m.id} className="table-row" style={{ borderBottom: '1px solid rgba(29,29,31,0.06)' }}>
@@ -309,10 +311,10 @@ export default function ProjectDetail() {
       <div className="grid lg:grid-cols-2 gap-4">
         <div className="card p-5">
           <h2 className="text-base font-bold mb-3 flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}>
-            <Wallet size={16} style={{ color: 'var(--brand-gold)' }} /> Equity inyectado
+            <Wallet size={16} style={{ color: 'var(--brand-gold)' }} /> {t('fin.projDet.equityInyectado')}
           </h2>
           {data.capitalContribs.length === 0 ? (
-            <p className="text-sm py-4 text-center" style={{ color: 'var(--brand-teal2)' }}>Sin aportes de capital registrados.</p>
+            <p className="text-sm py-4 text-center" style={{ color: 'var(--brand-teal2)' }}>{t('fin.projDet.sinAportesDeCapitalRegistrados')}</p>
           ) : (
             <ul className="space-y-2">
               {data.capitalContribs.map((c: any) => (
@@ -332,10 +334,10 @@ export default function ProjectDetail() {
 
         <div className="card p-5">
           <h2 className="text-base font-bold mb-3 flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}>
-            <Banknote size={16} style={{ color: 'var(--brand-gold)' }} /> Préstamos asociados
+            <Banknote size={16} style={{ color: 'var(--brand-gold)' }} /> {t('fin.projDet.prestamosAsociados')}
           </h2>
           {data.loans.length === 0 ? (
-            <p className="text-sm py-4 text-center" style={{ color: 'var(--brand-teal2)' }}>Sin préstamos asociados.</p>
+            <p className="text-sm py-4 text-center" style={{ color: 'var(--brand-teal2)' }}>{t('fin.projDet.sinPrestamosAsociados')}</p>
           ) : (
             <ul className="space-y-2">
               {data.loans.map((l: any) => (
@@ -344,14 +346,14 @@ export default function ProjectDetail() {
                     <div className="font-semibold truncate" style={{ color: 'var(--brand-teal)' }}>{l.lender?.name}</div>
                     <div className="text-xs mt-0.5" style={{ color: 'var(--brand-teal2)' }}>
                       {dateShort(l.date)}
-                      {l.interestRate ? ` · ${l.interestRate}% tasa` : ""}
+                      {l.interestRate ? t('fin.projDet.v0Tasa', { v0: l.interestRate }) : ""}
                       {l.termMonths ? ` · ${l.termMonths}m` : ""}
                     </div>
                   </div>
                   <div className="text-right">
                     <div className="font-mono font-bold text-amber-600">{usd(l.amount, { compact: true })}</div>
                     {l.totalRepaid > 0 && (
-                      <div className="text-[10px]" style={{ color: 'var(--brand-teal2)' }}>Pagado: {usd(l.totalRepaid, { compact: true })}</div>
+                      <div className="text-[10px]" style={{ color: 'var(--brand-teal2)' }}>{t('fin.projDet.pagado')} {usd(l.totalRepaid, { compact: true })}</div>
                     )}
                   </div>
                 </li>
@@ -365,10 +367,10 @@ export default function ProjectDetail() {
       <div className="card p-5">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-base font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}>
-            <FileText size={16} style={{ color: 'var(--brand-gold)' }} /> Documentos
+            <FileText size={16} style={{ color: 'var(--brand-gold)' }} /> {t('common.documentos')}
           </h2>
           <label className="btn-primary cursor-pointer text-xs">
-            <Upload size={13} /> Subir archivo
+            <Upload size={13} /> {t('common.subirArchivo')}
             <input
               type="file"
               className="hidden"
@@ -378,7 +380,7 @@ export default function ProjectDetail() {
         </div>
         {!full.documents || full.documents.length === 0 ? (
           <p className="text-sm py-4 text-center" style={{ color: 'var(--brand-teal2)' }}>
-            Sin documentos. Adjunta escrituras, contratos, planos, facturas globales del proyecto.
+            {t('fin.projDet.sinDocumentosAdjuntaEscriturasContratosPla')}
           </p>
         ) : (
           <ul className="grid md:grid-cols-2 gap-2">

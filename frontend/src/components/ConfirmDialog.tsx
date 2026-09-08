@@ -14,6 +14,7 @@
  */
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react'
 import { AlertTriangle, X, Trash2, CheckCircle2 } from 'lucide-react'
+import { useI18n, tStatic } from '../i18n'
 
 export interface ConfirmOptions {
   title: string
@@ -32,6 +33,7 @@ type Resolver = (value: boolean) => void
 const ConfirmContext = createContext<((opts: ConfirmOptions) => Promise<boolean>) | null>(null)
 
 export function ConfirmProvider({ children }: { children: ReactNode }) {
+  const { t } = useI18n()
   const [opts, setOpts] = useState<ConfirmOptions | null>(null)
   const [resolver, setResolver] = useState<Resolver | null>(null)
   const [typedValue, setTypedValue] = useState('')
@@ -102,7 +104,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
                   onClick={() => close(false)}
                   className="p-1 -m-1 rounded-lg hover:bg-stone-100 transition-colors flex-shrink-0"
                   style={{ color: 'var(--brand-teal2)' }}
-                  aria-label="Cerrar"
+                  aria-label={t('ui.confirm.cerrar')}
                 >
                   <X size={18} />
                 </button>
@@ -131,7 +133,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
               {needsType && (
                 <div className="mb-3">
                   <label className="text-xs font-semibold mb-1.5 block" style={{ color: 'var(--brand-teal)' }}>
-                    Escribe <span className="font-mono px-1.5 py-0.5 rounded bg-red-50 text-red-700">{opts.typeToConfirm}</span> para confirmar:
+                    {t('ui.confirm.escribe')} <span className="font-mono px-1.5 py-0.5 rounded bg-red-50 text-red-700">{opts.typeToConfirm}</span> {t('ui.confirm.paraConfirmar')}
                   </label>
                   <input
                     type="text"
@@ -160,7 +162,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
                     border: '1px solid rgba(29,29,31,0.15)',
                   }}
                 >
-                  {opts.cancelText || 'Cancelar'}
+                  {opts.cancelText || t('common.cancelar')}
                 </button>
                 <button
                   onClick={() => close(true)}
@@ -175,7 +177,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
                   autoFocus={!needsType}
                 >
                   {isDestructive && <Trash2 size={14} />}
-                  {opts.confirmText || (isDestructive ? 'Eliminar' : 'Confirmar')}
+                  {opts.confirmText || (isDestructive ? t('common.eliminar') : t('ui.confirm.confirmar'))}
                 </button>
               </div>
             </div>
@@ -192,5 +194,5 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
  */
 export function useConfirm() {
   const ctx = useContext(ConfirmContext)
-  return ctx || (async (opts: ConfirmOptions) => window.confirm(`${opts.title}\n\n${opts.message}`))
+  return ctx || (async (opts: ConfirmOptions) => window.confirm(tStatic('ui.confirm.v0V1', { v0: opts.title, v1: opts.message })))
 }

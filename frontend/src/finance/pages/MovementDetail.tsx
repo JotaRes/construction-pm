@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { TechAssociate, TechSel, EMPTY_TECH_SEL, techSelReady, resolveTechLink } from "../components/TechAssociate";
+import { useI18n } from '../../i18n'
 
 const TYPE_COLOR: Record<string, { bg: string; text: string; icon: any }> = {
   Ingreso:       { bg: "bg-emerald-50 border-emerald-200", text: "text-emerald-700", icon: ArrowDownLeft },
@@ -18,6 +19,7 @@ const TYPE_COLOR: Record<string, { bg: string; text: string; icon: any }> = {
 };
 
 export default function MovementDetail() {
+  const { t } = useI18n()
   const { id } = useParams();
   const qc = useQueryClient();
   const mid = +(id || 0);
@@ -62,26 +64,26 @@ export default function MovementDetail() {
       qc.invalidateQueries({ queryKey: ["loans"] });
       qc.invalidateQueries({ queryKey: ["accounts"] });
       qc.invalidateQueries({ queryKey: ["account-detail"] });
-      toast.success("Movimiento actualizado");
+      toast.success(t('fin.movDet.movimientoActualizado'));
       setEditing(false);
     },
-    onError: (e: any) => toast.error(e.response?.data?.error || "Error al actualizar"),
+    onError: (e: any) => toast.error(e.response?.data?.error || t('fin.movDet.errorAlActualizar')),
   });
 
   const uploadMutation = useMutation({
     mutationFn: (file: File) => API.uploadMovementDoc(mid, file),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["movement", mid] });
-      toast.success("Soporte cargado");
+      toast.success(t('fin.movDet.soporteCargado'));
     },
-    onError: (e: any) => toast.error(e.response?.data?.error || "Error al subir"),
+    onError: (e: any) => toast.error(e.response?.data?.error || t('ui.docs.errorAlSubir')),
   });
 
   const deleteDocMutation = useMutation({
     mutationFn: (docId: number) => API.deleteMovementDoc(mid, docId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["movement", mid] });
-      toast.success("Soporte eliminado");
+      toast.success(t('fin.movDet.soporteEliminado'));
     },
   });
 
@@ -105,9 +107,9 @@ export default function MovementDetail() {
       qc.invalidateQueries({ queryKey: ["fin-tech-tree"] });
       setTechOpen(false);
       setTechSel(EMPTY_TECH_SEL);
-      toast.success("Asociación con la obra actualizada");
+      toast.success(t('fin.movDet.asociacionConLaObraActualizada'));
     },
-    onError: (e: any) => toast.error(e.response?.data?.error || e?.message || "Error al asociar"),
+    onError: (e: any) => toast.error(e.response?.data?.error || e?.message || t('fin.movDet.errorAlAsociar')),
   });
 
   // Lógica equity/loan también en edición
@@ -124,12 +126,12 @@ export default function MovementDetail() {
   const isDebtPayment = !!(selectedCategory && /pago.*(deuda|pr[ée]stamo)|debt.*pay|amortizaci[oó]n/i.test(selectedCategory.name || ""));
 
   const handleSave = () => {
-    if (!form.amount || +form.amount <= 0) return toast.error("Monto debe ser mayor a 0");
-    if (!form.concept.trim()) return toast.error("Concepto es obligatorio");
-    if (form.type === "Ingreso" && !form.originId) return toast.error("Selecciona el origen del ingreso");
-    if (form.type === "Ingreso" && isEquityOrigin && !form.partnerId) return toast.error("Para aporte de socio, selecciona el socio");
-    if (form.type === "Ingreso" && isLoanOrigin && !form.lenderId) return toast.error("Para un préstamo, selecciona el lender");
-    if (form.type === "Egreso" && !form.categoryId) return toast.error("Selecciona la categoría");
+    if (!form.amount || +form.amount <= 0) return toast.error(t('common.montoDebeSerMayorA0'));
+    if (!form.concept.trim()) return toast.error(t('common.conceptoEsObligatorio'));
+    if (form.type === "Ingreso" && !form.originId) return toast.error(t('fin.movDet.seleccionaElOrigenDelIngreso'));
+    if (form.type === "Ingreso" && isEquityOrigin && !form.partnerId) return toast.error(t('fin.movDet.paraAporteDeSocioSeleccionaEl'));
+    if (form.type === "Ingreso" && isLoanOrigin && !form.lenderId) return toast.error(t('fin.movDet.paraUnPrestamoSeleccionaElLender'));
+    if (form.type === "Egreso" && !form.categoryId) return toast.error(t('fin.movDet.seleccionaLaCategoria'));
 
     const payload: any = {
       date: new Date(form.date),
@@ -157,9 +159,9 @@ export default function MovementDetail() {
     return (
       <div className="space-y-4 page-content">
         <Link to="/finance/movements" className="btn-ghost inline-flex items-center gap-1 text-sm">
-          <ArrowLeft size={14} /> Movimientos
+          <ArrowLeft size={14} /> {t('common.movimientos')}
         </Link>
-        <div className="card p-12 text-center" style={{ color: 'var(--brand-teal)' }}>Cargando movimiento…</div>
+        <div className="card p-12 text-center" style={{ color: 'var(--brand-teal)' }}>{t('fin.movDet.cargandoMovimiento')}</div>
       </div>
     );
   }
@@ -168,12 +170,12 @@ export default function MovementDetail() {
     return (
       <div className="space-y-4 page-content">
         <Link to="/finance/movements" className="btn-ghost inline-flex items-center gap-1 text-sm">
-          <ArrowLeft size={14} /> Movimientos
+          <ArrowLeft size={14} /> {t('common.movimientos')}
         </Link>
         <div className="card p-8 text-center bg-red-50 border-red-200" style={{ color: 'var(--brand-teal)' }}>
           <AlertCircle size={32} className="mx-auto mb-2 text-red-600" />
-          <div className="text-red-700 font-semibold mb-2">No se pudo cargar el movimiento</div>
-          <div className="text-xs text-red-600">{(error as any)?.message || "ID inválido o el movimiento fue eliminado"}</div>
+          <div className="text-red-700 font-semibold mb-2">{t('fin.movDet.noSePudoCargarElMovimiento')}</div>
+          <div className="text-xs text-red-600">{(error as any)?.message || t('fin.movDet.idInvalidoOElMovimientoFue')}</div>
         </div>
       </div>
     );
@@ -186,7 +188,7 @@ export default function MovementDetail() {
     <div className="space-y-4 page-content">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <Link to="/finance/movements" className="btn-ghost inline-flex items-center gap-1 text-sm">
-          <ArrowLeft size={14} /> Movimientos
+          <ArrowLeft size={14} /> {t('common.movimientos')}
         </Link>
         <div className="flex gap-2 flex-wrap">
           {!editing ? (
@@ -196,29 +198,29 @@ export default function MovementDetail() {
                 onClick={() => updateMutation.mutate({ needsReview: !m.needsReview })}
                 disabled={updateMutation.isPending}
               >
-                <AlertCircle size={14} /> {m.needsReview ? "Quitar marca revisar" : "Marcar por revisar"}
+                <AlertCircle size={14} /> {m.needsReview ? t('fin.movDet.quitarMarcaRevisar') : t('fin.movDet.marcarPorRevisar')}
               </button>
               <button
                 className={cls("btn-secondary text-sm", m.isReconciled && "ring-2 ring-emerald-300")}
                 onClick={() => updateMutation.mutate({ isReconciled: !m.isReconciled })}
                 disabled={updateMutation.isPending}
               >
-                <FileCheck size={14} /> {m.isReconciled ? "Conciliado ✓" : "Marcar conciliado"}
+                <FileCheck size={14} /> {m.isReconciled ? t('fin.movDet.conciliado') : t('fin.movDet.marcarConciliado')}
               </button>
               <button
                 className="btn-primary text-sm"
                 onClick={() => setEditing(true)}
               >
-                <Edit3 size={14} /> Editar movimiento
+                <Edit3 size={14} /> {t('fin.movDet.editarMovimiento')}
               </button>
             </>
           ) : (
             <>
               <button className="btn-secondary text-sm" onClick={() => setEditing(false)}>
-                <X size={14} /> Cancelar
+                <X size={14} /> {t('common.cancelar')}
               </button>
               <button className="btn-primary text-sm" onClick={handleSave} disabled={updateMutation.isPending}>
-                <Save size={14} /> {updateMutation.isPending ? "Guardando…" : "Guardar cambios"}
+                <Save size={14} /> {updateMutation.isPending ? t('common.guardando') : t('common.guardarCambios')}
               </button>
             </>
           )}
@@ -236,14 +238,14 @@ export default function MovementDetail() {
               </div>
               <div>
                 <div className="text-[10px] font-mono uppercase tracking-wider mb-0.5" style={{ color: 'var(--brand-teal2)' }}>
-                  Movimiento #{m.id}
+                  {t('fin.movDet.movimiento')}{m.id}
                 </div>
                 {editing ? (
                   <input
                     className="input text-lg font-semibold w-full"
                     value={form.concept}
                     onChange={(e) => setForm({ ...form, concept: e.target.value })}
-                    placeholder="Concepto"
+                    placeholder={t('common.concepto')}
                   />
                 ) : (
                   <h1 className="text-xl font-bold" style={{ color: 'var(--brand-teal)' }}>{m.concept}</h1>
@@ -259,7 +261,7 @@ export default function MovementDetail() {
             </div>
 
             <div className="text-right">
-              <div className="text-[10px] uppercase tracking-wider font-semibold mb-1" style={{ color: 'var(--brand-teal2)' }}>Monto</div>
+              <div className="text-[10px] uppercase tracking-wider font-semibold mb-1" style={{ color: 'var(--brand-teal2)' }}>{t('common.monto')}</div>
               {editing ? (
                 <input
                   type="number" step="0.01"
@@ -284,10 +286,10 @@ export default function MovementDetail() {
       {/* === CAMPOS === */}
       <div className="card p-5">
         <div className="grid md:grid-cols-2 gap-4">
-          <Field icon={<Building2 size={13} />} label={form.type === "Interbancario" ? "Cuenta origen" : "Cuenta"}>
+          <Field icon={<Building2 size={13} />} label={form.type === "Interbancario" ? t('fin.movDet.cuentaOrigen') : t('common.cuenta2')}>
             {editing ? (
               <select className="select w-full" value={form.accountId} onChange={(e) => setForm({ ...form, accountId: e.target.value })}>
-                <option value="">— ninguna —</option>
+                <option value="">{t('fin.movDet.ninguna')}</option>
                 {catalogs?.accounts?.map((a: any) => <option key={a.id} value={a.id}>{a.name}</option>)}
               </select>
             ) : (
@@ -298,10 +300,10 @@ export default function MovementDetail() {
           </Field>
 
           {(form.type === "Interbancario" || m.destAccount) && (
-            <Field icon={<Repeat size={13} />} label="Cuenta destino">
+            <Field icon={<Repeat size={13} />} label={t('fin.movDet.cuentaDestino')}>
               {editing && form.type === "Interbancario" ? (
                 <select className="select w-full" value={form.destAccountId} onChange={(e) => setForm({ ...form, destAccountId: e.target.value })}>
-                  <option value="">— ninguna —</option>
+                  <option value="">{t('fin.movDet.ninguna')}</option>
                   {catalogs?.accounts?.filter((a: any) => String(a.id) !== form.accountId).map((a: any) => <option key={a.id} value={a.id}>{a.name}</option>)}
                 </select>
               ) : (
@@ -315,10 +317,10 @@ export default function MovementDetail() {
           )}
 
           {(form.type === "Egreso" || m.category) && (
-            <Field icon={<Tag size={13} />} label="Categoría">
+            <Field icon={<Tag size={13} />} label={t('common.categoria')}>
               {editing && form.type === "Egreso" ? (
                 <select className="select w-full" value={form.categoryId} onChange={(e) => setForm({ ...form, categoryId: e.target.value })}>
-                  <option value="">— seleccionar —</option>
+                  <option value="">{t('common.seleccionar')}</option>
                   {catalogs?.categories?.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               ) : (
@@ -328,10 +330,10 @@ export default function MovementDetail() {
           )}
 
           {(form.type === "Ingreso" || m.origin) && (
-            <Field icon={<TrendingUp size={13} />} label="Origen del ingreso">
+            <Field icon={<TrendingUp size={13} />} label={t('fin.movDet.origenDelIngreso')}>
               {editing && form.type === "Ingreso" ? (
                 <select className="select w-full" value={form.originId} onChange={(e) => setForm({ ...form, originId: e.target.value, partnerId: "", lenderId: "" })}>
-                  <option value="">— seleccionar —</option>
+                  <option value="">{t('common.seleccionar')}</option>
                   {catalogs?.origins?.map((o: any) => <option key={o.id} value={o.id}>{o.name}</option>)}
                 </select>
               ) : (
@@ -341,10 +343,10 @@ export default function MovementDetail() {
           )}
 
           {(form.type === "Egreso" || m.provider) && (
-            <Field icon={<Briefcase size={13} />} label="Proveedor">
+            <Field icon={<Briefcase size={13} />} label={t('common.proveedor')}>
               {editing && form.type === "Egreso" ? (
                 <select className="select w-full" value={form.providerId} onChange={(e) => setForm({ ...form, providerId: e.target.value })}>
-                  <option value="">— ninguno —</option>
+                  <option value="">{t('common.ninguno')}</option>
                   {catalogs?.providers?.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
               ) : (
@@ -353,10 +355,10 @@ export default function MovementDetail() {
             </Field>
           )}
 
-          <Field icon={<Briefcase size={13} />} label="Proyecto asociado">
+          <Field icon={<Briefcase size={13} />} label={t('fin.movDet.proyectoAsociado')}>
             {editing ? (
               <select className="select w-full" value={form.projectId} onChange={(e) => setForm({ ...form, projectId: e.target.value })}>
-                <option value="">— corporativo (sin proyecto) —</option>
+                <option value="">{t('fin.movDet.corporativoSinProyecto')}</option>
                 {catalogs?.projects?.map((p: any) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
               </select>
             ) : (
@@ -364,15 +366,15 @@ export default function MovementDetail() {
                 <Link to={`/finance/projects/${m.project.id}`} className="font-semibold hover:underline" style={{ color: 'var(--brand-teal)' }}>
                   {m.project.code} · {m.project.name}
                 </Link>
-              ) : <span style={{ color: 'var(--brand-teal2)', opacity: 0.5 }}>Corporativo (sin proyecto)</span>
+              ) : <span style={{ color: 'var(--brand-teal2)', opacity: 0.5 }}>{t('fin.movDet.corporativoSinProyecto2')}</span>
             )}
           </Field>
 
           {(isEquityOrigin || m.partner) && form.type === "Ingreso" && (
-            <Field icon={<Users size={13} />} label="Socio que aporta *">
+            <Field icon={<Users size={13} />} label={t('common.socioQueAporta')}>
               {editing ? (
                 <select className="select w-full" value={form.partnerId} onChange={(e) => setForm({ ...form, partnerId: e.target.value })} required>
-                  <option value="">— seleccionar socio —</option>
+                  <option value="">{t('common.seleccionarSocio')}</option>
                   {catalogs?.partners?.map((p: any) => <option key={p.id} value={p.id}>{p.code} · {p.fullName}</option>)}
                 </select>
               ) : (
@@ -384,10 +386,10 @@ export default function MovementDetail() {
           )}
 
           {(isLoanOrigin || isDebtPayment || m.lender) && (
-            <Field icon={<Banknote size={13} />} label="Lender (prestamista)">
+            <Field icon={<Banknote size={13} />} label={t('fin.movDet.lenderPrestamista')}>
               {editing ? (
                 <select className="select w-full" value={form.lenderId} onChange={(e) => setForm({ ...form, lenderId: e.target.value })}>
-                  <option value="">— ninguno —</option>
+                  <option value="">{t('common.ninguno')}</option>
                   {catalogs?.lenders?.map((l: any) => <option key={l.id} value={l.id}>{l.name}</option>)}
                 </select>
               ) : (
@@ -400,12 +402,12 @@ export default function MovementDetail() {
 
           <div className="md:col-span-2">
             <label className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider font-semibold mb-1.5" style={{ color: 'var(--brand-teal2)' }}>
-              <FileText size={13} style={{ color: 'var(--brand-gold)' }} /> Notas
+              <FileText size={13} style={{ color: 'var(--brand-gold)' }} /> {t('common.notas')}
             </label>
             {editing ? (
               <textarea className="input w-full" rows={3} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
             ) : (
-              <div className="text-sm" style={{ color: 'var(--brand-teal)' }}>{m.notes || <span style={{ opacity: 0.5 }}>Sin notas</span>}</div>
+              <div className="text-sm" style={{ color: 'var(--brand-teal)' }}>{m.notes || <span style={{ opacity: 0.5 }}>{t('fin.movDet.sinNotas')}</span>}</div>
             )}
           </div>
         </div>
@@ -414,35 +416,35 @@ export default function MovementDetail() {
         <div className="mt-5 pt-4 flex items-center gap-2 flex-wrap" style={{ borderTop: '1px solid rgba(29,29,31,0.1)' }}>
           {m.isIntercompany && (
             <span className="badge bg-amber-50 text-amber-700 border border-amber-200 text-xs">
-              <Link2 size={11} className="mr-1" /> Intercompany
+              <Link2 size={11} className="mr-1" /> {t('fin.movDet.intercompany')}
               {m.linkedMovementId && (
-                <Link to={`/finance/movements/${m.linkedMovementId}`} className="ml-2 underline">→ ver par</Link>
+                <Link to={`/finance/movements/${m.linkedMovementId}`} className="ml-2 underline">{t('fin.movDet.verPar')}</Link>
               )}
             </span>
           )}
           {m.isEquity && (
             <span className="badge bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs">
-              💼 Aporte de socio — refleja en Capital
+              {t('fin.movDet.aporteDeSocioReflejaEnCapital')}
             </span>
           )}
           {m.isLoan && (
             <span className="badge bg-amber-50 text-amber-700 border border-amber-200 text-xs">
-              🏦 Préstamo recibido — refleja en Deuda
+              {t('fin.movDet.prestamoRecibidoReflejaEnDeuda')}
             </span>
           )}
           {m.isLoanRepayment && (
             <span className="badge bg-stone-100 text-stone-700 border border-stone-200 text-xs">
-              💳 Pago de deuda — descuenta del Saldo
+              {t('fin.movDet.pagoDeDeudaDescuentaDelSaldo')}
             </span>
           )}
           {m.isIntercompany && (
             <button onClick={() => unlinkMutation.mutate()} className="btn-ghost text-xs text-red-600">
-              <Unlink size={12} /> Desvincular
+              <Unlink size={12} /> {t('fin.movDet.desvincular')}
             </button>
           )}
           {m.matchStatus === "matched" && (
             <span className="badge bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs">
-              <FileCheck size={11} className="mr-1" /> Coincide con extracto
+              <FileCheck size={11} className="mr-1" /> {t('fin.movDet.coincideConExtracto')}
             </span>
           )}
         </div>
@@ -453,7 +455,7 @@ export default function MovementDetail() {
         <div className="card p-5">
           <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
             <h2 className="text-base font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}>
-              <HardHat size={16} style={{ color: 'var(--brand-gold)' }} /> Obra asociada
+              <HardHat size={16} style={{ color: 'var(--brand-gold)' }} /> {t('fin.movDet.obraAsociada')}
             </h2>
             <div className="flex items-center gap-2">
               {m.techItem && (
@@ -461,13 +463,13 @@ export default function MovementDetail() {
                   className="btn-ghost text-xs text-red-600"
                   disabled={techMutation.isPending}
                   onClick={() => techMutation.mutate(true)}
-                  title="Quita la asociación (el espejo automático se elimina; una subactividad tuya se conserva)"
+                  title={t('fin.movDet.quitaLaAsociacionElEspejoAutomatico')}
                 >
-                  <Unlink size={12} /> Quitar
+                  <Unlink size={12} /> {t('fin.movDet.quitar')}
                 </button>
               )}
               <button className="btn-secondary text-xs" onClick={() => setTechOpen((o) => !o)}>
-                {techOpen ? "Cancelar" : m.techItem ? "Cambiar" : "Asociar a una actividad"}
+                {techOpen ? t('common.cancelar') : m.techItem ? t('fin.movDet.cambiar') : t('fin.movDet.asociarAUnaActividad')}
               </button>
             </div>
           </div>
@@ -480,12 +482,12 @@ export default function MovementDetail() {
                 {m.techItem.itemCode} · {m.techItem.activity}
               </span>
               <p className="text-[11px] mt-1.5" style={{ color: 'var(--brand-teal2)' }}>
-                Este gasto vive también en EJECUCIÓN como subactividad espejo (mismo valor y fecha). Editar o eliminar el movimiento actualiza la obra automáticamente.
+                {t('fin.movDet.esteGastoViveTambienEnEjecucion')}
               </p>
             </div>
           ) : !techOpen ? (
             <p className="text-sm" style={{ color: 'var(--brand-teal2)' }}>
-              Sin asociar. Asócialo a una actividad de obra para que el gasto se registre en ambos módulos a la vez.
+              {t('fin.movDet.sinAsociarAsocialoAUnaActividad')}
             </p>
           ) : null}
 
@@ -498,7 +500,7 @@ export default function MovementDetail() {
                   disabled={!techSelReady(techSel) || techMutation.isPending}
                   onClick={() => techMutation.mutate(false)}
                 >
-                  {techMutation.isPending ? "Asociando…" : "Guardar asociación"}
+                  {techMutation.isPending ? t('fin.movDet.asociando') : t('fin.movDet.guardarAsociacion')}
                 </button>
               </div>
             </div>
@@ -510,10 +512,10 @@ export default function MovementDetail() {
       <div className="card p-5">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-base font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}>
-            <FileText size={16} style={{ color: 'var(--brand-gold)' }} /> Soportes documentales
+            <FileText size={16} style={{ color: 'var(--brand-gold)' }} /> {t('fin.movDet.soportesDocumentales')}
           </h2>
           <label className="btn-primary cursor-pointer text-xs">
-            <Upload size={13} /> Subir archivo
+            <Upload size={13} /> {t('common.subirArchivo')}
             <input
               type="file"
               className="hidden"
@@ -523,7 +525,7 @@ export default function MovementDetail() {
         </div>
         {!m.documents || m.documents.length === 0 ? (
           <p className="text-sm py-3" style={{ color: 'var(--brand-teal2)' }}>
-            Sin soportes. Adjunta facturas, recibos o evidencia (PDF, imagen).
+            {t('fin.movDet.sinSoportesAdjuntaFacturasRecibosO')}
           </p>
         ) : (
           <ul className="space-y-2">

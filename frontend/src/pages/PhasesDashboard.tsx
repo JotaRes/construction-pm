@@ -2,28 +2,30 @@ import { useQuery } from '@tanstack/react-query'
 import { phasesApi, type PhaseSummary } from '../lib/api'
 import { Layers, TrendingUp, Calendar } from 'lucide-react'
 import MiniDonut from '../components/MiniDonut'
+import { useI18n, type TranslationKey, currentLocale } from '../i18n'
 
 const fmt = (n: number) =>
   n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
 
 const fmtDate = (d: string | null) =>
-  d ? new Date(d).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
+  d ? new Date(d).toLocaleDateString(currentLocale(), { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
 
 // Progreso siempre en verde (homogéneo con Const. Budget); el estado se
 // diferencia con el badge, no con el color de la barra.
-function statusStyle(s: PhaseSummary['status']) {
-  if (s === 'COMPLETA') return { bar: 'bg-emerald-500', badge: 'bg-emerald-500/15 text-emerald-600', label: 'Completa' }
-  if (s === 'EN_CURSO') return { bar: 'bg-emerald-500', badge: 'bg-[#3E5A70]/15 text-[var(--brand-gold)]', label: 'En curso' }
-  return { bar: 'bg-slate-300', badge: 'bg-slate-100 text-slate-500', label: 'Pendiente' }
+function statusStyle(s: PhaseSummary['status']): { bar: string; badge: string; labelKey: TranslationKey } {
+  if (s === 'COMPLETA') return { bar: 'bg-emerald-500', badge: 'bg-emerald-500/15 text-emerald-600', labelKey: 'tech.phases.completa' }
+  if (s === 'EN_CURSO') return { bar: 'bg-emerald-500', badge: 'bg-[#3E5A70]/15 text-[var(--brand-gold)]', labelKey: 'tech.exec.enCurso' }
+  return { bar: 'bg-slate-300', badge: 'bg-slate-100 text-slate-500', labelKey: 'common.pendiente' }
 }
 
 export default function PhasesDashboard({ projectId }: { projectId: string }) {
+  const { t } = useI18n()
   const { data: phases = [], isLoading } = useQuery<PhaseSummary[]>({
     queryKey: ['phases-summary', projectId],
     queryFn: () => phasesApi.summary(projectId),
   })
 
-  if (isLoading) return <div className="text-slate-500 text-sm animate-pulse">Cargando fases...</div>
+  if (isLoading) return <div className="text-slate-500 text-sm animate-pulse">{t('tech.phases.cargandoFases')}</div>
 
   const totalBudget = phases.reduce((s, p) => s + p.budgetTotal, 0)
   const totalPaid = phases.reduce((s, p) => s + p.paidTotal, 0)
@@ -35,9 +37,9 @@ export default function PhasesDashboard({ projectId }: { projectId: string }) {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><Layers className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>Control de Fases Constructivas</span></h1>
+        <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><Layers className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>{t('tech.phases.controlDeFasesConstructivas')}</span></h1>
         <p className="text-sm text-slate-500 mt-0.5">
-          Avance, fechas reales y presupuesto vs pagado por etapa (Fases 0–9)
+          {t('tech.phases.avanceFechasRealesYPresupuestoVs')}
         </p>
       </div>
 
@@ -46,20 +48,20 @@ export default function PhasesDashboard({ projectId }: { projectId: string }) {
         <div className="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-3">
           <MiniDonut pct={globalPct} size={56} />
           <div>
-            <div className="flex items-center gap-1.5 text-xs text-slate-400"><Layers className="w-3 h-3" /> Avance global</div>
-            <div className="text-[11px] text-slate-400 mt-0.5">{doneItems}/{totalItems} ítems</div>
+            <div className="flex items-center gap-1.5 text-xs text-slate-400"><Layers className="w-3 h-3" /> {t('tech.phases.avanceGlobal')}</div>
+            <div className="text-[11px] text-slate-400 mt-0.5">{doneItems}/{totalItems} {t('common.items')}</div>
           </div>
         </div>
         <div className="bg-white border border-slate-200 rounded-xl p-4">
-          <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1"><TrendingUp className="w-3 h-3" /> Budget total</div>
+          <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1"><TrendingUp className="w-3 h-3" /> {t('tech.phases.budgetTotal')}</div>
           <div className="text-2xl font-bold font-mono text-slate-900">{fmt(totalBudget)}</div>
         </div>
         <div className="bg-white border border-slate-200 rounded-xl p-4">
-          <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1"><TrendingUp className="w-3 h-3" /> Pagado</div>
+          <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1"><TrendingUp className="w-3 h-3" /> {t('tech.phases.pagado')}</div>
           <div className="text-2xl font-bold font-mono text-slate-900">{fmt(totalPaid)}</div>
         </div>
         <div className="bg-white border border-slate-200 rounded-xl p-4">
-          <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1"><TrendingUp className="w-3 h-3" /> Variación</div>
+          <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1"><TrendingUp className="w-3 h-3" /> {t('tech.phases.variacion')}</div>
           <div className={`text-2xl font-bold font-mono ${variance > 0 ? 'text-red-500' : 'text-emerald-600'}`}>
             {variance > 0 ? '+' : ''}{fmt(variance)}
           </div>
@@ -104,14 +106,14 @@ export default function PhasesDashboard({ projectId }: { projectId: string }) {
                       {p.variancePct > 0 ? '+' : ''}{p.variancePct}%
                     </td>
                     <td className="px-3 py-3">
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${st.badge} whitespace-nowrap`}>{st.label}</span>
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${st.badge} whitespace-nowrap`}>{t(st.labelKey)}</span>
                     </td>
                   </tr>
                 )
               })}
               {phases.length === 0 && (
                 <tr><td colSpan={9} className="text-center py-10 text-slate-400 text-sm">
-                  No hay fases cargadas para este proyecto todavía.
+                  {t('tech.phases.noHayFasesCargadasParaEste')}
                 </td></tr>
               )}
             </tbody>

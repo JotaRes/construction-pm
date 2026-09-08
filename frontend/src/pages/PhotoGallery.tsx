@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { filesApi } from '../lib/api'
 import { Image as ImageIcon, X } from 'lucide-react'
+import { useI18n, currentLocale } from '../i18n'
 
 interface ProjectFile {
   id: string
@@ -15,6 +16,7 @@ interface ProjectFile {
 const SIN_CAT = 'Sin categoría'
 
 export default function PhotoGallery({ projectId }: { projectId: string }) {
+  const { t } = useI18n()
   const [filter, setFilter] = useState<string>('all')
   const [selected, setSelected] = useState<ProjectFile | null>(null)
 
@@ -35,14 +37,14 @@ export default function PhotoGallery({ projectId }: { projectId: string }) {
 
   const filtered = filter === 'all' ? photos : photos.filter(p => (p.category || SIN_CAT) === filter)
 
-  if (isLoading) return <div className="text-slate-500 text-sm animate-pulse">Cargando galería...</div>
+  if (isLoading) return <div className="text-slate-500 text-sm animate-pulse">{t('tech.photos.cargandoGaleria')}</div>
 
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-xl font-bold text-slate-900">Galería de Obra</h1>
+        <h1 className="text-xl font-bold text-slate-900">{t('tech.photos.galeriaDeObra')}</h1>
         <p className="text-sm text-slate-500 mt-0.5">
-          {photos.length} foto{photos.length === 1 ? '' : 's'} · soporte visual para draws, HOA y lender
+          {photos.length} {t('tech.photos.foto')}{photos.length === 1 ? '' : 's'} {t('tech.photos.soporteVisualParaDrawsHoaY')}
         </p>
       </div>
 
@@ -52,7 +54,7 @@ export default function PhotoGallery({ projectId }: { projectId: string }) {
             <button key={c} onClick={() => setFilter(c)}
               className={`px-3.5 py-1 rounded-full text-xs font-medium transition-colors
                 ${filter === c ? 'bg-[var(--brand-teal)] text-white' : 'bg-slate-100 text-slate-500 hover:text-slate-800'}`}>
-              {c === 'all' ? 'Todas' : c}
+              {c === 'all' ? t('tech.photos.todas') : c}
             </button>
           ))}
         </div>
@@ -69,7 +71,7 @@ export default function PhotoGallery({ projectId }: { projectId: string }) {
                 <div className="text-xs font-medium text-slate-700 truncate">{p.name}</div>
                 <div className="text-[10px] text-slate-400">
                   {p.category && p.category !== SIN_CAT ? `${p.category} · ` : ''}
-                  {new Date(p.createdAt).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' })}
+                  {new Date(p.createdAt).toLocaleDateString(currentLocale(), { day: '2-digit', month: 'short', year: 'numeric' })}
                 </div>
               </div>
             </button>
@@ -79,7 +81,7 @@ export default function PhotoGallery({ projectId }: { projectId: string }) {
         <div className="bg-white border border-slate-200 rounded-xl text-center py-16">
           <ImageIcon className="w-8 h-8 text-slate-300 mx-auto mb-2" />
           <div className="text-slate-400 text-sm">
-            {photos.length === 0 ? 'No hay fotos cargadas. Sube imágenes desde Archivos.' : 'No hay fotos en esta categoría.'}
+            {photos.length === 0 ? t('tech.photos.noHayFotosCargadasSubeImagenes') : t('tech.photos.noHayFotosEnEstaCategoria')}
           </div>
         </div>
       )}

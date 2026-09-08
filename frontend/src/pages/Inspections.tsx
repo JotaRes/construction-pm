@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { inspectionsApi } from '../lib/api'
 import type { Inspection, InspectionEstado } from '../lib/types'
 import { CheckCircle2, AlertTriangle, Plus, X, ClipboardCheck } from 'lucide-react'
+import { useI18n } from '../i18n'
 
 // ── T2: checklist de prerequisitos por inspección ──────────────
 // Regla de obra: NO llamar inspección sin checklist cerrado. Una reprobación
@@ -22,6 +23,7 @@ function parsePrereqs(ins: Inspection): Prereq[] {
 }
 
 function PrereqChecklist({ ins, onSave }: { ins: Inspection; onSave: (json: string) => void }) {
+  const { t } = useI18n()
   const [items, setItems] = useState<Prereq[]>(() => parsePrereqs(ins))
   const [newLabel, setNewLabel] = useState('')
   const persist = (next: Prereq[]) => { setItems(next); onSave(JSON.stringify(next)) }
@@ -34,7 +36,7 @@ function PrereqChecklist({ ins, onSave }: { ins: Inspection; onSave: (json: stri
         <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
           ready ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'}`}>
           {ready ? <CheckCircle2 className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
-          {ready ? 'LISTA para llamar' : `${items.length - doneCount} prerequisito(s) pendiente(s)`}
+          {ready ? t('tech.insp.listaParaLlamar') : `${items.length - doneCount} prerequisito(s) pendiente(s)`}
         </span>
       )}
       {items.map((p, idx) => (
@@ -50,7 +52,7 @@ function PrereqChecklist({ ins, onSave }: { ins: Inspection; onSave: (json: stri
       <form onSubmit={e => { e.preventDefault(); const v = newLabel.trim(); if (v) { persist([...items, { label: v, done: false }]); setNewLabel('') } }}
         className="flex items-center gap-1.5">
         <Plus className="w-3 h-3 text-slate-400" />
-        <input value={newLabel} onChange={e => setNewLabel(e.target.value)} placeholder="Agregar prerequisito…"
+        <input value={newLabel} onChange={e => setNewLabel(e.target.value)} placeholder={t('tech.insp.agregarPrerequisito')}
           className="flex-1 bg-transparent text-[11px] text-slate-500 focus:outline-none border-b border-transparent focus:border-[var(--brand-gold)] py-0.5" />
       </form>
     </div>
@@ -60,6 +62,7 @@ function PrereqChecklist({ ins, onSave }: { ins: Inspection; onSave: (json: stri
 const ESTADOS: InspectionEstado[] = ['PENDIENTE', 'PROGRAMADA', 'APROBADA', 'RECHAZADA']
 
 export default function Inspections({ projectId }: { projectId: string }) {
+  const { t } = useI18n()
   const queryClient = useQueryClient()
 
   const { data: inspections = [], isLoading } = useQuery<Inspection[]>({
@@ -76,24 +79,22 @@ export default function Inspections({ projectId }: { projectId: string }) {
   const aprobadas = inspections.filter(i => i.estado === 'APROBADA').length
   const rechazadas = inspections.filter(i => i.estado === 'RECHAZADA').length
 
-  if (isLoading) return <div className="text-slate-500 text-sm animate-pulse">Cargando inspecciones...</div>
+  if (isLoading) return <div className="text-slate-500 text-sm animate-pulse">{t('tech.insp.cargandoInspecciones')}</div>
 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><ClipboardCheck className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>Tracker de Inspecciones</span></h1>
+          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><ClipboardCheck className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>{t('tech.insp.trackerDeInspecciones')}</span></h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            Permit BR26-000029 · Inspector Oconee: (864) 718-1005
-            · <span className="text-emerald-400">{aprobadas} aprobadas</span>
-            {rechazadas > 0 && <span className="text-red-400"> · {rechazadas} rechazadas</span>}
+            {t('tech.insp.permitBr26000029InspectorOconee864')} <span className="text-emerald-400">{aprobadas} {t('tech.insp.aprobadas')}</span>
+            {rechazadas > 0 && <span className="text-red-400"> · {rechazadas} {t('tech.insp.rechazadas')}</span>}
           </p>
         </div>
       </div>
 
       <div className="bg-[#3E5A70]/10 border border-amber-500/30 rounded-lg px-4 py-3 text-xs text-[var(--brand-teal)]">
-        ⚠️ Re-inspección cuesta $50–100 y retrasa la obra mínimo 3–7 días hábiles. No llamar inspección sin estar 100% listos.
-        Regla: No se avanza sin inspección aprobada de fase anterior.
+        {t('tech.insp.reInspeccionCuesta50100Y')}
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
@@ -101,12 +102,12 @@ export default function Inspections({ projectId }: { projectId: string }) {
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50">
               <th className="px-4 py-3 text-left text-[10px] text-slate-400 uppercase w-16">WBS</th>
-              <th className="px-4 py-3 text-left text-[10px] text-slate-400 uppercase">Tipo Inspección</th>
-              <th className="px-4 py-3 text-left text-[10px] text-slate-400 uppercase w-32">Fase</th>
-              <th className="px-4 py-3 text-left text-[10px] text-slate-400 uppercase w-32">F. Solicitada</th>
-              <th className="px-4 py-3 text-left text-[10px] text-slate-400 uppercase w-32">F. Realizada</th>
-              <th className="px-4 py-3 text-left text-[10px] text-slate-400 uppercase w-28">Resultado</th>
-              <th className="px-4 py-3 text-left text-[10px] text-slate-400 uppercase w-32">Estado</th>
+              <th className="px-4 py-3 text-left text-[10px] text-slate-400 uppercase">{t('tech.insp.tipoInspeccion')}</th>
+              <th className="px-4 py-3 text-left text-[10px] text-slate-400 uppercase w-32">{t('tech.budget.fase')}</th>
+              <th className="px-4 py-3 text-left text-[10px] text-slate-400 uppercase w-32">{t('tech.insp.fSolicitada')}</th>
+              <th className="px-4 py-3 text-left text-[10px] text-slate-400 uppercase w-32">{t('tech.insp.fRealizada')}</th>
+              <th className="px-4 py-3 text-left text-[10px] text-slate-400 uppercase w-28">{t('tech.insp.resultado')}</th>
+              <th className="px-4 py-3 text-left text-[10px] text-slate-400 uppercase w-32">{t('common.estado')}</th>
             </tr>
           </thead>
           <tbody>
@@ -146,9 +147,9 @@ export default function Inspections({ projectId }: { projectId: string }) {
                     className="bg-slate-200 text-slate-700 text-xs border border-slate-200 rounded px-2 py-1 focus:outline-none w-28"
                   >
                     <option value="">—</option>
-                    <option value="PASS">✅ PASS</option>
-                    <option value="FAIL">❌ FAIL</option>
-                    <option value="RE-INSPECCION">🔄 RE-INSP</option>
+                    <option value="PASS">{t('tech.insp.pass')}</option>
+                    <option value="FAIL">{t('tech.insp.fail')}</option>
+                    <option value="RE-INSPECCION">{t('tech.insp.reInsp')}</option>
                   </select>
                 </td>
                 <td className="px-4 py-3">

@@ -8,8 +8,11 @@ import { Modal } from "../components/Modal";
 import { Plus, Trash2, Briefcase, ChevronRight, MapPin } from "lucide-react";
 import toast from "react-hot-toast";
 import { useConfirm } from "../../components/ConfirmDialog";
+import { useI18n } from '../../i18n'
+import { dataLabel, FIN_PROJECT_STATUS_LABELS } from '../../i18n/dataLabels'
 
 export default function Projects() {
+  const { t } = useI18n()
   const qc = useQueryClient();
   const confirm = useConfirm();
   const { data } = useQuery({ queryKey: ["projects"], queryFn: API.getProjects });
@@ -18,11 +21,11 @@ export default function Projects() {
 
   const del = useMutation({
     mutationFn: (id: number) => API.deleteProject(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["projects"] }); toast.success("Proyecto eliminado"); },
-    onError: (e: any) => toast.error(e.response?.data?.error || "Error al eliminar"),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["projects"] }); toast.success(t('fin.projs.proyectoEliminado')); },
+    onError: (e: any) => toast.error(e.response?.data?.error || t('fin.accts.errorAlEliminar')),
   });
 
-  if (!data) return <div style={{ color: 'var(--brand-teal)' }}>Cargando…</div>;
+  if (!data) return <div style={{ color: 'var(--brand-teal)' }}>{t('common.cargando')}</div>;
 
   const projects = data;
 
@@ -30,19 +33,19 @@ export default function Projects() {
     <div className="space-y-5 page-content">
       <div className="flex items-end justify-between flex-wrap gap-3">
         <div>
-          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><FolderKanban className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>Proyectos</span></h1>
-          <p className="text-sm" style={{ color: 'var(--brand-teal2)' }}>{projects.length} proyectos en el portafolio</p>
+          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><FolderKanban className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>{t('common.proyectos')}</span></h1>
+          <p className="text-sm" style={{ color: 'var(--brand-teal2)' }}>{projects.length} {t('fin.projs.proyectosEnElPortafolio')}</p>
         </div>
-        <button className="btn-primary" onClick={() => setOpen(true)}><Plus size={14} /> Nuevo proyecto</button>
+        <button className="btn-primary" onClick={() => setOpen(true)}><Plus size={14} /> {t('fin.projs.nuevoProyecto')}</button>
       </div>
 
       {projects.length === 0 ? (
         <div className="card p-12 text-center">
           <Briefcase size={48} className="mx-auto mb-3" style={{ color: 'rgba(29,29,31,0.3)' }} />
-          <h3 className="text-lg font-bold mb-2" style={{ color: 'var(--brand-teal)' }}>Aún no hay proyectos</h3>
-          <p className="text-sm mb-4" style={{ color: 'var(--brand-teal2)' }}>Crea tu primer proyecto para comenzar.</p>
+          <h3 className="text-lg font-bold mb-2" style={{ color: 'var(--brand-teal)' }}>{t('fin.projs.aunNoHayProyectos')}</h3>
+          <p className="text-sm mb-4" style={{ color: 'var(--brand-teal2)' }}>{t('fin.projs.creaTuPrimerProyectoParaComenzar')}</p>
           <button onClick={() => setOpen(true)} className="btn-primary mx-auto">
-            <Plus size={14} /> Crear primer proyecto
+            <Plus size={14} /> {t('fin.projs.crearPrimerProyecto')}
           </button>
         </div>
       ) : (
@@ -80,7 +83,7 @@ export default function Projects() {
                         <h3 className="font-bold text-base truncate" style={{ color: 'var(--brand-teal)' }} title={p.name}>{p.name}</h3>
                       </div>
                     </div>
-                    <span className={cls("badge border text-[10px]", statusColor)}>{p.status}</span>
+                    <span className={cls("badge border text-[10px]", statusColor)}>{dataLabel(FIN_PROJECT_STATUS_LABELS, p.status, t)}</span>
                   </div>
 
                   {/* SPV + Línea + Modelo */}
@@ -103,17 +106,17 @@ export default function Projects() {
                       <div className="font-mono font-bold text-sm" style={{ color: 'var(--brand-teal)' }}>{usd(arv, { compact: true })}</div>
                     </div>
                     <div>
-                      <div className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>Costo esperado</div>
+                      <div className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>{t('fin.projDet.costoEsperado')}</div>
                       <div className="font-mono font-bold text-sm" style={{ color: 'var(--brand-teal)' }}>{usd(expectedCost, { compact: true })}</div>
                     </div>
                     <div>
-                      <div className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>Ganancia esp.</div>
+                      <div className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>{t('fin.projs.gananciaEsp')}</div>
                       <div className={cls("font-mono font-bold text-sm", gananciaEsperada >= 0 ? "text-emerald-600" : "text-red-600")}>
                         {usd(gananciaEsperada, { compact: true })}
                       </div>
                     </div>
                     <div>
-                      <div className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>ROI est.</div>
+                      <div className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>{t('fin.projs.roiEst')}</div>
                       <div className={cls("font-mono font-bold text-sm", roiEsperado >= 0 ? "text-emerald-600" : "text-red-600")}>
                         {pct(roiEsperado)}
                       </div>
@@ -123,19 +126,19 @@ export default function Projects() {
                   {/* Footer */}
                   <div className="flex items-center justify-between pt-3" style={{ borderTop: '1px solid rgba(29,29,31,0.08)' }}>
                     <div className="flex items-center gap-3 text-[11px]" style={{ color: 'var(--brand-teal2)' }}>
-                      <span>{p._count?.movements || 0} movs</span>
-                      <span>{p._count?.loans || 0} loans</span>
+                      <span>{p._count?.movements || 0} {t('fin.projs.movs')}</span>
+                      <span>{p._count?.loans || 0} {t('fin.projs.loans')}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <button
                         onClick={async (e) => {
                           e.preventDefault();
                           const ok = await confirm({
-                            title: 'Eliminar proyecto',
-                            message: `¿Seguro que quieres eliminar el proyecto "${p.name}"?`,
-                            detail: `Código: ${p.code} · SPV: ${p.spv?.name || 'sin SPV'}. Esta acción no se puede deshacer.`,
+                            title: t('fin.projs.eliminarProyecto'),
+                            message: t('fin.projs.seguroQueQuieresEliminarElProyecto', { v0: p.name }),
+                            detail: t('fin.projs.codigoV0SpvV1EstaAccion', { v0: p.code, v1: p.spv?.name || 'sin SPV' }),
                             destructive: true,
-                            confirmText: 'Sí, eliminar',
+                            confirmText: t('tech.projects.siEliminar'),
                           })
                           if (ok) del.mutate(p.id);
                         }}
@@ -157,6 +160,7 @@ export default function Projects() {
 }
 
 function ProjectModal({ open, onClose, catalogs }: { open: boolean; onClose: () => void; catalogs: any }) {
+  const { t } = useI18n()
   const qc = useQueryClient();
   const [form, setForm] = useState({ code: "", name: "", line: "", model: "", status: "Enlistado", spvId: "", address: "", purchasePrice: 0, arv: 0, expectedCost: 0 });
 
@@ -166,81 +170,81 @@ function ProjectModal({ open, onClose, catalogs }: { open: boolean; onClose: () 
       qc.invalidateQueries({ queryKey: ["projects"] });
       qc.invalidateQueries({ queryKey: ["catalogs"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
-      toast.success("Proyecto creado");
+      toast.success(t('fin.projs.proyectoCreado'));
       onClose();
       setForm({ code: "", name: "", line: "", model: "", status: "Enlistado", spvId: "", address: "", purchasePrice: 0, arv: 0, expectedCost: 0 });
     },
-    onError: (e: any) => toast.error(e.response?.data?.error || "Error al crear"),
+    onError: (e: any) => toast.error(e.response?.data?.error || t('fin.accts.errorAlCrear')),
   });
 
   return (
-    <Modal open={open} onClose={onClose} title="Nuevo proyecto" size="lg">
+    <Modal open={open} onClose={onClose} title={t('fin.projs.nuevoProyecto')} size="lg">
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          if (!form.code.trim() || !form.name.trim()) return toast.error("Código y nombre son obligatorios");
+          if (!form.code.trim() || !form.name.trim()) return toast.error(t('fin.projs.codigoYNombreSonObligatorios'));
           mut.mutate({ ...form, spvId: form.spvId ? +form.spvId : null, purchasePrice: +form.purchasePrice, arv: +form.arv, expectedCost: +form.expectedCost });
         }}
         className="grid md:grid-cols-2 gap-3"
       >
-        <div><label className="label">Código *</label><input className="input w-full font-mono" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} required placeholder="P-001" /></div>
-        <div><label className="label">Nombre *</label><input className="input w-full" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required placeholder="Casa en Aiken" /></div>
+        <div><label className="label">{t('common.codigo')}</label><input className="input w-full font-mono" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} required placeholder={t('fin.projs.p001')} /></div>
+        <div><label className="label">{t('common.nombre')}</label><input className="input w-full" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required placeholder={t('fin.projs.casaEnAiken')} /></div>
         <div>
-          <label className="label">Línea de negocio</label>
+          <label className="label">{t('fin.projs.lineaDeNegocio')}</label>
           <select className="select w-full" value={form.line} onChange={(e) => setForm({ ...form, line: e.target.value })}>
-            <option value="">— Seleccionar —</option>
-            <option>Carolina del Sur</option>
-            <option>Florida</option>
-            <option>Detroit</option>
-            <option>Otro</option>
+            <option value="">{t('fin.cat.seleccionar')}</option>
+            <option>{t('fin.projs.carolinaDelSur')}</option>
+            <option>{t('fin.projs.florida')}</option>
+            <option>{t('fin.projs.detroit')}</option>
+            <option>{t('common.otro')}</option>
           </select>
         </div>
         <div>
-          <label className="label">Modelo</label>
+          <label className="label">{t('fin.projs.modelo')}</label>
           <select className="select w-full" value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })}>
-            <option value="">— Seleccionar —</option>
-            <option>Fix & Flip</option>
-            <option>Land Sell</option>
-            <option>New Construction</option>
-            <option>Buy & Hold</option>
+            <option value="">{t('fin.cat.seleccionar')}</option>
+            <option>{t('fin.projs.fixFlip')}</option>
+            <option>{t('fin.projs.landSell')}</option>
+            <option>{t('fin.projs.newConstruction')}</option>
+            <option>{t('fin.projs.buyHold')}</option>
           </select>
         </div>
         <div>
-          <label className="label">Estado</label>
+          <label className="label">{t('common.estado')}</label>
           <select className="select w-full" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
-            <option>Enlistado</option>
-            <option>En Construcción</option>
-            <option>Vendido</option>
-            <option>Pausado</option>
-            <option>Cerrado</option>
+            <option>{t('fin.projs.enlistado')}</option>
+            <option>{t('fin.projs.enConstruccion')}</option>
+            <option>{t('fin.projs.vendido')}</option>
+            <option>{t('fin.projs.pausado')}</option>
+            <option>{t('fin.projs.cerrado')}</option>
           </select>
         </div>
         <div>
-          <label className="label">SPV / Subsidiaria</label>
+          <label className="label">{t('fin.projs.spvSubsidiaria')}</label>
           <select className="select w-full" value={form.spvId} onChange={(e) => setForm({ ...form, spvId: e.target.value })}>
-            <option value="">— Sin SPV —</option>
+            <option value="">{t('fin.projs.sinSpv')}</option>
             {catalogs?.spvs?.map((s: any) => <option key={s.id} value={s.id}>{s.code} · {s.name}</option>)}
           </select>
         </div>
         <div className="md:col-span-2">
-          <label className="label">Dirección</label>
-          <input className="input w-full" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="123 Main St, City, State" />
+          <label className="label">{t('common.direccion')}</label>
+          <input className="input w-full" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder={t('fin.projs.123MainStCityState')} />
         </div>
         <div>
-          <label className="label">Precio compra USD</label>
+          <label className="label">{t('fin.projs.precioCompraUsd')}</label>
           <input type="number" step="0.01" className="input w-full" value={form.purchasePrice} onChange={(e) => setForm({ ...form, purchasePrice: +e.target.value })} />
         </div>
         <div>
-          <label className="label">ARV USD <span className="text-[10px] font-normal" style={{ color: 'var(--brand-teal2)' }}>(after-repair value)</span></label>
+          <label className="label">{t('fin.projs.arvUsd')} <span className="text-[10px] font-normal" style={{ color: 'var(--brand-teal2)' }}>{t('fin.projs.afterRepairValue')}</span></label>
           <input type="number" step="0.01" className="input w-full" value={form.arv} onChange={(e) => setForm({ ...form, arv: +e.target.value })} />
         </div>
         <div>
-          <label className="label">Costo esperado USD</label>
+          <label className="label">{t('fin.projs.costoEsperadoUsd')}</label>
           <input type="number" step="0.01" className="input w-full" value={form.expectedCost} onChange={(e) => setForm({ ...form, expectedCost: +e.target.value })} />
         </div>
         <div className="md:col-span-2 flex justify-end gap-2 pt-3" style={{ borderTop: '1px solid rgba(29,29,31,0.1)' }}>
-          <button type="button" className="btn-secondary" onClick={onClose}>Cancelar</button>
-          <button type="submit" className="btn-primary" disabled={mut.isPending}>{mut.isPending ? "Creando…" : "Crear proyecto"}</button>
+          <button type="button" className="btn-secondary" onClick={onClose}>{t('common.cancelar')}</button>
+          <button type="submit" className="btn-primary" disabled={mut.isPending}>{mut.isPending ? t('common.creando') : t('fin.projs.crearProyecto')}</button>
         </div>
       </form>
     </Modal>

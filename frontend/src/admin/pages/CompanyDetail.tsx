@@ -9,43 +9,36 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
-  AdminAPI, ROLE_LABELS, STATUS_LABELS, shareByEmail, shareByWhatsApp, absoluteShareUrl,
+  AdminAPI, shareByEmail, shareByWhatsApp, absoluteShareUrl,
 } from "../lib/api";
 import { cls, date as fmtDate } from "../../finance/lib/format";
 import { useConfirm } from "../../components/ConfirmDialog";
 import { downloadAuthed } from "../../lib/api";
+import { useI18n, type TranslationKey } from '../../i18n'
+import { dataLabel, ADMIN_CATEGORY_LABELS, COMPANY_ROLE_LABELS, COMPANY_STATUS_LABELS } from '../../i18n/dataLabels'
 
 // ── Semáforo de cumplimiento por requisito ────────────────────────────────
-const STATUS_META: Record<string, { label: string; color: string; bg: string; Icon: typeof CheckCircle2 }> = {
-  OK:         { label: "Al día",     color: "#22c55e", bg: "rgba(34,197,94,0.12)",  Icon: CheckCircle2 },
-  POR_VENCER: { label: "Por vencer", color: "#f59e0b", bg: "rgba(245,158,11,0.12)", Icon: Clock },
-  VENCIDO:    { label: "Vencido",    color: "#ef4444", bg: "rgba(239,68,68,0.12)",  Icon: AlertTriangle },
-  FALTANTE:   { label: "Faltante",   color: "#94a3b8", bg: "rgba(148,163,184,0.12)", Icon: HelpCircle },
+const STATUS_META: Record<string, { labelKey: TranslationKey; color: string; bg: string; Icon: typeof CheckCircle2 }> = {
+  OK:         { labelKey: 'common.alDia',     color: "#22c55e", bg: "rgba(34,197,94,0.12)",  Icon: CheckCircle2 },
+  POR_VENCER: { labelKey: 'adm.company.porVencer', color: "#f59e0b", bg: "rgba(245,158,11,0.12)", Icon: Clock },
+  VENCIDO:    { labelKey: 'common.vencido',    color: "#ef4444", bg: "rgba(239,68,68,0.12)",  Icon: AlertTriangle },
+  FALTANTE:   { labelKey: 'adm.company.faltante',   color: "#94a3b8", bg: "rgba(148,163,184,0.12)", Icon: HelpCircle },
 };
 
-const CATEGORY_LABELS: Record<string, string> = {
-  FORMACION: "Formación / Corporativo",
-  FISCAL: "Fiscal",
-  BANCARIO: "Bancario",
-  SEGUROS: "Seguros",
-  PROPIEDAD: "Propiedad",
-  LEGAL: "Legal",
-  PERSONAL: "Personal / RR.HH.",
-  CUMPLIMIENTO: "Cumplimiento",
-  OTRO: "Otros",
-};
 
-const LEGAL_FIELDS: { k: string; label: string; ph?: string }[] = [
-  { k: "name", label: "Nombre *" },
-  { k: "legalName", label: "Razón social completa" },
-  { k: "ein", label: "EIN", ph: "XX-XXXXXXX" },
-  { k: "stateOfFormation", label: "Estado de constitución", ph: "South Carolina" },
-  { k: "registeredAgent", label: "Registered Agent" },
-  { k: "address", label: "Dirección" },
+
+const LEGAL_FIELDS: { k: string; labelKey: TranslationKey; ph?: string }[] = [
+  { k: "name", labelKey: 'common.nombre' },
+  { k: "legalName", labelKey: 'adm.company.razonSocialCompleta' },
+  { k: "ein", labelKey: 'adm.company.ein', ph: "XX-XXXXXXX" },
+  { k: "stateOfFormation", labelKey: 'adm.company.estadoDeConstitucion', ph: "South Carolina" },
+  { k: "registeredAgent", labelKey: 'adm.company.registeredAgent' },
+  { k: "address", labelKey: 'common.direccion' },
 ];
 
 // ── Fila del checklist con acción de subir documento ──────────────────────
 function ChecklistRow({ item, companyId, onUploaded, onRemove }: { item: any; companyId: number; onUploaded: () => void; onRemove: (item: any) => void }) {
+  const { t } = useI18n()
   const fileRef = useRef<HTMLInputElement>(null);
   const [issueDate, setIssueDate] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
@@ -62,7 +55,7 @@ function ChecklistRow({ item, companyId, onUploaded, onRemove }: { item: any; co
       return AdminAPI.uploadDocument(companyId, fd);
     },
     onSuccess: () => {
-      toast.success(`"${item.name}" cargado`);
+      toast.success(t('adm.company.v0Cargado', { v0: item.name }));
       setOpen(false); setIssueDate(""); setExpiryDate("");
       onUploaded();
     },
@@ -78,35 +71,35 @@ function ChecklistRow({ item, companyId, onUploaded, onRemove }: { item: any; co
         <div className="flex-1 min-w-0">
           <div className="text-[13px] font-medium truncate" style={{ color: "var(--text-primary)" }}>{item.name}</div>
           <div className="text-[10.5px] flex items-center gap-2" style={{ color: "var(--text-muted)" }}>
-            <span style={{ color: meta.color, fontWeight: 600 }}>{meta.label}</span>
+            <span style={{ color: meta.color, fontWeight: 600 }}>{t(meta.labelKey)}</span>
             {item.document?.expiryDate && (
-              <span>· vence {fmtDate(item.document.expiryDate)}{typeof item.daysToExpiry === "number" ? ` (${item.daysToExpiry}d)` : ""}</span>
+              <span>{t('adm.company.vence')} {fmtDate(item.document.expiryDate)}{typeof item.daysToExpiry === "number" ? ` (${item.daysToExpiry}d)` : ""}</span>
             )}
           </div>
         </div>
         {item.document && !item.document.url?.startsWith("local:") && (
           <button
-            className="fin-btn-icon" title="Ver documento"
+            className="fin-btn-icon" title={t('common.verDocumento')}
             onClick={() => downloadAuthed(`/api/download?url=${encodeURIComponent(item.document.url)}&name=${encodeURIComponent(item.document.filename)}&inline=1`, item.document.filename).catch(() => window.open(item.document.url, "_blank"))}
           >
             <ExternalLink size={13} />
           </button>
         )}
-        <button className="fin-btn-icon" title="Subir / actualizar" onClick={() => setOpen((o) => !o)}>
+        <button className="fin-btn-icon" title={t('adm.company.subirActualizar')} onClick={() => setOpen((o) => !o)}>
           <Upload size={13} />
         </button>
-        <button className="fin-btn-icon" title="Quitar del checklist (no borra archivos)" style={{ color: "#ef4444" }} onClick={() => onRemove(item)}>
+        <button className="fin-btn-icon" title={t('adm.company.quitarDelChecklistNoBorraArchivos')} style={{ color: "#ef4444" }} onClick={() => onRemove(item)}>
           <X size={13} />
         </button>
       </div>
       {open && (
         <div className="px-3 pb-3 pt-1 flex flex-wrap items-end gap-2" style={{ borderTop: "1px solid var(--border)" }}>
           <label className="text-[10px] font-semibold" style={{ color: "var(--text-secondary)" }}>
-            Emisión
+            {t('adm.company.emision')}
             <input type="date" className="input-base block mt-0.5" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} />
           </label>
           <label className="text-[10px] font-semibold" style={{ color: "var(--text-secondary)" }}>
-            Vencimiento
+            {t('common.vencimiento')}
             <input type="date" className="input-base block mt-0.5" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} />
           </label>
           <input
@@ -114,7 +107,7 @@ function ChecklistRow({ item, companyId, onUploaded, onRemove }: { item: any; co
             onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadMut.mutate(f); e.currentTarget.value = ""; }}
           />
           <button className="fin-btn-cta" style={{ height: 34 }} disabled={uploadMut.isPending} onClick={() => fileRef.current?.click()}>
-            {uploadMut.isPending ? "Subiendo…" : "Seleccionar archivo"}
+            {uploadMut.isPending ? t('common.subiendo') : t('common.seleccionarArchivo')}
           </button>
         </div>
       )}
@@ -123,6 +116,7 @@ function ChecklistRow({ item, companyId, onUploaded, onRemove }: { item: any; co
 }
 
 export default function CompanyDetail() {
+  const { t } = useI18n()
   const { id } = useParams();
   const companyId = Number(id);
   const qc = useQueryClient();
@@ -167,7 +161,7 @@ export default function CompanyDetail() {
       hasExpiry: reqHasExpiry,
     }),
     onSuccess: () => {
-      toast.success("Documento agregado al expediente requerido");
+      toast.success(t('adm.company.documentoAgregadoAlExpedienteRequerido'));
       setReqName(""); setReqCategory(""); setReqHasExpiry(false); setAddingReq(false);
       invalidateAll();
     },
@@ -176,7 +170,7 @@ export default function CompanyDetail() {
 
   const removeReqMut = useMutation({
     mutationFn: (docTypeId: number) => AdminAPI.toggleRequirement(companyId, { docTypeId, required: false }),
-    onSuccess: () => { toast.success("Requisito quitado del checklist"); invalidateAll(); },
+    onSuccess: () => { toast.success(t('adm.company.requisitoQuitadoDelChecklist')); invalidateAll(); },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -187,7 +181,7 @@ export default function CompanyDetail() {
       priority: taskPriority,
       dueDate: taskDue || null,
     }),
-    onSuccess: () => { toast.success("Tarea creada"); setTaskTitle(""); setTaskDue(""); setTaskPriority("media"); invalidateAll(); },
+    onSuccess: () => { toast.success(t('common.tareaCreada')); setTaskTitle(""); setTaskDue(""); setTaskPriority("media"); invalidateAll(); },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -197,7 +191,7 @@ export default function CompanyDetail() {
   const assignFinMut = useMutation({
     mutationFn: (finProjectId: number) => AdminAPI.assignFinProject(companyId, finProjectId),
     onSuccess: () => {
-      toast.success("Propiedad asignada a esta empresa");
+      toast.success(t('adm.company.propiedadAsignadaAEstaEmpresa'));
       setAssignFinSel("");
       qc.invalidateQueries({ queryKey: ["adm-company-projects", companyId] });
       qc.invalidateQueries({ queryKey: ["adm-orgchart"] });
@@ -207,7 +201,7 @@ export default function CompanyDetail() {
   const unassignFinMut = useMutation({
     mutationFn: (finProjectId: number) => AdminAPI.unassignFinProject(companyId, finProjectId),
     onSuccess: () => {
-      toast.success("Asignación de propiedad retirada");
+      toast.success(t('adm.company.asignacionDePropiedadRetirada'));
       qc.invalidateQueries({ queryKey: ["adm-company-projects", companyId] });
       qc.invalidateQueries({ queryKey: ["adm-orgchart"] });
     },
@@ -216,7 +210,7 @@ export default function CompanyDetail() {
   const assignMut = useMutation({
     mutationFn: (projectId: string) => AdminAPI.assignProject(companyId, projectId),
     onSuccess: () => {
-      toast.success("Proyecto asignado a esta empresa");
+      toast.success(t('adm.company.proyectoAsignadoAEstaEmpresa'));
       setAssignSel("");
       qc.invalidateQueries({ queryKey: ["adm-company-projects", companyId] });
       qc.invalidateQueries({ queryKey: ["adm-orgchart"] });
@@ -226,7 +220,7 @@ export default function CompanyDetail() {
   const unassignMut = useMutation({
     mutationFn: (projectId: string) => AdminAPI.unassignProject(companyId, projectId),
     onSuccess: () => {
-      toast.success("Asignación retirada");
+      toast.success(t('adm.company.asignacionRetirada'));
       qc.invalidateQueries({ queryKey: ["adm-company-projects", companyId] });
       qc.invalidateQueries({ queryKey: ["adm-orgchart"] });
     },
@@ -241,13 +235,13 @@ export default function CompanyDetail() {
 
   const updateMut = useMutation({
     mutationFn: (data: any) => AdminAPI.updateCompany(companyId, data),
-    onSuccess: () => { toast.success("Empresa actualizada"); setEditing(false); invalidateAll(); },
+    onSuccess: () => { toast.success(t('adm.company.empresaActualizada')); setEditing(false); invalidateAll(); },
     onError: (e: any) => toast.error(e.message),
   });
 
   const deleteDocMut = useMutation({
     mutationFn: (docId: number) => AdminAPI.deleteDocument(docId),
-    onSuccess: () => { toast.success("Documento eliminado"); invalidateAll(); },
+    onSuccess: () => { toast.success(t('common.documentoEliminado')); invalidateAll(); },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -256,7 +250,7 @@ export default function CompanyDetail() {
   const docs = docsQ.data ?? [];
   const tasks = tasksQ.data ?? [];
 
-  if (companyQ.isLoading || !c) return <div className="fin-page-sub">Cargando expediente…</div>;
+  if (companyQ.isLoading || !c) return <div className="fin-page-sub">{t('adm.company.cargandoExpediente')}</div>;
 
   const startEdit = () => {
     setForm({
@@ -268,7 +262,7 @@ export default function CompanyDetail() {
   };
 
   const saveEdit = () => {
-    if (!form.name?.trim()) { toast.error("El nombre es obligatorio"); return; }
+    if (!form.name?.trim()) { toast.error(t('common.elNombreEsObligatorio')); return; }
     const payload: any = { ...form };
     Object.keys(payload).forEach((k) => { if (payload[k] === "") payload[k] = null; });
     updateMut.mutate(payload);
@@ -276,16 +270,16 @@ export default function CompanyDetail() {
 
   const handleDeleteCompany = async () => {
     const ok = await confirm({
-      title: "Suprimir empresa",
-      message: `¿Eliminar "${c.name}" del organigrama?`,
-      detail: "Se borrará su expediente (documentos, requisitos y tareas). El SPV financiero vinculado NO se toca. Esta acción no se puede deshacer.",
+      title: t('adm.company.suprimirEmpresa'),
+      message: t('adm.company.eliminarV0DelOrganigrama', { v0: c.name }),
+      detail: t('adm.company.seBorraraSuExpedienteDocumentosRequisitos'),
       destructive: true,
-      confirmText: "Sí, suprimir",
+      confirmText: t('adm.company.siSuprimir'),
     });
     if (!ok) return;
     try {
       await AdminAPI.deleteCompany(companyId);
-      toast.success("Empresa suprimida");
+      toast.success(t('adm.company.empresaSuprimida'));
       qc.invalidateQueries({ queryKey: ["adm-orgchart"] });
       nav("/admin/orgchart");
     } catch (e: any) { toast.error(e.message); }
@@ -312,7 +306,7 @@ export default function CompanyDetail() {
       {/* ── Cabecera ── */}
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div className="flex items-start gap-3 min-w-0">
-          <Link to="/admin/orgchart" className="fin-btn-icon mt-1" title="Volver al organigrama"><ArrowLeft size={14} /></Link>
+          <Link to="/admin/orgchart" className="fin-btn-icon mt-1" title={t('adm.company.volverAlOrganigrama')}><ArrowLeft size={14} /></Link>
           <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
             style={{ background: isHolding ? "linear-gradient(135deg,#2A1E3F,#3E2C5C)" : "rgba(139,92,246,0.12)" }}>
             {isHolding ? <Landmark size={20} color="#C6952F" /> : <Building2 size={20} color="#3E5A70" />}
@@ -320,10 +314,10 @@ export default function CompanyDetail() {
           <div className="min-w-0">
             <div className="fin-page-title truncate">{c.name}</div>
             <div className="flex items-center gap-2 flex-wrap mt-0.5">
-              <span className="badge-active" style={{ fontSize: 10 }}>{ROLE_LABELS[c.role] ?? c.role}</span>
-              <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>{STATUS_LABELS[c.status] ?? c.status}</span>
+              <span className="badge-active" style={{ fontSize: 10 }}>{dataLabel(COMPANY_ROLE_LABELS, c.role, t)}</span>
+              <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>{dataLabel(COMPANY_STATUS_LABELS, c.status, t)}</span>
               {c.finSpv && (
-                <Link to="/finance" className="flex items-center gap-1 text-[11px]" style={{ color: "#3E5A70" }} title="Ver en el módulo financiero">
+                <Link to="/finance" className="flex items-center gap-1 text-[11px]" style={{ color: "#3E5A70" }} title={t('adm.company.verEnElModuloFinanciero')}>
                   <Wallet size={11} /> SPV {c.finSpv.code}
                 </Link>
               )}
@@ -331,8 +325,8 @@ export default function CompanyDetail() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {!editing && <button className="fin-btn-icon flex items-center gap-2 px-3" style={{ width: "auto", fontSize: 11.5, fontWeight: 600 }} onClick={startEdit}><Pencil size={12} /> Editar</button>}
-          <button className="fin-btn-icon" title="Suprimir empresa" style={{ color: "#ef4444" }} onClick={handleDeleteCompany}><Trash2 size={13} /></button>
+          {!editing && <button className="fin-btn-icon flex items-center gap-2 px-3" style={{ width: "auto", fontSize: 11.5, fontWeight: 600 }} onClick={startEdit}><Pencil size={12} /> {t('common.editar')}</button>}
+          <button className="fin-btn-icon" title={t('adm.company.suprimirEmpresa')} style={{ color: "#ef4444" }} onClick={handleDeleteCompany}><Trash2 size={13} /></button>
         </div>
       </div>
 
@@ -343,35 +337,35 @@ export default function CompanyDetail() {
             <div className="grid md:grid-cols-2 gap-3">
               {LEGAL_FIELDS.map((f) => (
                 <label key={f.k} className="block">
-                  <span className="text-[11px] font-semibold" style={{ color: "var(--text-secondary)" }}>{f.label}</span>
+                  <span className="text-[11px] font-semibold" style={{ color: "var(--text-secondary)" }}>{t(f.labelKey)}</span>
                   <input className="input-base w-full mt-1" placeholder={f.ph} value={form[f.k] ?? ""} onChange={(e) => setForm({ ...form, [f.k]: e.target.value })} />
                 </label>
               ))}
               <label className="block">
-                <span className="text-[11px] font-semibold" style={{ color: "var(--text-secondary)" }}>Rol en el grupo</span>
+                <span className="text-[11px] font-semibold" style={{ color: "var(--text-secondary)" }}>{t('adm.company.rolEnElGrupo')}</span>
                 <select className="input-base w-full mt-1" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-                  <option value="HOLDING">Holding (matriz)</option>
-                  <option value="PROPERTY_MANAGER">Property Manager (administradora)</option>
-                  <option value="SUBSIDIARY_OWNER">Propietaria de casa/proyecto</option>
-                  <option value="OTHER">Otra</option>
+                  <option value="HOLDING">{t('adm.company.holdingMatriz')}</option>
+                  <option value="PROPERTY_MANAGER">{t('adm.company.propertyManagerAdministradora')}</option>
+                  <option value="SUBSIDIARY_OWNER">{t('adm.company.propietariaDeCasaProyecto')}</option>
+                  <option value="OTHER">{t('adm.company.otra')}</option>
                 </select>
               </label>
               <label className="block">
-                <span className="text-[11px] font-semibold" style={{ color: "var(--text-secondary)" }}>Estado</span>
+                <span className="text-[11px] font-semibold" style={{ color: "var(--text-secondary)" }}>{t('common.estado')}</span>
                 <select className="input-base w-full mt-1" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
-                  <option value="ACTIVE">Activa</option>
-                  <option value="INACTIVE">Inactiva</option>
-                  <option value="DISSOLVED">Disuelta</option>
+                  <option value="ACTIVE">{t('adm.company.activa')}</option>
+                  <option value="INACTIVE">{t('adm.company.inactiva')}</option>
+                  <option value="DISSOLVED">{t('adm.company.disuelta')}</option>
                 </select>
               </label>
             </div>
             <label className="block">
-              <span className="text-[11px] font-semibold" style={{ color: "var(--text-secondary)" }}>Notas</span>
+              <span className="text-[11px] font-semibold" style={{ color: "var(--text-secondary)" }}>{t('common.notas')}</span>
               <textarea className="input-base w-full mt-1" rows={2} value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
             </label>
             <div className="flex items-center gap-2">
-              <button className="fin-btn-cta flex items-center gap-2" disabled={updateMut.isPending} onClick={saveEdit}><Save size={13} /> {updateMut.isPending ? "Guardando…" : "Guardar cambios"}</button>
-              <button className="fin-btn-icon flex items-center gap-2 px-3" style={{ width: "auto", fontSize: 11.5 }} onClick={() => setEditing(false)}><X size={13} /> Cancelar</button>
+              <button className="fin-btn-cta flex items-center gap-2" disabled={updateMut.isPending} onClick={saveEdit}><Save size={13} /> {updateMut.isPending ? t('common.guardando') : t('common.guardarCambios')}</button>
+              <button className="fin-btn-icon flex items-center gap-2 px-3" style={{ width: "auto", fontSize: 11.5 }} onClick={() => setEditing(false)}><X size={13} /> {t('common.cancelar')}</button>
             </div>
           </div>
         </div>
@@ -382,8 +376,8 @@ export default function CompanyDetail() {
         <div className="fin-cpanel">
           <div className="fin-cpanel-body grid md:grid-cols-3 gap-y-3 gap-x-6">
             {[
-              ["Razón social", c.legalName], ["EIN", c.ein], ["Estado de constitución", c.stateOfFormation],
-              ["Registered Agent", c.registeredAgent], ["Dirección", c.address],
+              [t('adm.company.razonSocial'), c.legalName], ["EIN", c.ein], [t('adm.company.estadoDeConstitucion'), c.stateOfFormation],
+              ["Registered Agent", c.registeredAgent], [t('common.direccion'), c.address],
               ["Constituida", c.formationDate ? fmtDate(c.formationDate) : null],
             ].map(([label, val]) => (
               <div key={label as string}>
@@ -400,11 +394,11 @@ export default function CompanyDetail() {
       {checklist && (
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {[
-            { label: "Cumplimiento", value: `${checklist.compliancePct}%`, tone: checklist.vencidos > 0 ? "#ef4444" : checklist.compliancePct >= 85 ? "#22c55e" : "#f59e0b" },
-            { label: "Al día", value: checklist.ok, tone: "#22c55e" },
-            { label: "Por vencer", value: checklist.porVencer, tone: "#f59e0b" },
-            { label: "Vencidos", value: checklist.vencidos, tone: "#ef4444" },
-            { label: "Faltantes", value: checklist.faltantes, tone: "#94a3b8" },
+            { label: t('adm.company.cumplimiento'), value: `${checklist.compliancePct}%`, tone: checklist.vencidos > 0 ? "#ef4444" : checklist.compliancePct >= 85 ? "#22c55e" : "#f59e0b" },
+            { label: t('common.alDia'), value: checklist.ok, tone: "#22c55e" },
+            { label: t('adm.company.porVencer'), value: checklist.porVencer, tone: "#f59e0b" },
+            { label: t('adm.company.vencidos'), value: checklist.vencidos, tone: "#ef4444" },
+            { label: t('adm.company.faltantes'), value: checklist.faltantes, tone: "#94a3b8" },
           ].map((k) => (
             <div key={k.label} className="fin-kpi-v2">
               <div className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>{k.label}</div>
@@ -418,10 +412,10 @@ export default function CompanyDetail() {
       {checklist && (() => {
         const overdueT = tasks.filter((t: any) => t.status !== "completada" && t.dueDate && new Date(t.dueDate) < new Date()).length;
         const strips: Array<{ color: string; bg: string; text: string }> = [];
-        if (checklist.vencidos > 0) strips.push({ color: "#D93025", bg: "rgba(217,48,37,0.08)", text: `${checklist.vencidos} documento(s) VENCIDO(S) — renovar de inmediato` });
-        if (overdueT > 0) strips.push({ color: "#D93025", bg: "rgba(217,48,37,0.08)", text: `${overdueT} tarea(s) VENCIDA(S) de esta empresa` });
-        if (checklist.porVencer > 0) strips.push({ color: "#C9820B", bg: "rgba(201,130,11,0.08)", text: `${checklist.porVencer} documento(s) por vencer en los próximos 30 días` });
-        if (checklist.faltantes > 0) strips.push({ color: "#C9820B", bg: "rgba(201,130,11,0.08)", text: `${checklist.faltantes} documento(s) del expediente sin cargar` });
+        if (checklist.vencidos > 0) strips.push({ color: "#D93025", bg: "rgba(217,48,37,0.08)", text: t('adm.company.v0DocumentoSVencidoSRenovar', { v0: checklist.vencidos }) });
+        if (overdueT > 0) strips.push({ color: "#D93025", bg: "rgba(217,48,37,0.08)", text: t('adm.company.v0TareaSVencidaSDe', { v0: overdueT }) });
+        if (checklist.porVencer > 0) strips.push({ color: "#C9820B", bg: "rgba(201,130,11,0.08)", text: t('adm.company.v0DocumentoSPorVencerEn', { v0: checklist.porVencer }) });
+        if (checklist.faltantes > 0) strips.push({ color: "#C9820B", bg: "rgba(201,130,11,0.08)", text: t('adm.company.v0DocumentoSDelExpedienteSin', { v0: checklist.faltantes }) });
         if (strips.length === 0) return null;
         return (
           <div className="space-y-1.5">
@@ -438,16 +432,16 @@ export default function CompanyDetail() {
       {/* ── Proyectos y propiedades a cargo de esta LLC ── */}
       <div className="fin-cpanel">
         <div className="fin-cpanel-body">
-          <div className="fin-tb-title mb-3 flex items-center gap-2"><HardHat size={15} /> Proyectos y propiedades a cargo</div>
+          <div className="fin-tb-title mb-3 flex items-center gap-2"><HardHat size={15} /> {t('adm.company.proyectosYPropiedadesACargo')}</div>
 
           {/* Obras del módulo técnico */}
           {(projectsQ.data?.techProjects ?? []).length === 0 && (projectsQ.data?.finProjects ?? []).length === 0 && (
-            <div className="fin-page-sub mb-3">Esta empresa no tiene proyectos ni propiedades asignadas todavía.</div>
+            <div className="fin-page-sub mb-3">{t('adm.company.estaEmpresaNoTieneProyectosNi')}</div>
           )}
 
           {(projectsQ.data?.techProjects ?? []).length > 0 && (
             <div className="space-y-2 mb-4">
-              <div className="fin-nav-grp" style={{ paddingLeft: 0 }}>Obras (módulo técnico)</div>
+              <div className="fin-nav-grp" style={{ paddingLeft: 0 }}>{t('adm.company.obrasModuloTecnico')}</div>
               {(projectsQ.data?.techProjects ?? []).map((p: any) => (
                 <div key={p.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl" style={{ border: "1px solid var(--border)", background: "var(--bg-panel, #fff)" }}>
                   <span className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(62,90,112,0.10)" }}>
@@ -456,15 +450,15 @@ export default function CompanyDetail() {
                   <div className="flex-1 min-w-0">
                     <div className="text-[13px] font-semibold truncate" style={{ color: "var(--text-primary)" }}>{p.name}</div>
                     <div className="text-[10.5px]" style={{ color: "var(--text-muted)" }}>
-                      Avance {p.avancePct}% · Ejecutado ${Math.round(p.ejecutado).toLocaleString("en-US")}
-                      {p.presupuestado > 0 ? ` de $${Math.round(p.presupuestado).toLocaleString("en-US")}` : ""}
+                      {t('adm.company.avance')} {p.avancePct}{t('adm.company.ejecutado')}{Math.round(p.ejecutado).toLocaleString("en-US")}
+                      {p.presupuestado > 0 ? t('adm.company.deV0', { v0: Math.round(p.presupuestado).toLocaleString("en-US") }) : ""}
                       {p.address ? ` · ${p.address}` : ""}
                     </div>
                   </div>
                   <div className="w-24 h-1.5 rounded-full overflow-hidden hidden sm:block" style={{ background: "var(--border)" }}>
                     <div style={{ width: `${p.avancePct}%`, height: "100%", background: p.avancePct >= 100 ? "#1D9A57" : "#3E5A70" }} />
                   </div>
-                  <button className="fin-btn-icon" title="Quitar asignación (no borra el proyecto)" style={{ color: "#D93025" }}
+                  <button className="fin-btn-icon" title={t('adm.company.quitarAsignacionNoBorraElProyecto')} style={{ color: "#D93025" }}
                     onClick={() => unassignMut.mutate(p.id)}>
                     <X size={13} />
                   </button>
@@ -476,7 +470,7 @@ export default function CompanyDetail() {
           {/* Propiedades del portafolio financiero (vía SPV o asignadas directamente) */}
           {(projectsQ.data?.finProjects ?? []).length > 0 && (
             <div className="space-y-2 mb-4">
-              <div className="fin-nav-grp" style={{ paddingLeft: 0 }}>Propiedades (portafolio financiero)</div>
+              <div className="fin-nav-grp" style={{ paddingLeft: 0 }}>{t('adm.company.propiedadesPortafolioFinanciero')}</div>
               {(projectsQ.data?.finProjects ?? []).map((p: any) => (
                 <div key={p.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl" style={{ border: "1px solid var(--border)", background: "var(--bg-panel, #fff)" }}>
                   <span className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(198,149,47,0.12)" }}>
@@ -493,11 +487,11 @@ export default function CompanyDetail() {
                     style={p.source === "SPV"
                       ? { background: "rgba(62,90,112,0.10)", color: "#3E5A70" }
                       : { background: "rgba(198,149,47,0.12)", color: "#8a6a1f" }}
-                    title={p.source === "SPV" ? "Derivada del SPV vinculado en el módulo financiero" : "Asignada directamente a esta empresa"}>
-                    {p.source === "SPV" ? "vía SPV" : "directa"}
+                    title={p.source === "SPV" ? t('adm.company.derivadaDelSpvVinculadoEnEl') : t('adm.company.asignadaDirectamenteAEstaEmpresa')}>
+                    {p.source === "SPV" ? t('adm.company.viaSpv') : "directa"}
                   </span>
                   {p.source === "DIRECTA" && (
-                    <button className="fin-btn-icon" title="Quitar asignación (no borra la propiedad)" style={{ color: "#D93025" }}
+                    <button className="fin-btn-icon" title={t('adm.company.quitarAsignacionNoBorraLaPropiedad')} style={{ color: "#D93025" }}
                       onClick={() => unassignFinMut.mutate(p.id)}>
                       <X size={13} />
                     </button>
@@ -510,32 +504,32 @@ export default function CompanyDetail() {
           {/* Asignar obra técnica disponible */}
           <div className="flex flex-wrap items-end gap-2 rounded-lg p-3 mb-2" style={{ border: "1px dashed var(--border)", background: "var(--bg-base)" }}>
             <label className="text-[10px] font-semibold flex-1 min-w-[220px]" style={{ color: "var(--text-secondary)" }}>
-              Asignar una obra del módulo técnico a esta empresa
+              {t('adm.company.asignarUnaObraDelModuloTecnico')}
               <select className="input-base block w-full mt-0.5" value={assignSel} onChange={(e) => setAssignSel(e.target.value)}>
-                <option value="">— seleccionar obra sin asignar —</option>
+                <option value="">{t('adm.company.seleccionarObraSinAsignar')}</option>
                 {(projectsQ.data?.availableTech ?? []).map((p: any) => (
                   <option key={p.id} value={p.id}>{p.name}{p.address ? ` · ${p.address}` : ""}</option>
                 ))}
               </select>
             </label>
             <button className="fin-btn-cta" style={{ height: 34 }} disabled={!assignSel || assignMut.isPending} onClick={() => assignMut.mutate(assignSel)}>
-              {assignMut.isPending ? "Asignando…" : "Asignar"}
+              {assignMut.isPending ? t('adm.company.asignando') : t('adm.company.asignar')}
             </button>
           </div>
 
           {/* Asignar propiedad financiera disponible (Vero Beach, Holiday, etc.) */}
           <div className="flex flex-wrap items-end gap-2 rounded-lg p-3" style={{ border: "1px dashed var(--border)", background: "var(--bg-base)" }}>
             <label className="text-[10px] font-semibold flex-1 min-w-[220px]" style={{ color: "var(--text-secondary)" }}>
-              Asignar una propiedad del portafolio financiero a esta empresa
+              {t('adm.company.asignarUnaPropiedadDelPortafolioFinanciero')}
               <select className="input-base block w-full mt-0.5" value={assignFinSel} onChange={(e) => setAssignFinSel(e.target.value)}>
-                <option value="">— seleccionar propiedad sin asignar —</option>
+                <option value="">{t('adm.company.seleccionarPropiedadSinAsignar')}</option>
                 {(projectsQ.data?.availableFin ?? []).map((p: any) => (
                   <option key={p.id} value={p.id}>{p.code} · {p.name}{p.address ? ` · ${p.address}` : ""}</option>
                 ))}
               </select>
             </label>
             <button className="fin-btn-cta" style={{ height: 34 }} disabled={!assignFinSel || assignFinMut.isPending} onClick={() => assignFinMut.mutate(Number(assignFinSel))}>
-              {assignFinMut.isPending ? "Asignando…" : "Asignar"}
+              {assignFinMut.isPending ? t('adm.company.asignando') : t('adm.company.asignar')}
             </button>
           </div>
         </div>
@@ -545,41 +539,41 @@ export default function CompanyDetail() {
       <div className="fin-cpanel">
         <div className="fin-cpanel-body">
           <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-            <div className="fin-tb-title flex items-center gap-2"><ListChecks size={15} /> Expediente documental (due diligence)</div>
+            <div className="fin-tb-title flex items-center gap-2"><ListChecks size={15} /> {t('adm.company.expedienteDocumentalDueDiligence')}</div>
             <button className="fin-btn-icon flex items-center gap-1.5 px-3" style={{ width: "auto", fontSize: 11, fontWeight: 600 }} onClick={() => setAddingReq((a) => !a)}>
-              {addingReq ? <><X size={12} /> Cancelar</> : <><FolderPlus size={12} /> Agregar documento / categoría</>}
+              {addingReq ? <><X size={12} /> {t('common.cancelar')}</> : <><FolderPlus size={12} /> {t('adm.company.agregarDocumentoCategoria')}</>}
             </button>
           </div>
 
           {addingReq && (
             <div className="rounded-lg p-3 mb-3 flex flex-wrap items-end gap-2" style={{ border: "1px dashed var(--border)", background: "var(--bg-base)" }}>
               <label className="text-[10px] font-semibold flex-1 min-w-[180px]" style={{ color: "var(--text-secondary)" }}>
-                Nombre del documento *
-                <input className="input-base block w-full mt-0.5" placeholder="Ej: Contrato de arrendamiento, Póliza builder's risk…" value={reqName} onChange={(e) => setReqName(e.target.value)} />
+                {t('common.nombreDelDocumento')}
+                <input className="input-base block w-full mt-0.5" placeholder={t('adm.company.ejContratoDeArrendamientoPolizaBuilder')} value={reqName} onChange={(e) => setReqName(e.target.value)} />
               </label>
               <label className="text-[10px] font-semibold min-w-[170px]" style={{ color: "var(--text-secondary)" }}>
-                Categoría (existente o nueva)
-                <input className="input-base block w-full mt-0.5" placeholder="Ej: PROPIEDAD" list={`company-cats-${companyId}`} value={reqCategory} onChange={(e) => setReqCategory(e.target.value)} />
+                {t('adm.company.categoriaExistenteONueva')}
+                <input className="input-base block w-full mt-0.5" placeholder={t('adm.company.ejPropiedad')} list={`company-cats-${companyId}`} value={reqCategory} onChange={(e) => setReqCategory(e.target.value)} />
                 <datalist id={`company-cats-${companyId}`}>
-                  {Object.keys(CATEGORY_LABELS).map((c) => <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>)}
+                  {Object.keys(ADMIN_CATEGORY_LABELS).map((c) => <option key={c} value={c}>{t(ADMIN_CATEGORY_LABELS[c])}</option>)}
                 </datalist>
               </label>
               <label className="flex items-center gap-1.5 text-[11px] pb-2" style={{ color: "var(--text-secondary)" }}>
-                <input type="checkbox" checked={reqHasExpiry} onChange={(e) => setReqHasExpiry(e.target.checked)} /> Tiene vencimiento
+                <input type="checkbox" checked={reqHasExpiry} onChange={(e) => setReqHasExpiry(e.target.checked)} /> {t('adm.company.tieneVencimiento')}
               </label>
               <button className="fin-btn-cta" style={{ height: 34 }} disabled={!reqName.trim() || addReqMut.isPending} onClick={() => addReqMut.mutate()}>
-                {addReqMut.isPending ? "Agregando…" : "Agregar al checklist"}
+                {addReqMut.isPending ? t('adm.company.agregando') : t('adm.company.agregarAlChecklist')}
               </button>
             </div>
           )}
 
           {groups.length === 0 ? (
-            <div className="fin-page-sub">Sin requisitos configurados para esta empresa. Agrega el primero con "Agregar documento / categoría".</div>
+            <div className="fin-page-sub">{t('adm.company.sinRequisitosConfiguradosParaEstaEmpresa')}</div>
           ) : (
             <div className="space-y-4">
               {groups.map(([cat, items]) => (
                 <div key={cat}>
-                  <div className="fin-nav-grp" style={{ paddingLeft: 0 }}>{CATEGORY_LABELS[cat] ?? cat}</div>
+                  <div className="fin-nav-grp" style={{ paddingLeft: 0 }}>{dataLabel(ADMIN_CATEGORY_LABELS, cat, t)}</div>
                   <div className="grid gap-2">
                     {items.map((it) => (
                       <ChecklistRow
@@ -589,11 +583,11 @@ export default function CompanyDetail() {
                         onUploaded={invalidateAll}
                         onRemove={async (item) => {
                           const okRm = await confirm({
-                            title: "Quitar del checklist",
-                            message: `¿Quitar "${item.name}" de los documentos requeridos de ${c.name}?`,
-                            detail: "Los archivos ya cargados NO se borran; siguen en 'Documentos cargados'.",
+                            title: t('adm.company.quitarDelChecklist'),
+                            message: t('adm.company.quitarV0DeLosDocumentosRequeridos', { v0: item.name, v1: c.name }),
+                            detail: t('adm.company.losArchivosYaCargadosNoSe'),
                             destructive: true,
-                            confirmText: "Sí, quitar",
+                            confirmText: t('adm.company.siQuitar'),
                           });
                           if (okRm) removeReqMut.mutate(item.docTypeId);
                         }}
@@ -610,9 +604,9 @@ export default function CompanyDetail() {
       {/* ── Todos los documentos cargados ── */}
       <div className="fin-cpanel">
         <div className="fin-cpanel-body">
-          <div className="fin-tb-title mb-3 flex items-center gap-2"><FileText size={15} /> Documentos cargados ({docs.length})</div>
+          <div className="fin-tb-title mb-3 flex items-center gap-2"><FileText size={15} /> {t('adm.company.documentosCargados')}{docs.length})</div>
           {docs.length === 0 ? (
-            <div className="fin-page-sub">Aún no hay documentos en el expediente.</div>
+            <div className="fin-page-sub">{t('adm.company.aunNoHayDocumentosEnEl')}</div>
           ) : (
             <div className="space-y-1.5">
               {docs.map((d: any) => {
@@ -623,19 +617,19 @@ export default function CompanyDetail() {
                     <div className="flex-1 min-w-0">
                       <div className="text-[12.5px] font-medium truncate" style={{ color: "var(--text-primary)" }}>{d.filename}</div>
                       <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-                        {d.docType?.name ?? "Sin clasificar"}
-                        {d.expiryDate ? ` · vence ${fmtDate(d.expiryDate)}` : ""}
+                        {d.docType?.name ?? t('adm.company.sinClasificar')}
+                        {d.expiryDate ? t('adm.company.vence') + " " + fmtDate(d.expiryDate) : ""}
                       </div>
                     </div>
                     {!local && (
                       <>
-                        <button className="fin-btn-icon" title="Descargar" onClick={() => downloadAuthed(`/api/download?url=${encodeURIComponent(d.url)}&name=${encodeURIComponent(d.filename)}`, d.filename).catch(() => window.open(d.url, "_blank"))}><Download size={13} /></button>
-                        <button className="fin-btn-icon" title="Compartir por correo" onClick={() => shareDoc(d.id, "email")}><Mail size={13} /></button>
-                        <button className="fin-btn-icon" title="Compartir por WhatsApp" onClick={() => shareDoc(d.id, "whatsapp")} style={{ color: "#22c55e" }}><MessageCircle size={13} /></button>
+                        <button className="fin-btn-icon" title={t('common.descargar')} onClick={() => downloadAuthed(`/api/download?url=${encodeURIComponent(d.url)}&name=${encodeURIComponent(d.filename)}`, d.filename).catch(() => window.open(d.url, "_blank"))}><Download size={13} /></button>
+                        <button className="fin-btn-icon" title={t('adm.company.compartirPorCorreo')} onClick={() => shareDoc(d.id, "email")}><Mail size={13} /></button>
+                        <button className="fin-btn-icon" title={t('common.compartirPorWhatsapp')} onClick={() => shareDoc(d.id, "whatsapp")} style={{ color: "#22c55e" }}><MessageCircle size={13} /></button>
                       </>
                     )}
-                    {local && <span className="text-[9px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>solo local</span>}
-                    <button className="fin-btn-icon" title="Eliminar" style={{ color: "#ef4444" }} onClick={() => deleteDocMut.mutate(d.id)}><Trash2 size={13} /></button>
+                    {local && <span className="text-[9px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>{t('adm.company.soloLocal')}</span>}
+                    <button className="fin-btn-icon" title={t('common.eliminar')} style={{ color: "#ef4444" }} onClick={() => deleteDocMut.mutate(d.id)}><Trash2 size={13} /></button>
                   </div>
                 );
               })}
@@ -649,42 +643,42 @@ export default function CompanyDetail() {
         <div className="fin-cpanel-body">
           <div className="flex items-center justify-between mb-3">
             <div className="fin-tb-title flex items-center gap-2">
-              <ListChecks size={15} /> Tareas ({tasks.filter((t: any) => t.status !== "completada").length} pendientes)
+              <ListChecks size={15} /> {t('adm.company.tareas')}{tasks.filter((t: any) => t.status !== "completada").length} {t('adm.company.pendientes')}
               {tasks.some((t: any) => t.status !== "completada" && t.dueDate && new Date(t.dueDate) < new Date()) && (
                 <span className="flex items-center gap-1 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full" style={{ background: "rgba(239,68,68,0.12)", color: "#ef4444" }}>
-                  <AlertTriangle size={10} /> Vencidas
+                  <AlertTriangle size={10} /> {t('adm.company.vencidas')}
                 </span>
               )}
             </div>
-            <Link to="/admin/tasks" className="fin-btn-icon flex items-center gap-1.5 px-3" style={{ width: "auto", fontSize: 11, fontWeight: 600 }}><Plus size={12} /> Gestionar</Link>
+            <Link to="/admin/tasks" className="fin-btn-icon flex items-center gap-1.5 px-3" style={{ width: "auto", fontSize: 11, fontWeight: 600 }}><Plus size={12} /> {t('adm.company.gestionar')}</Link>
           </div>
 
           {/* Alta rápida sin salir del expediente */}
           <div className="flex flex-wrap items-end gap-2 mb-3 rounded-lg p-3" style={{ border: "1px dashed var(--border)", background: "var(--bg-base)" }}>
             <label className="text-[10px] font-semibold flex-1 min-w-[200px]" style={{ color: "var(--text-secondary)" }}>
-              Nueva tarea para {c.name}
-              <input className="input-base block w-full mt-0.5" placeholder="Ej: Renovar Annual Report, pagar registered agent…" value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)}
+              {t('adm.company.nuevaTareaPara')} {c.name}
+              <input className="input-base block w-full mt-0.5" placeholder={t('adm.company.ejRenovarAnnualReportPagarRegistered')} value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && taskTitle.trim()) addTaskMut.mutate(); }} />
             </label>
             <label className="text-[10px] font-semibold" style={{ color: "var(--text-secondary)" }}>
-              Fecha límite
+              {t('common.fechaLimite')}
               <input type="date" className="input-base block mt-0.5" value={taskDue} onChange={(e) => setTaskDue(e.target.value)} />
             </label>
             <label className="text-[10px] font-semibold" style={{ color: "var(--text-secondary)" }}>
-              Prioridad
+              {t('common.prioridad')}
               <select className="input-base block mt-0.5" value={taskPriority} onChange={(e) => setTaskPriority(e.target.value)}>
-                <option value="alta">Alta</option>
-                <option value="media">Media</option>
-                <option value="baja">Baja</option>
+                <option value="alta">{t('common.alta')}</option>
+                <option value="media">{t('common.media')}</option>
+                <option value="baja">{t('common.baja')}</option>
               </select>
             </label>
             <button className="fin-btn-cta flex items-center gap-1.5" style={{ height: 34 }} disabled={!taskTitle.trim() || addTaskMut.isPending} onClick={() => addTaskMut.mutate()}>
-              <Plus size={12} /> Agregar
+              <Plus size={12} /> {t('common.agregar')}
             </button>
           </div>
 
           {tasks.length === 0 ? (
-            <div className="fin-page-sub">Sin tareas para esta empresa.</div>
+            <div className="fin-page-sub">{t('adm.company.sinTareasParaEstaEmpresa')}</div>
           ) : (
             <div className="space-y-1">
               {tasks.map((t: any) => {
@@ -692,12 +686,12 @@ export default function CompanyDetail() {
                 const done = t.status === "completada";
                 return (
                   <div key={t.id} className={cls("flex items-center gap-2 px-2 py-1.5 rounded-md text-[12.5px]")} style={{ background: overdue ? "rgba(239,68,68,0.06)" : undefined }}>
-                    <button title={done ? "Reabrir" : "Marcar completada"} onClick={() => toggleTaskMut.mutate({ tid: t.id, status: done ? "pendiente" : "completada" })}>
+                    <button title={done ? t('common.reabrir') : t('adm.company.marcarCompletada')} onClick={() => toggleTaskMut.mutate({ tid: t.id, status: done ? "pendiente" : "completada" })}>
                       <CheckCircle2 size={15} color={done ? "#22c55e" : overdue ? "#ef4444" : "var(--text-muted)"} />
                     </button>
                     <span className="flex-1 min-w-0 truncate" style={{ color: "var(--text-primary)", textDecoration: done ? "line-through" : undefined }}>{t.title}</span>
-                    {t.priority === "alta" && !done && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded" style={{ background: "rgba(239,68,68,0.12)", color: "#ef4444" }}>Alta</span>}
-                    {t.dueDate && <span className="flex items-center gap-1 text-[10px]" style={{ color: overdue ? "#ef4444" : "var(--text-muted)" }}><Calendar size={10} />{overdue ? "VENCIDA · " : ""}{fmtDate(t.dueDate)}</span>}
+                    {t.priority === "alta" && !done && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded" style={{ background: "rgba(239,68,68,0.12)", color: "#ef4444" }}>{t('common.alta')}</span>}
+                    {t.dueDate && <span className="flex items-center gap-1 text-[10px]" style={{ color: overdue ? "#ef4444" : "var(--text-muted)" }}><Calendar size={10} />{overdue ? t('common.vencida') : ""}{fmtDate(t.dueDate)}</span>}
                   </div>
                 );
               })}

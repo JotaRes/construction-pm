@@ -1,6 +1,7 @@
 import axios from 'axios'
 import toast from 'react-hot-toast'
 import { PDFDocument } from 'pdf-lib'
+import { tStatic, currentLang } from '../i18n'
 
 const api = axios.create({ baseURL: '/api' })
 
@@ -8,6 +9,8 @@ const api = axios.create({ baseURL: '/api' })
 // Sin este interceptor, todas las rutas /api/* del módulo técnico darían 401
 // ahora que el backend exige autenticación global.
 api.interceptors.request.use((config) => {
+  // El backend traduce sus mensajes de error con esta cabecera.
+  config.headers['Accept-Language'] = currentLang()
   const token = localStorage.getItem('pm_auth_token')
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
@@ -31,7 +34,10 @@ api.interceptors.response.use(
 export async function downloadAuthed(url: string, filename: string): Promise<void> {
   const token = localStorage.getItem('pm_auth_token')
   const res = await fetch(url, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    headers: {
+      'Accept-Language': currentLang(),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
   })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   const blob = await res.blob()
@@ -315,15 +321,15 @@ export const filesApi = {
 
     if (!isPdf) {
       toast.error(
-        `"${file.name}" pesa ${(file.size / 1048576).toFixed(1)} MB y supera el limite de 10 MB del almacenamiento. Solo puedo dividir automaticamente archivos PDF; comprime o divide este archivo antes de subirlo.`,
+        tStatic('api.v0PesaV1MbYSupera', { v0: file.name, v1: (file.size / 1048576).toFixed(1) }),
         { duration: 10000 },
       )
-      throw new Error('El archivo supera 10 MB y no es PDF, no se puede dividir automaticamente.')
+      throw new Error(tStatic('api.elArchivoSupera10MbY'))
     }
 
     // PDF grande -> dividir por tamano y subir cada parte
     toast(
-      `"${file.name}" pesa ${(file.size / 1048576).toFixed(1)} MB y supera el limite de 10 MB. Lo estoy dividiendo en partes y subiendolo automaticamente...`,
+      tStatic('api.v0PesaV1MbYSupera2', { v0: file.name, v1: (file.size / 1048576).toFixed(1) }),
       { icon: '\u2702\ufe0f', duration: 7000 },
     )
     let parts: Uint8Array[]
@@ -331,7 +337,7 @@ export const filesApi = {
       parts = await splitPdfBySize(file, TARGET)
     } catch (e) {
       toast.error(
-        `No pude dividir "${file.name}" automaticamente (puede estar protegido o danado). Subelo dividido manualmente o comprimelo.`,
+        tStatic('api.noPudeDividirV0AutomaticamentePuede', { v0: file.name }),
         { duration: 10000 },
       )
       throw e
@@ -339,13 +345,13 @@ export const filesApi = {
     const base = file.name.replace(/\.pdf$/i, '')
     let firstResult: unknown = null
     for (let i = 0; i < parts.length; i++) {
-      const partName = `${base} (Parte ${i + 1} de ${parts.length}).pdf`
+      const partName = `${base} ${tStatic('api.partOf', { n: i + 1, total: parts.length })}.pdf`
       const partFile = new File([parts[i] as BlobPart], partName, { type: 'application/pdf' })
       const res = await uploadOneFile(projectId, partFile, kind, partName)
       if (i === 0) firstResult = res
     }
     toast.success(
-      `Listo: "${file.name}" se subio en ${parts.length} partes, cada una por debajo de 10 MB.`,
+      tStatic('api.listoV0SeSubioEnV1', { v0: file.name, v1: parts.length }),
       { duration: 9000 },
     )
     return firstResult

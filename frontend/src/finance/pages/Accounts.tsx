@@ -10,8 +10,10 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useConfirm } from "../../components/ConfirmDialog";
+import { useI18n } from '../../i18n'
 
 export default function Accounts() {
+  const { t } = useI18n()
   const qc = useQueryClient();
   const confirm = useConfirm();
   const { data } = useQuery({ queryKey: ["accounts"], queryFn: API.getAccounts });
@@ -26,17 +28,17 @@ export default function Accounts() {
 
   const updateMut = useMutation({
     mutationFn: (vars: { id: number; data: any }) => API.updateAccountBalances(vars.id, vars.data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["accounts"] }); toast.success("Cuenta actualizada"); setEditingId(null); },
-    onError: (e: any) => toast.error(e.response?.data?.error || "Error"),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["accounts"] }); toast.success(t('fin.accts.cuentaActualizada')); setEditingId(null); },
+    onError: (e: any) => toast.error(e.response?.data?.error || t('common.error')),
   });
 
   const deleteMut = useMutation({
     mutationFn: (id: number) => API.deleteAccount(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["accounts"] }); toast.success("Cuenta eliminada"); },
-    onError: (e: any) => toast.error(e.response?.data?.error || "Error al eliminar"),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["accounts"] }); toast.success(t('fin.accts.cuentaEliminada')); },
+    onError: (e: any) => toast.error(e.response?.data?.error || t('fin.accts.errorAlEliminar')),
   });
 
-  if (!data) return <div style={{ color: 'var(--brand-teal)' }}>Cargando…</div>;
+  if (!data) return <div style={{ color: 'var(--brand-teal)' }}>{t('common.cargando')}</div>;
 
   // Panel superior — totales globales (saldo CALCULADO desde movimientos)
   const totalComputed = data.reduce((s: number, a: any) => s + (a.computedBalance || 0), 0);
@@ -61,11 +63,11 @@ export default function Accounts() {
     <div className="space-y-5 page-content">
       <div className="flex items-end justify-between flex-wrap gap-3">
         <div>
-          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><Wallet className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>Cuentas bancarias</span></h1>
-          <p className="text-sm" style={{ color: 'var(--brand-teal2)' }}>{data.length} cuentas · Saldos calculados automáticamente desde movimientos</p>
+          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><Wallet className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>{t('common.cuentasBancarias')}</span></h1>
+          <p className="text-sm" style={{ color: 'var(--brand-teal2)' }}>{data.length} {t('fin.accts.cuentasSaldosCalculadosAutomaticamenteDesd')}</p>
         </div>
         <button onClick={() => setCreateOpen(true)} className="btn-primary">
-          <Plus size={14} /> Nueva cuenta
+          <Plus size={14} /> {t('fin.accts.nuevaCuenta')}
         </button>
       </div>
 
@@ -73,31 +75,31 @@ export default function Accounts() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="kpi-card kpi-card-gold">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>Cashflow disponible</span>
+            <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>{t('fin.accts.cashflowDisponible')}</span>
             <Wallet size={14} style={{ color: 'var(--brand-gold)' }} />
           </div>
           <div className={cls("text-2xl font-bold font-mono", totalComputed >= 0 ? "text-emerald-600" : "text-red-600")}>
             {usd(totalComputed, { compact: true })}
           </div>
-          <div className="text-[11px] mt-1" style={{ color: 'var(--brand-teal2)' }}>Suma calculada de todas las cuentas</div>
+          <div className="text-[11px] mt-1" style={{ color: 'var(--brand-teal2)' }}>{t('fin.accts.sumaCalculadaDeTodasLasCuentas')}</div>
         </div>
         <div className="kpi-card kpi-card-green">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>Ingresos totales</span>
+            <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>{t('fin.accts.ingresosTotales')}</span>
             <TrendingUp size={14} className="text-emerald-600" />
           </div>
           <div className="text-2xl font-bold font-mono text-emerald-600">{usd(totalIngresos, { compact: true })}</div>
         </div>
         <div className="kpi-card kpi-card-red">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>Egresos totales</span>
+            <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>{t('fin.accts.egresosTotales')}</span>
             <TrendingDown size={14} className="text-red-600" />
           </div>
           <div className="text-2xl font-bold font-mono text-red-600">{usd(totalEgresos, { compact: true })}</div>
         </div>
         <div className={cls("kpi-card", variacion >= 0 ? "kpi-card-green" : "kpi-card-red")}>
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>Variación neta</span>
+            <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>{t('fin.accts.variacionNeta')}</span>
           </div>
           <div className={cls("text-2xl font-bold font-mono", variacion >= 0 ? "text-emerald-600" : "text-red-600")}>
             {usd(variacion, { compact: true, sign: true })}
@@ -109,10 +111,10 @@ export default function Accounts() {
       {data.length === 0 && (
         <div className="card p-12 text-center">
           <Building2 size={48} className="mx-auto mb-3" style={{ color: 'rgba(29,29,31,0.3)' }} />
-          <h3 className="text-lg font-bold mb-2" style={{ color: 'var(--brand-teal)' }}>No hay cuentas bancarias registradas</h3>
-          <p className="text-sm mb-4" style={{ color: 'var(--brand-teal2)' }}>Crea tu primera cuenta para comenzar a registrar movimientos.</p>
+          <h3 className="text-lg font-bold mb-2" style={{ color: 'var(--brand-teal)' }}>{t('fin.accts.noHayCuentasBancariasRegistradas')}</h3>
+          <p className="text-sm mb-4" style={{ color: 'var(--brand-teal2)' }}>{t('fin.accts.creaTuPrimeraCuentaParaComenzar')}</p>
           <button onClick={() => setCreateOpen(true)} className="btn-primary mx-auto">
-            <Plus size={14} /> Crear primera cuenta
+            <Plus size={14} /> {t('fin.accts.crearPrimeraCuenta')}
           </button>
         </div>
       )}
@@ -154,20 +156,20 @@ export default function Accounts() {
                   <div className="flex gap-1 flex-shrink-0">
                     {!isEditing ? (
                       <>
-                        <Link to={`/finance/accounts/${a.id}`} className="btn-ghost p-1.5" title="Ver movimientos"><ChevronRight size={14} /></Link>
-                        <button onClick={() => startEdit(a)} className="btn-ghost p-1.5" title="Editar"><Edit3 size={13} /></button>
+                        <Link to={`/finance/accounts/${a.id}`} className="btn-ghost p-1.5" title={t('fin.accts.verMovimientos')}><ChevronRight size={14} /></Link>
+                        <button onClick={() => startEdit(a)} className="btn-ghost p-1.5" title={t('common.editar')}><Edit3 size={13} /></button>
                         <button
                           onClick={async () => {
                             const ok = await confirm({
-                              title: 'Eliminar cuenta bancaria',
-                              message: `¿Seguro que quieres eliminar la cuenta "${a.name}"?`,
-                              detail: `Banco: ${a.bank}. Solo se puede eliminar si NO tiene movimientos asociados. Esta acción no se puede deshacer.`,
+                              title: t('fin.accts.eliminarCuentaBancaria'),
+                              message: t('fin.accts.seguroQueQuieresEliminarLaCuenta', { v0: a.name }),
+                              detail: t('fin.accts.bancoV0SoloSePuedeEliminar', { v0: a.bank }),
                               destructive: true,
-                              confirmText: 'Sí, eliminar',
+                              confirmText: t('tech.projects.siEliminar'),
                             })
                             if (ok) deleteMut.mutate(a.id);
                           }}
-                          className="btn-ghost p-1.5 text-red-600" title="Eliminar"
+                          className="btn-ghost p-1.5 text-red-600" title={t('common.eliminar')}
                         ><Trash2 size={13} /></button>
                       </>
                     ) : (
@@ -201,10 +203,10 @@ export default function Accounts() {
                       border: '1px solid rgba(29,29,31,0.1)',
                     }}
                   >
-                    <div className="text-[10px] uppercase tracking-wider font-semibold mb-1" style={{ color: 'var(--brand-teal2)' }}>Saldo actual</div>
+                    <div className="text-[10px] uppercase tracking-wider font-semibold mb-1" style={{ color: 'var(--brand-teal2)' }}>{t('fin.acctDet.saldoActual')}</div>
                     {isEditing ? (
                       <>
-                        <div className="text-[10px] mb-1" style={{ color: 'var(--brand-teal2)' }}>Saldo inicial:</div>
+                        <div className="text-[10px] mb-1" style={{ color: 'var(--brand-teal2)' }}>{t('fin.accts.saldoInicial')}</div>
                         <input
                           type="number" step="0.01"
                           className="input w-full text-xl font-mono font-semibold"
@@ -220,7 +222,7 @@ export default function Accounts() {
                           {usd(computedBalance)}
                         </div>
                         <div className="text-[10px] mt-1" style={{ color: 'var(--brand-teal2)' }}>
-                          Calculado: saldo inicial + ingresos − egresos
+                          {t('fin.accts.calculadoSaldoInicialIngresosEgresos')}
                         </div>
                       </>
                     )}
@@ -231,34 +233,34 @@ export default function Accounts() {
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center gap-2 px-2 py-1.5 rounded" style={{ background: 'rgba(29,29,31,0.04)' }}>
                     <Hash size={13} style={{ color: 'var(--brand-gold)' }} className="flex-shrink-0" />
-                    <span className="text-xs font-semibold min-w-[70px]" style={{ color: 'var(--brand-teal2)' }}># Cuenta</span>
+                    <span className="text-xs font-semibold min-w-[70px]" style={{ color: 'var(--brand-teal2)' }}>{t('common.cuenta')}</span>
                     {isEditing ? (
                       <input className="input flex-1 text-xs py-1 font-mono" value={editForm.accountNumber} onChange={(e) => setEditForm({ ...editForm, accountNumber: e.target.value })} placeholder="****1234" />
                     ) : (
                       <span className="font-mono text-sm font-semibold flex-1 text-right" style={{ color: 'var(--brand-teal)' }}>
-                        {a.accountNumber || <span className="opacity-50">No registrada</span>}
+                        {a.accountNumber || <span className="opacity-50">{t('fin.acctDet.noRegistrada')}</span>}
                       </span>
                     )}
                   </div>
                   <div className="flex items-center gap-2 px-2 py-1.5 rounded" style={{ background: 'rgba(29,29,31,0.04)' }}>
                     <Hash size={13} style={{ color: 'var(--brand-gold)' }} className="flex-shrink-0" />
-                    <span className="text-xs font-semibold min-w-[70px]" style={{ color: 'var(--brand-teal2)' }}>Routing</span>
+                    <span className="text-xs font-semibold min-w-[70px]" style={{ color: 'var(--brand-teal2)' }}>{t('fin.accts.routing')}</span>
                     {isEditing ? (
-                      <input className="input flex-1 text-xs py-1 font-mono" value={editForm.routingNumber} onChange={(e) => setEditForm({ ...editForm, routingNumber: e.target.value })} placeholder="9 dígitos" />
+                      <input className="input flex-1 text-xs py-1 font-mono" value={editForm.routingNumber} onChange={(e) => setEditForm({ ...editForm, routingNumber: e.target.value })} placeholder={t('fin.accts.9Digitos')} />
                     ) : (
                       <span className="font-mono text-sm font-semibold flex-1 text-right" style={{ color: 'var(--brand-teal)' }}>
-                        {a.routingNumber || <span className="opacity-50">No registrado</span>}
+                        {a.routingNumber || <span className="opacity-50">{t('fin.acctDet.noRegistrado')}</span>}
                       </span>
                     )}
                   </div>
                   <div className="flex items-start gap-2 px-2 py-1.5 rounded" style={{ background: 'rgba(29,29,31,0.04)' }}>
                     <MapPin size={13} style={{ color: 'var(--brand-gold)' }} className="flex-shrink-0 mt-0.5" />
-                    <span className="text-xs font-semibold min-w-[70px] mt-0.5" style={{ color: 'var(--brand-teal2)' }}>Dirección</span>
+                    <span className="text-xs font-semibold min-w-[70px] mt-0.5" style={{ color: 'var(--brand-teal2)' }}>{t('common.direccion')}</span>
                     {isEditing ? (
-                      <input className="input flex-1 text-xs py-1" value={editForm.address} onChange={(e) => setEditForm({ ...editForm, address: e.target.value })} placeholder="Dirección sucursal" />
+                      <input className="input flex-1 text-xs py-1" value={editForm.address} onChange={(e) => setEditForm({ ...editForm, address: e.target.value })} placeholder={t('common.direccionSucursal')} />
                     ) : (
                       <span className="text-xs flex-1 text-right break-words font-medium" style={{ color: 'var(--brand-teal)' }}>
-                        {a.address || <span className="opacity-50">No registrada</span>}
+                        {a.address || <span className="opacity-50">{t('fin.acctDet.noRegistrada')}</span>}
                       </span>
                     )}
                   </div>
@@ -266,9 +268,9 @@ export default function Accounts() {
 
                 {/* Footer */}
                 <div className="mt-3 pt-3 flex items-center justify-between text-[11px]" style={{ borderTop: '1px solid rgba(29,29,31,0.08)', color: 'var(--brand-teal2)' }}>
-                  <span>{movCount} movimiento{movCount !== 1 ? "s" : ""}</span>
+                  <span>{movCount} {t('fin.accts.movimiento')}{movCount !== 1 ? "s" : ""}</span>
                   <Link to={`/finance/accounts/${a.id}`} className="font-semibold flex items-center gap-1 hover:underline" style={{ color: 'var(--brand-gold)' }}>
-                    Ver movimientos <ChevronRight size={12} />
+                    {t('fin.accts.verMovimientos')} <ChevronRight size={12} />
                   </Link>
                 </div>
               </div>
@@ -283,6 +285,7 @@ export default function Accounts() {
 }
 
 function CreateAccountModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t } = useI18n()
   const qc = useQueryClient();
   const [form, setForm] = useState({
     code: "",
@@ -303,68 +306,68 @@ function CreateAccountModal({ open, onClose }: { open: boolean; onClose: () => v
       qc.invalidateQueries({ queryKey: ["accounts"] });
       qc.invalidateQueries({ queryKey: ["catalogs"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
-      toast.success("Cuenta creada");
+      toast.success(t('fin.accts.cuentaCreada'));
       onClose();
       setForm({ code: "", name: "", bank: "", accountNumber: "", routingNumber: "", address: "", initialBalance: 0, type: "operativa", active: true, notes: "" });
     },
-    onError: (e: any) => toast.error(e.response?.data?.error || "Error al crear"),
+    onError: (e: any) => toast.error(e.response?.data?.error || t('fin.accts.errorAlCrear')),
   });
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.code.trim() || !form.name.trim() || !form.bank.trim()) {
-      return toast.error("Código, nombre y banco son obligatorios");
+      return toast.error(t('fin.accts.codigoNombreYBancoSonObligatorios'));
     }
     mut.mutate(form);
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Nueva cuenta bancaria" size="md">
+    <Modal open={open} onClose={onClose} title={t('fin.accts.nuevaCuentaBancaria')} size="md">
       <form onSubmit={submit} className="grid md:grid-cols-2 gap-3">
         <div>
-          <label className="label">Código *</label>
-          <input className="input w-full font-mono" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} required placeholder="OB HOLDING" />
+          <label className="label">{t('common.codigo')}</label>
+          <input className="input w-full font-mono" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} required placeholder={t('fin.accts.obHolding')} />
         </div>
         <div>
-          <label className="label">Tipo</label>
+          <label className="label">{t('common.tipo')}</label>
           <select className="select w-full" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
-            <option value="operativa">Operativa</option>
-            <option value="proyecto">Proyecto</option>
-            <option value="personal">Personal</option>
-            <option value="ahorro">Ahorro</option>
+            <option value="operativa">{t('fin.accts.operativa')}</option>
+            <option value={t('tech.projects.proyecto')}>{t('common.proyecto')}</option>
+            <option value="personal">{t('fin.accts.personal')}</option>
+            <option value="ahorro">{t('fin.accts.ahorro')}</option>
           </select>
         </div>
         <div className="md:col-span-2">
-          <label className="label">Nombre completo *</label>
-          <input className="input w-full" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required placeholder="OB Holding Ocean Bank" />
+          <label className="label">{t('common.nombreCompleto')}</label>
+          <input className="input w-full" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required placeholder={t('fin.accts.obHoldingOceanBank')} />
         </div>
         <div>
-          <label className="label">Banco *</label>
-          <input className="input w-full" value={form.bank} onChange={(e) => setForm({ ...form, bank: e.target.value })} required placeholder="Ocean Bank" />
+          <label className="label">{t('fin.accts.banco')}</label>
+          <input className="input w-full" value={form.bank} onChange={(e) => setForm({ ...form, bank: e.target.value })} required placeholder={t('fin.accts.oceanBank')} />
         </div>
         <div>
-          <label className="label">Saldo inicial USD</label>
+          <label className="label">{t('fin.accts.saldoInicialUsd')}</label>
           <input type="number" step="0.01" className="input w-full" value={form.initialBalance} onChange={(e) => setForm({ ...form, initialBalance: +e.target.value })} />
         </div>
         <div>
-          <label className="label"># Cuenta</label>
+          <label className="label">{t('common.cuenta')}</label>
           <input className="input w-full font-mono" value={form.accountNumber} onChange={(e) => setForm({ ...form, accountNumber: e.target.value })} placeholder="********1234" />
         </div>
         <div>
-          <label className="label">Routing # (ABA)</label>
+          <label className="label">{t('common.routingAba')}</label>
           <input className="input w-full font-mono" value={form.routingNumber} onChange={(e) => setForm({ ...form, routingNumber: e.target.value })} placeholder="063100277" />
         </div>
         <div className="md:col-span-2">
-          <label className="label">Dirección sucursal</label>
-          <input className="input w-full" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="780 NW 42nd Ave, Miami, FL" />
+          <label className="label">{t('common.direccionSucursal')}</label>
+          <input className="input w-full" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder={t('fin.accts.780Nw42ndAveMiamiFl')} />
         </div>
         <div className="md:col-span-2">
-          <label className="label">Notas</label>
+          <label className="label">{t('common.notas')}</label>
           <textarea className="input w-full" rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
         </div>
         <div className="md:col-span-2 flex justify-end gap-2 mt-2 pt-3" style={{ borderTop: '1px solid rgba(29,29,31,0.1)' }}>
-          <button type="button" className="btn-secondary" onClick={onClose}>Cancelar</button>
-          <button type="submit" className="btn-primary" disabled={mut.isPending}>{mut.isPending ? "Creando…" : "Crear cuenta"}</button>
+          <button type="button" className="btn-secondary" onClick={onClose}>{t('common.cancelar')}</button>
+          <button type="submit" className="btn-primary" disabled={mut.isPending}>{mut.isPending ? t('common.creando') : t('fin.accts.crearCuenta')}</button>
         </div>
       </form>
     </Modal>

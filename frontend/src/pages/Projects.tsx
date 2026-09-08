@@ -7,34 +7,36 @@ import { useProjectStore } from '../store/projectStore'
 import { formatUSD } from '../lib/calculations'
 import toast from 'react-hot-toast'
 import type { Project, Draw } from '../lib/types'
+import { useI18n, type TranslationKey } from '../i18n'
 
 type ProjectListItem = Pick<Project, 'id' | 'name' | 'spv' | 'address' | 'arv' | 'constructionBudget' | 'holdback' | 'photoUrl' | 'photoName'> & {
   draws: Draw[]
 }
 
-const REQUIRED_FIELDS = [
-  { key: 'name', label: 'Nombre del proyecto', placeholder: 'Lote 88 — Highland Rd', required: true },
-  { key: 'spv', label: 'SPV (LLC)', placeholder: 'Highland 88 LLC', required: true },
-  { key: 'address', label: 'Dirección', placeholder: '123 N Highland Rd, Westminster SC', required: true },
-  { key: 'county', label: 'Condado', placeholder: 'Oconee County', required: false },
-  { key: 'gcName', label: 'Contratista General', placeholder: 'Nombre del GC', required: false },
-  { key: 'permitNumber', label: 'Número de permiso', placeholder: 'BR26-XXXXXX', required: false },
+const REQUIRED_FIELDS: { key: string; labelKey: TranslationKey; placeholderKey: TranslationKey; required: boolean }[] = [
+  { key: 'name', labelKey: 'tech.projects.nombreDelProyecto', placeholderKey: 'tech.projects.lote88HighlandRd', required: true },
+  { key: 'spv', labelKey: 'tech.projects.spvLlc', placeholderKey: 'tech.projects.highland88Llc', required: true },
+  { key: 'address', labelKey: 'common.direccion', placeholderKey: 'tech.projects.123NHighlandRdWestminsterSc', required: true },
+  { key: 'county', labelKey: 'tech.projects.condado', placeholderKey: 'tech.projects.oconeeCounty', required: false },
+  { key: 'gcName', labelKey: 'tech.projects.contratistaGeneral', placeholderKey: 'tech.projects.nombreDelGc', required: false },
+  { key: 'permitNumber', labelKey: 'tech.projects.numeroDePermiso', placeholderKey: 'tech.projects.br26Xxxxxx', required: false },
 ]
 
-const FINANCIAL_FIELDS = [
-  { key: 'arv', label: 'ARV (Valor estimado post-remodelación)', type: 'number', placeholder: '0' },
-  { key: 'loanAmount', label: 'Loan Amount', type: 'number', placeholder: '0' },
-  { key: 'holdback', label: 'Holdback disponible', type: 'number', placeholder: '0' },
-  { key: 'constructionBudget', label: 'Construction Budget', type: 'number', placeholder: '0' },
-  { key: 'sfHeated', label: 'SF Heated (área vivible)', type: 'number', placeholder: '0' },
+const FINANCIAL_FIELDS: { key: string; labelKey: TranslationKey; type: string; placeholder: string }[] = [
+  { key: 'arv', labelKey: 'tech.projects.arvValorEstimadoPostRemodelacion', type: 'number', placeholder: '0' },
+  { key: 'loanAmount', labelKey: 'tech.fin.loanAmount', type: 'number', placeholder: '0' },
+  { key: 'holdback', labelKey: 'tech.fin.holdbackDisponible', type: 'number', placeholder: '0' },
+  { key: 'constructionBudget', labelKey: 'common.constructionBudget', type: 'number', placeholder: '0' },
+  { key: 'sfHeated', labelKey: 'tech.projects.sfHeatedAreaVivible', type: 'number', placeholder: '0' },
 ]
 
-const DATE_FIELDS = [
-  { key: 'startDate', label: 'Fecha inicio obra' },
-  { key: 'targetCompletionDate', label: 'Fecha objetivo CO' },
+const DATE_FIELDS: { key: string; labelKey: TranslationKey }[] = [
+  { key: 'startDate', labelKey: 'tech.projects.fechaInicioObra' },
+  { key: 'targetCompletionDate', labelKey: 'tech.projects.fechaObjetivoCo' },
 ]
 
 function NewProjectModal({ onClose, onCreated }: { onClose: () => void; onCreated: (id: string) => void }) {
+  const { t } = useI18n()
   const queryClient = useQueryClient()
   const fileRef = useRef<HTMLInputElement>(null)
   const [form, setForm] = useState<Record<string, string>>({})
@@ -67,7 +69,7 @@ function NewProjectModal({ onClose, onCreated }: { onClose: () => void; onCreate
       if (parsed.contractSalesPrice) updates.contractSalesPrice = String(parsed.contractSalesPrice)
       setForm(f => ({ ...f, ...updates }))
     } catch {
-      setHudError('No se pudo leer el HUD. Revisa el formato e intenta de nuevo.')
+      setHudError(t('tech.projects.noSePudoLeerElHud'))
     } finally {
       setHudParsing(false)
     }
@@ -91,8 +93,8 @@ function NewProjectModal({ onClose, onCreated }: { onClose: () => void; onCreate
       <div className="bg-slate-50 border border-slate-200 rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
           <div>
-            <h2 className="text-base font-bold text-slate-900">Nuevo Proyecto</h2>
-            <p className="text-xs text-slate-400 mt-0.5">Se crean 20 fases · 204 ítems · 8 draws · 16 inspecciones</p>
+            <h2 className="text-base font-bold text-slate-900">{t('tech.projects.nuevoProyecto')}</h2>
+            <p className="text-xs text-slate-400 mt-0.5">{t('tech.projects.seCrean20Fases204Items')}</p>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-700 transition-colors">
             <X className="w-5 h-5" />
@@ -109,10 +111,10 @@ function NewProjectModal({ onClose, onCreated }: { onClose: () => void; onCreate
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-xs font-semibold text-slate-700 mb-0.5">
-                  Paso 1 — HUD del lote <span className="text-slate-400 font-normal">(opcional pero recomendado)</span>
+                  {t('tech.projects.paso1HudDelLote')} <span className="text-slate-400 font-normal">{t('tech.projects.opcionalPeroRecomendado')}</span>
                 </div>
                 <div className="text-[11px] text-slate-500 mb-2">
-                  Sube el HUD de cierre para auto-completar dirección, condado y datos financieros. Todos los campos quedan editables.
+                  {t('tech.projects.subeElHudDeCierrePara')}
                 </div>
 
                 {hudFileName ? (
@@ -135,8 +137,8 @@ function NewProjectModal({ onClose, onCreated }: { onClose: () => void; onCreate
                     className="inline-flex items-center gap-2 px-3 py-1.5 bg-[var(--brand-gold)] hover:bg-[#4A6880] text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
                   >
                     {hudParsing
-                      ? <><RefreshCw className="w-3 h-3 animate-spin" />Leyendo HUD…</>
-                      : <><Upload className="w-3 h-3" />Subir HUD del lote</>}
+                      ? <><RefreshCw className="w-3 h-3 animate-spin" />{t('tech.projects.leyendoHud')}</>
+                      : <><Upload className="w-3 h-3" />{t('tech.projects.subirHudDelLote')}</>}
                   </button>
                 )}
 
@@ -159,17 +161,17 @@ function NewProjectModal({ onClose, onCreated }: { onClose: () => void; onCreate
           {/* ── PASO 2: Datos básicos ── */}
           <div>
             <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-3">
-              Paso 2 — Información básica
+              {t('tech.projects.paso2InformacionBasica')}
             </div>
             <div className="space-y-3">
               {REQUIRED_FIELDS.map(f => (
                 <div key={f.key}>
                   <label className="block text-xs text-slate-500 mb-1">
-                    {f.label} {f.required && <span className="text-red-400">*</span>}
+                    {t(f.labelKey)} {f.required && <span className="text-red-400">*</span>}
                   </label>
                   <input
                     type="text"
-                    placeholder={f.placeholder}
+                    placeholder={t(f.placeholderKey)}
                     value={form[f.key] ?? ''}
                     onChange={e => set(f.key, e.target.value)}
                     required={f.required}
@@ -182,11 +184,11 @@ function NewProjectModal({ onClose, onCreated }: { onClose: () => void; onCreate
 
           {/* ── Financiero ── */}
           <div>
-            <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-3">Datos financieros</div>
+            <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-3">{t('tech.projects.datosFinancieros')}</div>
             <div className="grid grid-cols-2 gap-3">
               {FINANCIAL_FIELDS.map(f => (
                 <div key={f.key}>
-                  <label className="block text-xs text-slate-500 mb-1">{f.label}</label>
+                  <label className="block text-xs text-slate-500 mb-1">{t(f.labelKey)}</label>
                   <input
                     type="number"
                     placeholder={f.placeholder}
@@ -201,11 +203,11 @@ function NewProjectModal({ onClose, onCreated }: { onClose: () => void; onCreate
 
           {/* ── Fechas ── */}
           <div>
-            <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-3">Cronograma</div>
+            <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-3">{t('tech.exec.cronograma')}</div>
             <div className="grid grid-cols-2 gap-3">
               {DATE_FIELDS.map(f => (
                 <div key={f.key}>
-                  <label className="block text-xs text-slate-500 mb-1">{f.label}</label>
+                  <label className="block text-xs text-slate-500 mb-1">{t(f.labelKey)}</label>
                   <input
                     type="date"
                     value={form[f.key] ?? ''}
@@ -219,7 +221,7 @@ function NewProjectModal({ onClose, onCreated }: { onClose: () => void; onCreate
 
           {mutation.isError && (
             <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-xs px-3 py-2 rounded-lg">
-              Error al crear: {String(mutation.error)}
+              {t('tech.projects.errorAlCrear')} {String(mutation.error)}
             </div>
           )}
 
@@ -229,14 +231,14 @@ function NewProjectModal({ onClose, onCreated }: { onClose: () => void; onCreate
               onClick={onClose}
               className="flex-1 px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-500 hover:text-slate-800 transition-colors"
             >
-              Cancelar
+              {t('common.cancelar')}
             </button>
             <button
               type="submit"
               disabled={mutation.isPending || hudParsing}
               className="flex-1 px-4 py-2.5 rounded-lg bg-[var(--brand-gold)] hover:bg-[#4A6880] text-sm font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {mutation.isPending ? 'Creando...' : 'Crear proyecto'}
+              {mutation.isPending ? t('tech.projects.creando') : t('fin.projs.crearProyecto')}
             </button>
           </div>
         </form>
@@ -248,112 +250,112 @@ function NewProjectModal({ onClose, onCreated }: { onClose: () => void; onCreate
 // Definición de los campos editables agrupados por sección. Cada campo
 // declara su tipo de input para que el modal sepa cómo renderizar.
 // Esto refleja exactamente el whitelist del backend.
-type FieldDef = { key: string; label: string; type: 'text' | 'number' | 'date' | 'tel' | 'email'; placeholder?: string }
+type FieldDef = { key: string; labelKey: TranslationKey; type: 'text' | 'number' | 'date' | 'tel' | 'email'; placeholderKey?: TranslationKey; placeholder?: string }
 
-const EDIT_SECTIONS: Array<{ title: string; fields: FieldDef[] }> = [
+const EDIT_SECTIONS: Array<{ titleKey: TranslationKey; fields: FieldDef[] }> = [
   {
-    title: 'Identidad',
+    titleKey: 'tech.projects.identidad',
     fields: [
-      { key: 'name',     label: 'Nombre del proyecto', type: 'text', placeholder: 'Lote 88 — Highland Rd' },
-      { key: 'spv',      label: 'SPV (LLC del proyecto)', type: 'text', placeholder: 'Highland 88 LLC' },
-      { key: 'holding',  label: 'Holding (empresa matriz)', type: 'text', placeholder: 'Restrepo Acosta Global Holding LLC' },
-      { key: 'address',  label: 'Dirección', type: 'text', placeholder: '123 N Highland Rd, Westminster SC' },
-      { key: 'county',   label: 'Condado', type: 'text', placeholder: 'Oconee' },
-      { key: 'hoa',      label: 'HOA', type: 'text', placeholder: 'Chickasaw Point' },
-      { key: 'parcelId', label: 'Parcel ID', type: 'text', placeholder: '323-01-06-002' },
+      { key: 'name',     labelKey: 'tech.projects.nombreDelProyecto', type: 'text', placeholderKey: 'tech.projects.lote88HighlandRd' },
+      { key: 'spv',      labelKey: 'tech.projects.spvLlcDelProyecto', type: 'text', placeholderKey: 'tech.projects.highland88Llc' },
+      { key: 'holding',  labelKey: 'tech.projects.holdingEmpresaMatriz', type: 'text', placeholderKey: 'landing.restrepoAcostaGlobalHoldingLlc' },
+      { key: 'address',  labelKey: 'common.direccion', type: 'text', placeholderKey: 'tech.projects.123NHighlandRdWestminsterSc' },
+      { key: 'county',   labelKey: 'tech.projects.condado', type: 'text', placeholderKey: 'tech.projects.oconee' },
+      { key: 'hoa',      labelKey: 'tech.projects.hoa', type: 'text', placeholderKey: 'tech.projects.chickasawPoint' },
+      { key: 'parcelId', labelKey: 'tech.projects.parcelId', type: 'text', placeholder: '323-01-06-002' },
     ],
   },
   {
-    title: 'Físico',
+    titleKey: 'tech.projects.fisico',
     fields: [
-      { key: 'lotAcres',         label: 'Acres del lote', type: 'number', placeholder: '0' },
-      { key: 'sfHeated',         label: 'SF Heated (área vivible)', type: 'number', placeholder: '2400' },
-      { key: 'sfGarage',         label: 'SF Garage', type: 'number', placeholder: '0' },
-      { key: 'sfPorches',        label: 'SF Porches', type: 'number', placeholder: '0' },
-      { key: 'bedrooms',         label: 'Habitaciones', type: 'number', placeholder: '3' },
-      { key: 'bathrooms',        label: 'Baños', type: 'text', placeholder: '2.5' },
-      { key: 'foundationType',   label: 'Tipo de cimentación', type: 'text', placeholder: 'crawlspace / slab / basement' },
-      { key: 'architecturalPlan',label: 'Plano arquitectónico', type: 'text', placeholder: '2400-5 CRAWLSPACE' },
+      { key: 'lotAcres',         labelKey: 'tech.projects.acresDelLote', type: 'number', placeholder: '0' },
+      { key: 'sfHeated',         labelKey: 'tech.projects.sfHeatedAreaVivible', type: 'number', placeholder: '2400' },
+      { key: 'sfGarage',         labelKey: 'tech.fin.sfGarage', type: 'number', placeholder: '0' },
+      { key: 'sfPorches',        labelKey: 'tech.fin.sfPorches', type: 'number', placeholder: '0' },
+      { key: 'bedrooms',         labelKey: 'tech.projects.habitaciones', type: 'number', placeholder: '3' },
+      { key: 'bathrooms',        labelKey: 'tech.projects.banos', type: 'text', placeholder: '2.5' },
+      { key: 'foundationType',   labelKey: 'tech.projects.tipoDeCimentacion', type: 'text', placeholderKey: 'tech.projects.crawlspaceSlabBasement' },
+      { key: 'architecturalPlan',labelKey: 'tech.projects.planoArquitectonico', type: 'text', placeholderKey: 'tech.projects.24005Crawlspace' },
     ],
   },
   {
-    title: 'Permisos',
+    titleKey: 'tech.projects.permisos',
     fields: [
-      { key: 'permitNumber',  label: 'Número de permiso', type: 'text', placeholder: 'BR26-XXXXXX' },
-      { key: 'permitIssued',  label: 'Fecha emisión', type: 'date' },
-      { key: 'permitExpires', label: 'Fecha vencimiento (180 días)', type: 'date' },
-      { key: 'inspectorPhone',label: 'Teléfono inspector condado', type: 'tel' },
-      { key: 'hoaPhone',      label: 'Teléfono HOA', type: 'tel' },
+      { key: 'permitNumber',  labelKey: 'tech.projects.numeroDePermiso', type: 'text', placeholderKey: 'tech.projects.br26Xxxxxx' },
+      { key: 'permitIssued',  labelKey: 'tech.projects.fechaEmision', type: 'date' },
+      { key: 'permitExpires', labelKey: 'tech.projects.fechaVencimiento180Dias', type: 'date' },
+      { key: 'inspectorPhone',labelKey: 'tech.projects.telefonoInspectorCondado', type: 'tel' },
+      { key: 'hoaPhone',      labelKey: 'tech.projects.telefonoHoa', type: 'tel' },
     ],
   },
   {
-    title: 'General Contractor',
+    titleKey: 'tech.projects.generalContractor',
     fields: [
-      { key: 'gcName',     label: 'Nombre GC', type: 'text', placeholder: 'AMA, LLC' },
-      { key: 'gcPhone',    label: 'Teléfono GC', type: 'tel' },
-      { key: 'gcLicense',  label: 'Licencia SC', type: 'text' },
-      { key: 'gcEmail',    label: 'Email GC', type: 'email' },
+      { key: 'gcName',     labelKey: 'tech.projects.nombreGc', type: 'text', placeholderKey: 'tech.projects.amaLlc' },
+      { key: 'gcPhone',    labelKey: 'tech.projects.telefonoGc', type: 'tel' },
+      { key: 'gcLicense',  labelKey: 'tech.projects.licenciaSc', type: 'text' },
+      { key: 'gcEmail',    labelKey: 'tech.projects.emailGc', type: 'email' },
     ],
   },
   {
-    title: 'Financiamiento',
+    titleKey: 'tech.projects.financiamiento',
     fields: [
-      { key: 'lender',           label: 'Lender', type: 'text', placeholder: 'Hera Holdings LLC' },
-      { key: 'loanNumber',       label: 'Loan #', type: 'text', placeholder: 'HERA-2026-XXXX' },
-      { key: 'loanAmount',       label: 'Loan Amount', type: 'number', placeholder: '0' },
-      { key: 'day1Disbursement', label: 'Day 1 Disbursement', type: 'number', placeholder: '0' },
-      { key: 'interestReserve',  label: 'Interest Reserve', type: 'number', placeholder: '0' },
-      { key: 'holdback',         label: 'Holdback', type: 'number', placeholder: '0' },
-      { key: 'interestRate',     label: 'Tasa anual % (ej 8.5)', type: 'number', placeholder: '8.5' },
-      { key: 'loanTermMonths',   label: 'Plazo (meses)', type: 'number', placeholder: '18' },
-      { key: 'settlementDate',   label: 'Fecha settlement', type: 'date' },
-      { key: 'cashAtSettlement', label: 'Cash at Settlement', type: 'number', placeholder: '0' },
-      { key: 'closingCosts',     label: 'Closing Costs', type: 'number', placeholder: '0' },
-      { key: 'contractSalesPrice', label: 'Contract Sales Price', type: 'number', placeholder: '0' },
-      { key: 'settlementAgent',  label: 'Settlement Agent', type: 'text' },
+      { key: 'lender',           labelKey: 'common.lender', type: 'text', placeholderKey: 'tech.projects.heraHoldingsLlc' },
+      { key: 'loanNumber',       labelKey: 'tech.projects.loan', type: 'text', placeholderKey: 'tech.projects.hera2026Xxxx' },
+      { key: 'loanAmount',       labelKey: 'tech.fin.loanAmount', type: 'number', placeholder: '0' },
+      { key: 'day1Disbursement', labelKey: 'tech.fin.day1Disbursement', type: 'number', placeholder: '0' },
+      { key: 'interestReserve',  labelKey: 'tech.fin.interestReserve', type: 'number', placeholder: '0' },
+      { key: 'holdback',         labelKey: 'tech.projects.holdback', type: 'number', placeholder: '0' },
+      { key: 'interestRate',     labelKey: 'tech.projects.tasaAnualEj85', type: 'number', placeholder: '8.5' },
+      { key: 'loanTermMonths',   labelKey: 'fin.debt.plazoMeses', type: 'number', placeholder: '18' },
+      { key: 'settlementDate',   labelKey: 'tech.projects.fechaSettlement', type: 'date' },
+      { key: 'cashAtSettlement', labelKey: 'tech.fin.cashAtSettlement', type: 'number', placeholder: '0' },
+      { key: 'closingCosts',     labelKey: 'tech.fin.closingCosts2', type: 'number', placeholder: '0' },
+      { key: 'contractSalesPrice', labelKey: 'tech.projects.contractSalesPrice', type: 'number', placeholder: '0' },
+      { key: 'settlementAgent',  labelKey: 'tech.projects.settlementAgent', type: 'text' },
     ],
   },
   {
-    title: 'Valoración',
+    titleKey: 'tech.projects.valoracion',
     fields: [
-      { key: 'arv',                label: 'ARV (After Repair Value)', type: 'number', placeholder: '0' },
-      { key: 'constructionBudget', label: 'Construction Budget', type: 'number', placeholder: '0' },
+      { key: 'arv',                labelKey: 'tech.projects.arvAfterRepairValue', type: 'number', placeholder: '0' },
+      { key: 'constructionBudget', labelKey: 'common.constructionBudget', type: 'number', placeholder: '0' },
     ],
   },
   {
-    title: 'Inspector tercero (Trinity)',
+    titleKey: 'tech.projects.inspectorTerceroTrinity',
     fields: [
-      { key: 'trinityName',  label: 'Nombre', type: 'text' },
-      { key: 'trinityPhone', label: 'Teléfono', type: 'tel' },
-      { key: 'trinityEmail', label: 'Email', type: 'email' },
+      { key: 'trinityName',  labelKey: 'fin.cat.nombre', type: 'text' },
+      { key: 'trinityPhone', labelKey: 'common.telefono', type: 'tel' },
+      { key: 'trinityEmail', labelKey: 'common.email', type: 'email' },
     ],
   },
   {
-    title: 'Cronograma',
+    titleKey: 'tech.exec.cronograma',
     fields: [
-      { key: 'startDate',            label: 'Fecha inicio obra', type: 'date' },
-      { key: 'targetCompletionDate', label: 'Fecha objetivo CO', type: 'date' },
+      { key: 'startDate',            labelKey: 'tech.projects.fechaInicioObra', type: 'date' },
+      { key: 'targetCompletionDate', labelKey: 'tech.projects.fechaObjetivoCo', type: 'date' },
     ],
   },
   {
-    title: 'Realtor / Venta',
+    titleKey: 'tech.projects.realtorVenta',
     fields: [
-      { key: 'realtorName',         label: 'Realtor', type: 'text' },
-      { key: 'realtorBrokerage',    label: 'Brokerage', type: 'text' },
-      { key: 'realtorPhone',        label: 'Teléfono', type: 'tel' },
-      { key: 'realtorEmail',        label: 'Email', type: 'email' },
-      { key: 'listingCommission',   label: 'Comisión listing % (ej 3)', type: 'number' },
-      { key: 'buyerCommission',     label: 'Comisión buyer % (ej 3)', type: 'number' },
-      { key: 'targetListingPrice',  label: 'Precio listing objetivo', type: 'number' },
-      { key: 'expectedPricePerSqft',label: 'Precio $/sqft esperado', type: 'number' },
+      { key: 'realtorName',         labelKey: 'tech.projects.realtor', type: 'text' },
+      { key: 'realtorBrokerage',    labelKey: 'tech.projects.brokerage', type: 'text' },
+      { key: 'realtorPhone',        labelKey: 'common.telefono', type: 'tel' },
+      { key: 'realtorEmail',        labelKey: 'common.email', type: 'email' },
+      { key: 'listingCommission',   labelKey: 'tech.projects.comisionListingEj3', type: 'number' },
+      { key: 'buyerCommission',     labelKey: 'tech.projects.comisionBuyerEj3', type: 'number' },
+      { key: 'targetListingPrice',  labelKey: 'tech.projects.precioListingObjetivo', type: 'number' },
+      { key: 'expectedPricePerSqft',labelKey: 'tech.projects.precioSqftEsperado', type: 'number' },
     ],
   },
   {
-    title: 'Benchmarks',
+    titleKey: 'tech.projects.benchmarks',
     fields: [
-      { key: 'contingencyPct',    label: 'Contingencia % (ej 8)', type: 'number' },
-      { key: 'targetMarginPct',   label: 'Margen objetivo % (ej 20)', type: 'number' },
-      { key: 'benchmarkSfTarget', label: '$/SF benchmark (ej 220)', type: 'number' },
+      { key: 'contingencyPct',    labelKey: 'tech.projects.contingenciaEj8', type: 'number' },
+      { key: 'targetMarginPct',   labelKey: 'tech.projects.margenObjetivoEj20', type: 'number' },
+      { key: 'benchmarkSfTarget', labelKey: 'tech.projects.sfBenchmarkEj220', type: 'number' },
     ],
   },
 ]
@@ -370,6 +372,7 @@ const DATE_KEYS = new Set<string>(
 )
 
 function EditProjectModal({ projectId, onClose }: { projectId: string; onClose: () => void }) {
+  const { t } = useI18n()
   const queryClient = useQueryClient()
   const [form, setForm] = useState<Record<string, string>>({})
   const [openSection, setOpenSection] = useState<string>('Identidad')
@@ -407,11 +410,11 @@ function EditProjectModal({ projectId, onClose }: { projectId: string; onClose: 
       queryClient.invalidateQueries({ queryKey: ['projects'] })
       queryClient.invalidateQueries({ queryKey: ['project', projectId] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-      toast.success('Proyecto actualizado')
+      toast.success(t('tech.projects.proyectoActualizado'))
       onClose()
     },
     onError: (e: unknown) => {
-      const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Error al guardar'
+      const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error ?? t('common.saveError')
       toast.error(msg)
     },
   })
@@ -447,7 +450,7 @@ function EditProjectModal({ projectId, onClose }: { projectId: string; onClose: 
       }
     }
     if (Object.keys(payload).length === 0) {
-      toast('No hay cambios para guardar', { icon: 'ℹ️' })
+      toast(t('tech.projects.noHayCambiosParaGuardar'), { icon: 'ℹ️' })
       return
     }
     mutation.mutate(payload)
@@ -460,9 +463,9 @@ function EditProjectModal({ projectId, onClose }: { projectId: string; onClose: 
       <div className="bg-slate-50 border border-slate-200 rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
           <div>
-            <h2 className="text-base font-bold text-slate-900">Editar proyecto</h2>
+            <h2 className="text-base font-bold text-slate-900">{t('tech.projects.editarProyecto')}</h2>
             <p className="text-xs text-slate-400 mt-0.5">
-              {project?.name as string ?? '...'} · Los campos vacíos al guardar limpian el dato
+              {project?.name as string ?? '...'} {t('tech.projects.losCamposVaciosAlGuardarLimpian')}
             </p>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-700 transition-colors">
@@ -471,24 +474,24 @@ function EditProjectModal({ projectId, onClose }: { projectId: string; onClose: 
         </div>
 
         {isLoading ? (
-          <div className="p-10 text-center text-sm text-slate-400">Cargando...</div>
+          <div className="p-10 text-center text-sm text-slate-400">{t('common.cargando2')}</div>
         ) : (
           <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 py-5 space-y-3">
             {EDIT_SECTIONS.map(section => (
-              <div key={section.title} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+              <div key={section.titleKey} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
                 <button
                   type="button"
-                  onClick={() => setOpenSection(openSection === section.title ? '' : section.title)}
+                  onClick={() => setOpenSection(openSection === section.titleKey ? '' : section.titleKey)}
                   className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors"
                 >
-                  <span className="text-sm font-semibold text-slate-700">{section.title}</span>
-                  <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform ${openSection === section.title ? 'rotate-90' : ''}`} />
+                  <span className="text-sm font-semibold text-slate-700">{t(section.titleKey)}</span>
+                  <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform ${openSection === section.titleKey ? 'rotate-90' : ''}`} />
                 </button>
-                {openSection === section.title && (
+                {openSection === section.titleKey && (
                   <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-slate-100 pt-3">
                     {section.fields.map(f => (
                       <div key={f.key}>
-                        <label className="block text-[11px] text-slate-500 mb-1">{f.label}</label>
+                        <label className="block text-[11px] text-slate-500 mb-1">{t(f.labelKey)}</label>
                         <input
                           type={f.type}
                           step={f.type === 'number' ? 'any' : undefined}
@@ -506,7 +509,7 @@ function EditProjectModal({ projectId, onClose }: { projectId: string; onClose: 
 
             {mutation.isError && (
               <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-xs px-3 py-2 rounded-lg">
-                Error al guardar: {String(mutation.error)}
+                {t('tech.projects.errorAlGuardar')} {String(mutation.error)}
               </div>
             )}
 
@@ -516,14 +519,14 @@ function EditProjectModal({ projectId, onClose }: { projectId: string; onClose: 
                 onClick={onClose}
                 className="flex-1 px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-500 hover:text-slate-800 transition-colors"
               >
-                Cancelar
+                {t('common.cancelar')}
               </button>
               <button
                 type="submit"
                 disabled={mutation.isPending}
                 className="flex-1 px-4 py-2.5 rounded-lg bg-[var(--brand-gold)] hover:bg-[#4A6880] text-sm font-semibold text-white transition-colors disabled:opacity-50"
               >
-                {mutation.isPending ? 'Guardando...' : 'Guardar cambios'}
+                {mutation.isPending ? t('common.guardando2') : t('common.guardarCambios')}
               </button>
             </div>
           </form>
@@ -541,6 +544,7 @@ function ProjectCard({ project, isActive, onSelect, onDelete, onEdit, onPhoto }:
   onDelete: () => void
   onEdit: () => void
 }) {
+  const { t } = useI18n()
   const totalDrawn = project.draws.filter(d => d.estado === 'WIRED').reduce((s, d) => s + d.netWire, 0)
   const drawPct = project.holdback > 0 ? (totalDrawn / project.holdback) * 100 : 0
 
@@ -552,7 +556,7 @@ function ProjectCard({ project, isActive, onSelect, onDelete, onEdit, onPhoto }:
         <button
           onClick={e => { e.stopPropagation(); onEdit() }}
           className="p-1.5 rounded-lg text-slate-500 hover:text-[var(--brand-gold)] hover:bg-[#3E5A70]/10 transition-colors"
-          title="Editar información general del proyecto"
+          title={t('tech.projects.editarInformacionGeneralDelProyecto')}
         >
           <Pencil className="w-3.5 h-3.5" />
         </button>
@@ -560,7 +564,7 @@ function ProjectCard({ project, isActive, onSelect, onDelete, onEdit, onPhoto }:
         <label
           onClick={e => e.stopPropagation()}
           className="p-1.5 rounded-lg text-slate-500 hover:text-[var(--brand-teal)] hover:bg-[#1D1D1F]/10 transition-colors cursor-pointer"
-          title={project.photoUrl ? 'Cambiar foto de referencia' : 'Subir foto de referencia'}
+          title={project.photoUrl ? t('tech.projects.cambiarFotoDeReferencia') : t('tech.projects.subirFotoDeReferencia')}
         >
           <Camera className="w-3.5 h-3.5" />
           <input type="file" className="hidden" accept="image/*"
@@ -569,7 +573,7 @@ function ProjectCard({ project, isActive, onSelect, onDelete, onEdit, onPhoto }:
         <button
           onClick={e => { e.stopPropagation(); onDelete() }}
           className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-          title="Eliminar proyecto"
+          title={t('fin.projs.eliminarProyecto')}
         >
           <Trash2 className="w-3.5 h-3.5" />
         </button>
@@ -607,12 +611,12 @@ function ProjectCard({ project, isActive, onSelect, onDelete, onEdit, onPhoto }:
           <div className="bg-slate-50 rounded-lg p-3">
             <div className="flex items-center gap-1.5 mb-1">
               <DollarSign className="w-3 h-3 text-[var(--brand-gold)]" />
-              <span className="text-[10px] text-slate-400">Budget</span>
+              <span className="text-[10px] text-slate-400">{t('tech.projects.budget')}</span>
             </div>
             <div className="text-sm font-mono font-semibold text-slate-800">{formatUSD(project.constructionBudget)}</div>
           </div>
           <div className="bg-slate-50 rounded-lg p-3">
-            <div className="text-[10px] text-slate-400 mb-1">Draws</div>
+            <div className="text-[10px] text-slate-400 mb-1">{t('tech.draws.draws')}</div>
             <div className="text-sm font-mono font-semibold text-slate-800">{drawPct.toFixed(0)}%</div>
             <div className="mt-1.5 h-1 bg-slate-200 rounded-full overflow-hidden">
               <div className="h-full bg-blue-500 rounded-full" style={{ width: `${Math.min(drawPct, 100)}%` }} />
@@ -630,6 +634,7 @@ function ConfirmDeleteModal({ projectName, onConfirm, onCancel, isPending }: {
   onCancel: () => void
   isPending: boolean
 }) {
+  const { t } = useI18n()
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
       <div className="bg-slate-50 border border-slate-200 rounded-2xl w-full max-w-sm p-6 shadow-2xl">
@@ -638,27 +643,26 @@ function ConfirmDeleteModal({ projectName, onConfirm, onCancel, isPending }: {
             <Trash2 className="w-5 h-5 text-red-400" />
           </div>
           <div>
-            <div className="text-sm font-bold text-slate-900">Eliminar proyecto</div>
-            <div className="text-xs text-slate-400 mt-0.5">Esta acción no se puede deshacer</div>
+            <div className="text-sm font-bold text-slate-900">{t('fin.projs.eliminarProyecto')}</div>
+            <div className="text-xs text-slate-400 mt-0.5">{t('tech.projects.estaAccionNoSePuedeDeshacer')}</div>
           </div>
         </div>
         <p className="text-sm text-slate-500 mb-5">
-          Se eliminará <span className="text-slate-800 font-semibold">"{projectName}"</span> junto con todas
-          sus fases, ítems, draws, inspecciones y tareas.
+          {t('tech.projects.seEliminara')} <span className="text-slate-800 font-semibold">"{projectName}"</span> {t('tech.projects.juntoConTodasSusFasesItems')}
         </p>
         <div className="flex gap-3">
           <button
             onClick={onCancel}
             className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-500 hover:text-slate-800 hover:border-slate-200 transition-colors"
           >
-            Cancelar
+            {t('common.cancelar')}
           </button>
           <button
             onClick={onConfirm}
             disabled={isPending}
             className="flex-1 px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-sm font-semibold text-white transition-colors disabled:opacity-50"
           >
-            {isPending ? 'Eliminando...' : 'Sí, eliminar'}
+            {isPending ? t('tech.projects.eliminando') : t('tech.projects.siEliminar')}
           </button>
         </div>
       </div>
@@ -667,6 +671,7 @@ function ConfirmDeleteModal({ projectName, onConfirm, onCancel, isPending }: {
 }
 
 export default function Projects() {
+  const { t } = useI18n()
   const [showModal, setShowModal] = useState(false)
   const [editTarget, setEditTarget] = useState<ProjectListItem | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<ProjectListItem | null>(null)
@@ -712,28 +717,28 @@ export default function Projects() {
     navigate('/tech/dashboard')
   }
 
-  if (isLoading) return <div className="text-slate-500 text-sm animate-pulse">Cargando proyectos...</div>
+  if (isLoading) return <div className="text-slate-500 text-sm animate-pulse">{t('tech.projects.cargandoProyectos')}</div>
 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><FolderKanban className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>Proyectos</span></h1>
-          <p className="text-sm text-slate-500 mt-0.5">{projects.length} proyecto{projects.length !== 1 ? 's' : ''} · Restrepo Acosta Global Holding LLC</p>
+          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><FolderKanban className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>{t('common.proyectos')}</span></h1>
+          <p className="text-sm text-slate-500 mt-0.5">{projects.length} {t('tech.projects.proyecto')}{projects.length !== 1 ? 's' : ''} {t('tech.projects.restrepoAcostaGlobalHoldingLlc')}</p>
         </div>
         <button
           onClick={() => setShowModal(true)}
           className="flex items-center gap-2 px-4 py-2.5 bg-[var(--brand-gold)] hover:bg-[#4A6880] text-sm font-semibold text-white rounded-lg transition-colors"
         >
           <Plus className="w-4 h-4" />
-          Nuevo proyecto
+          {t('fin.projs.nuevoProyecto')}
         </button>
       </div>
 
       {projects.length === 0 ? (
         <div className="text-center py-20 text-slate-400 text-sm">
           <Building2 className="w-10 h-10 text-slate-500 mx-auto mb-3" />
-          No hay proyectos. Crea uno para empezar.
+          {t('tech.projects.noHayProyectosCreaUnoPara')}
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

@@ -12,6 +12,7 @@ import {
   Plus, Edit3, Trash2, RotateCcw, Upload, FolderDown,
 } from "lucide-react";
 import axios from "axios";
+import { useI18n } from '../../i18n'
 
 // Descarga autenticada del paquete anual del contador (ZIP con Excel por SPV)
 async function downloadTaxPackage(year: number, setBusy: (b: boolean) => void) {
@@ -49,6 +50,7 @@ const ACTION_COLOR: Record<string, string> = {
 };
 
 export default function Reports() {
+  const { t, locale } = useI18n()
   const [year, setYear] = useState(new Date().getFullYear());
   const [taxBusy, setTaxBusy] = useState(false);
   const [tab, setTab] = useState<"flow" | "ratios" | "audit">("flow");
@@ -61,18 +63,18 @@ export default function Reports() {
     <div className="space-y-5 page-content">
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
-          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><FileBarChart className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>Reportes & Trazabilidad</span></h1>
+          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><FileBarChart className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>{t('fin.reports.reportesTrazabilidad')}</span></h1>
           <p className="text-sm mt-1" style={{ color: 'var(--brand-teal2)' }}>
-            Análisis ejecutivo · Fuentes y usos · Ratios por proyecto · Historial de operaciones
+            {t('fin.reports.analisisEjecutivoFuentesYUsosRatios')}
           </p>
         </div>
         {/* Paquete anual para el contador (Lote C) */}
         <button onClick={() => downloadTaxPackage(year, setTaxBusy)} disabled={taxBusy}
           className="flex items-center gap-2 px-4 py-2 text-white text-sm font-semibold rounded-lg disabled:opacity-50"
           style={{ background: 'var(--brand-teal)' }}
-          title="ZIP con un Excel por SPV: egresos clasificados por bucket fiscal US, ingresos y resumen para el CPA">
+          title={t('fin.reports.zipConUnExcelPorSpv')}>
           <FolderDown className="w-4 h-4" />
-          {taxBusy ? 'Generando…' : `Paquete contador ${year}`}
+          {taxBusy ? t('fin.reports.generando') : `Paquete contador ${year}`}
         </button>
       </div>
 
@@ -80,9 +82,9 @@ export default function Reports() {
       <div className="card overflow-hidden">
         <div className="flex" style={{ borderBottom: '1px solid rgba(29,29,31,0.1)', background: 'var(--brand-cream2)' }}>
           {[
-            { key: "flow", label: "Flujo de caja", icon: Activity },
-            { key: "ratios", label: "Ratios por proyecto", icon: Briefcase },
-            { key: "audit", label: "Auditoría / historial", icon: History },
+            { key: "flow", label: t('fin.reports.flujoDeCaja'), icon: Activity },
+            { key: "ratios", label: t('fin.reports.ratiosPorProyecto'), icon: Briefcase },
+            { key: "audit", label: t('fin.reports.auditoriaHistorial'), icon: History },
           ].map((t) => {
             const Icon = t.icon;
             return (
@@ -109,10 +111,10 @@ export default function Reports() {
           <div className="grid lg:grid-cols-2 gap-4">
             <div className="card p-5">
               <h2 className="text-sm font-bold mb-3 flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}>
-                <TrendingUp size={14} className="text-emerald-600" /> Fuentes (de dónde viene el dinero)
+                <TrendingUp size={14} className="text-emerald-600" /> {t('fin.reports.fuentesDeDondeVieneElDinero')}
               </h2>
               {!sources?.sources || sources.sources.length === 0 ? (
-                <p className="text-sm py-8 text-center" style={{ color: 'var(--brand-teal2)' }}>Sin ingresos registrados.</p>
+                <p className="text-sm py-8 text-center" style={{ color: 'var(--brand-teal2)' }}>{t('fin.reports.sinIngresosRegistrados')}</p>
               ) : (
                 <div className="h-64">
                   <ResponsiveContainer>
@@ -130,10 +132,10 @@ export default function Reports() {
 
             <div className="card p-5">
               <h2 className="text-sm font-bold mb-3 flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}>
-                <TrendingDown size={14} className="text-red-600" /> Usos (a dónde va el dinero)
+                <TrendingDown size={14} className="text-red-600" /> {t('fin.reports.usosADondeVaElDinero')}
               </h2>
               {!sources?.uses || sources.uses.length === 0 ? (
-                <p className="text-sm py-8 text-center" style={{ color: 'var(--brand-teal2)' }}>Sin egresos registrados.</p>
+                <p className="text-sm py-8 text-center" style={{ color: 'var(--brand-teal2)' }}>{t('fin.reports.sinEgresosRegistrados')}</p>
               ) : (
                 <div className="h-64">
                   <ResponsiveContainer>
@@ -153,7 +155,7 @@ export default function Reports() {
           <div className="card p-5">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}>
-                <Activity size={14} style={{ color: 'var(--brand-gold)' }} /> Flujo de caja mensual {year}
+                <Activity size={14} style={{ color: 'var(--brand-gold)' }} /> {t('fin.reports.flujoDeCajaMensual')} {year}
               </h2>
               <select className="select" value={year} onChange={(e) => setYear(+e.target.value)}>
                 {[2024, 2025, 2026, 2027].map((y) => <option key={y} value={y}>{y}</option>)}
@@ -167,9 +169,9 @@ export default function Reports() {
                   <YAxis tick={{ fontSize: 10, fill: "var(--brand-teal3)" }} tickFormatter={(v) => usd(v, { compact: true })} />
                   <Tooltip contentStyle={{ background: "#fff", border: "1px solid rgba(29,29,31,0.15)", borderRadius: 8 }} formatter={(v: any) => usd(v)} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Line type="monotone" dataKey="ingresos" stroke="var(--ok)" strokeWidth={2} name="Ingresos" />
-                  <Line type="monotone" dataKey="egresos" stroke="var(--err)" strokeWidth={2} name="Egresos" />
-                  <Line type="monotone" dataKey="neto" stroke="var(--accent)" strokeWidth={2} name="Neto" />
+                  <Line type="monotone" dataKey="ingresos" stroke="var(--ok)" strokeWidth={2} name={t('common.ingresos')} />
+                  <Line type="monotone" dataKey="egresos" stroke="var(--err)" strokeWidth={2} name={t('common.egresos')} />
+                  <Line type="monotone" dataKey="neto" stroke="var(--accent)" strokeWidth={2} name={t('fin.reports.neto')} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -182,28 +184,28 @@ export default function Reports() {
         <div className="card overflow-hidden">
           <div className="px-5 py-3" style={{ borderBottom: '1px solid rgba(29,29,31,0.1)', background: 'var(--brand-cream2)' }}>
             <h2 className="text-sm font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}>
-              <Briefcase size={15} style={{ color: 'var(--brand-gold)' }} /> Ratios financieros por proyecto
+              <Briefcase size={15} style={{ color: 'var(--brand-gold)' }} /> {t('fin.reports.ratiosFinancierosPorProyecto')}
             </h2>
             <p className="text-xs mt-1" style={{ color: 'var(--brand-teal2)' }}>
-              LTV (Loan-to-Value) · LTC (Loan-to-Cost) · Margen proyectado · Semáforos: 🟢 saludable · 🟡 atención · 🔴 crítico
+              {t('fin.reports.ltvLoanToValueLtcLoan')}
             </p>
           </div>
           {!ratios?.projects || ratios.projects.length === 0 ? (
-            <p className="text-sm py-12 text-center" style={{ color: 'var(--brand-teal2)' }}>Sin proyectos registrados.</p>
+            <p className="text-sm py-12 text-center" style={{ color: 'var(--brand-teal2)' }}>{t('fin.reports.sinProyectosRegistrados')}</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead style={{ background: 'rgba(29,29,31,0.04)' }}>
                   <tr className="text-xs uppercase tracking-wider" style={{ color: 'var(--brand-teal2)' }}>
-                    <th className="px-3 py-3 text-left font-semibold">Proyecto</th>
+                    <th className="px-3 py-3 text-left font-semibold">{t('common.proyecto')}</th>
                     <th className="px-3 py-3 text-right font-semibold">ARV</th>
-                    <th className="px-3 py-3 text-right font-semibold">Costo total</th>
-                    <th className="px-3 py-3 text-right font-semibold">Equity</th>
-                    <th className="px-3 py-3 text-right font-semibold">Deuda viva</th>
+                    <th className="px-3 py-3 text-right font-semibold">{t('fin.reports.costoTotal')}</th>
+                    <th className="px-3 py-3 text-right font-semibold">{t('fin.reports.equity')}</th>
+                    <th className="px-3 py-3 text-right font-semibold">{t('common.deudaViva')}</th>
                     <th className="px-3 py-3 text-center font-semibold">LTV</th>
                     <th className="px-3 py-3 text-center font-semibold">LTC</th>
-                    <th className="px-3 py-3 text-center font-semibold">% Ejecutado</th>
-                    <th className="px-3 py-3 text-center font-semibold">Margen</th>
+                    <th className="px-3 py-3 text-center font-semibold">{t('fin.reports.ejecutado')}</th>
+                    <th className="px-3 py-3 text-center font-semibold">{t('fin.reports.margen')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -249,24 +251,24 @@ export default function Reports() {
         <div className="card overflow-hidden">
           <div className="px-5 py-3" style={{ borderBottom: '1px solid rgba(29,29,31,0.1)', background: 'var(--brand-cream2)' }}>
             <h2 className="text-sm font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}>
-              <History size={15} style={{ color: 'var(--brand-gold)' }} /> Historial de operaciones
+              <History size={15} style={{ color: 'var(--brand-gold)' }} /> {t('fin.reports.historialDeOperaciones')}
             </h2>
             <p className="text-xs mt-1" style={{ color: 'var(--brand-teal2)' }}>
-              Últimas 100 operaciones críticas: crear / editar / borrar movimientos, restore, wipe-all
+              {t('fin.reports.ultimas100OperacionesCriticasCrearEditar')}
             </p>
           </div>
           {!auditLog || auditLog.length === 0 ? (
-            <p className="text-sm py-12 text-center" style={{ color: 'var(--brand-teal2)' }}>Sin operaciones registradas todavía.</p>
+            <p className="text-sm py-12 text-center" style={{ color: 'var(--brand-teal2)' }}>{t('fin.reports.sinOperacionesRegistradasTodavia')}</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead style={{ background: 'rgba(29,29,31,0.04)' }}>
                   <tr className="text-xs uppercase tracking-wider" style={{ color: 'var(--brand-teal2)' }}>
-                    <th className="px-3 py-3 text-left font-semibold">Fecha</th>
-                    <th className="px-3 py-3 text-left font-semibold">Acción</th>
-                    <th className="px-3 py-3 text-left font-semibold">Entidad</th>
-                    <th className="px-3 py-3 text-left font-semibold">Detalle</th>
-                    <th className="px-3 py-3 text-left font-semibold">Usuario</th>
+                    <th className="px-3 py-3 text-left font-semibold">{t('common.fecha')}</th>
+                    <th className="px-3 py-3 text-left font-semibold">{t('fin.reports.accion')}</th>
+                    <th className="px-3 py-3 text-left font-semibold">{t('fin.reports.entidad')}</th>
+                    <th className="px-3 py-3 text-left font-semibold">{t('fin.reports.detalle')}</th>
+                    <th className="px-3 py-3 text-left font-semibold">{t('fin.reports.usuario')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -276,7 +278,7 @@ export default function Reports() {
                     return (
                       <tr key={log.id} className="table-row" style={{ borderBottom: '1px solid rgba(29,29,31,0.06)' }}>
                         <td className="px-3 py-3 text-xs font-mono whitespace-nowrap" style={{ color: 'var(--brand-teal2)' }}>
-                          {dateShort(log.createdAt)} {new Date(log.createdAt).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })}
+                          {dateShort(log.createdAt)} {new Date(log.createdAt).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}
                         </td>
                         <td className="px-3 py-3">
                           <span className={cls("badge border text-[10px] inline-flex items-center gap-1", colorClass)}>

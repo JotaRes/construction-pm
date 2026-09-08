@@ -6,9 +6,11 @@ import type { BudgetLine } from '../lib/types'
 import { useConfirm } from '../components/ConfirmDialog'
 import { ChevronDown, ChevronRight, Upload, FileText, Eraser, FileUp, Download, ChevronsDown, ChevronsUp, FileSpreadsheet } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useI18n } from '../i18n'
 
 /* ── Inline editable number ─────────────────────── */
 function Num({ value, onSave, dim = false, plain = false }: { value: number; onSave: (v: number) => void; dim?: boolean; plain?: boolean }) {
+  const { t } = useI18n()
   const [editing, setEditing] = useState(false)
   const [text, setText] = useState('')
   if (editing) {
@@ -30,7 +32,7 @@ function Num({ value, onSave, dim = false, plain = false }: { value: number; onS
   return (
     <button
       onClick={() => { setText(String(value || '')); setEditing(true) }}
-      title="Clic para editar"
+      title={t('tech.budget.clicParaEditar')}
       className={`w-full text-right text-xs font-mono transition-colors group/n flex items-center justify-end gap-1
         ${dim || value === 0 ? 'text-slate-400 hover:text-[var(--brand-gold)]' : 'text-slate-800 hover:text-[var(--brand-teal)]'}`}
     >
@@ -58,6 +60,7 @@ function DivSection({
   factor: number
   defaultOpen?: boolean
 }) {
+  const { t } = useI18n()
   const totalIni  = group.lines.reduce((s, l) => s + l.valorInicial, 0)
   const totalApr  = group.lines.reduce((s, l) => s + l.valorAprobado, 0)
   const totalDesemb = totalApr * factor
@@ -88,7 +91,7 @@ function DivSection({
           <span className={`w-28 text-right hidden md:inline-block ${totalIni > 0 ? 'text-slate-800 font-semibold' : 'text-slate-500'}`}>
             {totalIni > 0 ? formatUSD(totalIni) : '—'}
           </span>
-          <span className={`w-28 text-right hidden lg:inline-block ${totalDesemb > 0 ? 'text-[var(--brand-teal)]' : 'text-slate-500'}`} title="Desembolsado = Aprobado × factor del lender">
+          <span className={`w-28 text-right hidden lg:inline-block ${totalDesemb > 0 ? 'text-[var(--brand-teal)]' : 'text-slate-500'}`} title={t('tech.cbudget.desembolsadoAprobadoFactorDelLender')}>
             {totalDesemb > 0 ? formatUSD(totalDesemb) : '—'}
           </span>
           <span className={`w-32 text-right hidden md:inline-block ${totalApr > 0 ? 'text-emerald-600 font-semibold' : 'text-slate-500'}`}>
@@ -111,12 +114,12 @@ function DivSection({
         <table className="w-full min-w-[640px]">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200">
-              <th className="pl-8 pr-2 py-1.5 text-left text-[9px] text-slate-500 uppercase tracking-wider w-16">Cód.</th>
-              <th className="px-2 py-1.5 text-left text-[9px] text-slate-500 uppercase tracking-wider">Descripción</th>
-              <th className="px-2 py-1.5 text-right text-[9px] text-slate-500 uppercase tracking-wider w-28">Inicial ✏</th>
-              <th className="px-2 py-1.5 text-right text-[9px] text-[var(--brand-teal)] uppercase tracking-wider w-28" title={`Desembolsado = Aprobado × ${(factor * 100).toFixed(2)}% (factor del lender)`}>Desembolsado</th>
-              <th className="px-2 py-1.5 text-right text-[9px] text-emerald-700 uppercase tracking-wider w-32">Aprobado (auto desde Draws)</th>
-              <th className="pr-4 pl-2 py-1.5 text-left text-[9px] text-slate-500 uppercase tracking-wider w-24">Progreso</th>
+              <th className="pl-8 pr-2 py-1.5 text-left text-[9px] text-slate-500 uppercase tracking-wider w-16">{t('common.cod')}</th>
+              <th className="px-2 py-1.5 text-left text-[9px] text-slate-500 uppercase tracking-wider">{t('common.descripcion')}</th>
+              <th className="px-2 py-1.5 text-right text-[9px] text-slate-500 uppercase tracking-wider w-28">{t('tech.cbudget.inicial')}</th>
+              <th className="px-2 py-1.5 text-right text-[9px] text-[var(--brand-teal)] uppercase tracking-wider w-28" title={t('tech.cbudget.desembolsadoAprobadoV0FactorDelLender', { v0: (factor * 100).toFixed(2) })}>{t('tech.cbudget.desembolsado')}</th>
+              <th className="px-2 py-1.5 text-right text-[9px] text-emerald-700 uppercase tracking-wider w-32">{t('tech.cbudget.aprobadoAutoDesdeDraws')}</th>
+              <th className="pr-4 pl-2 py-1.5 text-left text-[9px] text-slate-500 uppercase tracking-wider w-24">{t('tech.cbudget.progreso')}</th>
             </tr>
           </thead>
           <tbody>
@@ -145,7 +148,7 @@ function DivSection({
                   </td>
                   <td className="px-2 py-2 text-right">
                     {line.valorAprobado > 0
-                      ? <span className="text-xs font-mono text-[var(--brand-teal)]" title="Aprobado × factor del lender">{formatUSD(line.valorAprobado * factor)}</span>
+                      ? <span className="text-xs font-mono text-[var(--brand-teal)]" title={t('tech.cbudget.aprobadoFactorDelLender')}>{formatUSD(line.valorAprobado * factor)}</span>
                       : <span className="text-xs font-mono text-slate-400">—</span>}
                   </td>
                   <td className="px-2 py-2">
@@ -182,6 +185,7 @@ function DivSection({
 
 /* ── Main ────────────────────────────────────────── */
 export default function ConstructionBudget({ projectId }: { projectId: string }) {
+  const { t } = useI18n()
   const queryClient = useQueryClient()
   const confirm = useConfirm()
   const importInputRef = useRef<HTMLInputElement>(null)
@@ -213,17 +217,17 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
       queryClient.invalidateQueries({ queryKey: ['construction-budget', projectId] })
       toast.success(r?.message || 'Construction Budget reseteado')
     },
-    onError: (e: any) => toast.error(e?.response?.data?.error || 'Error'),
+    onError: (e: any) => toast.error(e?.response?.data?.error || t('common.error')),
   })
 
   const handleClearCB = async () => {
     const ok = await confirm({
-      title: 'Borrar Construction Budget completo',
-      message: '¿Seguro que quieres borrar TODAS las líneas del Construction Budget?',
-      detail: 'Esta acción elimina todas las líneas. Podrás cargar un PDF nuevo después. No se puede deshacer.',
+      title: t('tech.cbudget.borrarConstructionBudgetCompleto'),
+      message: t('tech.cbudget.seguroQueQuieresBorrarTodasLas'),
+      detail: t('tech.cbudget.estaAccionEliminaTodasLasLineas'),
       destructive: true,
-      confirmText: 'Sí, borrar todo',
-      typeToConfirm: 'BORRAR BUDGET',
+      confirmText: t('tech.cbudget.siBorrarTodo'),
+      typeToConfirm: t('tech.cbudget.borrarBudget'),
     })
     if (ok) resetCBMut.mutate()
   }
@@ -234,7 +238,7 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
       queryClient.invalidateQueries({ queryKey: ['construction-budget', projectId] })
       toast.success(r?.message || 'PDF importado', { duration: 7000 })
     },
-    onError: (e: any) => toast.error(e?.response?.data?.error || 'Error al importar PDF'),
+    onError: (e: any) => toast.error(e?.response?.data?.error || t('tech.cbudget.errorAlImportarPdf')),
   })
 
   const handleImportPdf = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -242,11 +246,11 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
     if (!f) return
     if (lines.length > 0) {
       const ok = await confirm({
-        title: 'Importar Construction Budget desde PDF',
-        message: '¿Seguro? Se reemplazarán TODAS las líneas actuales con las del PDF.',
+        title: t('tech.cbudget.importarConstructionBudgetDesdePdf'),
+        message: t('tech.cbudget.seguroSeReemplazaranTodasLasLineas'),
         detail: `Archivo: "${f.name}" (${(f.size / 1024).toFixed(0)} KB).`,
         destructive: true,
-        confirmText: 'Sí, reemplazar e importar',
+        confirmText: t('tech.cbudget.siReemplazarEImportar'),
       })
       if (!ok) { e.target.value = ''; return }
     }
@@ -289,32 +293,32 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
     a.download = `construction-budget-${new Date().toISOString().slice(0, 10)}.csv`
     a.click()
     URL.revokeObjectURL(url)
-    toast.success('Budget descargado como CSV')
+    toast.success(t('tech.cbudget.budgetDescargadoComoCsv'))
   }
 
-  if (isLoading) return <div className="text-slate-500 text-sm animate-pulse">Cargando Construction Budget...</div>
+  if (isLoading) return <div className="text-slate-500 text-sm animate-pulse">{t('tech.cbudget.cargandoConstructionBudget')}</div>
 
   // Empty state — solo opción de importar PDF
   if (lines.length === 0) {
     return (
       <div className="space-y-5">
         <div>
-          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><FileSpreadsheet className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>Construction Budget</span></h1>
-          <p className="text-sm text-slate-500 mt-0.5">Lender Report · sin líneas todavía</p>
+          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><FileSpreadsheet className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>{t('common.constructionBudget')}</span></h1>
+          <p className="text-sm text-slate-500 mt-0.5">{t('tech.cbudget.lenderReportSinLineasTodavia')}</p>
         </div>
         <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center space-y-5">
           <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto">
             <FileText className="w-7 h-7 text-slate-400" />
           </div>
           <div>
-            <div className="text-base font-semibold text-slate-700">Construction Budget vacío</div>
+            <div className="text-base font-semibold text-slate-700">{t('tech.cbudget.constructionBudgetVacio')}</div>
             <div className="text-sm text-slate-400 mt-1">
-              Carga el PDF del lender para extraer los items con sus valores iniciales
+              {t('tech.cbudget.cargaElPdfDelLenderPara')}
             </div>
           </div>
           <label className="inline-flex items-center gap-2 px-6 py-3 bg-[var(--brand-gold)] hover:bg-[#4A6880] text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer">
             <Upload className="w-4 h-4" />
-            {importPdfMut.isPending ? 'Importando PDF…' : 'Cargar Construction Budget (PDF)'}
+            {importPdfMut.isPending ? t('tech.cbudget.importandoPdf') : t('tech.cbudget.cargarConstructionBudgetPdf')}
             <input
               type="file"
               accept=".pdf"
@@ -324,7 +328,7 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
             />
           </label>
           <p className="text-[11px] text-slate-400">
-            El PDF debe ser el reporte del lender con items numerados tipo "1.1 Descripción $monto". El sistema extrae automáticamente todos los items.
+            {t('tech.cbudget.elPdfDebeSerElReporte')}
           </p>
         </div>
       </div>
@@ -336,32 +340,32 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-start justify-between gap-3">
         <div>
-          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><FileSpreadsheet className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>Construction Budget</span></h1>
+          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><FileSpreadsheet className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>{t('common.constructionBudget')}</span></h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            Lender Report · {lines.length} líneas · {groups.length} divisiones
+            {t('tech.cbudget.lenderReport')} {lines.length} {t('tech.cbudget.lineas')} {groups.length} {t('tech.cbudget.divisiones')}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={() => { setExpandAll(v => !v); setExpandTrigger(t => t + 1) }}
             className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:border-[var(--brand-gold)] text-slate-700 text-xs font-semibold rounded-lg transition-colors"
-            title={expandAll ? 'Colapsar todas las divisiones' : 'Expandir todas las divisiones'}
+            title={expandAll ? t('tech.cbudget.colapsarTodasLasDivisiones') : t('tech.cbudget.expandirTodasLasDivisiones')}
           >
             {expandAll ? <ChevronsUp className="w-3.5 h-3.5" /> : <ChevronsDown className="w-3.5 h-3.5" />}
-            {expandAll ? 'Colapsar' : 'Expandir'} todo
+            {expandAll ? t('tech.cbudget.colapsar') : t('tech.cbudget.expandir')} {t('tech.cbudget.todo')}
           </button>
           <button
             onClick={handleDownloadCsv}
             className="flex items-center gap-1.5 px-3 py-2 bg-white border border-[var(--brand-teal)]/40 hover:bg-[var(--brand-teal)]/5 text-[var(--brand-teal)] text-xs font-semibold rounded-lg transition-colors"
-            title="Descargar el budget cargado (CSV, abre en Excel)"
+            title={t('tech.cbudget.descargarElBudgetCargadoCsvAbre')}
           >
             <Download className="w-3.5 h-3.5" />
-            Descargar budget
+            {t('tech.cbudget.descargarBudget')}
           </button>
           <label className="flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg border border-[var(--brand-gold)] bg-[var(--brand-gold)] text-white hover:bg-[#4A6880] transition-colors cursor-pointer"
-            title="Reemplaza el budget cargado por el de un PDF nuevo del lender">
+            title={t('tech.cbudget.reemplazaElBudgetCargadoPorEl')}>
             <FileUp className="w-3.5 h-3.5" />
-            {importPdfMut.isPending ? 'Importando…' : 'Cambiar budget (PDF)'}
+            {importPdfMut.isPending ? t('common.importando') : t('tech.cbudget.cambiarBudgetPdf')}
             <input
               ref={importInputRef}
               type="file"
@@ -377,7 +381,7 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
             className="flex items-center gap-1.5 px-3 py-2 bg-white border border-red-200 hover:bg-red-50 text-red-600 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
           >
             <Eraser className="w-3.5 h-3.5" />
-            {resetCBMut.isPending ? 'Borrando…' : 'Borrar todo'}
+            {resetCBMut.isPending ? t('common.borrando') : t('tech.cbudget.borrarTodo')}
           </button>
         </div>
       </div>
@@ -385,19 +389,19 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
       {/* KPI row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="kpi-card">
-          <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1.5">Valor Inicial<br/><span className="text-slate-400 normal-case">Lo pactado con lender</span></div>
+          <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1.5">{t('tech.cbudget.valorInicial')}<br/><span className="text-slate-400 normal-case">{t('tech.cbudget.loPactadoConLender')}</span></div>
           <div className="text-lg font-bold font-mono text-slate-900">{formatUSD(totalIni)}</div>
         </div>
         <div className="kpi-card kpi-card-amber">
-          <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1.5">Desembolsado<br/><span className="text-slate-400 normal-case">Aprobado × {(factor * 100).toFixed(2)}%</span></div>
+          <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1.5">{t('tech.cbudget.desembolsado')}<br/><span className="text-slate-400 normal-case">{t('tech.cbudget.aprobado')} {(factor * 100).toFixed(2)}%</span></div>
           <div className="text-lg font-bold font-mono text-[var(--brand-teal)]">{formatUSD(totalDesemb)}</div>
         </div>
         <div className="kpi-card kpi-card-green">
-          <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1.5">Aprobado<br/><span className="text-slate-400 normal-case">Validado por Trinity</span></div>
+          <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1.5">{t('tech.co.aprobado')}<br/><span className="text-slate-400 normal-case">{t('tech.cbudget.validadoPorTrinity')}</span></div>
           <div className="text-lg font-bold font-mono text-emerald-600">{formatUSD(totalApr)}</div>
         </div>
         <div className={`kpi-card ${saldoPorAprobar > 0 ? '' : 'kpi-card-green'}`}>
-          <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1.5">Saldo por aprobar<br/><span className="text-slate-400 normal-case">{pctGlobal.toFixed(1)}% ejecutado</span></div>
+          <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1.5">{t('tech.cbudget.saldoPorAprobar')}<br/><span className="text-slate-400 normal-case">{pctGlobal.toFixed(1)}{t('tech.cbudget.ejecutado')}</span></div>
           <div className={`text-lg font-bold font-mono ${saldoPorAprobar > 0 ? 'text-slate-700' : 'text-emerald-600'}`}>
             {formatUSD(saldoPorAprobar)}
           </div>
@@ -407,7 +411,7 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
       {/* Global progress bar */}
       <div className="bg-white/60 rounded-xl border border-slate-200 p-4">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs text-slate-500">Progreso global de aprobación</span>
+          <span className="text-xs text-slate-500">{t('tech.cbudget.progresoGlobalDeAprobacion')}</span>
           <span className="text-sm font-mono font-semibold text-slate-800">{pctGlobal.toFixed(1)}%</span>
         </div>
         <div className="h-2.5 bg-slate-200 rounded-full overflow-hidden">
@@ -418,17 +422,17 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
         </div>
         <div className="flex justify-between text-[10px] text-slate-400 mt-1.5">
           <span>$0</span>
-          <span className="text-emerald-600">{formatUSD(totalApr)} aprobado</span>
+          <span className="text-emerald-600">{formatUSD(totalApr)} {t('tech.cbudget.aprobado2')}</span>
           <span>{formatUSD(totalIni)}</span>
         </div>
       </div>
 
       {/* Legend */}
       <div className="flex items-center flex-wrap gap-x-5 gap-y-1.5 text-[10px] text-slate-500">
-        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded bg-slate-500 inline-block"/>Inicial = firmado con lender</span>
-        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded bg-[var(--brand-teal)] inline-block"/>Desembolsado = Aprobado × {(factor * 100).toFixed(2)}% (lo que gira el lender)</span>
-        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded bg-emerald-500 inline-block"/>Aprobado = Trinity validated</span>
-        <span className="md:ml-auto text-slate-600 font-medium bg-white border border-slate-200 rounded-full px-2.5 py-1">✏ Todos los valores son editables · clic para editar</span>
+        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded bg-slate-500 inline-block"/>{t('tech.cbudget.inicialFirmadoConLender')}</span>
+        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded bg-[var(--brand-teal)] inline-block"/>{t('tech.cbudget.desembolsadoAprobado')} {(factor * 100).toFixed(2)}{t('tech.cbudget.loQueGiraElLender')}</span>
+        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded bg-emerald-500 inline-block"/>{t('tech.cbudget.aprobadoTrinityValidated')}</span>
+        <span className="md:ml-auto text-slate-600 font-medium bg-white border border-slate-200 rounded-full px-2.5 py-1">{t('tech.cbudget.todosLosValoresSonEditablesClic')}</span>
       </div>
 
       {/* Main table */}
@@ -436,12 +440,12 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
         {/* Column header */}
         <div className="flex items-center px-4 py-2.5 bg-slate-50 border-b border-slate-200">
           <div className="w-3.5 mr-3" />
-          <div className="flex-1 text-[10px] text-slate-400 uppercase tracking-wider">División</div>
+          <div className="flex-1 text-[10px] text-slate-400 uppercase tracking-wider">{t('tech.cbudget.division')}</div>
           <div className="flex items-center shrink-0 text-[10px] text-slate-500 uppercase tracking-wider">
-            <span className="w-28 text-right hidden md:inline-block">Inicial</span>
-            <span className="w-28 text-right text-[var(--brand-teal)] hidden lg:inline-block">Desembolsado</span>
-            <span className="w-32 text-right text-emerald-700 hidden md:inline-block">Aprobado</span>
-            <span className="w-24 text-right">Progreso</span>
+            <span className="w-28 text-right hidden md:inline-block">{t('tech.cbudget.inicial2')}</span>
+            <span className="w-28 text-right text-[var(--brand-teal)] hidden lg:inline-block">{t('tech.cbudget.desembolsado')}</span>
+            <span className="w-32 text-right text-emerald-700 hidden md:inline-block">{t('tech.co.aprobado')}</span>
+            <span className="w-24 text-right">{t('tech.cbudget.progreso')}</span>
           </div>
         </div>
 
@@ -458,7 +462,7 @@ export default function ConstructionBudget({ projectId }: { projectId: string })
         {/* Footer total */}
         <div className="flex items-center px-4 py-3.5 bg-slate-50/70 border-t border-slate-200/60">
           <div className="w-3.5 mr-3" />
-          <div className="flex-1 text-sm font-bold text-slate-800 uppercase tracking-wider">Total General</div>
+          <div className="flex-1 text-sm font-bold text-slate-800 uppercase tracking-wider">{t('tech.cbudget.totalGeneral')}</div>
           <div className="flex items-center shrink-0 text-sm font-mono font-bold">
             <span className="w-28 text-right text-slate-900 hidden md:inline-block">{formatUSD(totalIni)}</span>
             <span className="w-28 text-right text-[var(--brand-teal)] hidden lg:inline-block">{totalDesemb > 0 ? formatUSD(totalDesemb) : '—'}</span>

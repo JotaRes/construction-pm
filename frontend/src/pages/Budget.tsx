@@ -8,9 +8,11 @@ import { phasesApi, itemsApi, drawsApi } from '../lib/api'
 import { formatUSD } from '../lib/calculations'
 import type { Phase, Item, Draw } from '../lib/types'
 import { ChevronDown, ChevronRight, Plus, Trash2, TrendingUp, DollarSign, AlertTriangle } from 'lucide-react'
+import { useI18n } from '../i18n'
 
 /* ── Editable number cell ──────────────────────── */
 function NumCell({ value, onSave, className = '' }: { value: number; onSave: (v: number) => void; className?: string }) {
+  const { t } = useI18n()
   const [editing, setEditing] = useState(false)
   const [text, setText] = useState('')
 
@@ -30,7 +32,7 @@ function NumCell({ value, onSave, className = '' }: { value: number; onSave: (v:
   return (
     <button
       onClick={() => { setText(String(value || '')); setEditing(true) }}
-      title="Clic para editar"
+      title={t('tech.budget.clicParaEditar')}
       className={`w-full text-right text-sm font-mono hover:text-[var(--brand-teal)] transition-colors group/n flex items-center justify-end gap-1 ${className}`}
     >
       <span className="text-[9px] text-slate-500 group-hover/n:text-[var(--brand-gold)] transition-colors">✏</span>
@@ -162,6 +164,7 @@ function PhaseSection({ phase, onUpdate, onCreate, onDelete }: {
   onCreate: (phaseId: string) => void
   onDelete: (id: string) => void
 }) {
+  const { t } = useI18n()
   const budget = phase.items.reduce((s, i) => s + i.valorPresupuestado, 0)
   const ejec = phase.items.reduce((s, i) => s + i.valorEjecutado, 0)
   const desv = ejec - budget
@@ -208,7 +211,7 @@ function PhaseSection({ phase, onUpdate, onCreate, onDelete }: {
               </div>
             </>
           ) : (
-            <span className="text-[10px] text-slate-500 italic w-[236px] text-right">sin presupuesto</span>
+            <span className="text-[10px] text-slate-500 italic w-[236px] text-right">{t('tech.budget.sinPresupuesto')}</span>
           )}
         </div>
       </button>
@@ -218,12 +221,12 @@ function PhaseSection({ phase, onUpdate, onCreate, onDelete }: {
           <table className="w-full">
             <thead>
               <tr className="bg-slate-50">
-                <th className="pl-5 pr-2 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider w-16">Cód.</th>
-                <th className="px-2 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider">Actividad</th>
-                <th className="px-2 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider w-14">Ud.</th>
-                <th className="px-2 py-1.5 text-right text-[9px] text-[#3E5A70]/80 uppercase tracking-wider w-32">Presup. ✏</th>
-                <th className="px-2 py-1.5 text-right text-[9px] text-slate-400 uppercase tracking-wider w-28">Ejecutado</th>
-                <th className="px-2 py-1.5 text-right text-[9px] text-slate-400 uppercase tracking-wider w-24">Desv.</th>
+                <th className="pl-5 pr-2 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider w-16">{t('common.cod')}</th>
+                <th className="px-2 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider">{t('common.actividad')}</th>
+                <th className="px-2 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider w-14">{t('tech.budget.ud')}</th>
+                <th className="px-2 py-1.5 text-right text-[9px] text-[#3E5A70]/80 uppercase tracking-wider w-32">{t('tech.budget.presup')}</th>
+                <th className="px-2 py-1.5 text-right text-[9px] text-slate-400 uppercase tracking-wider w-28">{t('common.ejecutado')}</th>
+                <th className="px-2 py-1.5 text-right text-[9px] text-slate-400 uppercase tracking-wider w-24">{t('tech.budget.desv')}</th>
                 <th className="pr-4 pl-2 py-1.5 text-left text-[9px] text-slate-400 uppercase tracking-wider w-24">%</th>
               </tr>
             </thead>
@@ -246,8 +249,8 @@ function PhaseSection({ phase, onUpdate, onCreate, onDelete }: {
             className="flex items-center gap-2 px-5 py-2 text-xs text-slate-400 hover:text-[var(--brand-gold)] hover:bg-[#3E5A70]/5 transition-colors w-full border-t border-slate-200/50"
           >
             <Plus className="w-3.5 h-3.5" />
-            Agregar actividad imprevista
-            {customItems.length > 0 && <span className="ml-1 text-slate-500">({customItems.length} agregada{customItems.length > 1 ? 's' : ''})</span>}
+            {t('tech.budget.agregarActividadImprevista')}
+            {customItems.length > 0 && <span className="ml-1 text-slate-500">({customItems.length} {t('tech.budget.agregada')}{customItems.length > 1 ? 's' : ''})</span>}
           </button>
         </div>
       )}
@@ -257,6 +260,7 @@ function PhaseSection({ phase, onUpdate, onCreate, onDelete }: {
 
 /* ── Main ──────────────────────────────────────── */
 export default function Budget({ projectId }: { projectId: string }) {
+  const { t } = useI18n()
   const queryClient = useQueryClient()
   const confirm = useConfirm()
 
@@ -266,17 +270,17 @@ export default function Budget({ projectId }: { projectId: string }) {
       queryClient.invalidateQueries({ queryKey: ['phases', projectId] })
       toast.success(r?.message || 'Presupuesto reseteado')
     },
-    onError: (e: any) => toast.error(e?.response?.data?.error || 'Error'),
+    onError: (e: any) => toast.error(e?.response?.data?.error || t('common.error')),
   })
 
   const handleClearBudget = async () => {
     const ok = await confirm({
-      title: 'Borrar todos los datos del presupuesto',
-      message: '¿Seguro que quieres borrar TODOS los valores presupuestados?',
+      title: t('tech.budget.borrarTodosLosDatosDelPresupuesto'),
+      message: t('tech.budget.seguroQueQuieresBorrarTodosLos'),
       detail: 'Esta acción resetea el valorPresupuestado de TODOS los items a 0. La estructura de fases e items se conserva. La ejecución NO se toca. Esta acción no se puede deshacer.',
       destructive: true,
-      confirmText: 'Sí, borrar presupuesto',
-      typeToConfirm: 'BORRAR PRESUPUESTO',
+      confirmText: t('tech.budget.siBorrarPresupuesto'),
+      typeToConfirm: t('tech.budget.borrarPresupuesto2'),
     })
     if (ok) resetBudget.mutate()
   }
@@ -314,55 +318,55 @@ export default function Budget({ projectId }: { projectId: string }) {
   const wiredDraws = draws.filter(d => d.estado === 'WIRED')
   const totalDrawn = wiredDraws.reduce((s, d) => s + d.netWire, 0)
 
-  if (isLoading) return <div className="text-slate-500 text-sm animate-pulse px-1">Cargando presupuesto...</div>
+  if (isLoading) return <div className="text-slate-500 text-sm animate-pulse px-1">{t('tech.budget.cargandoPresupuesto')}</div>
 
   return (
     <div className="space-y-5">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Presupuesto Maestro</h1>
+          <h1 className="text-xl font-bold text-slate-900">{t('tech.budget.presupuestoMaestro')}</h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            Edita los valores presupuestados por ítem — baseline compartido con Ejecución
+            {t('tech.budget.editaLosValoresPresupuestadosPorItem')}
           </p>
         </div>
         <button
           onClick={handleClearBudget}
           disabled={resetBudget.isPending}
           className="flex items-center gap-1.5 px-3 py-2 bg-white border border-red-200 hover:bg-red-50 text-red-600 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
-          title="Borrar todos los valores presupuestados (mantiene estructura)"
+          title={t('tech.budget.borrarTodosLosValoresPresupuestadosMantien')}
         >
           <Eraser className="w-3.5 h-3.5" />
-          {resetBudget.isPending ? 'Borrando…' : 'Borrar presupuesto'}
+          {resetBudget.isPending ? t('common.borrando') : t('tech.budget.borrarPresupuesto')}
         </button>
       </div>
 
       {/* KPI row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="kpi-card">
-          <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1.5">Total presupuestado</div>
+          <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1.5">{t('tech.budget.totalPresupuestado')}</div>
           <div className="text-xl font-bold font-mono text-slate-900">{formatUSD(totalBudget)}</div>
-          <div className="text-[10px] text-slate-400 mt-1 font-mono">{phases.filter(p => p.items.some(i => i.valorPresupuestado > 0)).length} de {phases.length} fases</div>
+          <div className="text-[10px] text-slate-400 mt-1 font-mono">{phases.filter(p => p.items.some(i => i.valorPresupuestado > 0)).length} {t('common.de')} {phases.length} {t('tech.budget.fases')}</div>
         </div>
         <div className="kpi-card kpi-card-green">
-          <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1.5">Total ejecutado</div>
+          <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1.5">{t('tech.budget.totalEjecutado')}</div>
           <div className="text-xl font-bold font-mono text-[var(--brand-teal)]">{formatUSD(totalEjec)}</div>
-          <div className="text-[10px] text-slate-400 mt-1 font-mono">{pctEjec.toFixed(1)}% del presupuesto</div>
+          <div className="text-[10px] text-slate-400 mt-1 font-mono">{pctEjec.toFixed(1)}{t('tech.budget.delPresupuesto')}</div>
         </div>
         <div className={`kpi-card ${totalDesv > 0 ? 'kpi-card-red' : 'kpi-card-green'}`}>
-          <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1.5">Saldo disponible</div>
+          <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1.5">{t('tech.budget.saldoDisponible')}</div>
           <div className={`text-xl font-bold font-mono ${totalDesv > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
             {formatUSD(totalBudget - totalEjec)}
           </div>
           <div className="text-[10px] text-slate-400 mt-1 font-mono">
-            {totalDesv > 0 ? '▲ sobre presupuesto' : totalDesv < 0 ? '▼ bajo presupuesto' : 'en balance'}
+            {totalDesv > 0 ? t('tech.budget.sobrePresupuesto') : totalDesv < 0 ? t('tech.budget.bajoPresupuesto') : t('tech.budget.enBalance')}
           </div>
         </div>
         <div className="kpi-card kpi-card-purple">
           <div className="flex items-center gap-1.5 text-[10px] text-slate-400 uppercase tracking-wider mb-1.5">
-            <TrendingUp className="w-3 h-3" />Draws wired
+            <TrendingUp className="w-3 h-3" />{t('tech.budget.drawsWired')}
           </div>
           <div className="text-xl font-bold font-mono text-[var(--accent)]">{formatUSD(totalDrawn)}</div>
-          <div className="text-[10px] text-slate-400 mt-1 font-mono">{wiredDraws.length} draw{wiredDraws.length !== 1 ? 's' : ''} desembolsado{wiredDraws.length !== 1 ? 's' : ''}</div>
+          <div className="text-[10px] text-slate-400 mt-1 font-mono">{wiredDraws.length} {t('tech.budget.draw')}{wiredDraws.length !== 1 ? 's' : ''} {t('tech.budget.desembolsado')}{wiredDraws.length !== 1 ? 's' : ''}</div>
         </div>
       </div>
 
@@ -371,11 +375,10 @@ export default function Budget({ projectId }: { projectId: string }) {
         <div className="flex items-start gap-2.5 bg-[var(--accent-soft)] border border-[var(--accent-border)] rounded-xl px-4 py-3">
           <AlertTriangle className="w-4 h-4 text-[var(--accent)] flex-shrink-0 mt-0.5" />
           <div className="text-xs text-slate-500 leading-relaxed">
-            <span className="text-[var(--accent)] font-semibold">Draws wired ({formatUSD(totalDrawn)})</span>
-            {' '}= dinero desembolsado por el lender a tu cuenta.{' '}
-            <span className="text-[var(--brand-teal)] font-semibold">Ejecutado ({formatUSD(totalEjec)})</span>
-            {' '}= costo real registrado por ítem de obra.
-            Son dos vistas distintas del mismo flujo — los draws financian, los ítems controlan.
+            <span className="text-[var(--accent)] font-semibold">{t('tech.budget.drawsWired2')}{formatUSD(totalDrawn)})</span>
+            {' '}{t('tech.budget.dineroDesembolsadoPorElLenderA')}{' '}
+            <span className="text-[var(--brand-teal)] font-semibold">{t('tech.budget.ejecutado')}{formatUSD(totalEjec)})</span>
+            {' '}{t('tech.budget.costoRealRegistradoPorItemDe')}
           </div>
         </div>
       )}
@@ -383,8 +386,7 @@ export default function Budget({ projectId }: { projectId: string }) {
       {/* Tip */}
       <div className="flex items-center gap-2 text-[11px] text-slate-400">
         <DollarSign className="w-3.5 h-3.5 text-[#3E5A70]/50" />
-        Clic en cualquier valor de <span className="text-[#3E5A70]/70">Presup. ✏</span> para editarlo. Los cambios se ven inmediatamente en Ejecución.
-        Clic en el nombre de la actividad para editarlo también.
+        {t('tech.budget.clicEnCualquierValorDe')} <span className="text-[#3E5A70]/70">{t('tech.budget.presup')}</span> {t('tech.budget.paraEditarloLosCambiosSeVen')}
       </div>
 
       {/* Main table */}
@@ -393,12 +395,12 @@ export default function Budget({ projectId }: { projectId: string }) {
         <div className="flex items-center gap-3 px-5 py-2.5 border-b border-slate-200 bg-slate-50/40">
           <div className="w-3.5 flex-shrink-0" />
           <div className="w-7 flex-shrink-0" />
-          <div className="flex-1 text-[10px] text-slate-400 uppercase tracking-wider">Fase</div>
+          <div className="flex-1 text-[10px] text-slate-400 uppercase tracking-wider">{t('tech.budget.fase')}</div>
           <div className="flex items-center gap-4 text-[10px] shrink-0">
-            <span className="text-[#3E5A70]/70 uppercase tracking-wider w-28 text-right">Presupuestado</span>
-            <span className="text-slate-400 uppercase tracking-wider w-28 text-right">Ejecutado</span>
-            <span className="text-slate-400 uppercase tracking-wider w-20 text-right">Desviación</span>
-            <span className="text-slate-400 uppercase tracking-wider w-20 text-right">% Ejec.</span>
+            <span className="text-[#3E5A70]/70 uppercase tracking-wider w-28 text-right">{t('tech.budget.presupuestado')}</span>
+            <span className="text-slate-400 uppercase tracking-wider w-28 text-right">{t('common.ejecutado')}</span>
+            <span className="text-slate-400 uppercase tracking-wider w-20 text-right">{t('tech.budget.desviacion')}</span>
+            <span className="text-slate-400 uppercase tracking-wider w-20 text-right">{t('tech.budget.ejec')}</span>
           </div>
         </div>
 
@@ -415,7 +417,7 @@ export default function Budget({ projectId }: { projectId: string }) {
         {/* Footer */}
         <div className="flex items-center gap-3 px-5 py-3 bg-slate-50 border-t border-slate-300/50">
           <div className="w-3.5" /><div className="w-7" />
-          <div className="flex-1 text-xs font-bold text-slate-700 uppercase tracking-wider">Total general</div>
+          <div className="flex-1 text-xs font-bold text-slate-700 uppercase tracking-wider">{t('tech.budget.totalGeneral')}</div>
           <div className="flex items-center gap-4 shrink-0">
             <span className="font-mono font-bold text-base text-slate-900 w-28 text-right">{formatUSD(totalBudget)}</span>
             <span className={`font-mono text-base w-28 text-right font-semibold ${totalEjec > 0 ? 'text-[var(--brand-teal)]' : 'text-slate-400'}`}>

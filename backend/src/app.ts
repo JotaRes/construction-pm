@@ -60,6 +60,7 @@ import admDocuments from './admin/routes/documents'
 import admTasks from './admin/routes/tasks'
 import admDashboard from './admin/routes/dashboard'
 import admPersons from './admin/routes/persons'
+import { translateApiErrors } from './i18n/errors'
 
 // Red de seguridad: un archivo corrupto (p.ej. imagen dañada en OCR) puede hacer
 // abortar el módulo WASM de tesseract con un error ASÍNCRONO no atrapable por
@@ -142,6 +143,12 @@ app.use(
 )
 
 app.use(express.json())
+
+// ── IDIOMA DE LAS RESPUESTAS ─────────────────────────────────────────────────
+// Las rutas escriben sus errores en español; este middleware los traduce al
+// inglés cuando el cliente lo pide vía Accept-Language. Va antes de las rutas
+// porque envuelve res.json una sola vez.
+app.use('/api', translateApiErrors)
 
 // ── AUTENTICACIÓN GLOBAL — protege todos los endpoints /api/* ─────────────
 // Rutas públicas:

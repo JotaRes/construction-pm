@@ -52,12 +52,73 @@ function detectInitialLang(): Lang {
 
 type Vars = Record<string, string | number>
 
+/**
+ * Idioma vigente a nivel de módulo. Lo mantiene sincronizado el provider.
+ * Existe SOLO para `tStatic` — ver abajo.
+ */
+let currentLang_: Lang = detectInitialLang()
+
 /** Reemplaza {{clave}} por su valor. Deja intacto lo que no encuentre. */
 function interpolate(template: string, vars?: Vars): string {
   if (!vars) return template
   return template.replace(/\{\{(\w+)\}\}/g, (match, key: string) =>
     key in vars ? String(vars[key]) : match
   )
+}
+
+/**
+ * Traducción fuera de React: helpers a nivel de módulo, funciones de badge y
+ * capas de API que no pueden llamar a un hook.
+ *
+ * CUÁNDO USARLA: solo donde `useI18n()` es imposible. Dentro de un componente
+ * usa SIEMPRE `t` del hook — es el que dispara el re-render al cambiar idioma.
+ *
+ * POR QUÉ ES SEGURA: lee el idioma en el momento de la llamada, no al importar.
+ * Los mensajes imperativos (toasts) salen siempre en el idioma vigente, y los
+ * helpers de render se recalculan porque el componente que los invoca sí está
+ * suscrito al contexto.
+ */
+/**
+ * Locale BCP-47 vigente, para `toLocaleDateString` y compañía fuera de React.
+ * Las fechas SÍ cambian de formato con el idioma (11 sept 2026 / Sep 11, 2026);
+ * la moneda se mantiene en formato en-US a propósito: son dólares y los
+ * documentos del lender, el HUD y los draws se leen así en ambos idiomas.
+ */
+export function currentLocale(): string {
+  return LOCALES[currentLang_]
+}
+
+/**
+ * Idioma vigente fuera de React. Lo usan los clientes axios para enviar
+ * `Accept-Language`, con lo que el backend traduce sus mensajes de error.
+ */
+export function currentLang(): Lang {
+  return currentLang_
+}
+
+/**
+ * Aplica el idioma guardado al documento ANTES de que React monte: <html lang>,
+ * <title> y el texto del splash, que viven en index.html y por tanto nacen en
+ * español. El CSP del backend (`script-src 'self'`) prohíbe scripts inline en
+ * el HTML, así que este arranque tiene que ejecutarse desde el bundle.
+ */
+export function bootstrapDocumentLanguage(): void {
+  const dict = dictionaries[currentLang_]
+  document.documentElement.setAttribute('lang', currentLang_)
+  document.title = dict['app.title']
+  const splash = document.getElementById('app-loading-text')
+  if (splash) splash.textContent = dict['app.splashLoading']
+  const desc = document.querySelector('meta[name="description"]')
+  if (desc) desc.setAttribute('content', dict['app.description'])
+}
+
+export function tStatic(key: TranslationKey, vars?: Vars): string {
+  const raw = dictionaries[currentLang_][key]
+  if (raw === undefined) {
+    console.warn(`[i18n] clave sin traducción: ${key}`)
+    return key
+  }
+  return interpolate(raw, vars)
 }
 
 interface I18nValue {
@@ -80,9 +141,14 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   // ortográfico del navegador y SEO dependen de este atributo.
   useEffect(() => {
     document.documentElement.setAttribute('lang', lang)
+    currentLang_ = lang
+    document.title = dictionaries[lang]['app.title']
+    const desc = document.querySelector('meta[name="description"]')
+    if (desc) desc.setAttribute('content', dictionaries[lang]['app.description'])
   }, [lang])
 
   const setLang = useCallback((l: Lang) => {
+    currentLang_ = l
     setLangState(l)
     try { localStorage.setItem(STORAGE_KEY, l) } catch { /* noop */ }
   }, [])
@@ -90,6 +156,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const toggle = useCallback(() => {
     setLangState(prev => {
       const next: Lang = prev === 'es' ? 'en' : 'es'
+      currentLang_ = next
       try { localStorage.setItem(STORAGE_KEY, next) } catch { /* noop */ }
       return next
     })

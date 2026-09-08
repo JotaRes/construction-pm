@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
+import { useI18n } from '../i18n'
 
 export default function Splash() {
+  const { t } = useI18n()
   const [out, setOut] = useState(false)
   const [gone, setGone] = useState(false)
 
@@ -49,7 +51,7 @@ export default function Splash() {
           color: 'rgba(240,236,228,0.92)',
           lineHeight: 1.1,
         }}>
-          Restrepo Acosta
+          {t('common.restrepoAcosta')}
         </div>
         <div style={{
           fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
@@ -58,7 +60,7 @@ export default function Splash() {
           color: 'rgba(240,236,228,0.22)',
           marginTop: 6,
         }}>
-          Global Holding LLC
+          {t('ui.splash.globalHoldingLlc')}
         </div>
       </div>
 

@@ -8,8 +8,10 @@ import {
   Archive, RotateCcw, Lock, CheckCircle2, ShieldAlert, RefreshCw,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { useI18n } from '../../i18n'
 
 export default function Import() {
+  const { t } = useI18n()
   const qc = useQueryClient();
   const [wipe, setWipe] = useState(false);
   const [result, setResult] = useState<any>(null);
@@ -20,24 +22,24 @@ export default function Import() {
 
   const importDisk = useMutation({
     mutationFn: () => API.importExcelFromDisk(wipe),
-    onSuccess: (r) => { setResult(r); qc.invalidateQueries({ queryKey: ["dashboard"] }); toast.success(`${r.movements} movimientos importados`); },
-    onError: (e: any) => toast.error(e.response?.data?.error || "Error"),
+    onSuccess: (r) => { setResult(r); qc.invalidateQueries({ queryKey: ["dashboard"] }); toast.success(t('fin.import.v0MovimientosImportados', { v0: r.movements })); },
+    onError: (e: any) => toast.error(e.response?.data?.error || t('common.error')),
   });
 
   const importUpload = useMutation({
     mutationFn: (file: File) => API.importExcel(file, wipe),
-    onSuccess: (r) => { setResult(r); qc.invalidateQueries({ queryKey: ["dashboard"] }); toast.success(`Importación completa: ${r.movements} movimientos`); },
-    onError: (e: any) => toast.error(e.response?.data?.error || "Error"),
+    onSuccess: (r) => { setResult(r); qc.invalidateQueries({ queryKey: ["dashboard"] }); toast.success(t('fin.import.importacionCompletaV0Movimientos', { v0: r.movements })); },
+    onError: (e: any) => toast.error(e.response?.data?.error || t('common.error')),
   });
 
   const wipeAll = useMutation({
     mutationFn: (password: string) => API.wipeAllData(password),
     onSuccess: () => {
       qc.invalidateQueries();
-      toast.success("Base de datos del módulo financiero borrada completamente", { duration: 5000 });
+      toast.success(t('fin.import.baseDeDatosDelModuloFinanciero'), { duration: 5000 });
       setResetModal(false);
     },
-    onError: (e: any) => toast.error(e.response?.data?.error || "Error al borrar datos"),
+    onError: (e: any) => toast.error(e.response?.data?.error || t('fin.import.errorAlBorrarDatos')),
   });
 
   const restore = useMutation({
@@ -45,32 +47,32 @@ export default function Import() {
     onSuccess: (r) => {
       qc.invalidateQueries();
       const totalRecords = Object.values(r.counts || {}).reduce((s: number, v: any) => s + (Number(v) || 0), 0);
-      toast.success(`✓ Restauración completa: ${totalRecords} registros cargados`, { duration: 6000 });
+      toast.success(t('fin.import.restauracionCompletaV0RegistrosCargados', { v0: totalRecords }), { duration: 6000 });
       setRestoreModal(false);
       setRestoreFile(null);
     },
-    onError: (e: any) => toast.error(e.response?.data?.error || "Error al restaurar"),
+    onError: (e: any) => toast.error(e.response?.data?.error || t('fin.import.errorAlRestaurar')),
   });
 
   const downloadFile = (url: string, filename: string) => {
-    downloadAuthed(url, filename).catch(() => toast.error("Error al descargar el archivo"));
+    downloadAuthed(url, filename).catch(() => toast.error(t('fin.import.errorAlDescargarElArchivo')));
   };
 
   return (
     <div className="space-y-5 page-content">
       <div>
-        <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><Archive className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>Importar / Backup</span></h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--brand-teal2)' }}>Exporta tus datos a Excel o JSON, restaura desde backup, importa desde Excel maestro, o resetea desde cero</p>
+        <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><Archive className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>{t('fin.import.importarBackup')}</span></h1>
+        <p className="text-sm mt-1" style={{ color: 'var(--brand-teal2)' }}>{t('fin.import.exportaTusDatosAExcelO')}</p>
       </div>
 
       {/* === EXPORTAR === */}
       <div className="card p-5">
         <div className="flex items-center gap-2 mb-3">
           <Download size={18} style={{ color: 'var(--brand-gold)' }} />
-          <h2 className="text-base font-bold" style={{ color: 'var(--brand-teal)' }}>Exportar datos</h2>
+          <h2 className="text-base font-bold" style={{ color: 'var(--brand-teal)' }}>{t('fin.import.exportarDatos')}</h2>
         </div>
         <p className="text-sm mb-4" style={{ color: 'var(--brand-teal2)' }}>
-          Descarga toda la información financiera para respaldo, análisis externo o migración. Ambos formatos son <strong>re-importables</strong>: si reseteas o pierdes datos, puedes cargarlos de vuelta y recuperar el estado exacto.
+          {t('fin.import.descargaTodaLaInformacionFinancieraPara')} <strong>{t('fin.import.reImportables')}</strong>{t('fin.import.siReseteasOPierdesDatosPuedes')}
         </p>
 
         <div className="grid md:grid-cols-2 gap-3">
@@ -81,9 +83,9 @@ export default function Import() {
                 <FileSpreadsheet size={20} />
               </div>
               <div>
-                <div className="font-semibold" style={{ color: 'var(--brand-teal)' }}>Excel (.xlsx)</div>
+                <div className="font-semibold" style={{ color: 'var(--brand-teal)' }}>{t('fin.import.excelXlsx')}</div>
                 <div className="text-xs mt-0.5" style={{ color: 'var(--brand-teal2)' }}>
-                  Multi-hoja legible — útil para análisis manual en Excel
+                  {t('fin.import.multiHojaLegibleUtilParaAnalisis')}
                 </div>
               </div>
             </div>
@@ -91,7 +93,7 @@ export default function Import() {
               onClick={() => downloadFile(API.excelExportUrl(), `finance-${new Date().toISOString().slice(0, 10)}.xlsx`)}
               className="btn-primary w-full justify-center text-sm"
             >
-              <Download size={14} /> Descargar Excel
+              <Download size={14} /> {t('fin.import.descargarExcel')}
             </button>
           </div>
 
@@ -102,9 +104,9 @@ export default function Import() {
                 <Archive size={20} />
               </div>
               <div>
-                <div className="font-semibold" style={{ color: 'var(--brand-teal)' }}>Backup completo (ZIP + JSON)</div>
+                <div className="font-semibold" style={{ color: 'var(--brand-teal)' }}>{t('fin.import.backupCompletoZipJson')}</div>
                 <div className="text-xs mt-0.5" style={{ color: 'var(--brand-teal2)' }}>
-                  Snapshot exacto · <strong>Recomendado para restore</strong>
+                  {t('fin.import.snapshotExacto')} <strong>{t('fin.import.recomendadoParaRestore')}</strong>
                 </div>
               </div>
             </div>
@@ -112,7 +114,7 @@ export default function Import() {
               onClick={() => downloadFile(API.backupUrl(), `finance-backup-${new Date().toISOString().slice(0, 10)}.zip`)}
               className="btn-secondary w-full justify-center text-sm"
             >
-              <Archive size={14} /> Descargar ZIP
+              <Archive size={14} /> {t('fin.import.descargarZip')}
             </button>
           </div>
         </div>
@@ -122,18 +124,18 @@ export default function Import() {
       <div className="card p-5">
         <div className="flex items-center gap-2 mb-3">
           <RefreshCw size={18} style={{ color: 'var(--brand-gold)' }} />
-          <h2 className="text-base font-bold" style={{ color: 'var(--brand-teal)' }}>Restaurar desde backup</h2>
+          <h2 className="text-base font-bold" style={{ color: 'var(--brand-teal)' }}>{t('fin.import.restaurarDesdeBackup')}</h2>
         </div>
         <p className="text-sm mb-3" style={{ color: 'var(--brand-teal2)' }}>
-          Carga un archivo de backup previo (ZIP o JSON) para restaurar tu sistema al estado exacto cuando lo descargaste.
-          <strong className="text-red-600 ml-1">Esta acción BORRA todos los datos actuales antes de restaurar.</strong>
+          {t('fin.import.cargaUnArchivoDeBackupPrevio')}
+          <strong className="text-red-600 ml-1">{t('fin.import.estaAccionBorraTodosLosDatos')}</strong>
         </p>
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setRestoreModal(true)}
             className="btn-primary text-sm"
           >
-            <Upload size={14} /> Cargar backup y restaurar
+            <Upload size={14} /> {t('fin.import.cargarBackupYRestaurar')}
           </button>
         </div>
       </div>
@@ -142,24 +144,24 @@ export default function Import() {
       <div className="card p-5">
         <div className="flex items-center gap-2 mb-3">
           <Upload size={18} style={{ color: 'var(--brand-gold)' }} />
-          <h2 className="text-base font-bold" style={{ color: 'var(--brand-teal)' }}>Importar Excel maestro</h2>
+          <h2 className="text-base font-bold" style={{ color: 'var(--brand-teal)' }}>{t('fin.import.importarExcelMaestro')}</h2>
         </div>
         <p className="text-sm mb-3" style={{ color: 'var(--brand-teal2)' }}>
-          Carga las hojas <code className="px-1.5 py-0.5 rounded" style={{ background: 'rgba(62,90,112,0.1)', color: 'var(--brand-gold)' }}>MOV 2025</code>, <code className="px-1.5 py-0.5 rounded" style={{ background: 'rgba(62,90,112,0.1)', color: 'var(--brand-gold)' }}>MOV 2026</code>, <code className="px-1.5 py-0.5 rounded" style={{ background: 'rgba(62,90,112,0.1)', color: 'var(--brand-gold)' }}>CAPITALIZACION</code> y <code className="px-1.5 py-0.5 rounded" style={{ background: 'rgba(62,90,112,0.1)', color: 'var(--brand-gold)' }}>PROYECTOS</code> de tu archivo "DOC FINANCIERO".
+          {t('fin.import.cargaLasHojas')} <code className="px-1.5 py-0.5 rounded" style={{ background: 'rgba(62,90,112,0.1)', color: 'var(--brand-gold)' }}>{t('fin.import.mov2025')}</code>, <code className="px-1.5 py-0.5 rounded" style={{ background: 'rgba(62,90,112,0.1)', color: 'var(--brand-gold)' }}>{t('fin.import.mov2026')}</code>, <code className="px-1.5 py-0.5 rounded" style={{ background: 'rgba(62,90,112,0.1)', color: 'var(--brand-gold)' }}>CAPITALIZACION</code> {t('fin.import.y')} <code className="px-1.5 py-0.5 rounded" style={{ background: 'rgba(62,90,112,0.1)', color: 'var(--brand-gold)' }}>PROYECTOS</code> {t('fin.import.deTuArchivoDocFinanciero')}
         </p>
 
         <label className="flex items-center gap-2 text-sm p-3 rounded-lg mb-3 cursor-pointer" style={{ background: 'var(--brand-cream2)' }}>
           <input type="checkbox" checked={wipe} onChange={(e) => setWipe(e.target.checked)} className="rounded" />
           <AlertTriangle size={14} className="text-amber-600" />
-          <span style={{ color: 'var(--brand-teal)' }}>Borrar movimientos y capitalización existentes antes de importar</span>
+          <span style={{ color: 'var(--brand-teal)' }}>{t('fin.import.borrarMovimientosYCapitalizacionExistentes')}</span>
         </label>
 
         <div className="flex gap-2 flex-wrap">
           <button className="btn-primary" onClick={() => importDisk.mutate()} disabled={importDisk.isPending}>
-            <Database size={14} />{importDisk.isPending ? "Importando…" : "Importar desde servidor"}
+            <Database size={14} />{importDisk.isPending ? t('common.importando') : t('fin.import.importarDesdeServidor')}
           </button>
           <label className="btn-secondary cursor-pointer">
-            <Upload size={14} /> Subir archivo Excel
+            <Upload size={14} /> {t('fin.import.subirArchivoExcel')}
             <input
               type="file"
               accept=".xlsx,.xls"
@@ -172,13 +174,13 @@ export default function Import() {
 
         {result && (
           <div className="mt-4 p-4 rounded-lg" style={{ background: 'var(--brand-cream2)', border: '1px solid rgba(29,29,31,0.08)' }}>
-            <div className="text-sm font-semibold mb-2" style={{ color: 'var(--brand-teal)' }}>✓ Importación exitosa</div>
+            <div className="text-sm font-semibold mb-2" style={{ color: 'var(--brand-teal)' }}>{t('fin.import.importacionExitosa')}</div>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs" style={{ color: 'var(--brand-teal2)' }}>
-              <div>Movimientos: <strong style={{ color: 'var(--brand-teal)' }}>{result.movements}</strong></div>
-              <div>Aportes capital: <strong style={{ color: 'var(--brand-teal)' }}>{result.capitalContribs}</strong></div>
-              <div>Préstamos: <strong style={{ color: 'var(--brand-teal)' }}>{result.loans}</strong></div>
-              <div>Aportes no-banc.: <strong style={{ color: 'var(--brand-teal)' }}>{result.nonBank}</strong></div>
-              <div>Proyectos: <strong style={{ color: 'var(--brand-teal)' }}>{result.projectsTouched}</strong></div>
+              <div>{t('fin.import.movimientos')} <strong style={{ color: 'var(--brand-teal)' }}>{result.movements}</strong></div>
+              <div>{t('fin.import.aportesCapital')} <strong style={{ color: 'var(--brand-teal)' }}>{result.capitalContribs}</strong></div>
+              <div>{t('fin.import.prestamos')} <strong style={{ color: 'var(--brand-teal)' }}>{result.loans}</strong></div>
+              <div>{t('fin.import.aportesNoBanc')} <strong style={{ color: 'var(--brand-teal)' }}>{result.nonBank}</strong></div>
+              <div>{t('fin.import.proyectos')} <strong style={{ color: 'var(--brand-teal)' }}>{result.projectsTouched}</strong></div>
             </div>
           </div>
         )}
@@ -188,11 +190,11 @@ export default function Import() {
       <div className="card p-5" style={{ borderColor: 'rgba(220,38,38,0.3)', borderWidth: 2 }}>
         <div className="flex items-center gap-2 mb-2">
           <ShieldAlert size={18} className="text-red-600" />
-          <h2 className="text-base font-bold text-red-600">Zona peligrosa: Reset completo</h2>
+          <h2 className="text-base font-bold text-red-600">{t('fin.import.zonaPeligrosaResetCompleto')}</h2>
         </div>
         <p className="text-sm mb-4" style={{ color: 'var(--brand-teal2)' }}>
-          Borra <strong>TODOS</strong> los datos del módulo financiero. <strong className="text-red-600">No se puede deshacer.</strong>
-          <span className="block mt-1">🔒 Esta acción requiere una <strong>contraseña de confirmación</strong> para evitar borrados accidentales.</span>
+          {t('fin.import.borra')} <strong>TODOS</strong> {t('fin.import.losDatosDelModuloFinanciero')} <strong className="text-red-600">{t('fin.import.noSePuedeDeshacer')}</strong>
+          <span className="block mt-1">{t('fin.import.estaAccionRequiereUna')} <strong>{t('fin.import.contrasenaDeConfirmacion')}</strong> {t('fin.import.paraEvitarBorradosAccidentales')}</span>
         </p>
 
         <div className="flex flex-wrap gap-2">
@@ -200,13 +202,13 @@ export default function Import() {
             className="btn-secondary text-sm"
             onClick={() => downloadFile(API.backupUrl(), `finance-pre-wipe-${new Date().toISOString().slice(0, 10)}.zip`)}
           >
-            <Archive size={14} /> Descargar backup primero
+            <Archive size={14} /> {t('fin.import.descargarBackupPrimero')}
           </button>
           <button
             className="btn-danger text-sm"
             onClick={() => setResetModal(true)}
           >
-            <RotateCcw size={14} /> Resetear todo desde cero
+            <RotateCcw size={14} /> {t('fin.import.resetearTodoDesdeCero')}
           </button>
         </div>
       </div>
@@ -227,7 +229,7 @@ export default function Import() {
         setFile={setRestoreFile}
         fileRef={restoreFileRef}
         onConfirm={(password) => {
-          if (!restoreFile) return toast.error("Selecciona un archivo");
+          if (!restoreFile) return toast.error(t('fin.import.seleccionaUnArchivo'));
           restore.mutate({ file: restoreFile, password });
         }}
         isPending={restore.isPending}
@@ -240,12 +242,13 @@ export default function Import() {
 // MODAL: Password para reset
 // ─────────────────────────────────────────────────────────────
 function ResetPasswordModal({ open, onClose, onConfirm, isPending }: { open: boolean; onClose: () => void; onConfirm: (password: string) => void; isPending: boolean }) {
+  const { t } = useI18n()
   const [pwd, setPwd] = useState("");
   const [step, setStep] = useState<1 | 2>(1);
 
   const handleClose = () => { setPwd(""); setStep(1); onClose(); };
   const handleNext = () => {
-    if (!pwd) return toast.error("Ingresa la contraseña");
+    if (!pwd) return toast.error(t('fin.import.ingresaLaContrasena'));
     setStep(2);
   };
   const handleConfirm = () => {
@@ -253,20 +256,19 @@ function ResetPasswordModal({ open, onClose, onConfirm, isPending }: { open: boo
   };
 
   return (
-    <Modal open={open} onClose={handleClose} title="⚠ Confirmar reset total" size="md">
+    <Modal open={open} onClose={handleClose} title={t('fin.import.confirmarResetTotal')} size="md">
       {step === 1 ? (
         <div className="space-y-4">
           <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-200">
             <ShieldAlert size={16} className="text-red-600 flex-shrink-0 mt-0.5" />
             <div className="text-sm text-red-700">
-              Estás a punto de borrar <strong>TODOS los datos</strong> del módulo financiero:
-              cuentas, movimientos, proyectos, socios, lenders, categorías, capital, préstamos, extractos.
-              <strong className="block mt-1">Esta acción NO se puede deshacer.</strong>
+              {t('fin.import.estasAPuntoDeBorrar')} <strong>{t('fin.import.todosLosDatos')}</strong> {t('fin.import.delModuloFinancieroCuentasMovimientosProye')}
+              <strong className="block mt-1">{t('fin.import.estaAccionNoSePuedeDeshacer')}</strong>
             </div>
           </div>
 
           <div>
-            <label className="label flex items-center gap-1.5"><Lock size={12} /> Contraseña de confirmación</label>
+            <label className="label flex items-center gap-1.5"><Lock size={12} /> {t('fin.import.contrasenaDeConfirmacion2')}</label>
             <input
               type="password"
               className="input w-full"
@@ -277,13 +279,13 @@ function ResetPasswordModal({ open, onClose, onConfirm, isPending }: { open: boo
               onKeyDown={(e) => { if (e.key === "Enter") handleNext(); }}
             />
             <p className="text-[11px] mt-1" style={{ color: 'var(--brand-teal2)' }}>
-              Esta contraseña fue configurada por el administrador del sistema.
+              {t('fin.import.estaContrasenaFueConfiguradaPorEl')}
             </p>
           </div>
 
           <div className="flex justify-end gap-2 pt-3" style={{ borderTop: '1px solid rgba(29,29,31,0.1)' }}>
-            <button className="btn-secondary" onClick={handleClose}>Cancelar</button>
-            <button className="btn-danger" onClick={handleNext} disabled={!pwd}>Continuar</button>
+            <button className="btn-secondary" onClick={handleClose}>{t('common.cancelar')}</button>
+            <button className="btn-danger" onClick={handleNext} disabled={!pwd}>{t('fin.import.continuar')}</button>
           </div>
         </div>
       ) : (
@@ -291,13 +293,13 @@ function ResetPasswordModal({ open, onClose, onConfirm, isPending }: { open: boo
           <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-200">
             <ShieldAlert size={16} className="text-red-600 flex-shrink-0 mt-0.5" />
             <div className="text-sm text-red-700">
-              <strong>Última confirmación:</strong> ¿Estás 100% seguro? Esta es tu última oportunidad para cancelar.
+              <strong>{t('fin.import.ultimaConfirmacion')}</strong> {t('fin.import.estas100SeguroEstaEsTu')}
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-3" style={{ borderTop: '1px solid rgba(29,29,31,0.1)' }}>
-            <button className="btn-secondary" onClick={handleClose}>Cancelar</button>
+            <button className="btn-secondary" onClick={handleClose}>{t('common.cancelar')}</button>
             <button className="btn-danger" onClick={handleConfirm} disabled={isPending}>
-              {isPending ? "Borrando…" : "Sí, BORRAR TODO ahora"}
+              {isPending ? t('common.borrando') : t('fin.import.siBorrarTodoAhora')}
             </button>
           </div>
         </div>
@@ -320,21 +322,22 @@ function RestoreModal({
   onConfirm: (password: string) => void;
   isPending: boolean;
 }) {
+  const { t } = useI18n()
   const [pwd, setPwd] = useState("");
   const handleClose = () => { setPwd(""); onClose(); };
 
   return (
-    <Modal open={open} onClose={handleClose} title="Restaurar desde backup" size="md">
+    <Modal open={open} onClose={handleClose} title={t('fin.import.restaurarDesdeBackup')} size="md">
       <div className="space-y-4">
         <div className="flex items-start gap-2 p-3 rounded-lg" style={{ background: 'rgba(62,90,112,0.08)', border: '1px solid rgba(62,90,112,0.25)' }}>
           <AlertTriangle size={16} style={{ color: 'var(--brand-gold)' }} className="flex-shrink-0 mt-0.5" />
           <div className="text-sm" style={{ color: 'var(--brand-teal)' }}>
-            <strong>El restore BORRA todos los datos actuales</strong> antes de cargar el backup. Se recomienda descargar un backup ZIP del estado actual primero (por si quieres deshacer).
+            <strong>{t('fin.import.elRestoreBorraTodosLosDatos')}</strong> {t('fin.import.antesDeCargarElBackupSe')}
           </div>
         </div>
 
         <div>
-          <label className="label">Archivo de backup *</label>
+          <label className="label">{t('fin.import.archivoDeBackup')}</label>
           <input
             ref={fileRef}
             type="file"
@@ -360,14 +363,14 @@ function RestoreModal({
             ) : (
               <>
                 <Upload size={16} style={{ color: 'var(--brand-gold)' }} />
-                <span className="text-sm" style={{ color: 'var(--brand-teal2)' }}>Seleccionar archivo .json o .zip</span>
+                <span className="text-sm" style={{ color: 'var(--brand-teal2)' }}>{t('fin.import.seleccionarArchivoJsonOZip')}</span>
               </>
             )}
           </button>
         </div>
 
         <div>
-          <label className="label flex items-center gap-1.5"><Lock size={12} /> Contraseña</label>
+          <label className="label flex items-center gap-1.5"><Lock size={12} /> {t('fin.import.contrasena')}</label>
           <input
             type="password"
             className="input w-full"
@@ -379,13 +382,13 @@ function RestoreModal({
         </div>
 
         <div className="flex justify-end gap-2 pt-3" style={{ borderTop: '1px solid rgba(29,29,31,0.1)' }}>
-          <button className="btn-secondary" onClick={handleClose}>Cancelar</button>
+          <button className="btn-secondary" onClick={handleClose}>{t('common.cancelar')}</button>
           <button
             className="btn-primary"
             onClick={() => onConfirm(pwd)}
             disabled={!file || !pwd || isPending}
           >
-            <RefreshCw size={14} /> {isPending ? "Restaurando…" : "Restaurar ahora"}
+            <RefreshCw size={14} /> {isPending ? t('fin.import.restaurando') : t('fin.import.restaurarAhora')}
           </button>
         </div>
       </div>

@@ -1,10 +1,13 @@
 import axios from "axios";
+import { tStatic, currentLang } from '../../i18n'
 
 // Prefijo /api/admin/* — el backend monta las rutas del módulo administrativo aquí.
 const api = axios.create({ baseURL: "/api/admin" });
 
 // Token unificado del ecosistema (mismo patrón que el módulo financiero)
 api.interceptors.request.use((config) => {
+  // El backend traduce sus mensajes de error con esta cabecera.
+  config.headers['Accept-Language'] = currentLang()
   const token = localStorage.getItem("pm_auth_token");
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
@@ -27,24 +30,6 @@ async function unwrap<T>(p: Promise<{ data: { data: T; error: string | null } }>
   return res.data.data;
 }
 
-export const ROLE_LABELS: Record<string, string> = {
-  HOLDING: "Holding",
-  PROPERTY_MANAGER: "Property Manager",
-  SUBSIDIARY_OWNER: "Propietaria",
-  OTHER: "Otra",
-};
-
-export const PERSON_ROLE_LABELS: Record<string, string> = {
-  SOCIO: "Socio",
-  COLABORADOR: "Colaborador",
-  OTRO: "Otro",
-};
-
-export const STATUS_LABELS: Record<string, string> = {
-  ACTIVE: "Activa",
-  INACTIVE: "Inactiva",
-  DISSOLVED: "Disuelta",
-};
 
 export const AdminAPI = {
   // Empresas / organigrama
@@ -136,6 +121,6 @@ export function shareByWhatsApp(filename: string, companyName: string, url: stri
 /** Abre el cliente de correo con asunto y cuerpo prellenados. */
 export function shareByEmail(filename: string, companyName: string, url: string) {
   const subject = `Documento: ${filename} — ${companyName}`;
-  const body = `Hola,\n\nComparto el documento "${filename}" de ${companyName}:\n\n${url}\n\nSaludos,\nRestrepo Acosta Global Holding LLC`;
+  const body = tStatic('misc.holaCompartoElDocumentoV0De', { v0: filename, v1: companyName, v2: url });
   window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }

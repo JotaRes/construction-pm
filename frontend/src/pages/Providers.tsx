@@ -5,16 +5,18 @@ import { formatUSD, formatDate } from '../lib/calculations'
 import type { Provider, ProviderDocumentType } from '../lib/types'
 import { Plus, Trash2, X, Check, ChevronDown, FileText, Upload, ExternalLink, FolderOpen, ShieldCheck, FileSignature, Receipt, BadgeCheck, FileSpreadsheet, Users, Download } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useI18n, type TranslationKey, currentLocale, tStatic } from '../i18n'
+import { dataLabel, PROVIDER_CATEGORY_LABELS } from '../i18n/dataLabels'
 
 // Tipos de documentos sugeridos por proveedor con icono y descripción contextual
-const PROVIDER_DOC_TYPES: { value: ProviderDocumentType; label: string; description: string }[] = [
-  { value: 'SEGURO',     label: 'Seguro (Insurance)',     description: 'Certificado COI / Workers Comp / Liability' },
-  { value: 'COTIZACION', label: 'Cotización recibida',    description: 'Quote/Estimate enviado por el proveedor' },
-  { value: 'FACTURA',    label: 'Factura entregada',      description: 'Invoice que YO le pagué/debo al proveedor' },
-  { value: 'CONTRATO',   label: 'Contrato firmado',       description: 'Service Agreement / SOW / Subcontract' },
-  { value: 'LICENCIA',   label: 'Licencia profesional',   description: 'Contractor License / GC / Trade License' },
-  { value: 'W9',         label: 'W-9 / Tax form',         description: 'W-9 firmado, EIN, 1099, etc.' },
-  { value: 'OTRO',       label: 'Otro documento',         description: 'Permisos, planos, fotos, certificados, etc.' },
+const PROVIDER_DOC_TYPES: { value: ProviderDocumentType; labelKey: TranslationKey; descriptionKey: TranslationKey }[] = [
+  { value: 'SEGURO',     labelKey: 'tech.providers.seguroInsurance',     descriptionKey: 'tech.providers.certificadoCoiWorkersCompLiability' },
+  { value: 'COTIZACION', labelKey: 'tech.providers.cotizacionRecibida',    descriptionKey: 'tech.providers.quoteEstimateEnviadoPorElProveedor' },
+  { value: 'FACTURA',    labelKey: 'tech.providers.facturaEntregada',      descriptionKey: 'tech.providers.invoiceQueYoLePagueDebo' },
+  { value: 'CONTRATO',   labelKey: 'tech.providers.contratoFirmado',       descriptionKey: 'tech.providers.serviceAgreementSowSubcontract' },
+  { value: 'LICENCIA',   labelKey: 'tech.providers.licenciaProfesional',   descriptionKey: 'tech.providers.contractorLicenseGcTradeLicense' },
+  { value: 'W9',         labelKey: 'tech.providers.w9TaxForm',         descriptionKey: 'tech.providers.w9FirmadoEin1099Etc' },
+  { value: 'OTRO',       labelKey: 'tech.providers.otroDocumento',         descriptionKey: 'tech.providers.permisosPlanosFotosCertificadosEtc' },
 ]
 
 function docTypeIcon(t: string) {
@@ -30,6 +32,7 @@ function docTypeIcon(t: string) {
 }
 
 function ProviderDocumentsModal({ provider, projectId, onClose }: { provider: Provider; projectId: string; onClose: () => void }) {
+  const { t } = useI18n()
   const queryClient = useQueryClient()
   const [type, setType] = useState<ProviderDocumentType>('SEGURO')
   const [name, setName] = useState('')
@@ -69,53 +72,53 @@ function ProviderDocumentsModal({ provider, projectId, onClose }: { provider: Pr
           <div>
             <div className="text-sm font-bold text-slate-900 flex items-center gap-2">
               <FolderOpen className="w-4 h-4 text-[var(--brand-gold)]" />
-              Repositorio de {provider.name}
+              {t('tech.providers.repositorioDe')} {provider.name}
             </div>
-            <div className="text-xs text-slate-400 mt-0.5">{docs.length} documento(s) almacenado(s)</div>
+            <div className="text-xs text-slate-400 mt-0.5">{docs.length} {t('tech.providers.documentoSAlmacenadoS')}</div>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
         </div>
 
         {/* Form */}
         <div className="p-6 border-b border-slate-100 space-y-3">
-          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Subir nuevo documento</div>
+          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('tech.providers.subirNuevoDocumento')}</div>
           <div className="grid grid-cols-2 gap-2">
             <div className="col-span-2">
               <select value={type} onChange={e => setType(e.target.value as ProviderDocumentType)}
                 className="w-full bg-slate-50 border border-slate-200 text-sm text-slate-700 px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)]">
-                {PROVIDER_DOC_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                {PROVIDER_DOC_TYPES.map(pd => <option key={pd.value} value={pd.value}>{t(pd.labelKey)}</option>)}
               </select>
               {selectedType && (
-                <div className="text-[10px] text-slate-400 mt-1 pl-1">💡 {selectedType.description}</div>
+                <div className="text-[10px] text-slate-400 mt-1 pl-1">💡 {t(selectedType.descriptionKey)}</div>
               )}
             </div>
             <input value={name} onChange={e => setName(e.target.value)}
-              placeholder="Nombre / referencia del documento"
+              placeholder={t('tech.providers.nombreReferenciaDelDocumento')}
               className="col-span-2 bg-slate-50 border border-slate-200 text-sm text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)] placeholder-slate-400" />
             {(type === 'COTIZACION' || type === 'FACTURA') && (
-              <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="Monto ($) — opcional"
+              <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder={t('tech.providers.montoOpcional')}
                 className="bg-slate-50 border border-slate-200 text-sm text-slate-700 px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)] placeholder-slate-400" />
             )}
             <textarea value={notes} onChange={e => setNotes(e.target.value)}
-              placeholder="Notas (vigencia, condiciones, observaciones...)"
+              placeholder={t('tech.providers.notasVigenciaCondicionesObservaciones')}
               rows={2}
               className={`${type === 'COTIZACION' || type === 'FACTURA' ? '' : 'col-span-2'} bg-slate-50 border border-slate-200 text-sm text-slate-700 px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)] resize-none placeholder-slate-400`} />
           </div>
           <div className="flex items-center gap-3">
             <button onClick={() => fileRef.current?.click()}
               className="flex items-center gap-2 text-xs text-slate-500 hover:text-[var(--brand-gold)] border border-slate-200 hover:border-[#3E5A70]/40 px-3 py-1.5 rounded-lg transition-colors">
-              <Upload className="w-3.5 h-3.5" />{file ? file.name : 'Adjuntar PDF/imagen'}
+              <Upload className="w-3.5 h-3.5" />{file ? file.name : t('tech.providers.adjuntarPdfImagen')}
             </button>
             <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" className="hidden"
               onChange={e => setFile(e.target.files?.[0] ?? null)} />
             <button onClick={() => addMut.mutate()} disabled={addMut.isPending || !file}
               className="flex items-center gap-2 px-4 py-1.5 bg-[var(--brand-gold)] hover:bg-[#4A6880] text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50">
-              <Plus className="w-3.5 h-3.5" />{addMut.isPending ? 'Subiendo...' : 'Guardar documento'}
+              <Plus className="w-3.5 h-3.5" />{addMut.isPending ? t('tech.draws.subiendo') : t('tech.providers.guardarDocumento')}
             </button>
           </div>
           {addMut.isError && (
             <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-              Error: {(addMut.error as Error)?.message ?? 'Error subiendo documento'}
+              {t('landing.error')} {(addMut.error as Error)?.message ?? t('tech.providers.errorSubiendoDocumento')}
             </div>
           )}
         </div>
@@ -125,17 +128,17 @@ function ProviderDocumentsModal({ provider, projectId, onClose }: { provider: Pr
           {docs.length === 0 && (
             <div className="text-center py-10 text-slate-400 text-sm">
               <FolderOpen className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-              Sin documentos almacenados.<br />
-              <span className="text-[10px] text-slate-300">Sube el seguro, contrato, W-9, licencia, etc. del proveedor.</span>
+              {t('tech.providers.sinDocumentosAlmacenados')}<br />
+              <span className="text-[10px] text-slate-300">{t('tech.providers.subeElSeguroContratoW9')}</span>
             </div>
           )}
-          {PROVIDER_DOC_TYPES.map(t => {
-            const group = docs.filter(d => d.type === t.value)
+          {PROVIDER_DOC_TYPES.map(dt => {
+            const group = docs.filter(d => d.type === dt.value)
             if (group.length === 0) return null
             return (
-              <div key={t.value} className="px-6 py-3">
+              <div key={dt.value} className="px-6 py-3">
                 <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  {docTypeIcon(t.value)}{t.label} <span className="text-slate-300">({group.length})</span>
+                  {docTypeIcon(dt.value)}{t(dt.labelKey)} <span className="text-slate-300">({group.length})</span>
                 </div>
                 <div className="space-y-1.5">
                   {group.map(d => (
@@ -152,7 +155,7 @@ function ProviderDocumentsModal({ provider, projectId, onClose }: { provider: Pr
                         {d.fileUrl && (
                           <a href={d.fileUrl} target="_blank" rel="noreferrer"
                             className="flex items-center gap-1 text-[10px] text-[var(--brand-teal)] hover:underline">
-                            <FileText className="w-3 h-3" />Ver
+                            <FileText className="w-3 h-3" />{t('common.ver')}
                           </a>
                         )}
                         <button onClick={() => delMut.mutate(d.id)} className="text-slate-300 hover:text-red-400 transition-colors">
@@ -175,24 +178,25 @@ const CATEGORIES = ['GC', 'Subcontratista', 'Lender', 'Inspector', 'Title Compan
 
 // Códigos de país más comunes en USA real estate
 const COUNTRY_CODES = [
-  { code: '+1',  flag: '🇺🇸', country: 'USA / Canadá' },
-  { code: '+57', flag: '🇨🇴', country: 'Colombia' },
-  { code: '+52', flag: '🇲🇽', country: 'México' },
-  { code: '+34', flag: '🇪🇸', country: 'España' },
-  { code: '+54', flag: '🇦🇷', country: 'Argentina' },
-  { code: '+58', flag: '🇻🇪', country: 'Venezuela' },
-  { code: '+51', flag: '🇵🇪', country: 'Perú' },
-  { code: '+56', flag: '🇨🇱', country: 'Chile' },
-  { code: '+55', flag: '🇧🇷', country: 'Brasil' },
-  { code: '+44', flag: '🇬🇧', country: 'Reino Unido' },
-  { code: '+593',flag: '🇪🇨', country: 'Ecuador' },
-  { code: '+507',flag: '🇵🇦', country: 'Panamá' },
-  { code: '+503',flag: '🇸🇻', country: 'El Salvador' },
-  { code: '+504',flag: '🇭🇳', country: 'Honduras' },
-  { code: '+506',flag: '🇨🇷', country: 'Costa Rica' },
+  { code: '+1',  flag: '🇺🇸', countryKey: 'data.country.usaCanada' },
+  { code: '+57', flag: '🇨🇴', countryKey: 'data.country.colombia' },
+  { code: '+52', flag: '🇲🇽', countryKey: 'data.country.mexico' },
+  { code: '+34', flag: '🇪🇸', countryKey: 'data.country.spain' },
+  { code: '+54', flag: '🇦🇷', countryKey: 'data.country.argentina' },
+  { code: '+58', flag: '🇻🇪', countryKey: 'data.country.venezuela' },
+  { code: '+51', flag: '🇵🇪', countryKey: 'data.country.peru' },
+  { code: '+56', flag: '🇨🇱', countryKey: 'data.country.chile' },
+  { code: '+55', flag: '🇧🇷', countryKey: 'data.country.brazil' },
+  { code: '+44', flag: '🇬🇧', countryKey: 'data.country.uk' },
+  { code: '+593',flag: '🇪🇨', countryKey: 'data.country.ecuador' },
+  { code: '+507',flag: '🇵🇦', countryKey: 'data.country.panama' },
+  { code: '+503',flag: '🇸🇻', countryKey: 'data.country.elSalvador' },
+  { code: '+504',flag: '🇭🇳', countryKey: 'data.country.honduras' },
+  { code: '+506',flag: '🇨🇷', countryKey: 'data.country.costaRica' },
 ]
 
 function QuoteModal({ provider, projectId, onClose }: { provider: Provider; projectId: string; onClose: () => void }) {
+  const { t } = useI18n()
   const queryClient = useQueryClient()
   const [desc, setDesc] = useState('')
   const [amount, setAmount] = useState('')
@@ -204,7 +208,7 @@ function QuoteModal({ provider, projectId, onClose }: { provider: Provider; proj
   const addMut = useMutation({
     mutationFn: () => {
       const fd = new FormData()
-      fd.append('description', desc || 'Cotización')
+      fd.append('description', desc || t('tech.exec.cotizacion'))
       fd.append('amount', amount)
       fd.append('date', date)
       fd.append('notes', notes)
@@ -231,34 +235,34 @@ function QuoteModal({ provider, projectId, onClose }: { provider: Provider; proj
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <div>
             <div className="text-sm font-bold text-slate-900">{provider.name}</div>
-            <div className="text-xs text-slate-400 mt-0.5">{quotes.length} cotizacion(es) · Total: {formatUSD(totalQuotes)}</div>
+            <div className="text-xs text-slate-400 mt-0.5">{quotes.length} {t('tech.providers.cotizacionEsTotal')} {formatUSD(totalQuotes)}</div>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
         </div>
 
         {/* Add quote form */}
         <div className="p-6 border-b border-slate-100 space-y-3">
-          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Nueva cotización</div>
+          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('tech.providers.nuevaCotizacion')}</div>
           <div className="grid grid-cols-2 gap-2">
-            <input value={desc} onChange={e => setDesc(e.target.value)} placeholder="Descripción del trabajo *"
+            <input value={desc} onChange={e => setDesc(e.target.value)} placeholder={t('tech.providers.descripcionDelTrabajo')}
               className="col-span-2 bg-slate-50 border border-slate-200 text-sm text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)] placeholder-slate-400" />
-            <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="Monto ($)"
+            <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder={t('tech.exec.monto')}
               className="bg-slate-50 border border-slate-200 text-sm text-slate-700 px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)] placeholder-slate-400" />
             <input type="date" value={date} onChange={e => setDate(e.target.value)}
               className="bg-slate-50 border border-slate-200 text-sm text-slate-700 px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)]" />
-            <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Notas adicionales..." rows={2}
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder={t('tech.providers.notasAdicionales')} rows={2}
               className="col-span-2 bg-slate-50 border border-slate-200 text-sm text-slate-700 px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)] resize-none placeholder-slate-400" />
           </div>
           <div className="flex items-center gap-3">
             <button onClick={() => fileRef.current?.click()}
               className="flex items-center gap-2 text-xs text-slate-500 hover:text-[var(--brand-gold)] border border-slate-200 hover:border-[#3E5A70]/40 px-3 py-1.5 rounded-lg transition-colors">
-              <Upload className="w-3.5 h-3.5" />{file ? file.name : 'Adjuntar PDF/imagen'}
+              <Upload className="w-3.5 h-3.5" />{file ? file.name : t('tech.providers.adjuntarPdfImagen')}
             </button>
             <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" className="hidden"
               onChange={e => setFile(e.target.files?.[0] ?? null)} />
             <button onClick={() => addMut.mutate()} disabled={addMut.isPending}
               className="flex items-center gap-2 px-4 py-1.5 bg-[var(--brand-gold)] hover:bg-[#4A6880] text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50">
-              <Plus className="w-3.5 h-3.5" />Guardar cotización
+              <Plus className="w-3.5 h-3.5" />{t('tech.providers.guardarCotizacion')}
             </button>
           </div>
         </div>
@@ -266,7 +270,7 @@ function QuoteModal({ provider, projectId, onClose }: { provider: Provider; proj
         {/* Quote list */}
         <div className="divide-y divide-slate-100">
           {quotes.length === 0 && (
-            <div className="text-center py-8 text-slate-400 text-sm">Sin cotizaciones registradas</div>
+            <div className="text-center py-8 text-slate-400 text-sm">{t('tech.providers.sinCotizacionesRegistradas')}</div>
           )}
           {quotes.map(q => (
             <div key={q.id} className="px-6 py-3 flex items-start justify-between gap-4 hover:bg-slate-50/60">
@@ -282,7 +286,7 @@ function QuoteModal({ provider, projectId, onClose }: { provider: Provider; proj
                 {q.fileUrl && (
                   <a href={q.fileUrl} target="_blank" rel="noreferrer"
                     className="flex items-center gap-1 text-[10px] text-[var(--brand-teal)] hover:underline">
-                    <FileText className="w-3 h-3" />Ver doc
+                    <FileText className="w-3 h-3" />{t('tech.providers.verDoc')}
                   </a>
                 )}
                 <button onClick={() => delMut.mutate(q.id)} className="text-slate-300 hover:text-red-400 transition-colors">
@@ -300,6 +304,7 @@ function QuoteModal({ provider, projectId, onClose }: { provider: Provider; proj
 // COI (Lote A): estado del seguro del proveedor con semáforo de vencimiento.
 // Un sub con COI vencido trabajando en el lote es riesgo directo del holding.
 function CoiRow({ provider, projectId }: { provider: Provider; projectId: string }) {
+  const { t } = useI18n()
   const queryClient = useQueryClient()
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['providers', projectId] })
 
@@ -325,11 +330,11 @@ function CoiRow({ provider, projectId }: { provider: Provider; projectId: string
     : null
 
   const badge = days === null
-    ? { cls: 'bg-slate-100 text-slate-500', label: 'COI sin registrar' }
+    ? { cls: 'bg-slate-100 text-slate-500', label: t('tech.providers.coiSinRegistrar') }
     : days < 0
       ? { cls: 'bg-red-500/10 text-red-500', label: `COI VENCIDO hace ${Math.abs(days)}d` }
       : days < 30
-        ? { cls: 'bg-amber-500/10 text-amber-600', label: `COI vence en ${days}d` }
+        ? { cls: 'bg-amber-500/10 text-amber-600', label: tStatic('tech.providers.coiExpiresIn', { days }) }
         : { cls: 'bg-emerald-500/10 text-emerald-600', label: `COI vigente · ${days}d` }
 
   return (
@@ -340,17 +345,17 @@ function CoiRow({ provider, projectId }: { provider: Provider; projectId: string
       <input type="date"
         value={provider.coiExpiresAt ? provider.coiExpiresAt.slice(0, 10) : ''}
         onChange={e => dateMut.mutate(e.target.value || null)}
-        title="Fecha de vencimiento del COI"
+        title={t('tech.providers.fechaDeVencimientoDelCoi')}
         className="bg-slate-50 border border-slate-200 text-[10px] px-1.5 py-0.5 rounded-md focus:outline-none focus:border-[var(--brand-gold)] text-slate-500" />
       {provider.coiUrl ? (
         <>
           <a href={provider.coiUrl} target="_blank" rel="noreferrer"
-            className="text-[10px] font-semibold text-[var(--brand-teal)] hover:underline">ver certificado</a>
-          <button onClick={() => removeCoiMut.mutate()} className="text-[10px] text-slate-400 hover:text-red-400 hover:underline">quitar</button>
+            className="text-[10px] font-semibold text-[var(--brand-teal)] hover:underline">{t('tech.providers.verCertificado')}</a>
+          <button onClick={() => removeCoiMut.mutate()} className="text-[10px] text-slate-400 hover:text-red-400 hover:underline">{t('tech.providers.quitar')}</button>
         </>
       ) : (
         <label className="inline-flex items-center gap-1 text-[10px] font-semibold text-[var(--brand-teal)] hover:underline cursor-pointer">
-          <Upload className="w-3 h-3" /> {uploadCoiMut.isPending ? 'Subiendo…' : 'Subir COI'}
+          <Upload className="w-3 h-3" /> {uploadCoiMut.isPending ? t('common.subiendo') : t('tech.providers.subirCoi')}
           <input type="file" className="hidden" accept=".pdf,image/*"
             onChange={e => { const f = e.target.files?.[0]; if (f) uploadCoiMut.mutate(f) }} />
         </label>
@@ -363,19 +368,20 @@ function CoiRow({ provider, projectId }: { provider: Provider; projectId: string
    Récord completo alimentado desde Ejecución: actividades asignadas,
    subactividades ejecutadas y facturas registradas — con totales. */
 function ProviderRecordSection({ providerId }: { providerId: string }) {
+  const { t } = useI18n()
   const { data: record, isLoading } = useQuery<any>({
     queryKey: ['provider-record', providerId],
     queryFn: () => providersGlobalApi.record(providerId),
     staleTime: 30_000,
   })
-  if (isLoading) return <div className="text-[11px] text-slate-400 animate-pulse py-2">Cargando historial…</div>
+  if (isLoading) return <div className="text-[11px] text-slate-400 animate-pulse py-2">{t('tech.providers.cargandoHistorial')}</div>
   if (!record) return null
   const { activities = [], subactivities = [], invoices = [], totals } = record
   const empty = activities.length === 0 && subactivities.length === 0 && invoices.length === 0
   if (empty) {
     return (
       <div className="text-[11px] text-slate-400 italic py-2">
-        Sin servicios registrados aún. Asigna este proveedor a una actividad o subactividad en Presupuesto & Ejecución y su historial aparecerá aquí.
+        {t('tech.providers.sinServiciosRegistradosAunAsignaEste')}
       </div>
     )
   }
@@ -384,22 +390,22 @@ function ProviderRecordSection({ providerId }: { providerId: string }) {
       {/* Totales del récord */}
       <div className="grid grid-cols-3 gap-2">
         <div className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-center">
-          <div className="text-[9px] text-slate-400 uppercase tracking-wide">Servicios</div>
+          <div className="text-[9px] text-slate-400 uppercase tracking-wide">{t('tech.providers.servicios')}</div>
           <div className="text-sm font-bold font-mono text-slate-700">{totals?.servicios ?? 0}</div>
         </div>
         <div className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-center">
-          <div className="text-[9px] text-slate-400 uppercase tracking-wide">Ejecutado</div>
+          <div className="text-[9px] text-slate-400 uppercase tracking-wide">{t('common.ejecutado')}</div>
           <div className="text-sm font-bold font-mono text-[var(--brand-teal)]">{formatUSD((totals?.actividades ?? 0) + (totals?.subactividades ?? 0))}</div>
         </div>
         <div className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-center">
-          <div className="text-[9px] text-slate-400 uppercase tracking-wide">Facturado</div>
+          <div className="text-[9px] text-slate-400 uppercase tracking-wide">{t('tech.providers.facturado')}</div>
           <div className="text-sm font-bold font-mono text-emerald-600">{formatUSD(totals?.facturado ?? 0)}</div>
         </div>
       </div>
       {/* Actividades asignadas */}
       {activities.length > 0 && (
         <div>
-          <div className="text-[9px] font-semibold uppercase tracking-wide text-slate-400 mb-1">Actividades a cargo</div>
+          <div className="text-[9px] font-semibold uppercase tracking-wide text-slate-400 mb-1">{t('tech.providers.actividadesACargo')}</div>
           {activities.map((a: any) => (
             <div key={a.id} className="flex items-center justify-between gap-2 text-[11px] py-0.5 border-b border-slate-50 last:border-0">
               <span className="text-slate-600 truncate">
@@ -416,18 +422,18 @@ function ProviderRecordSection({ providerId }: { providerId: string }) {
       {/* Subactividades ejecutadas */}
       {subactivities.length > 0 && (
         <div>
-          <div className="text-[9px] font-semibold uppercase tracking-wide text-slate-400 mb-1">Subactividades ejecutadas</div>
+          <div className="text-[9px] font-semibold uppercase tracking-wide text-slate-400 mb-1">{t('tech.providers.subactividadesEjecutadas')}</div>
           {subactivities.map((s: any) => (
             <div key={s.id} className="flex items-center justify-between gap-2 text-[11px] py-0.5 border-b border-slate-50 last:border-0">
               <span className="text-slate-600 truncate">
                 {s.description}
                 <span className="text-slate-300"> · {s.item?.itemCode} · {s.item?.phase?.project?.name}</span>
-                {s.fecha && <span className="text-slate-400"> · {new Date(s.fecha).toLocaleDateString('es-CO')}</span>}
+                {s.fecha && <span className="text-slate-400"> · {new Date(s.fecha).toLocaleDateString(currentLocale())}</span>}
               </span>
               <span className="flex items-center gap-1.5 flex-shrink-0">
                 {s.invoiceUrl
                   ? <span title={`Invoice: ${s.invoiceName ?? ''}`} className="text-emerald-500">📎</span>
-                  : s.valorEjecutado > 0 && <span title="Sin invoice" className="text-red-400">⚠</span>}
+                  : s.valorEjecutado > 0 && <span title={t('tech.providers.sinInvoice')} className="text-red-400">⚠</span>}
                 <span className="font-mono text-slate-600">{formatUSD(s.valorEjecutado || 0)}</span>
               </span>
             </div>
@@ -437,7 +443,7 @@ function ProviderRecordSection({ providerId }: { providerId: string }) {
       {/* Facturas registradas */}
       {invoices.length > 0 && (
         <div>
-          <div className="text-[9px] font-semibold uppercase tracking-wide text-slate-400 mb-1">Facturas y documentos</div>
+          <div className="text-[9px] font-semibold uppercase tracking-wide text-slate-400 mb-1">{t('tech.providers.facturasYDocumentos')}</div>
           {invoices.map((d: any) => (
             <div key={d.id} className="flex items-center justify-between gap-2 text-[11px] py-0.5 border-b border-slate-50 last:border-0">
               <span className="text-slate-600 truncate">
@@ -460,6 +466,7 @@ function ProviderCard({ provider, projectId, billing, onUpdate, onDelete }: {
   onUpdate: (id: string, data: Record<string, unknown>) => void
   onDelete: (id: string) => void
 }) {
+  const { t } = useI18n()
   const [editing, setEditing] = useState(false)
   const [showQuotes, setShowQuotes] = useState(false)
   const [showDocs, setShowDocs] = useState(false)
@@ -486,26 +493,26 @@ function ProviderCard({ provider, projectId, billing, onUpdate, onDelete }: {
     return (
       <div className="bg-white border border-[#3E5A70]/40 rounded-xl p-4 space-y-3">
         <div className="grid grid-cols-2 gap-2">
-          <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Nombre *"
+          <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder={t('common.nombre')}
             className="col-span-2 bg-slate-50 border border-slate-200 text-sm text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)]" />
           <div className={form.type === 'Otro' ? '' : 'col-span-2 md:col-span-1'}>
             <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value, customType: e.target.value === 'Otro' ? f.customType : '' }))}
               className="w-full bg-slate-50 border border-slate-200 text-sm text-slate-700 px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)]">
-              <option value="">— Categoría —</option>
-              {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              <option value="">{t('tech.providers.categoria')}</option>
+              {CATEGORIES.map(c => <option key={c} value={c}>{dataLabel(PROVIDER_CATEGORY_LABELS, c, t)}</option>)}
             </select>
           </div>
           {form.type === 'Otro' && (
             <input value={form.customType} onChange={e => setForm(f => ({ ...f, customType: e.target.value }))}
-              placeholder="Especificar categoría *"
+              placeholder={t('tech.providers.especificarCategoria')}
               className="bg-amber-50 border border-amber-300 text-sm text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)]" />
           )}
           {form.type !== 'Otro' && (
-            <input value={form.license} onChange={e => setForm(f => ({ ...f, license: e.target.value }))} placeholder="Licencia"
+            <input value={form.license} onChange={e => setForm(f => ({ ...f, license: e.target.value }))} placeholder={t('tech.providers.licencia')}
               className="bg-slate-50 border border-slate-200 text-sm text-slate-700 px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)]" />
           )}
           {form.type === 'Otro' && (
-            <input value={form.license} onChange={e => setForm(f => ({ ...f, license: e.target.value }))} placeholder="Licencia"
+            <input value={form.license} onChange={e => setForm(f => ({ ...f, license: e.target.value }))} placeholder={t('tech.providers.licencia')}
               className="col-span-2 bg-slate-50 border border-slate-200 text-sm text-slate-700 px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)]" />
           )}
           {/* Teléfono con código país */}
@@ -514,15 +521,15 @@ function ProviderCard({ provider, projectId, billing, onUpdate, onDelete }: {
               className="w-28 bg-slate-50 border border-slate-200 text-sm text-slate-700 px-2 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)] flex-shrink-0">
               {COUNTRY_CODES.map(c => <option key={c.code} value={c.code}>{c.flag} {c.code}</option>)}
             </select>
-            <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="Teléfono (sin código país)"
+            <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder={t('tech.providers.telefonoSinCodigoPais')}
               className="flex-1 bg-slate-50 border border-slate-200 text-sm text-slate-700 px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)]" />
           </div>
-          <input value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="Email"
+          <input value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder={t('common.email')}
             type="email"
             className="col-span-2 bg-slate-50 border border-slate-200 text-sm text-slate-700 px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)]" />
-          <input value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} placeholder="Dirección"
+          <input value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} placeholder={t('common.direccion')}
             className="col-span-2 bg-slate-50 border border-slate-200 text-sm text-slate-700 px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)]" />
-          <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Notas (especialidad, días/horarios disponibles, condiciones de pago, etc.)" rows={3}
+          <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder={t('tech.providers.notasEspecialidadDiasHorariosDisponiblesCo')} rows={3}
             className="col-span-2 bg-slate-50 border border-slate-200 text-sm text-slate-700 px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)] resize-none" />
         </div>
         <div className="flex gap-2">
@@ -541,9 +548,9 @@ function ProviderCard({ provider, projectId, billing, onUpdate, onDelete }: {
             setEditing(false)
           }}
             className="flex items-center gap-1 px-3 py-1.5 bg-[var(--brand-teal)] text-white text-xs rounded-lg hover:bg-[#48484A]">
-            <Check className="w-3.5 h-3.5" />Guardar
+            <Check className="w-3.5 h-3.5" />{t('common.guardar')}
           </button>
-          <button onClick={() => setEditing(false)} className="text-slate-400 text-xs px-3 py-1.5 hover:text-slate-700">Cancelar</button>
+          <button onClick={() => setEditing(false)} className="text-slate-400 text-xs px-3 py-1.5 hover:text-slate-700">{t('common.cancelar')}</button>
         </div>
       </div>
     )
@@ -560,7 +567,7 @@ function ProviderCard({ provider, projectId, billing, onUpdate, onDelete }: {
                 <span className="text-[10px] bg-[#1D1D1F]/10 text-[var(--brand-teal)] px-2 py-0.5 rounded-full font-medium">{provider.type}</span>
               )}
               <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: provider.projectId ? 'rgba(62,90,112,0.12)' : 'rgba(29,29,31,0.08)', color: provider.projectId ? 'var(--brand-gold)' : 'var(--brand-teal2)' }}>
-                {provider.project?.name ?? 'Global'}
+                {provider.project?.name ?? t('tech.providers.global')}
               </span>
             </div>
             <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
@@ -570,7 +577,7 @@ function ProviderCard({ provider, projectId, billing, onUpdate, onDelete }: {
                 </a>
               )}
               {provider.email && <a href={`mailto:${provider.email}`} className="hover:text-[var(--brand-gold)] flex items-center gap-1">✉ {provider.email}<ExternalLink className="w-2.5 h-2.5" /></a>}
-              {provider.license && <span className="text-slate-400">Lic: {provider.license}</span>}
+              {provider.license && <span className="text-slate-400">{t('tech.providers.lic')} {provider.license}</span>}
               {provider.address && <span className="text-slate-400">📍 {provider.address}</span>}
             </div>
             {provider.notes && <div className="text-[11px] text-slate-400 mt-1">{provider.notes}</div>}
@@ -582,13 +589,13 @@ function ProviderCard({ provider, projectId, billing, onUpdate, onDelete }: {
             <button onClick={() => setShowQuotes(true)}
               className="flex items-center gap-1.5 text-[10px] text-[var(--brand-teal)] border border-[#1D1D1F]/30 px-2.5 py-1.5 rounded-lg hover:bg-[#1D1D1F]/5 transition-colors">
               <FileText className="w-3 h-3" />
-              Cotizaciones
+              {t('tech.providers.cotizaciones')}
               {providerQuotes.length > 0 && <span className="bg-[var(--brand-teal)] text-white text-[9px] px-1.5 py-0.5 rounded-full">{providerQuotes.length}</span>}
             </button>
             <button onClick={() => setShowDocs(true)}
               className="flex items-center gap-1.5 text-[10px] text-[var(--brand-gold)] border border-[#3E5A70]/40 px-2.5 py-1.5 rounded-lg hover:bg-[#3E5A70]/5 transition-colors">
               <FolderOpen className="w-3 h-3" />
-              Docs
+              {t('tech.providers.docs')}
               {(provider.documents?.length ?? 0) > 0 && <span className="bg-[var(--brand-gold)] text-white text-[9px] px-1.5 py-0.5 rounded-full">{provider.documents?.length}</span>}
             </button>
             <button onClick={() => setEditing(true)} className="text-slate-400 hover:text-[var(--brand-gold)] p-1 transition-colors">
@@ -601,17 +608,17 @@ function ProviderCard({ provider, projectId, billing, onUpdate, onDelete }: {
         </div>
         {providerQuotes.length > 0 && (
           <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[10px]">
-            <span className="text-slate-400">{providerQuotes.length} cotización(es)</span>
-            <span className="font-mono font-semibold text-emerald-600">{formatUSD(totalQuotes)} total</span>
+            <span className="text-slate-400">{providerQuotes.length} {t('tech.providers.cotizacionEs')}</span>
+            <span className="font-mono font-semibold text-emerald-600">{formatUSD(totalQuotes)} {t('tech.providers.total')}</span>
           </div>
         )}
         {/* R2: récord de facturación por proyecto (facturas adjuntadas en Ejecución) */}
         {billing && Object.keys(billing).length > 0 && (
           <div className="mt-3 pt-3 border-t border-slate-100 space-y-1">
-            <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Facturación registrada</div>
+            <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{t('tech.providers.facturacionRegistrada')}</div>
             {Object.entries(billing).map(([pid, b]) => (
               <div key={pid} className="flex items-center justify-between text-[11px]">
-                <span className="text-slate-500">{b.projectName} · {b.count} factura(s)</span>
+                <span className="text-slate-500">{b.projectName} · {b.count} {t('tech.providers.facturaS')}</span>
                 <span className="font-mono font-semibold text-[var(--brand-teal)]">{formatUSD(b.total)}</span>
               </div>
             ))}
@@ -622,7 +629,7 @@ function ProviderCard({ provider, projectId, billing, onUpdate, onDelete }: {
           <button onClick={() => setShowRecord(v => !v)}
             className="w-full flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 hover:text-[var(--brand-teal)] transition-colors">
             <ChevronDown className={`w-3 h-3 transition-transform ${showRecord ? '' : '-rotate-90'}`} />
-            Historial de servicios y pagos
+            {t('tech.providers.historialDeServiciosYPagos')}
           </button>
           {showRecord && <ProviderRecordSection providerId={provider.id} />}
         </div>
@@ -635,6 +642,7 @@ function ProviderCard({ provider, projectId, billing, onUpdate, onDelete }: {
 }
 
 export default function Providers({ projectId }: { projectId: string }) {
+  const { t } = useI18n()
   const queryClient = useQueryClient()
   const [showAdd, setShowAdd] = useState(false)
   const [newForm, setNewForm] = useState({
@@ -687,7 +695,7 @@ export default function Providers({ projectId }: { projectId: string }) {
     })
   }
 
-  if (isLoading) return <div className="text-slate-500 text-sm animate-pulse">Cargando proveedores...</div>
+  if (isLoading) return <div className="text-slate-500 text-sm animate-pulse">{t('tech.providers.cargandoProveedores')}</div>
 
   const byCategory = providers.reduce((acc, p) => {
     const cat = p.type || 'Otro'
@@ -700,8 +708,8 @@ export default function Providers({ projectId }: { projectId: string }) {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><Users className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>Directorio de Proveedores — Catálogo General</span></h1>
-          <p className="text-sm text-slate-500 mt-0.5">{providers.length} proveedores del holding · aplican a TODOS los proyectos · el récord de facturación se alimenta de las facturas de Ejecución</p>
+          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><Users className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>{t('tech.providers.directorioDeProveedoresCatalogoGeneral')}</span></h1>
+          <p className="text-sm text-slate-500 mt-0.5">{providers.length} {t('tech.providers.proveedoresDelHoldingAplicanATodos')}</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -709,50 +717,50 @@ export default function Providers({ projectId }: { projectId: string }) {
               try {
                 const r = await providersGlobalApi.importFromFinance()
                 if (r.imported === 0) {
-                  toast.success(`Sin novedades: los ${r.skipped} proveedor(es) del módulo financiero ya existen aquí.`)
+                  toast.success(t('tech.providers.sinNovedadesLosV0ProveedorEs', { v0: r.skipped }))
                 } else {
-                  toast.success(`${r.imported} proveedor(es) importados del módulo financiero${r.skipped > 0 ? ` · ${r.skipped} ya existían` : ''}`, { duration: 7000 })
+                  toast.success(t('tech.providers.v0ProveedorEsImportadosDelModulo', { v0: r.imported, v1: r.skipped > 0 ? ` · ${r.skipped} ya existían` : '' }), { duration: 7000 })
                 }
                 queryClient.invalidateQueries({ queryKey: ['providers-global'] })
               } catch (e: any) {
-                toast.error(e?.response?.data?.error || 'Error al importar')
+                toast.error(e?.response?.data?.error || t('tech.providers.errorAlImportar'))
               }
             }}
-            title="Trae los proveedores/contratistas ya registrados en el módulo financiero (sin duplicar los existentes)"
+            title={t('tech.providers.traeLosProveedoresContratistasYaRegistrado')}
             className="flex items-center gap-2 px-3 py-2 border border-slate-300 text-slate-700 hover:bg-slate-50 text-sm font-medium rounded-xl transition-colors">
             <Download className="w-4 h-4" />
-            Importar del financiero
+            {t('tech.providers.importarDelFinanciero')}
           </button>
           <button onClick={() => setShowAdd(true)}
             className="flex items-center gap-2 bg-[var(--brand-gold)] hover:bg-[#4A6880] text-white text-sm px-4 py-2 rounded-xl transition-colors">
-            <Plus className="w-4 h-4" />Agregar
+            <Plus className="w-4 h-4" />{t('common.agregar')}
           </button>
         </div>
       </div>
 
       {showAdd && (
         <div className="bg-white border border-[#3E5A70]/40 rounded-xl p-4 space-y-3">
-          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Nuevo proveedor</div>
+          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('tech.providers.nuevoProveedor')}</div>
           <div className="grid grid-cols-2 gap-2">
-            <input placeholder="Nombre *" value={newForm.name} onChange={e => setNewForm(f => ({ ...f, name: e.target.value }))}
+            <input placeholder={t('common.nombre')} value={newForm.name} onChange={e => setNewForm(f => ({ ...f, name: e.target.value }))}
               className="col-span-2 bg-slate-50 border border-slate-200 text-sm text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)]" />
             <select value={newForm.type}
               onChange={e => setNewForm(f => ({ ...f, type: e.target.value, customType: e.target.value === 'Otro' ? f.customType : '' }))}
               className={(newForm.type === 'Otro' ? '' : 'col-span-2 md:col-span-1 ') + 'bg-slate-50 border border-slate-200 text-sm text-slate-700 px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)]'}>
-              <option value="">— Categoría —</option>
-              {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              <option value="">{t('tech.providers.categoria')}</option>
+              {CATEGORIES.map(c => <option key={c} value={c}>{dataLabel(PROVIDER_CATEGORY_LABELS, c, t)}</option>)}
             </select>
             {newForm.type === 'Otro' && (
-              <input placeholder="Especificar categoría *" value={newForm.customType}
+              <input placeholder={t('tech.providers.especificarCategoria')} value={newForm.customType}
                 onChange={e => setNewForm(f => ({ ...f, customType: e.target.value }))}
                 className="bg-amber-50 border border-amber-300 text-sm text-slate-800 px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)]" />
             )}
             {newForm.type !== 'Otro' && (
-              <input placeholder="Licencia" value={newForm.license} onChange={e => setNewForm(f => ({ ...f, license: e.target.value }))}
+              <input placeholder={t('tech.providers.licencia')} value={newForm.license} onChange={e => setNewForm(f => ({ ...f, license: e.target.value }))}
                 className="bg-slate-50 border border-slate-200 text-sm text-slate-700 px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)]" />
             )}
             {newForm.type === 'Otro' && (
-              <input placeholder="Licencia" value={newForm.license} onChange={e => setNewForm(f => ({ ...f, license: e.target.value }))}
+              <input placeholder={t('tech.providers.licencia')} value={newForm.license} onChange={e => setNewForm(f => ({ ...f, license: e.target.value }))}
                 className="col-span-2 bg-slate-50 border border-slate-200 text-sm text-slate-700 px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)]" />
             )}
             {/* Teléfono con código país */}
@@ -761,32 +769,32 @@ export default function Providers({ projectId }: { projectId: string }) {
                 className="w-28 bg-slate-50 border border-slate-200 text-sm text-slate-700 px-2 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)] flex-shrink-0">
                 {COUNTRY_CODES.map(c => <option key={c.code} value={c.code}>{c.flag} {c.code}</option>)}
               </select>
-              <input placeholder="Teléfono (sin código país)" value={newForm.phone}
+              <input placeholder={t('tech.providers.telefonoSinCodigoPais')} value={newForm.phone}
                 onChange={e => setNewForm(f => ({ ...f, phone: e.target.value }))}
                 className="flex-1 bg-slate-50 border border-slate-200 text-sm text-slate-700 px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)]" />
             </div>
-            <input placeholder="Email" type="email" value={newForm.email}
+            <input placeholder={t('common.email')} type="email" value={newForm.email}
               onChange={e => setNewForm(f => ({ ...f, email: e.target.value }))}
               className="col-span-2 bg-slate-50 border border-slate-200 text-sm text-slate-700 px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)]" />
-            <input placeholder="Dirección" value={newForm.address}
+            <input placeholder={t('common.direccion')} value={newForm.address}
               onChange={e => setNewForm(f => ({ ...f, address: e.target.value }))}
               className="col-span-2 bg-slate-50 border border-slate-200 text-sm text-slate-700 px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)]" />
-            <textarea placeholder="Notas (especialidad, días/horarios disponibles, condiciones de pago, etc.)"
+            <textarea placeholder={t('tech.providers.notasEspecialidadDiasHorariosDisponiblesCo')}
               value={newForm.notes} onChange={e => setNewForm(f => ({ ...f, notes: e.target.value }))} rows={3}
               className="col-span-2 bg-slate-50 border border-slate-200 text-sm text-slate-700 px-3 py-2 rounded-lg focus:outline-none focus:border-[var(--brand-gold)] resize-none" />
           </div>
           {createMut.isError && (
             <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-              Error al guardar: {(createMut.error as Error)?.message ?? 'Error desconocido'}
+              {t('tech.projects.errorAlGuardar')} {(createMut.error as Error)?.message ?? t('tech.providers.errorDesconocido')}
             </div>
           )}
           <div className="flex gap-2">
             <button onClick={handleCreate}
               disabled={!newForm.name || (newForm.type === 'Otro' && !newForm.customType) || createMut.isPending}
               className="px-4 py-1.5 bg-[var(--brand-teal)] text-white text-xs rounded-lg hover:bg-[#48484A] disabled:opacity-40">
-              {createMut.isPending ? 'Guardando...' : 'Guardar'}
+              {createMut.isPending ? t('common.guardando2') : t('common.guardar')}
             </button>
-            <button onClick={() => { setShowAdd(false); createMut.reset() }} className="text-slate-400 text-xs px-3 py-1.5 hover:text-slate-700">Cancelar</button>
+            <button onClick={() => { setShowAdd(false); createMut.reset() }} className="text-slate-400 text-xs px-3 py-1.5 hover:text-slate-700">{t('common.cancelar')}</button>
           </div>
         </div>
       )}

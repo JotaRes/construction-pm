@@ -4,8 +4,10 @@ import { Gantt, ViewMode, type Task } from 'gantt-task-react'
 import 'gantt-task-react/dist/index.css'
 import { phasesApi, type PhaseSummary } from '../lib/api'
 import { GanttChart } from 'lucide-react'
+import { useI18n } from '../i18n'
 
 export default function GanttView({ projectId }: { projectId: string }) {
+  const { t } = useI18n()
   const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.Week)
 
   const { data: phases = [], isLoading } = useQuery<PhaseSummary[]>({
@@ -40,21 +42,21 @@ export default function GanttView({ projectId }: { projectId: string }) {
       })
   }, [phases])
 
-  if (isLoading) return <div className="text-slate-500 text-sm animate-pulse">Cargando cronograma...</div>
+  if (isLoading) return <div className="text-slate-500 text-sm animate-pulse">{t('tech.gantt.cargandoCronograma')}</div>
 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><GanttChart className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>Cronograma Gantt</span></h1>
-          <p className="text-sm text-slate-500 mt-0.5">Secuencia de fases en el tiempo según fechas reales</p>
+          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><GanttChart className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>{t('tech.gantt.cronogramaGantt')}</span></h1>
+          <p className="text-sm text-slate-500 mt-0.5">{t('tech.gantt.secuenciaDeFasesEnElTiempo')}</p>
         </div>
         <div className="flex gap-0.5 bg-white rounded-lg p-0.5 border border-slate-200">
           {(['Day', 'Week', 'Month'] as const).map(v => (
             <button key={v} onClick={() => setViewMode(ViewMode[v])}
               className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors
                 ${viewMode === ViewMode[v] ? 'bg-[var(--brand-teal)] text-white' : 'text-slate-500 hover:text-slate-800'}`}>
-              {{ Day: 'Día', Week: 'Semana', Month: 'Mes' }[v]}
+              {{ Day: t('tech.gantt.dia'), Week: 'Semana', Month: 'Mes' }[v]}
             </button>
           ))}
         </div>
@@ -74,10 +76,10 @@ export default function GanttView({ projectId }: { projectId: string }) {
         <div className="bg-white border border-slate-200 rounded-xl text-center py-16">
           <GanttChart className="w-8 h-8 text-slate-300 mx-auto mb-2" />
           <div className="text-slate-400 text-sm">
-            Aún no hay fechas reales (inicio/fin) registradas en las fases.
+            {t('tech.gantt.aunNoHayFechasRealesInicio')}
           </div>
           <div className="text-slate-400 text-xs mt-1">
-            Registra fechas en los ítems de Ejecución para ver el cronograma.
+            {t('tech.gantt.registraFechasEnLosItemsDe')}
           </div>
         </div>
       )}

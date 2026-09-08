@@ -1,8 +1,23 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import axios from 'axios'
 import App from './App'
+import { bootstrapDocumentLanguage, currentLang } from './i18n'
 import './index.css'
+
+// Idioma en TODAS las peticiones, no solo en los clientes axios configurados:
+// AuthGate y ModuleGate usan el axios global. El backend traduce sus mensajes
+// de error con esta cabecera, así que sin ella el login en inglés respondía
+// "Contraseña incorrecta".
+axios.interceptors.request.use((config) => {
+  config.headers['Accept-Language'] = currentLang()
+  return config
+})
+
+// Idioma del documento antes del primer pintado: evita que el splash y el
+// título del navegador aparezcan en español a un usuario que eligió inglés.
+bootstrapDocumentLanguage()
 
 // === Ocultar el splash de carga ===
 // IMPORTANTE: esto debe estar en el bundle JS (no en script inline del HTML),

@@ -12,6 +12,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Plus, X } from "lucide-react";
 import { API } from "../lib/api";
+import { useI18n } from '../../i18n'
 
 export interface TechSel {
   projectId: string;
@@ -43,6 +44,7 @@ export async function resolveTechLink(sel: TechSel): Promise<{ techItemId: strin
 }
 
 export function TechAssociate({ sel, onChange, enabled }: { sel: TechSel; onChange: (s: TechSel) => void; enabled: boolean }) {
+  const { t } = useI18n()
   const [creatingActivity, setCreatingActivity] = useState(false);
 
   const { data: techProjects = [] } = useQuery<any[]>({
@@ -72,7 +74,7 @@ export function TechAssociate({ sel, onChange, enabled }: { sel: TechSel; onChan
           value={sel.projectId}
           onChange={(e) => { setCreatingActivity(false); onChange({ ...EMPTY_TECH_SEL, projectId: e.target.value }); }}
         >
-          <option value="">— sin obra —</option>
+          <option value="">{t('fin.assoc.sinObra')}</option>
           {techProjects.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
 
@@ -82,7 +84,7 @@ export function TechAssociate({ sel, onChange, enabled }: { sel: TechSel; onChan
           onChange={(e) => { setCreatingActivity(false); onChange({ ...sel, phaseId: e.target.value, itemId: "", subId: "", newActivity: "" }); }}
           disabled={!sel.projectId}
         >
-          <option value="">— fase —</option>
+          <option value="">{t('fin.assoc.fase')}</option>
           {techTree.map((p: any) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
         </select>
 
@@ -96,20 +98,20 @@ export function TechAssociate({ sel, onChange, enabled }: { sel: TechSel; onChan
             }}
             disabled={!sel.phaseId}
           >
-            <option value="">— actividad —</option>
+            <option value="">{t('fin.assoc.actividad')}</option>
             {items.map((i: any) => <option key={i.id} value={i.id}>{i.itemCode} · {i.activity}</option>)}
-            {sel.phaseId && <option value="__new__">＋ Crear actividad nueva en esta fase…</option>}
+            {sel.phaseId && <option value="__new__">{t('fin.assoc.crearActividadNuevaEnEstaFase')}</option>}
           </select>
         ) : (
           <div className="flex items-center gap-1.5">
             <input
               className="input w-full text-sm"
               autoFocus
-              placeholder="Nombre de la actividad nueva"
+              placeholder={t('fin.assoc.nombreDeLaActividadNueva')}
               value={sel.newActivity}
               onChange={(e) => onChange({ ...sel, newActivity: e.target.value })}
             />
-            <button type="button" className="btn-ghost p-1.5 flex-shrink-0" title="Cancelar" onClick={cancelCreate}>
+            <button type="button" className="btn-ghost p-1.5 flex-shrink-0" title={t('common.cancelar')} onClick={cancelCreate}>
               <X size={13} />
             </button>
           </div>
@@ -124,10 +126,10 @@ export function TechAssociate({ sel, onChange, enabled }: { sel: TechSel; onChan
             value={sel.subId}
             onChange={(e) => onChange({ ...sel, subId: e.target.value })}
           >
-            <option value="">Subactividad: crear una nueva automáticamente (recomendado)</option>
+            <option value="">{t('fin.assoc.subactividadCrearUnaNuevaAutomaticamenteRe')}</option>
             {subs.map((s: any) => (
               <option key={s.id} value={s.id}>
-                Corresponde a: {s.description.length > 50 ? s.description.slice(0, 50) + "…" : s.description}
+                {t('fin.assoc.correspondeA')} {s.description.length > 50 ? s.description.slice(0, 50) + "…" : s.description}
               </option>
             ))}
           </select>
@@ -139,11 +141,11 @@ export function TechAssociate({ sel, onChange, enabled }: { sel: TechSel; onChan
           <Plus size={11} className="mt-0.5 flex-shrink-0" />
           <span>
             {sel.newActivity.trim()
-              ? `Se creará la actividad "${sel.newActivity.trim()}" en la fase elegida y el gasto quedará registrado en ella. `
+              ? t('fin.assoc.seCrearaLaActividadV0En', { v0: sel.newActivity.trim() })
               : sel.subId
-                ? "El gasto se registrará sobre la subactividad elegida (se actualizan su valor y fecha; nunca se borra). "
-                : "Se creará una subactividad espejo en la actividad elegida con este valor y fecha. "}
-            Editar o eliminar el movimiento mantiene la obra sincronizada.
+                ? t('fin.assoc.elGastoSeRegistraraSobreLa')
+                : t('fin.assoc.seCrearaUnaSubactividadEspejoEn')}
+            {t('fin.assoc.editarOEliminarElMovimientoMantiene')}
           </span>
         </p>
       )}

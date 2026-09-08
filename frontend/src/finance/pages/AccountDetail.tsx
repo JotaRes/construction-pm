@@ -11,8 +11,10 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useConfirm } from "../../components/ConfirmDialog";
+import { useI18n } from '../../i18n'
 
 export default function AccountDetail() {
+  const { t } = useI18n()
   const { id } = useParams();
   const aid = +(id || 0);
   const qc = useQueryClient();
@@ -43,11 +45,11 @@ export default function AccountDetail() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["account-detail", aid] });
       qc.invalidateQueries({ queryKey: ["account-reconciliation", aid] });
-      toast.success("Extracto eliminado");
+      toast.success(t('fin.acctDet.extractoEliminado'));
     },
   });
 
-  if (!account) return <div style={{ color: 'var(--brand-teal)' }}>Cargando…</div>;
+  if (!account) return <div style={{ color: 'var(--brand-teal)' }}>{t('common.cargando')}</div>;
 
   const computedBalance = allAccounts?.find((a: any) => a.id === aid)?.computedBalance ?? 0;
   const allMovements: any[] = movData?.movements || [];
@@ -70,13 +72,13 @@ export default function AccountDetail() {
       const res = await API.uploadStatementToAccount(aid, f);
       const lineCount = res.statement.lines?.length || 0;
       const matched = res.reconciliation?.matched || 0;
-      toast.success(`Extracto procesado: ${lineCount} líneas, ${matched} conciliadas con movimientos existentes`);
-      setUploadResult({ ok: true, message: `${lineCount} líneas extraídas, ${matched} ya conciliadas con movimientos manuales` });
+      toast.success(t('fin.acctDet.extractoProcesadoV0LineasV1Conciliadas', { v0: lineCount, v1: matched }));
+      setUploadResult({ ok: true, message: t('fin.acctDet.v0LineasExtraidasV1YaConciliadas', { v0: lineCount, v1: matched }) });
       qc.invalidateQueries({ queryKey: ["account-detail", aid] });
       qc.invalidateQueries({ queryKey: ["account-reconciliation", aid] });
       qc.invalidateQueries({ queryKey: ["movements-by-account", aid] });
     } catch (err: any) {
-      const msg = err?.response?.data?.error || err?.message || "Error al subir extracto";
+      const msg = err?.response?.data?.error || err?.message || t('fin.acctDet.errorAlSubirExtracto');
       toast.error(msg, { duration: 6000 });
       setUploadResult({ ok: false, message: msg });
     } finally {
@@ -88,7 +90,7 @@ export default function AccountDetail() {
   return (
     <div className="space-y-5 page-content">
       <Link to="/finance/accounts" className="btn-ghost text-sm inline-flex items-center gap-1">
-        <ArrowLeft size={14} /> Cuentas bancarias
+        <ArrowLeft size={14} /> {t('common.cuentasBancarias')}
       </Link>
 
       {/* === HEADER === */}
@@ -112,12 +114,12 @@ export default function AccountDetail() {
             </div>
 
             <div className="text-right">
-              <div className="text-[10px] uppercase tracking-wider font-semibold mb-1" style={{ color: 'var(--brand-teal2)' }}>Saldo actual</div>
+              <div className="text-[10px] uppercase tracking-wider font-semibold mb-1" style={{ color: 'var(--brand-teal2)' }}>{t('fin.acctDet.saldoActual')}</div>
               <div className={cls("text-4xl font-bold font-mono", computedBalance >= 0 ? "text-emerald-600" : "text-red-600")}>
                 {usd(computedBalance)}
               </div>
               <div className="text-[10px] mt-1" style={{ color: 'var(--brand-teal2)' }}>
-                Inicial: {usd(account.initialBalance || 0, { compact: true })}
+                {t('fin.acctDet.inicial')} {usd(account.initialBalance || 0, { compact: true })}
               </div>
             </div>
           </div>
@@ -126,22 +128,22 @@ export default function AccountDetail() {
             <div className="flex items-center gap-3 p-3 rounded-lg" style={{ background: 'var(--brand-cream2)' }}>
               <Hash size={16} style={{ color: 'var(--brand-gold)' }} />
               <div>
-                <div className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}># Cuenta</div>
-                <div className="font-mono font-semibold" style={{ color: 'var(--brand-teal)' }}>{account.accountNumber || <span className="opacity-50">No registrado</span>}</div>
+                <div className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>{t('common.cuenta')}</div>
+                <div className="font-mono font-semibold" style={{ color: 'var(--brand-teal)' }}>{account.accountNumber || <span className="opacity-50">{t('fin.acctDet.noRegistrado')}</span>}</div>
               </div>
             </div>
             <div className="flex items-center gap-3 p-3 rounded-lg" style={{ background: 'var(--brand-cream2)' }}>
               <Hash size={16} style={{ color: 'var(--brand-gold)' }} />
               <div>
-                <div className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>Routing # (ABA)</div>
-                <div className="font-mono font-semibold" style={{ color: 'var(--brand-teal)' }}>{account.routingNumber || <span className="opacity-50">No registrado</span>}</div>
+                <div className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>{t('common.routingAba')}</div>
+                <div className="font-mono font-semibold" style={{ color: 'var(--brand-teal)' }}>{account.routingNumber || <span className="opacity-50">{t('fin.acctDet.noRegistrado')}</span>}</div>
               </div>
             </div>
             <div className="flex items-center gap-3 p-3 rounded-lg" style={{ background: 'var(--brand-cream2)' }}>
               <MapPin size={16} style={{ color: 'var(--brand-gold)' }} />
               <div className="min-w-0">
-                <div className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>Dirección sucursal</div>
-                <div className="text-sm font-medium truncate" style={{ color: 'var(--brand-teal)' }} title={account.address}>{account.address || <span className="opacity-50">No registrada</span>}</div>
+                <div className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>{t('common.direccionSucursal')}</div>
+                <div className="text-sm font-medium truncate" style={{ color: 'var(--brand-teal)' }} title={account.address}>{account.address || <span className="opacity-50">{t('fin.acctDet.noRegistrada')}</span>}</div>
               </div>
             </div>
           </div>
@@ -152,28 +154,28 @@ export default function AccountDetail() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="kpi-card kpi-card-green">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>Ingresos</span>
+            <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>{t('common.ingresos')}</span>
             <TrendingUp size={14} className="text-emerald-600" />
           </div>
           <div className="text-2xl font-bold font-mono text-emerald-600">{usd(ingresos, { compact: true })}</div>
         </div>
         <div className="kpi-card kpi-card-red">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>Egresos</span>
+            <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>{t('common.egresos')}</span>
             <TrendingDown size={14} className="text-red-600" />
           </div>
           <div className="text-2xl font-bold font-mono text-red-600">{usd(egresos, { compact: true })}</div>
         </div>
         <div className="kpi-card kpi-card-gold">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>Transferencias enviadas</span>
+            <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>{t('fin.acctDet.transferenciasEnviadas')}</span>
             <Repeat size={14} style={{ color: 'var(--brand-gold)' }} />
           </div>
           <div className="text-2xl font-bold font-mono" style={{ color: 'var(--brand-teal)' }}>{usd(transferOut, { compact: true })}</div>
         </div>
         <div className="kpi-card kpi-card-gold">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>Transferencias recibidas</span>
+            <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--brand-teal2)' }}>{t('fin.acctDet.transferenciasRecibidas')}</span>
             <Repeat size={14} style={{ color: 'var(--brand-gold)' }} />
           </div>
           <div className="text-2xl font-bold font-mono" style={{ color: 'var(--brand-teal)' }}>{usd(transferIn, { compact: true })}</div>
@@ -185,15 +187,15 @@ export default function AccountDetail() {
         <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(29,29,31,0.1)', background: 'linear-gradient(135deg, var(--brand-cream2) 0%, #ffffff 100%)' }}>
           <div>
             <h2 className="text-base font-bold flex items-center gap-2" style={{ color: 'var(--brand-teal)' }}>
-              <FileSpreadsheet size={16} style={{ color: 'var(--brand-gold)' }} /> Extractos bancarios de esta cuenta
+              <FileSpreadsheet size={16} style={{ color: 'var(--brand-gold)' }} /> {t('fin.acctDet.extractosBancariosDeEstaCuenta')}
             </h2>
             <p className="text-xs mt-0.5" style={{ color: 'var(--brand-teal2)' }}>
-              Sube tu extracto en PDF/Excel/CSV. El sistema lo concilia con los movimientos para detectar omisiones.
+              {t('fin.acctDet.subeTuExtractoEnPdfExcel')}
             </p>
           </div>
           <label className={cls("btn-primary cursor-pointer text-sm", uploading && "opacity-60 pointer-events-none")}>
             <Upload size={14} />
-            {uploading ? "Procesando..." : "Subir extracto"}
+            {uploading ? t('common.procesando') : t('fin.acctDet.subirExtracto')}
             <input
               type="file"
               className="hidden"
@@ -226,9 +228,9 @@ export default function AccountDetail() {
           {!account.statements || account.statements.length === 0 ? (
             <div className="text-center py-6">
               <FileText size={32} className="mx-auto mb-2" style={{ color: 'rgba(29,29,31,0.3)' }} />
-              <p className="text-sm font-medium mb-1" style={{ color: 'var(--brand-teal)' }}>Aún no has subido extractos para esta cuenta</p>
+              <p className="text-sm font-medium mb-1" style={{ color: 'var(--brand-teal)' }}>{t('fin.acctDet.aunNoHasSubidoExtractosPara')}</p>
               <p className="text-xs" style={{ color: 'var(--brand-teal2)' }}>
-                Soporta CSV · Excel (.xlsx, .xls) · PDF. Compatible con Ocean Bank, Chase, BoA, Wells Fargo.
+                {t('fin.acctDet.soportaCsvExcelXlsxXlsPdf')}
               </p>
             </div>
           ) : (
@@ -242,23 +244,23 @@ export default function AccountDetail() {
                         {s.filename}
                       </Link>
                       <div className="text-[11px]" style={{ color: 'var(--brand-teal2)' }}>
-                        {dateShort(s.periodStart)} → {dateShort(s.periodEnd)} · {s._count?.lines || 0} líneas
+                        {dateShort(s.periodStart)} → {dateShort(s.periodEnd)} · {s._count?.lines || 0} {t('fin.acctDet.lineas')}
                       </div>
                     </div>
                   </div>
                   <button
                     onClick={async () => {
                       const ok = await confirm({
-                        title: 'Eliminar extracto bancario',
-                        message: `¿Seguro que quieres eliminar el extracto "${s.filename}"?`,
-                        detail: 'Se eliminarán también todas las líneas del extracto.',
+                        title: t('fin.acctDet.eliminarExtractoBancario'),
+                        message: t('fin.acctDet.seguroQueQuieresEliminarElExtracto', { v0: s.filename }),
+                        detail: t('fin.acctDet.seEliminaranTambienTodasLasLineas'),
                         destructive: true,
-                        confirmText: 'Sí, eliminar',
+                        confirmText: t('tech.projects.siEliminar'),
                       })
                       if (ok) deleteStatementMut.mutate(s.id);
                     }}
                     className="btn-ghost p-1 text-red-600 flex-shrink-0"
-                    title="Eliminar"
+                    title={t('common.eliminar')}
                   >
                     <Trash2 size={13} />
                   </button>
@@ -274,29 +276,29 @@ export default function AccountDetail() {
             <div className="rounded-xl p-4" style={{ background: 'var(--brand-cream2)', border: '1px solid rgba(29,29,31,0.08)' }}>
               <div className="flex items-center gap-2 mb-3">
                 <Info size={15} style={{ color: 'var(--brand-gold)' }} />
-                <h3 className="text-sm font-bold" style={{ color: 'var(--brand-teal)' }}>Resumen de conciliación</h3>
+                <h3 className="text-sm font-bold" style={{ color: 'var(--brand-teal)' }}>{t('fin.acctDet.resumenDeConciliacion')}</h3>
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div className="text-center p-3 rounded-lg bg-emerald-50 border border-emerald-200">
                   <CheckCircle2 size={16} className="mx-auto mb-1 text-emerald-600" />
                   <div className="text-2xl font-bold font-mono text-emerald-600">{reconData.counts.matched}</div>
-                  <div className="text-[10px] uppercase tracking-wider font-semibold text-emerald-700 mt-1">Conciliados</div>
+                  <div className="text-[10px] uppercase tracking-wider font-semibold text-emerald-700 mt-1">{t('fin.acctDet.conciliados')}</div>
                 </div>
                 <div className="text-center p-3 rounded-lg bg-amber-50 border border-amber-200">
                   <AlertCircle size={16} className="mx-auto mb-1 text-amber-600" />
                   <div className="text-2xl font-bold font-mono text-amber-600">{reconData.counts.bookOnly}</div>
-                  <div className="text-[10px] uppercase tracking-wider font-semibold text-amber-700 mt-1">Movs sin extracto</div>
+                  <div className="text-[10px] uppercase tracking-wider font-semibold text-amber-700 mt-1">{t('fin.acctDet.movsSinExtracto')}</div>
                 </div>
                 <div className="text-center p-3 rounded-lg bg-red-50 border border-red-200">
                   <AlertCircle size={16} className="mx-auto mb-1 text-red-600" />
                   <div className="text-2xl font-bold font-mono text-red-600">{reconData.counts.bankOnly}</div>
-                  <div className="text-[10px] uppercase tracking-wider font-semibold text-red-700 mt-1">Faltan registrar</div>
+                  <div className="text-[10px] uppercase tracking-wider font-semibold text-red-700 mt-1">{t('fin.acctDet.faltanRegistrar')}</div>
                 </div>
               </div>
 
               {reconData.counts.bankOnly > 0 && (
                 <div className="mt-3 p-3 rounded-lg bg-red-50 border border-red-200">
-                  <div className="text-xs font-bold text-red-700 mb-2">⚠ Movimientos en el extracto que NO has registrado manualmente:</div>
+                  <div className="text-xs font-bold text-red-700 mb-2">{t('fin.acctDet.movimientosEnElExtractoQueNo')}</div>
                   <ul className="space-y-1 max-h-48 overflow-y-auto">
                     {reconData.bankOnly.slice(0, 15).map((l: any) => (
                       <li key={l.id} className="flex items-center justify-between gap-2 text-xs px-2 py-1 rounded bg-white">
@@ -311,7 +313,7 @@ export default function AccountDetail() {
                     ))}
                     {reconData.bankOnly.length > 15 && (
                       <li className="text-[10px] text-center pt-1" style={{ color: 'var(--brand-teal2)' }}>
-                        + {reconData.bankOnly.length - 15} más…
+                        + {reconData.bankOnly.length - 15} {t('fin.acctDet.mas')}
                       </li>
                     )}
                   </ul>
@@ -335,7 +337,7 @@ export default function AccountDetail() {
             }
           >
             <Wallet size={14} className="inline mr-1.5" />
-            Movimientos de la cuenta
+            {t('fin.acctDet.movimientosDeLaCuenta')}
           </button>
           {reconData && reconData.counts.totalLines > 0 && (
             <button
@@ -348,7 +350,7 @@ export default function AccountDetail() {
               }
             >
               <FileSpreadsheet size={14} className="inline mr-1.5" />
-              Comparativa vs extracto
+              {t('fin.acctDet.comparativaVsExtracto')}
             </button>
           )}
         </div>
@@ -358,19 +360,19 @@ export default function AccountDetail() {
             <table className="w-full text-sm">
               <thead style={{ background: 'rgba(29,29,31,0.04)' }}>
                 <tr className="text-xs uppercase tracking-wider" style={{ color: 'var(--brand-teal2)' }}>
-                  <th className="px-4 py-3 text-left font-semibold">Fecha</th>
-                  <th className="px-4 py-3 text-left font-semibold">Tipo</th>
-                  <th className="px-4 py-3 text-left font-semibold">Concepto</th>
-                  <th className="px-4 py-3 text-left font-semibold">Categoría / Proyecto</th>
-                  <th className="px-4 py-3 text-center font-semibold">Status</th>
-                  <th className="px-4 py-3 text-right font-semibold">Monto</th>
+                  <th className="px-4 py-3 text-left font-semibold">{t('common.fecha')}</th>
+                  <th className="px-4 py-3 text-left font-semibold">{t('common.tipo')}</th>
+                  <th className="px-4 py-3 text-left font-semibold">{t('common.concepto')}</th>
+                  <th className="px-4 py-3 text-left font-semibold">{t('fin.acctDet.categoriaProyecto')}</th>
+                  <th className="px-4 py-3 text-center font-semibold">{t('fin.acctDet.status')}</th>
+                  <th className="px-4 py-3 text-right font-semibold">{t('common.monto')}</th>
                 </tr>
               </thead>
               <tbody>
                 {outgoingMovements.length === 0 && incomingTransfers.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-4 py-8 text-center" style={{ color: 'var(--brand-teal2)' }}>
-                      Sin movimientos registrados en esta cuenta.
+                      {t('fin.acctDet.sinMovimientosRegistradosEnEstaCuenta')}
                     </td>
                   </tr>
                 ) : (
@@ -398,7 +400,7 @@ export default function AccountDetail() {
                               isTransfer && "border-amber-200",
                             )} style={isTransfer ? { background: 'rgba(62,90,112,0.1)', color: 'var(--brand-gold)' } : {}}>
                               <Icon size={10} className="mr-1" />
-                              {m._isIncoming ? "Transf. recibida" : m.type === "Interbancario" ? "Transf. enviada" : m.type}
+                              {m._isIncoming ? t('fin.acctDet.transfRecibida') : m.type === "Interbancario" ? t('fin.acctDet.transfEnviada') : m.type}
                             </span>
                           </td>
                           <td className="px-4 py-3 max-w-[280px] truncate" style={{ color: 'var(--brand-teal)' }}>
@@ -406,10 +408,10 @@ export default function AccountDetail() {
                               {m.concept}
                             </Link>
                             {m._isIncoming && m.account && (
-                              <div className="text-[10px] mt-0.5" style={{ color: 'var(--brand-teal2)' }}>← desde {m.account.name}</div>
+                              <div className="text-[10px] mt-0.5" style={{ color: 'var(--brand-teal2)' }}>{t('fin.acctDet.desde')} {m.account.name}</div>
                             )}
                             {isTransfer && m.destAccount && (
-                              <div className="text-[10px] mt-0.5" style={{ color: 'var(--brand-teal2)' }}>→ hacia {m.destAccount.name}</div>
+                              <div className="text-[10px] mt-0.5" style={{ color: 'var(--brand-teal2)' }}>{t('fin.acctDet.hacia')} {m.destAccount.name}</div>
                             )}
                           </td>
                           <td className="px-4 py-3 text-xs" style={{ color: 'var(--brand-teal2)' }}>
@@ -421,10 +423,10 @@ export default function AccountDetail() {
                           <td className="px-4 py-3 text-center">
                             {isMatched ? (
                               <span className="badge bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px]">
-                                <CheckCircle2 size={10} className="mr-0.5" /> Conciliado
+                                <CheckCircle2 size={10} className="mr-0.5" /> {t('fin.acctDet.conciliado')}
                               </span>
                             ) : (
-                              <span className="badge bg-stone-50 text-stone-500 border border-stone-200 text-[10px]">Sin conciliar</span>
+                              <span className="badge bg-stone-50 text-stone-500 border border-stone-200 text-[10px]">{t('fin.acctDet.sinConciliar')}</span>
                             )}
                           </td>
                           <td className={cls(
@@ -446,17 +448,17 @@ export default function AccountDetail() {
             <table className="w-full text-sm">
               <thead style={{ background: 'rgba(29,29,31,0.04)' }}>
                 <tr className="text-xs uppercase tracking-wider" style={{ color: 'var(--brand-teal2)' }}>
-                  <th className="px-4 py-3 text-left font-semibold">Fecha</th>
-                  <th className="px-4 py-3 text-left font-semibold">Descripción extracto</th>
-                  <th className="px-4 py-3 text-center font-semibold">Status</th>
-                  <th className="px-4 py-3 text-right font-semibold">Monto</th>
+                  <th className="px-4 py-3 text-left font-semibold">{t('common.fecha')}</th>
+                  <th className="px-4 py-3 text-left font-semibold">{t('fin.acctDet.descripcionExtracto')}</th>
+                  <th className="px-4 py-3 text-center font-semibold">{t('fin.acctDet.status')}</th>
+                  <th className="px-4 py-3 text-right font-semibold">{t('common.monto')}</th>
                 </tr>
               </thead>
               <tbody>
                 {!reconData || reconData.counts.totalLines === 0 ? (
                   <tr>
                     <td colSpan={4} className="px-4 py-8 text-center" style={{ color: 'var(--brand-teal2)' }}>
-                      Sube un extracto bancario para ver la comparativa.
+                      {t('fin.acctDet.subeUnExtractoBancarioParaVer')}
                     </td>
                   </tr>
                 ) : (
@@ -478,11 +480,11 @@ export default function AccountDetail() {
                         <td className="px-4 py-3 text-center">
                           {l._status === 'matched' ? (
                             <span className="badge bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px]">
-                              <CheckCircle2 size={10} className="mr-0.5" /> Conciliado
+                              <CheckCircle2 size={10} className="mr-0.5" /> {t('fin.acctDet.conciliado')}
                             </span>
                           ) : (
                             <span className="badge bg-red-50 text-red-700 border border-red-200 text-[10px]">
-                              <AlertCircle size={10} className="mr-0.5" /> Falta registrar
+                              <AlertCircle size={10} className="mr-0.5" /> {t('fin.acctDet.faltaRegistrar')}
                             </span>
                           )}
                         </td>

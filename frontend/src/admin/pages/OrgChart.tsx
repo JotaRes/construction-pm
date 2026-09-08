@@ -5,7 +5,9 @@ import {
   Plus, DownloadCloud, Landmark, Building2, FileText, AlertTriangle, X,
   HardHat, Home, KeyRound, ListChecks, Briefcase,
 } from "lucide-react";
-import { AdminAPI, ROLE_LABELS } from "../lib/api";
+import { AdminAPI } from "../lib/api";
+import { useI18n, type TranslationKey } from '../../i18n'
+import { dataLabel, COMPANY_ROLE_LABELS } from '../../i18n/dataLabels'
 
 // ============================================================
 // Sistema visual por ROL — paleta corporativa fija (petróleo/oro/marfil).
@@ -14,7 +16,7 @@ import { AdminAPI, ROLE_LABELS } from "../lib/api";
 // ============================================================
 const ROLE_META: Record<string, {
   Icon: typeof Building2;
-  desc: string;
+  descKey: TranslationKey;
   chipBg: string;
   chipColor: string;
   iconBg: string;
@@ -23,28 +25,28 @@ const ROLE_META: Record<string, {
 }> = {
   HOLDING: {
     Icon: Landmark,
-    desc: "Matriz del grupo — consolida y controla",
+    descKey: 'adm.org.matrizDelGrupoConsolidaYControla',
     chipBg: "rgba(217,174,82,0.18)", chipColor: "#D9AE52",
     iconBg: "rgba(217,174,82,0.16)", iconColor: "#D9AE52",
     accentBar: "#C6952F",
   },
   PROPERTY_MANAGER: {
     Icon: KeyRound,
-    desc: "Administra propiedades y rentas",
+    descKey: 'adm.org.administraPropiedadesYRentas',
     chipBg: "rgba(62,90,112,0.12)", chipColor: "#3E5A70",
     iconBg: "rgba(62,90,112,0.12)", iconColor: "#3E5A70",
     accentBar: "#3E5A70",
   },
   SUBSIDIARY_OWNER: {
     Icon: Home,
-    desc: "Propietaria de casa / proyecto",
+    descKey: 'adm.org.propietariaDeCasaProyecto',
     chipBg: "rgba(51,73,92,0.10)", chipColor: "#33495C",
     iconBg: "rgba(51,73,92,0.10)", iconColor: "#33495C",
     accentBar: "#86868B",
   },
   OTHER: {
     Icon: Briefcase,
-    desc: "Función especial del grupo",
+    descKey: 'adm.org.funcionEspecialDelGrupo',
     chipBg: "rgba(72,72,74,0.10)", chipColor: "#48484A",
     iconBg: "rgba(72,72,74,0.08)", iconColor: "#48484A",
     accentBar: "#D2D2D7",
@@ -60,6 +62,7 @@ function complianceColor(pct: number, vencidos: number): string {
 }
 
 function CompanyCard({ c, isHolding = false }: { c: any; isHolding?: boolean }) {
+  const { t } = useI18n()
   const comp = c.compliance;
   const pct = comp?.compliancePct ?? 100;
   const color = complianceColor(pct, comp?.vencidos ?? 0);
@@ -102,7 +105,7 @@ function CompanyCard({ c, isHolding = false }: { c: any; isHolding?: boolean }) 
                 {c.name}
               </div>
               <div className="text-[10px] uppercase tracking-widest" style={{ color: isHolding ? "#D9AE52" : meta.chipColor }}>
-                {ROLE_LABELS[c.role] ?? c.role}
+                {dataLabel(COMPANY_ROLE_LABELS, c.role, t)}
                 {c.finSpv ? ` · SPV ${c.finSpv.code}` : ""}
               </div>
             </div>
@@ -116,7 +119,7 @@ function CompanyCard({ c, isHolding = false }: { c: any; isHolding?: boolean }) 
 
         {/* Qué hace esta empresa */}
         <div className="text-[11px] mb-2.5" style={{ color: isHolding ? "rgba(244,241,235,0.75)" : "var(--text-muted)" }}>
-          {meta.desc}
+          {t(meta.descKey)}
         </div>
 
         {/* Barra de cumplimiento */}
@@ -130,18 +133,18 @@ function CompanyCard({ c, isHolding = false }: { c: any; isHolding?: boolean }) 
             {techProjects.slice(0, 2).map((p: any) => (
               <span key={p.id} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9.5px] font-semibold"
                 style={{ background: isHolding ? "rgba(255,255,255,0.12)" : "rgba(62,90,112,0.10)", color: isHolding ? "#F5F5F7" : "#3E5A70" }}
-                title={`Obra a cargo: ${p.name}`}>
+                title={t('adm.org.obraACargoV0', { v0: p.name })}>
                 <HardHat size={9} /> {p.name.length > 16 ? p.name.slice(0, 16) + "…" : p.name}
               </span>
             ))}
             {techProjects.length > 2 && (
-              <span className="text-[9.5px]" style={{ color: isHolding ? "rgba(244,241,235,0.7)" : "var(--text-muted)" }}>+{techProjects.length - 2} obra(s)</span>
+              <span className="text-[9.5px]" style={{ color: isHolding ? "rgba(244,241,235,0.7)" : "var(--text-muted)" }}>+{techProjects.length - 2} {t('adm.org.obraS')}</span>
             )}
             {finProjects.length > 0 && (
               <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9.5px] font-semibold"
                 style={{ background: isHolding ? "rgba(217,174,82,0.18)" : "rgba(198,149,47,0.12)", color: isHolding ? "#D9AE52" : "#8a6a1f" }}
                 title={finProjects.map((p: any) => p.name).join(", ")}>
-                <Home size={9} /> {finProjects.length} propiedad(es)
+                <Home size={9} /> {finProjects.length} {t('adm.org.propiedadEs')}
               </span>
             )}
           </div>
@@ -149,22 +152,22 @@ function CompanyCard({ c, isHolding = false }: { c: any; isHolding?: boolean }) 
 
         {/* Alertas a la vista: docs vencidos/faltantes + tareas */}
         <div className="flex items-center gap-3 text-[10.5px] flex-wrap" style={{ color: isHolding ? "rgba(244,241,235,0.7)" : "var(--text-muted)" }}>
-          <span className="flex items-center gap-1"><FileText size={11} /> {c._count?.documents ?? 0} docs</span>
+          <span className="flex items-center gap-1"><FileText size={11} /> {c._count?.documents ?? 0} {t('adm.org.docs')}</span>
           {(comp?.vencidos ?? 0) > 0 && (
             <span className="flex items-center gap-1 font-semibold" style={{ color: isHolding ? "#FF8A80" : ERR }}>
-              <AlertTriangle size={11} /> {comp.vencidos} vencido(s)
+              <AlertTriangle size={11} /> {comp.vencidos} {t('adm.org.vencidoS')}
             </span>
           )}
           {(comp?.faltantes ?? 0) > 0 && (
-            <span className="font-medium" style={{ color: isHolding ? "rgba(244,241,235,0.85)" : WARN }}>{comp.faltantes} faltante(s)</span>
+            <span className="font-medium" style={{ color: isHolding ? "rgba(244,241,235,0.85)" : WARN }}>{comp.faltantes} {t('adm.org.faltanteS')}</span>
           )}
           {pending > 0 && (
             <span className="flex items-center gap-1 font-medium" style={{ color: overdue > 0 ? (isHolding ? "#FF8A80" : ERR) : (isHolding ? "rgba(244,241,235,0.85)" : WARN) }}>
-              <ListChecks size={11} /> {pending} tarea(s){overdue > 0 ? ` · ${overdue} VENCIDA(S)` : ""}
+              <ListChecks size={11} /> {pending} {t('adm.org.tareaS')}{overdue > 0 ? ` · ${overdue} VENCIDA(S)` : ""}
             </span>
           )}
           {!hasAlerts && (comp?.totalRequired ?? 0) > 0 && pct === 100 && (
-            <span className="font-medium" style={{ color: isHolding ? "#9CDBB4" : OK }}>Al día</span>
+            <span className="font-medium" style={{ color: isHolding ? "#9CDBB4" : OK }}>{t('common.alDia')}</span>
           )}
         </div>
       </div>
@@ -178,6 +181,7 @@ const EMPTY_FORM = { name: "", legalName: "", role: "SUBSIDIARY_OWNER", stateOfF
 const LINE = "var(--border-strong, #D2D2D7)";
 
 export default function OrgChart() {
+  const { t } = useI18n()
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({ queryKey: ["adm-orgchart"], queryFn: AdminAPI.getOrgChart });
   const { data: dash } = useQuery({ queryKey: ["adm-dashboard"], queryFn: AdminAPI.getDashboard });
@@ -191,7 +195,7 @@ export default function OrgChart() {
     mutationFn: AdminAPI.importSPVs,
     onSuccess: (r) => {
       invalidate();
-      window.alert(`Importación completa: ${r.imported} empresa(s) creadas desde los SPVs del módulo financiero, ${r.skipped} ya existían.`);
+      window.alert(t('adm.org.importacionCompletaV0EmpresaSCreadas', { v0: r.imported, v1: r.skipped }));
     },
     onError: (e: any) => window.alert(e.message),
   });
@@ -202,7 +206,7 @@ export default function OrgChart() {
     onError: (e: any) => setError(e.message),
   });
 
-  if (isLoading) return <div className="fin-page-sub">Cargando organigrama…</div>;
+  if (isLoading) return <div className="fin-page-sub">{t('adm.org.cargandoOrganigrama')}</div>;
 
   const holding = data?.holding;
   const subsidiaries = data?.subsidiaries ?? [];
@@ -211,7 +215,7 @@ export default function OrgChart() {
   );
 
   const submit = () => {
-    if (!form.name.trim()) { setError("El nombre es obligatorio"); return; }
+    if (!form.name.trim()) { setError(t('common.elNombreEsObligatorio')); return; }
     const payload: any = { ...form };
     Object.keys(payload).forEach((k) => { if (payload[k] === "") payload[k] = null; });
     // Las subsidiarias nuevas se cuelgan automáticamente de la holding
@@ -224,8 +228,8 @@ export default function OrgChart() {
       {/* Toolbar */}
       <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
         <div>
-          <div className="fin-page-title">Estructura del grupo</div>
-          <div className="fin-page-sub">Quién es quién, qué tiene a cargo y cómo está su cumplimiento</div>
+          <div className="fin-page-title">{t('adm.org.estructuraDelGrupo')}</div>
+          <div className="fin-page-sub">{t('adm.org.quienEsQuienQueTieneA')}</div>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -233,13 +237,13 @@ export default function OrgChart() {
             style={{ width: "auto", fontSize: 11.5, fontWeight: 600 }}
             onClick={() => importMut.mutate()}
             disabled={importMut.isPending}
-            title="Crear empresas desde los SPVs registrados en el módulo financiero"
+            title={t('adm.org.crearEmpresasDesdeLosSpvsRegistrados')}
           >
             <DownloadCloud size={13} />
-            {importMut.isPending ? "Importando…" : "Importar desde SPVs"}
+            {importMut.isPending ? t('common.importando') : t('adm.org.importarDesdeSpvs')}
           </button>
           <button className="fin-btn-cta flex items-center gap-2" onClick={() => setShowForm(true)}>
-            <Plus size={13} /> Crear empresa
+            <Plus size={13} /> {t('adm.org.crearEmpresa')}
           </button>
         </div>
       </div>
@@ -248,12 +252,12 @@ export default function OrgChart() {
       {dash && (
         <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6">
           {[
-            { label: "Cumplimiento global", value: `${dash.globalCompliancePct}%`, tone: dash.globalCompliancePct >= 85 ? OK : dash.globalCompliancePct >= 60 ? WARN : ERR },
-            { label: "Empresas", value: dash.totalCompanies, tone: "#3E5A70" },
-            { label: "Socios / colab.", value: dash.totalPersons ?? 0, tone: "#3E5A70" },
-            { label: "Documentos", value: (dash.totalDocuments ?? 0) + (dash.totalPersonDocuments ?? 0), tone: "var(--text-primary)" },
-            { label: "Tareas pendientes", value: dash.pendingTasks, tone: (dash.overdueTasks ?? 0) > 0 ? ERR : WARN },
-            { label: "Alertas críticas", value: dash.alertCounts?.criticas ?? 0, tone: ERR },
+            { label: t('adm.alerts.cumplimientoGlobal'), value: `${dash.globalCompliancePct}%`, tone: dash.globalCompliancePct >= 85 ? OK : dash.globalCompliancePct >= 60 ? WARN : ERR },
+            { label: t('adm.alerts.empresas'), value: dash.totalCompanies, tone: "#3E5A70" },
+            { label: t('adm.alerts.sociosColab'), value: dash.totalPersons ?? 0, tone: "#3E5A70" },
+            { label: t('common.documentos'), value: (dash.totalDocuments ?? 0) + (dash.totalPersonDocuments ?? 0), tone: "var(--text-primary)" },
+            { label: t('adm.alerts.tareasPendientes'), value: dash.pendingTasks, tone: (dash.overdueTasks ?? 0) > 0 ? ERR : WARN },
+            { label: t('adm.alerts.alertasCriticas'), value: dash.alertCounts?.criticas ?? 0, tone: ERR },
           ].map((k) => (
             <Link key={k.label} to="/admin/alerts" className="fin-kpi-v2" style={{ textDecoration: "none" }}>
               <div className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>{k.label}</div>
@@ -268,7 +272,7 @@ export default function OrgChart() {
         {Object.entries(ROLE_META).map(([role, m]) => (
           <span key={role} className="inline-flex items-center gap-1.5 text-[10.5px]" style={{ color: "var(--text-muted)" }}>
             <span className="w-2.5 h-2.5 rounded-sm" style={{ background: m.accentBar }} />
-            {ROLE_LABELS[role] ?? role} — {m.desc}
+            {dataLabel(COMPANY_ROLE_LABELS, role, t)} — {t(m.descKey)}
           </span>
         ))}
       </div>
@@ -277,10 +281,9 @@ export default function OrgChart() {
       {!holding && subsidiaries.length === 0 ? (
         <div className="fin-cpanel">
           <div className="fin-cpanel-body text-center py-10">
-            <div className="fin-page-sub mb-3">Aún no hay empresas registradas.</div>
+            <div className="fin-page-sub mb-3">{t('adm.org.aunNoHayEmpresasRegistradas')}</div>
             <div className="text-xs" style={{ color: "var(--text-muted)" }}>
-              Usa <b>Importar desde SPVs</b> para traer las empresas ya registradas en el módulo financiero,
-              o crea la holding manualmente con <b>Crear empresa</b>.
+              {t('adm.org.usa')} <b>{t('adm.org.importarDesdeSpvs')}</b> {t('adm.org.paraTraerLasEmpresasYaRegistradas')} <b>{t('adm.org.crearEmpresa')}</b>.
             </div>
           </div>
         </div>
@@ -321,7 +324,7 @@ export default function OrgChart() {
           {/* Empresas sin vincular al organigrama */}
           {orphans.length > 0 && (
             <div className="w-full mt-8">
-              <div className="fin-nav-grp" style={{ paddingLeft: 0 }}>Sin vincular a la holding</div>
+              <div className="fin-nav-grp" style={{ paddingLeft: 0 }}>{t('adm.org.sinVincularALaHolding')}</div>
               <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(240px, 280px))" }}>
                 {orphans.map((c: any) => <CompanyCard key={c.id} c={c} />)}
               </div>
@@ -339,17 +342,17 @@ export default function OrgChart() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
-              <div className="fin-tb-title">Nueva empresa</div>
+              <div className="fin-tb-title">{t('adm.org.nuevaEmpresa')}</div>
               <button className="fin-btn-icon" onClick={() => setShowForm(false)}><X size={13} /></button>
             </div>
             <div className="grid gap-3">
               {[
-                { k: "name", label: "Nombre *", ph: "Ej: RA Property Management LLC" },
-                { k: "legalName", label: "Razón social completa", ph: "" },
+                { k: "name", label: t('common.nombre'), ph: "Ej: RA Property Management LLC" },
+                { k: "legalName", label: t('adm.company.razonSocialCompleta'), ph: "" },
                 { k: "ein", label: "EIN", ph: "XX-XXXXXXX" },
-                { k: "stateOfFormation", label: "Estado de constitución", ph: "South Carolina" },
-                { k: "registeredAgent", label: "Registered Agent", ph: "" },
-                { k: "address", label: "Dirección", ph: "" },
+                { k: "stateOfFormation", label: t('adm.company.estadoDeConstitucion'), ph: "South Carolina" },
+                { k: "registeredAgent", label: t('adm.company.registeredAgent'), ph: "" },
+                { k: "address", label: t('common.direccion'), ph: "" },
               ].map((f) => (
                 <label key={f.k} className="block">
                   <span className="text-[11px] font-semibold" style={{ color: "var(--text-secondary)" }}>{f.label}</span>
@@ -363,25 +366,25 @@ export default function OrgChart() {
                 </label>
               ))}
               <label className="block">
-                <span className="text-[11px] font-semibold" style={{ color: "var(--text-secondary)" }}>Rol en el grupo</span>
+                <span className="text-[11px] font-semibold" style={{ color: "var(--text-secondary)" }}>{t('adm.company.rolEnElGrupo')}</span>
                 <select
                   className="w-full mt-1 px-3 py-2 rounded-lg text-sm"
                   style={{ background: "var(--bg-panel, #fff)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
                   value={form.role}
                   onChange={(e) => setForm({ ...form, role: e.target.value })}
                 >
-                  <option value="HOLDING">Holding (matriz)</option>
-                  <option value="PROPERTY_MANAGER">Property Manager (administradora)</option>
-                  <option value="SUBSIDIARY_OWNER">Propietaria de casa/proyecto</option>
-                  <option value="OTHER">Otra</option>
+                  <option value="HOLDING">{t('adm.company.holdingMatriz')}</option>
+                  <option value="PROPERTY_MANAGER">{t('adm.company.propertyManagerAdministradora')}</option>
+                  <option value="SUBSIDIARY_OWNER">{t('adm.company.propietariaDeCasaProyecto')}</option>
+                  <option value="OTHER">{t('adm.company.otra')}</option>
                 </select>
               </label>
               {error && <div className="text-xs" style={{ color: ERR }}>{error}</div>}
               <button className="fin-btn-cta mt-1" onClick={submit} disabled={createMut.isPending}>
-                {createMut.isPending ? "Creando…" : "Crear empresa"}
+                {createMut.isPending ? t('common.creando') : t('adm.org.crearEmpresa')}
               </button>
               <div className="text-[10.5px]" style={{ color: "var(--text-muted)" }}>
-                Al crearla se le aplican automáticamente los requisitos del due diligence corporativo.
+                {t('adm.org.alCrearlaSeLeAplicanAutomaticamente')}
               </div>
             </div>
           </div>

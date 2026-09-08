@@ -196,6 +196,53 @@ Paleta oficial (única fuente: bloque de tokens en `frontend/src/index.css`):
   (`vite.config.ts` manualChunks) — solo cargan cuando su página se abre.
   NO reconvertir los `lazy()` a imports estáticos.
 
+## Internacionalización (ES / EN)
+
+El sistema es bilingüe completo. El conmutador ES/EN vive en `components/LanguageToggle.tsx`
+y está montado en la Landing, el AuthGate, el ModuleGate, los topbars de los tres módulos y
+la vista "sin proyecto activo".
+
+**Núcleo** (`frontend/src/i18n/`):
+- `dictionary.ts` — `es` es la FUENTE DE VERDAD; `en` está tipado como
+  `Record<TranslationKey, string>`, así que una clave sin traducir **rompe el build**.
+- `index.tsx` — `I18nProvider` / `useI18n()` con `t()`, `tc()` (plurales) y `locale`.
+  Fuera de React: `tStatic()` (helpers de módulo, capas de API) y `currentLocale()` /
+  `currentLang()`. `bootstrapDocumentLanguage()` aplica idioma a `<html lang>`, `<title>`
+  y el splash antes del primer pintado.
+- `dataLabels.ts` — mapas «valor guardado → clave de traducción».
+
+**Reglas al escribir código nuevo:**
+
+1. **Todo texto visible pasa por `t()`.** Dentro de un componente, siempre el hook
+   (es lo que dispara el re-render). `tStatic()` solo donde el hook es imposible.
+2. **Nunca traducir un valor que también es dato.** El backend guarda enums en español
+   (`"Egreso"`, `"Contrato"`, `"En Construcción"`, `"sin clasificar"`). Traducirlos dentro
+   de una comparación o de una clave de índice rompe la app en inglés:
+
+   ```tsx
+   // MAL — en inglés nunca coincide
+   {m.type === t('common.egreso') && ...}
+   // BIEN — se compara el dato, se traduce solo la etiqueta
+   {m.type === "Egreso" && ...}
+   <option value={raw}>{dataLabel(FILE_CATEGORY_LABELS, raw, t)}</option>
+   ```
+
+3. **Constantes a nivel de módulo guardan CLAVES, no texto.** Se evalúan una sola vez al
+   importar, así que un `t()` allí quedaría congelado en el idioma inicial. Convención:
+   `labelKey` / `titleKey` / `descKey` tipados como `TranslationKey`, y se traducen en el
+   punto de render.
+4. **Fechas con `currentLocale()`** (o `locale` del hook). La **moneda se mantiene en
+   `en-US`** a propósito: son dólares y el HUD, los draws y los reportes del lender se
+   leen así en ambos idiomas.
+5. **Terminología del sector se queda en inglés en ambos idiomas**: draw, holdback,
+   net wire, punch list, change order, ARV, UPB, $/SF, runway. Es el vocabulario real
+   de lenders y GCs en EE. UU.; traducirlo sería incorrecto, no "más español".
+6. **Errores del backend**: las rutas los escriben en español y
+   `backend/src/i18n/errors.ts` los traduce en un solo punto (middleware que envuelve
+   `res.json`) según `Accept-Language`. Los clientes axios y los `fetch` del frontend
+   envían esa cabecera con el idioma activo. Si agregas un mensaje de error nuevo,
+   añádelo también a ese mapa.
+
 ## Pendientes conocidos / Ideas
 
 - Importador de Excel del módulo financiero acepta el archivo "DOC FINANCIERO 2025-2026.xlsx" del usuario
@@ -213,3 +260,4 @@ Paleta oficial (única fuente: bloque de tokens en `frontend/src/index.css`):
 5. **NUNCA instanciar `new PrismaClient()` en rutas o servicios.** Importar el singleton: `import { prisma } from '../lib/prisma'`. Múltiples clientes agotan las conexiones del Postgres de Render.
 6. **NUNCA escribir contraseñas o secretos en código, docs o render.yaml.** Local: `backend/.env` (gitignored). Producción: Render → Environment. El pre-commit hook y el CI lo bloquean.
 7. **Endpoints de escritura nuevos llevan validación Zod** (ver `finance/lib/validate.ts` como patrón).
+8. **Todo texto visible nuevo va con `t()` y su clave en `es` + `en`.** Nunca traducir un valor que el backend guarda como dato (ver Internacionalización).

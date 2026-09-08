@@ -14,24 +14,26 @@ import {
 import { useConfirm } from "../../components/ConfirmDialog";
 import toast from "react-hot-toast";
 import { TechAssociate, TechSel, EMPTY_TECH_SEL, techSelReady, resolveTechLink } from "../components/TechAssociate";
+import { useI18n, type TranslationKey } from '../../i18n'
 
-const TYPE_BADGE: Record<string, { color: string; icon: any; label: string }> = {
-  Ingreso:       { color: "text-positive bg-positive/10 border-positive/30",     icon: ArrowDownLeft, label: "Ingreso" },
-  Egreso:        { color: "text-negative bg-negative/10 border-negative/30",     icon: ArrowUpRight,  label: "Egreso" },
-  Interbancario: { color: "text-accent bg-accent/10 border-accent/30",            icon: Repeat,        label: "Transferencia" },
+const TYPE_BADGE: Record<string, { color: string; icon: any; labelKey: TranslationKey }> = {
+  Ingreso:       { color: "text-positive bg-positive/10 border-positive/30",     icon: ArrowDownLeft, labelKey: 'common.ingreso' },
+  Egreso:        { color: "text-negative bg-negative/10 border-negative/30",     icon: ArrowUpRight,  labelKey: 'common.egreso' },
+  Interbancario: { color: "text-accent bg-accent/10 border-accent/30",            icon: Repeat,        labelKey: 'fin.movs.transferencia' },
 };
 
 // Visualización del matchStatus contra extractos:
 //   matched      → verde (✓)
 //   manual_only  → amarillo (movimiento manual sin línea de extracto)
 //   pending      → gris (aún no se cargó extracto del período)
-const MATCH_BADGE: Record<string, { color: string; label: string; icon: any }> = {
-  matched:      { color: "text-positive bg-positive/15 border-positive/40", label: "Coincide",    icon: CheckCircle2 },
-  manual_only:  { color: "text-warn bg-warn/15 border-warn/40",             label: "Sin extracto", icon: AlertCircle },
-  pending:      { color: "text-slate-400 bg-slate-700/20 border-slate-600",  label: "Pendiente",   icon: AlertCircle },
+const MATCH_BADGE: Record<string, { color: string; labelKey: TranslationKey; icon: any }> = {
+  matched:      { color: "text-positive bg-positive/15 border-positive/40", labelKey: 'fin.movs.coincide',    icon: CheckCircle2 },
+  manual_only:  { color: "text-warn bg-warn/15 border-warn/40",             labelKey: 'fin.movs.sinExtracto', icon: AlertCircle },
+  pending:      { color: "text-slate-400 bg-slate-700/20 border-slate-600",  labelKey: 'common.pendiente',   icon: AlertCircle },
 };
 
 export default function Movements() {
+  const { t } = useI18n()
   const qc = useQueryClient();
   const confirm = useConfirm();
   const [filters, setFilters] = useState<Record<string, string>>({});
@@ -87,7 +89,7 @@ export default function Movements() {
   const detectMutation = useMutation({
     mutationFn: API.detectIntercompany,
     onSuccess: (r) => {
-      toast.success(`${r.linked} pares intercompany vinculados`);
+      toast.success(t('fin.movs.v0ParesIntercompanyVinculados', { v0: r.linked }));
       qc.invalidateQueries({ queryKey: ["movements"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
     },
@@ -96,7 +98,7 @@ export default function Movements() {
   const deleteMutation = useMutation({
     mutationFn: (id: number) => API.deleteMovement(id),
     onSuccess: () => {
-      toast.success("Movimiento eliminado");
+      toast.success(t('fin.movs.movimientoEliminado'));
       qc.invalidateQueries({ queryKey: ["movements"] });
       qc.invalidateQueries({ queryKey: ["movements-by-account"] });
       qc.invalidateQueries({ queryKey: ["capital"] });
@@ -112,14 +114,14 @@ export default function Movements() {
   const registerFromLine = useMutation({
     mutationFn: (lineId: number) => API.createMovementFromLine(lineId),
     onSuccess: () => {
-      toast.success("Movimiento registrado desde el extracto");
+      toast.success(t('fin.movs.movimientoRegistradoDesdeElExtracto'));
       qc.invalidateQueries({ queryKey: ["movements"] });
       qc.invalidateQueries({ queryKey: ["unreconciledLines"] });
       qc.invalidateQueries({ queryKey: ["accounts"] });
       qc.invalidateQueries({ queryKey: ["account-detail"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
     },
-    onError: (e: any) => toast.error(e?.response?.data?.error || e?.message || "Error al registrar"),
+    onError: (e: any) => toast.error(e?.response?.data?.error || e?.message || t('fin.capital.errorAlRegistrar')),
   });
 
   const clearFilters = () => { setFilters({}); setQ(""); };
@@ -129,17 +131,17 @@ export default function Movements() {
     <div className="space-y-4 page-content">
       <div className="flex items-end justify-between flex-wrap gap-3">
         <div>
-          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><ArrowLeftRight className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>Movimientos</span></h1>
+          <h1 className="page-head-title flex items-center gap-3"><span className="page-head-icon"><ArrowLeftRight className="w-[22px] h-[22px]" strokeWidth={1.8} /></span><span>{t('common.movimientos')}</span></h1>
           <p className="text-sm" style={{ color: 'var(--brand-teal2)' }}>
-            {data?.total || 0} registros · <span className="text-emerald-600 font-semibold">{usd(totals.ing, { compact: true })}</span> ingresos · <span className="text-red-600 font-semibold">{usd(totals.egr, { compact: true })}</span> egresos · Neto <span className={cls("font-semibold", totals.neto >= 0 ? "text-emerald-600" : "text-red-600")}>{usd(totals.neto, { compact: true })}</span>
+            {data?.total || 0} {t('fin.movs.registros')} <span className="text-emerald-600 font-semibold">{usd(totals.ing, { compact: true })}</span> {t('fin.movs.ingresos')} <span className="text-red-600 font-semibold">{usd(totals.egr, { compact: true })}</span> {t('fin.movs.egresosNeto')} <span className={cls("font-semibold", totals.neto >= 0 ? "text-emerald-600" : "text-red-600")}>{usd(totals.neto, { compact: true })}</span>
           </p>
         </div>
         <div className="flex gap-2">
-          <button className="btn-secondary" onClick={() => detectMutation.mutate()} disabled={detectMutation.isPending} title="Vincula automáticamente transferencias entre cuentas propias para evitar contarlas como ingresos o egresos en el dashboard">
-            <Sparkles size={14} /> {detectMutation.isPending ? "Vinculando…" : "Vincular transferencias internas"}
+          <button className="btn-secondary" onClick={() => detectMutation.mutate()} disabled={detectMutation.isPending} title={t('fin.movs.vinculaAutomaticamenteTransferenciasEntreC')}>
+            <Sparkles size={14} /> {detectMutation.isPending ? t('fin.movs.vinculando') : t('fin.movs.vincularTransferenciasInternas')}
           </button>
           <button className="btn-primary" onClick={() => setModalOpen(true)}>
-            <Plus size={14} /> Nuevo movimiento
+            <Plus size={14} /> {t('fin.movs.nuevoMovimiento')}
           </button>
         </div>
       </div>
@@ -151,7 +153,7 @@ export default function Movements() {
             <CheckCircle2 size={18} />
           </div>
           <div>
-            <div className="text-[11px] uppercase tracking-wider text-slate-500">Coinciden con extracto</div>
+            <div className="text-[11px] uppercase tracking-wider text-slate-500">{t('fin.movs.coincidenConExtracto')}</div>
             <div className="text-lg font-semibold text-positive">{matchCounts.matched}</div>
           </div>
         </div>
@@ -160,7 +162,7 @@ export default function Movements() {
             <AlertCircle size={18} />
           </div>
           <div>
-            <div className="text-[11px] uppercase tracking-wider text-slate-500">Manual sin extracto</div>
+            <div className="text-[11px] uppercase tracking-wider text-slate-500">{t('fin.movs.manualSinExtracto')}</div>
             <div className="text-lg font-semibold text-warn">{matchCounts.manual_only}</div>
           </div>
         </div>
@@ -169,7 +171,7 @@ export default function Movements() {
             <AlertCircle size={18} />
           </div>
           <div>
-            <div className="text-[11px] uppercase tracking-wider text-slate-500">En extracto, falta registrar</div>
+            <div className="text-[11px] uppercase tracking-wider text-slate-500">{t('fin.movs.enExtractoFaltaRegistrar')}</div>
             <div className="text-lg font-semibold text-negative">{matchCounts.extract_only}</div>
           </div>
         </div>
@@ -178,7 +180,7 @@ export default function Movements() {
             <Repeat size={18} />
           </div>
           <div>
-            <div className="text-[11px] uppercase tracking-wider text-slate-500">Total movimientos</div>
+            <div className="text-[11px] uppercase tracking-wider text-slate-500">{t('fin.movs.totalMovimientos')}</div>
             <div className="text-lg font-semibold">{movements.length}</div>
           </div>
         </div>
@@ -195,7 +197,7 @@ export default function Movements() {
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Buscar por concepto, notas, monto…"
+                placeholder={t('fin.movs.buscarPorConceptoNotasMonto')}
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm transition-all"
                 style={{
                   background: '#ffffff',
@@ -212,10 +214,10 @@ export default function Movements() {
             {/* Chips de filtros rápidos: Tipo */}
             <div className="flex items-center gap-1 p-1 rounded-xl" style={{ background: '#ffffff', border: '1px solid rgba(29,29,31,0.1)' }}>
               {[
-                { val: "", label: "Todos", icon: null },
-                { val: "Ingreso", label: "Ingreso", icon: ArrowDownLeft, color: '#059669' },
-                { val: "Egreso", label: "Egreso", icon: ArrowUpRight, color: '#dc2626' },
-                { val: "Interbancario", label: "Transfer.", icon: Repeat, color: 'var(--brand-gold)' },
+                { val: "", label: t('fin.movs.todos'), icon: null },
+                { val: "Ingreso", label: t('common.ingreso'), icon: ArrowDownLeft, color: '#059669' },
+                { val: "Egreso", label: t('common.egreso'), icon: ArrowUpRight, color: '#dc2626' },
+                { val: "Interbancario", label: t('fin.movs.transfer'), icon: Repeat, color: 'var(--brand-gold)' },
               ].map((t) => {
                 const active = (filters.type || "") === t.val;
                 const Icon = t.icon;
@@ -248,7 +250,7 @@ export default function Movements() {
               }
             >
               <SlidersHorizontal size={14} />
-              Filtros avanzados
+              {t('fin.movs.filtrosAvanzados')}
               {Object.keys(filters).filter(k => filters[k] && k !== 'type').length > 0 && (
                 <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold" style={{
                   background: filtersOpen ? 'rgba(255,255,255,0.25)' : 'var(--brand-gold)',
@@ -264,7 +266,7 @@ export default function Movements() {
                 onClick={clearFilters}
                 className="inline-flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors"
               >
-                <X size={12} /> Limpiar
+                <X size={12} /> {t('fin.movs.limpiar')}
               </button>
             )}
           </div>
@@ -273,7 +275,7 @@ export default function Movements() {
         {/* Filtros avanzados — colapsables */}
         {filtersOpen && (
           <div className="p-4 grid md:grid-cols-2 lg:grid-cols-4 gap-3" style={{ borderTop: '1px solid rgba(29,29,31,0.08)', background: '#ffffff' }}>
-            <FilterField icon={<Calendar size={13} />} label="Desde">
+            <FilterField icon={<Calendar size={13} />} label={t('fin.movs.desde')}>
               <input
                 type="date"
                 className="input w-full text-sm"
@@ -281,7 +283,7 @@ export default function Movements() {
                 onChange={(e) => setFilters({ ...filters, from: e.target.value })}
               />
             </FilterField>
-            <FilterField icon={<Calendar size={13} />} label="Hasta">
+            <FilterField icon={<Calendar size={13} />} label={t('fin.movs.hasta')}>
               <input
                 type="date"
                 className="input w-full text-sm"
@@ -289,45 +291,45 @@ export default function Movements() {
                 onChange={(e) => setFilters({ ...filters, to: e.target.value })}
               />
             </FilterField>
-            <FilterField icon={<Building2 size={13} />} label="Cuenta bancaria">
+            <FilterField icon={<Building2 size={13} />} label={t('fin.movs.cuentaBancaria')}>
               <select className="select w-full text-sm" value={filters.accountId || ""} onChange={(e) => setFilters({ ...filters, accountId: e.target.value })}>
-                <option value="">Todas las cuentas</option>
+                <option value="">{t('fin.movs.todasLasCuentas')}</option>
                 {catalogs?.accounts?.map((a: any) => <option key={a.id} value={a.id}>{a.name}</option>)}
               </select>
             </FilterField>
-            <FilterField icon={<Briefcase size={13} />} label="Proyecto">
+            <FilterField icon={<Briefcase size={13} />} label={t('common.proyecto')}>
               <select className="select w-full text-sm" value={filters.projectId || ""} onChange={(e) => setFilters({ ...filters, projectId: e.target.value })}>
-                <option value="">Todos los proyectos</option>
+                <option value="">{t('fin.movs.todosLosProyectos')}</option>
                 {catalogs?.projects?.map((p: any) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
               </select>
             </FilterField>
-            <FilterField icon={<Tag size={13} />} label="Categoría">
+            <FilterField icon={<Tag size={13} />} label={t('common.categoria')}>
               <select className="select w-full text-sm" value={filters.categoryId || ""} onChange={(e) => setFilters({ ...filters, categoryId: e.target.value })}>
-                <option value="">Todas las categorías</option>
+                <option value="">{t('fin.movs.todasLasCategorias')}</option>
                 {catalogs?.categories?.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </FilterField>
-            <FilterField icon={<Briefcase size={13} />} label="Proveedor">
+            <FilterField icon={<Briefcase size={13} />} label={t('common.proveedor')}>
               <select className="select w-full text-sm" value={filters.providerId || ""} onChange={(e) => setFilters({ ...filters, providerId: e.target.value })}>
-                <option value="">Todos los proveedores</option>
+                <option value="">{t('fin.movs.todosLosProveedores')}</option>
                 {catalogs?.providers?.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </FilterField>
-            <FilterField icon={<Users size={13} />} label="Socio">
+            <FilterField icon={<Users size={13} />} label={t('common.socio')}>
               <select className="select w-full text-sm" value={filters.partnerId || ""} onChange={(e) => setFilters({ ...filters, partnerId: e.target.value })}>
-                <option value="">Todos los socios</option>
+                <option value="">{t('fin.movs.todosLosSocios')}</option>
                 {catalogs?.partners?.map((p: any) => <option key={p.id} value={p.id}>{p.code} · {p.fullName}</option>)}
               </select>
             </FilterField>
-            <FilterField icon={<TrendingUp size={13} />} label="Origen ingreso">
+            <FilterField icon={<TrendingUp size={13} />} label={t('fin.movs.origenIngreso')}>
               <select className="select w-full text-sm" value={filters.originId || ""} onChange={(e) => setFilters({ ...filters, originId: e.target.value })}>
-                <option value="">Todos los orígenes</option>
+                <option value="">{t('fin.movs.todosLosOrigenes')}</option>
                 {catalogs?.origins?.map((o: any) => <option key={o.id} value={o.id}>{o.name}</option>)}
               </select>
             </FilterField>
-            <FilterField icon={<Banknote size={13} />} label="Lender (Prestamista)">
+            <FilterField icon={<Banknote size={13} />} label={t('fin.movs.lenderPrestamista')}>
               <select className="select w-full text-sm" value={filters.lenderId || ""} onChange={(e) => setFilters({ ...filters, lenderId: e.target.value })}>
-                <option value="">Todos los lenders</option>
+                <option value="">{t('fin.movs.todosLosLenders')}</option>
                 {catalogs?.lenders?.map((l: any) => <option key={l.id} value={l.id}>{l.name}</option>)}
               </select>
             </FilterField>
@@ -342,10 +344,10 @@ export default function Movements() {
             <div className="flex items-center gap-2 text-negative">
               <AlertCircle size={16} />
               <span className="text-sm font-semibold">
-                {unreconciledLines.length} {unreconciledLines.length === 1 ? "línea" : "líneas"} de extracto sin registrar manualmente
+                {unreconciledLines.length} {unreconciledLines.length === 1 ? t('fin.movs.linea') : t('fin.acctDet.lineas')} {t('fin.movs.deExtractoSinRegistrarManualmente')}
               </span>
             </div>
-            <Link to="/finance/accounts" className="text-xs hover:underline font-semibold" style={{ color: 'var(--brand-gold)' }}>Ir a Cuentas →</Link>
+            <Link to="/finance/accounts" className="text-xs hover:underline font-semibold" style={{ color: 'var(--brand-gold)' }}>{t('fin.movs.irACuentas')}</Link>
           </div>
           <div className="grid md:grid-cols-2 gap-2">
             {unreconciledLines.slice(0, 6).map((l: any) => (
@@ -359,17 +361,17 @@ export default function Movements() {
                   <button
                     onClick={() => registerFromLine.mutate(l.id)}
                     disabled={registerFromLine.isPending}
-                    title="Registrar este movimiento del banco que no estaba inscrito"
+                    title={t('fin.movs.registrarEsteMovimientoDelBancoQue')}
                     className="px-2 py-0.5 rounded text-[11px] font-semibold bg-negative/15 text-negative hover:bg-negative/25 disabled:opacity-40 whitespace-nowrap"
                   >
-                    + Registrar
+                    {t('fin.movs.registrar')}
                   </button>
                 </div>
               </div>
             ))}
           </div>
           {unreconciledLines.length > 6 && (
-            <div className="text-xs text-slate-500 mt-1">+ {unreconciledLines.length - 6} más…</div>
+            <div className="text-xs text-slate-500 mt-1">+ {unreconciledLines.length - 6} {t('fin.acctDet.mas')}</div>
           )}
         </div>
       )}
@@ -378,21 +380,21 @@ export default function Movements() {
         <table className="w-full text-sm">
           <thead className="bg-bg-soft border-b border-line text-xs text-slate-400 uppercase">
             <tr>
-              <th className="px-3 py-2 text-left">Fecha</th>
-              <th className="px-3 py-2 text-left">Tipo</th>
-              <th className="px-3 py-2 text-left">Cuenta</th>
-              <th className="px-3 py-2 text-left">Concepto</th>
-              <th className="px-3 py-2 text-left">Categoría / Origen</th>
-              <th className="px-3 py-2 text-left">Proyecto / Socio</th>
-              <th className="px-3 py-2 text-right">Monto</th>
-              <th className="px-3 py-2 text-center">Comparación</th>
+              <th className="px-3 py-2 text-left">{t('common.fecha')}</th>
+              <th className="px-3 py-2 text-left">{t('common.tipo')}</th>
+              <th className="px-3 py-2 text-left">{t('common.cuenta2')}</th>
+              <th className="px-3 py-2 text-left">{t('common.concepto')}</th>
+              <th className="px-3 py-2 text-left">{t('fin.movs.categoriaOrigen')}</th>
+              <th className="px-3 py-2 text-left">{t('fin.movs.proyectoSocio')}</th>
+              <th className="px-3 py-2 text-right">{t('common.monto')}</th>
+              <th className="px-3 py-2 text-center">{t('fin.movs.comparacion')}</th>
               <th className="px-3 py-2"></th>
             </tr>
           </thead>
           <tbody>
-            {isLoading && <tr><td colSpan={9} className="p-4 text-center text-slate-500">Cargando…</td></tr>}
+            {isLoading && <tr><td colSpan={9} className="p-4 text-center text-slate-500">{t('common.cargando')}</td></tr>}
             {!isLoading && movements.length === 0 && (
-              <tr><td colSpan={9} className="p-6 text-center text-slate-500">Sin movimientos. Importa el Excel desde Importar / Backup o crea uno nuevo.</td></tr>
+              <tr><td colSpan={9} className="p-6 text-center text-slate-500">{t('fin.movs.sinMovimientosImportaElExcelDesde')}</td></tr>
             )}
             {movements.map((m) => {
               const tb = TYPE_BADGE[m.type] || { color: "text-slate-300 bg-bg-hover border-line", icon: ArrowDownLeft, label: m.type };
@@ -407,7 +409,7 @@ export default function Movements() {
                   <td className="px-3 py-2 text-xs font-mono text-slate-300 whitespace-nowrap">{dateShort(m.date)}</td>
                   <td className="px-3 py-2">
                     <span className={cls("badge border", tb.color)}>
-                      <Icon size={10} className="mr-1" /> {tb.label}
+                      <Icon size={10} className="mr-1" /> {t(tb.labelKey)}
                     </span>
                   </td>
                   <td className="px-3 py-2 text-xs">
@@ -438,7 +440,7 @@ export default function Movements() {
                       <span
                         className="badge inline-flex items-center gap-1 mr-1"
                         style={{ background: 'rgba(198,149,47,0.12)', color: '#8a6a1f', border: '1px solid rgba(198,149,47,0.35)' }}
-                        title={`Obra: ${m.techItem.phase?.project?.name ?? ''} · ${m.techItem.phase?.name ?? ''} · ${m.techItem.activity}. Este gasto tiene subactividad espejo en Ejecución.`}
+                        title={t('fin.movs.obraV0V1V2EsteGasto', { v0: m.techItem.phase?.project?.name ?? '', v1: m.techItem.phase?.name ?? '', v2: m.techItem.activity })}
                       >
                         <HardHat size={10} /> {m.techItem.itemCode}
                       </span>
@@ -458,7 +460,7 @@ export default function Movements() {
                   </td>
                   <td className="px-3 py-2 text-center">
                     <span className={cls("inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border", mb.color)}>
-                      <MIcon size={10} /> {mb.label}
+                      <MIcon size={10} /> {t(mb.labelKey)}
                     </span>
                   </td>
                   <td className="px-3 py-2 text-right">
@@ -468,19 +470,19 @@ export default function Movements() {
                           onClick={() => setQuickAssign(m)}
                           className="btn-ghost p-1"
                           style={{ color: m.techItem ? '#8a6a1f' : undefined }}
-                          title={m.techItem ? `Asociado a obra: ${m.techItem.itemCode} · ${m.techItem.activity} — clic para cambiar` : "Asociar este gasto a una fase/actividad de la obra"}
+                          title={m.techItem ? t('fin.movs.asociadoAObraV0V1Clic', { v0: m.techItem.itemCode, v1: m.techItem.activity }) : t('fin.movs.asociarEsteGastoAUnaFase')}
                         >
                           <HardHat size={14} />
                         </button>
                       )}
-                      <Link to={`/finance/movements/${m.id}`} className="btn-ghost p-1" title="Ver detalle / editar"><ChevronRight size={14} /></Link>
+                      <Link to={`/finance/movements/${m.id}`} className="btn-ghost p-1" title={t('fin.movs.verDetalleEditar')}><ChevronRight size={14} /></Link>
                       <button
                         onClick={async () => {
                           const ok = await confirm({
-                            title: 'Eliminar movimiento',
-                            message: `¿Seguro que quieres eliminar el movimiento "${m.concept}"?`,
-                            detail: `Monto: ${usd(m.amount ?? 0)} · ${m.type} · ${m.account?.name || 'sin cuenta'}`,
-                            confirmText: 'Sí, eliminar',
+                            title: t('fin.movs.eliminarMovimiento'),
+                            message: t('fin.movs.seguroQueQuieresEliminarElMovimiento', { v0: m.concept }),
+                            detail: t('fin.movs.montoV0V1V2', { v0: usd(m.amount ?? 0), v1: m.type, v2: m.account?.name || 'sin cuenta' }),
+                            confirmText: t('tech.projects.siEliminar'),
                             destructive: true,
                           })
                           if (ok) deleteMutation.mutate(m.id)
@@ -507,6 +509,7 @@ export default function Movements() {
 // (incluidos los conciliados con extracto). No toca ningún otro campo.
 // =============================================================================
 function QuickTechAssignModal({ movement, onClose }: { movement: any | null; onClose: () => void }) {
+  const { t } = useI18n()
   const qc = useQueryClient();
   const [sel, setSel] = useState<TechSel>(EMPTY_TECH_SEL);
   const open = !!movement;
@@ -517,39 +520,39 @@ function QuickTechAssignModal({ movement, onClose }: { movement: any | null; onC
       return API.updateMovement(movement.id, link);
     },
     onSuccess: () => {
-      toast.success("Gasto asociado a la obra — Ejecución actualizada");
+      toast.success(t('fin.movs.gastoAsociadoALaObraEjecucion'));
       qc.invalidateQueries({ queryKey: ["movements"] });
       qc.invalidateQueries({ queryKey: ["fin-tech-tree"] });
       setSel(EMPTY_TECH_SEL);
       onClose();
     },
-    onError: (e: any) => toast.error(e?.response?.data?.error || e?.message || "Error al asociar"),
+    onError: (e: any) => toast.error(e?.response?.data?.error || e?.message || t('fin.movDet.errorAlAsociar')),
   });
 
   const removeMut = useMutation({
     mutationFn: () => API.updateMovement(movement.id, { techItemId: null, techSubActivityId: null }),
     onSuccess: () => {
-      toast.success("Asociación retirada");
+      toast.success(t('fin.movs.asociacionRetirada'));
       qc.invalidateQueries({ queryKey: ["movements"] });
       setSel(EMPTY_TECH_SEL);
       onClose();
     },
-    onError: (e: any) => toast.error(e?.response?.data?.error || "Error al desvincular"),
+    onError: (e: any) => toast.error(e?.response?.data?.error || t('fin.movs.errorAlDesvincular')),
   });
 
   if (!open) return null;
   return (
-    <Modal open={open} onClose={() => { setSel(EMPTY_TECH_SEL); onClose(); }} title="Asociar gasto a la obra" size="lg">
+    <Modal open={open} onClose={() => { setSel(EMPTY_TECH_SEL); onClose(); }} title={t('fin.movs.asociarGastoALaObra')} size="lg">
       <div className="space-y-3">
         <div className="p-3 rounded-lg bg-bg-soft border border-line text-sm">
           <div className="font-semibold" style={{ color: 'var(--brand-teal)' }}>{movement.concept}</div>
           <div className="text-xs text-slate-500 mt-0.5">
             {dateShort(movement.date)} · {usd(movement.amount)} · {movement.account?.name || "—"}
-            {movement.matchStatus === "matched" ? " · conciliado con extracto" : ""}
+            {movement.matchStatus === "matched" ? t('fin.movs.conciliadoConExtracto') : ""}
           </div>
           {movement.techItem && (
             <div className="text-xs mt-1" style={{ color: '#8a6a1f' }}>
-              Asociado actualmente a: {movement.techItem.itemCode} · {movement.techItem.activity}
+              {t('fin.movs.asociadoActualmenteA')} {movement.techItem.itemCode} · {movement.techItem.activity}
             </div>
           )}
         </div>
@@ -559,13 +562,13 @@ function QuickTechAssignModal({ movement, onClose }: { movement: any | null; onC
         <div className="flex justify-between gap-2 pt-3 border-t border-line">
           {movement.techItem ? (
             <button className="btn-ghost text-xs text-red-600" disabled={removeMut.isPending} onClick={() => removeMut.mutate()}>
-              Quitar asociación actual
+              {t('fin.movs.quitarAsociacionActual')}
             </button>
           ) : <span />}
           <div className="flex gap-2">
-            <button className="btn-secondary" onClick={() => { setSel(EMPTY_TECH_SEL); onClose(); }}>Cancelar</button>
+            <button className="btn-secondary" onClick={() => { setSel(EMPTY_TECH_SEL); onClose(); }}>{t('common.cancelar')}</button>
             <button className="btn-primary" disabled={!techSelReady(sel) || saveMut.isPending} onClick={() => saveMut.mutate()}>
-              {saveMut.isPending ? "Asociando…" : "Asociar a la obra"}
+              {saveMut.isPending ? t('fin.movDet.asociando') : t('fin.movs.asociarALaObra')}
             </button>
           </div>
         </div>
@@ -578,6 +581,7 @@ function QuickTechAssignModal({ movement, onClose }: { movement: any | null; onC
 // MODAL — Cascada por TIPO de movimiento.
 // =============================================================================
 function MovementModal({ open, onClose, catalogs }: { open: boolean; onClose: () => void; catalogs: any }) {
+  const { t } = useI18n()
   const qc = useQueryClient();
   const [form, setForm] = useState<any>({
     date: new Date().toISOString().slice(0, 10),
@@ -602,7 +606,7 @@ function MovementModal({ open, onClose, catalogs }: { open: boolean; onClose: ()
   const mutation = useMutation({
     mutationFn: (data: any) => API.createMovement(data),
     onSuccess: () => {
-      toast.success("Movimiento creado");
+      toast.success(t('fin.movs.movimientoCreado'));
       qc.invalidateQueries({ queryKey: ["movements"] });
       qc.invalidateQueries({ queryKey: ["movements-by-account"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
@@ -619,7 +623,7 @@ function MovementModal({ open, onClose, catalogs }: { open: boolean; onClose: ()
       });
       setTechSel(EMPTY_TECH_SEL);
     },
-    onError: (e: any) => toast.error(e.response?.data?.error || "Error al crear"),
+    onError: (e: any) => toast.error(e.response?.data?.error || t('fin.accts.errorAlCrear')),
   });
 
   // Determinar si el origen seleccionado es "Equity socio" / "Aporte socios"
@@ -641,18 +645,18 @@ function MovementModal({ open, onClose, catalogs }: { open: boolean; onClose: ()
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     // Validación cascada
-    if (!form.accountId) return toast.error("Selecciona la cuenta");
-    if (!form.amount || +form.amount <= 0) return toast.error("Ingresa un monto válido");
-    if (!form.concept.trim()) return toast.error("Concepto es obligatorio");
-    if (form.type === "Ingreso" && !form.originId) return toast.error("Selecciona el origen del ingreso");
-    if (form.type === "Ingreso" && isEquityOrigin && !form.partnerId) return toast.error("Para aportes de socio, selecciona QUÉ socio está aportando");
-    if (form.type === "Ingreso" && isLoanOrigin && !form.lenderId) return toast.error("Para un préstamo, selecciona QUIÉN te está prestando (lender)");
-    if (form.type === "Egreso" && !form.categoryId) return toast.error("Selecciona la categoría del egreso");
+    if (!form.accountId) return toast.error(t('fin.movs.seleccionaLaCuenta'));
+    if (!form.amount || +form.amount <= 0) return toast.error(t('fin.movs.ingresaUnMontoValido'));
+    if (!form.concept.trim()) return toast.error(t('common.conceptoEsObligatorio'));
+    if (form.type === "Ingreso" && !form.originId) return toast.error(t('fin.movDet.seleccionaElOrigenDelIngreso'));
+    if (form.type === "Ingreso" && isEquityOrigin && !form.partnerId) return toast.error(t('fin.movs.paraAportesDeSocioSeleccionaQue'));
+    if (form.type === "Ingreso" && isLoanOrigin && !form.lenderId) return toast.error(t('fin.movs.paraUnPrestamoSeleccionaQuienTe'));
+    if (form.type === "Egreso" && !form.categoryId) return toast.error(t('fin.movs.seleccionaLaCategoriaDelEgreso'));
     // Nota: un egreso PUEDE no estar asociado a proyecto (ej. fee bancario, gasto corporativo).
     // Solo validamos lender cuando la categoría es pago de deuda.
-    if (form.type === "Egreso" && isDebtPayment && !form.lenderId) return toast.error("Para pago de deuda, selecciona el lender");
-    if (form.type === "Interbancario" && !form.destAccountId) return toast.error("Selecciona la cuenta destino");
-    if (form.type === "Interbancario" && form.accountId === form.destAccountId) return toast.error("Origen y destino deben ser distintos");
+    if (form.type === "Egreso" && isDebtPayment && !form.lenderId) return toast.error(t('fin.movs.paraPagoDeDeudaSeleccionaEl'));
+    if (form.type === "Interbancario" && !form.destAccountId) return toast.error(t('fin.movs.seleccionaLaCuentaDestino'));
+    if (form.type === "Interbancario" && form.accountId === form.destAccountId) return toast.error(t('fin.movs.origenYDestinoDebenSerDistintos'));
 
     const payload: any = {
       date: new Date(form.date),
@@ -680,7 +684,7 @@ function MovementModal({ open, onClose, catalogs }: { open: boolean; onClose: ()
         payload.techItemId = link.techItemId;
         payload.techSubActivityId = link.techSubActivityId;
       } catch (err: any) {
-        toast.error(err?.response?.data?.error || "No se pudo crear la actividad en la obra");
+        toast.error(err?.response?.data?.error || t('fin.movs.noSePudoCrearLaActividad'));
         return;
       }
     }
@@ -688,29 +692,29 @@ function MovementModal({ open, onClose, catalogs }: { open: boolean; onClose: ()
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Nuevo movimiento" size="lg">
+    <Modal open={open} onClose={onClose} title={t('fin.movs.nuevoMovimiento')} size="lg">
       <form onSubmit={submit} className="grid md:grid-cols-2 gap-3">
         {/* Tipo (cascada) — sección destacada */}
         <div className="md:col-span-2 p-3 bg-bg-soft rounded-lg border border-line">
-          <label className="label">Tipo de movimiento</label>
+          <label className="label">{t('fin.movs.tipoDeMovimiento')}</label>
           <div className="grid grid-cols-3 gap-2">
-            {(["Ingreso", "Egreso", "Interbancario"] as const).map((t) => {
-              const tb = TYPE_BADGE[t];
+            {(["Ingreso", "Egreso", "Interbancario"] as const).map((mtype) => {
+              const tb = TYPE_BADGE[mtype];
               const Icon = tb.icon;
-              const active = form.type === t;
+              const active = form.type === mtype;
               return (
                 <button
                   type="button"
-                  key={t}
+                  key={mtype}
                   onClick={() => update({
-                    type: t,
+                    type: mtype,
                     // Reset campos no aplicables al nuevo tipo
-                    originId: t === "Ingreso" ? form.originId : "",
-                    categoryId: t === "Egreso" ? form.categoryId : "",
-                    providerId: t === "Egreso" ? form.providerId : "",
-                    destAccountId: t === "Interbancario" ? form.destAccountId : "",
-                    partnerId: t === "Ingreso" ? form.partnerId : "",
-                    lenderId: (t === "Ingreso" || t === "Egreso") ? form.lenderId : "",
+                    originId: mtype === "Ingreso" ? form.originId : "",
+                    categoryId: mtype === "Egreso" ? form.categoryId : "",
+                    providerId: mtype === "Egreso" ? form.providerId : "",
+                    destAccountId: mtype === "Interbancario" ? form.destAccountId : "",
+                    partnerId: mtype === "Ingreso" ? form.partnerId : "",
+                    lenderId: (mtype === "Ingreso" || mtype === "Egreso") ? form.lenderId : "",
                   })}
                   className={cls(
                     "flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-all",
@@ -720,7 +724,7 @@ function MovementModal({ open, onClose, catalogs }: { open: boolean; onClose: ()
                   )}
                 >
                   <Icon size={14} />
-                  {t === "Interbancario" ? "Transferencia" : t}
+                  {mtype === "Ingreso" ? t('common.ingreso') : mtype === "Egreso" ? t('common.egreso') : t('fin.movs.transferencia')}
                 </button>
               );
             })}
@@ -729,27 +733,27 @@ function MovementModal({ open, onClose, catalogs }: { open: boolean; onClose: ()
 
         {/* Campos básicos siempre visibles */}
         <div>
-          <label className="label">Fecha *</label>
+          <label className="label">{t('fin.capital.fecha')}</label>
           <input type="date" className="input w-full" value={form.date} onChange={(e) => update({ date: e.target.value })} required />
         </div>
         <div>
-          <label className="label">Monto USD *</label>
+          <label className="label">{t('common.montoUsd')}</label>
           <input type="number" step="0.01" min="0.01" className="input w-full" value={form.amount} onChange={(e) => update({ amount: e.target.value })} required />
         </div>
         <div>
           <label className="label">
-            {form.type === "Interbancario" ? "Cuenta origen *" : "Cuenta *"}
+            {form.type === "Interbancario" ? t('fin.movs.cuentaOrigen') : t('fin.movs.cuenta')}
           </label>
           <select className="select w-full" value={form.accountId} onChange={(e) => update({ accountId: e.target.value })} required>
-            <option value="">— seleccionar —</option>
+            <option value="">{t('common.seleccionar')}</option>
             {catalogs?.accounts?.map((a: any) => <option key={a.id} value={a.id}>{a.name} · {a.bank}</option>)}
           </select>
         </div>
         {form.type === "Interbancario" && (
           <div>
-            <label className="label">Cuenta destino *</label>
+            <label className="label">{t('fin.movs.cuentaDestino')}</label>
             <select className="select w-full" value={form.destAccountId} onChange={(e) => update({ destAccountId: e.target.value })} required>
-              <option value="">— seleccionar —</option>
+              <option value="">{t('common.seleccionar')}</option>
               {catalogs?.accounts?.filter((a: any) => String(a.id) !== form.accountId).map((a: any) => (
                 <option key={a.id} value={a.id}>{a.name} · {a.bank}</option>
               ))}
@@ -757,47 +761,47 @@ function MovementModal({ open, onClose, catalogs }: { open: boolean; onClose: ()
           </div>
         )}
         <div className="md:col-span-2">
-          <label className="label">Concepto *</label>
-          <input className="input w-full" value={form.concept} onChange={(e) => update({ concept: e.target.value })} required placeholder="Descripción del movimiento" />
+          <label className="label">{t('common.concepto2')}</label>
+          <input className="input w-full" value={form.concept} onChange={(e) => update({ concept: e.target.value })} required placeholder={t('fin.movs.descripcionDelMovimiento')} />
         </div>
 
         {/* Cascada: Egreso → Categoría + Proveedor + Proyecto */}
         {form.type === "Egreso" && (
           <>
             <div>
-              <label className="label">Categoría *</label>
+              <label className="label">{t('fin.movs.categoria')}</label>
               <select className="select w-full" value={form.categoryId} onChange={(e) => update({ categoryId: e.target.value })} required>
-                <option value="">— seleccionar categoría —</option>
+                <option value="">{t('fin.movs.seleccionarCategoria')}</option>
                 {catalogs?.categories?.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
             <div>
-              <label className="label">Proveedor / Tercero</label>
+              <label className="label">{t('fin.movs.proveedorTercero')}</label>
               <select className="select w-full" value={form.providerId} onChange={(e) => update({ providerId: e.target.value })}>
-                <option value="">— ninguno —</option>
+                <option value="">{t('common.ninguno')}</option>
                 {catalogs?.providers?.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </div>
             <div className="md:col-span-2">
-              <label className="label">Proyecto asociado <span className="text-[11px] font-normal" style={{ color: 'var(--brand-teal2)' }}>(opcional — usar "No asociado" para gastos corporativos como fees bancarios)</span></label>
+              <label className="label">{t('fin.movDet.proyectoAsociado')} <span className="text-[11px] font-normal" style={{ color: 'var(--brand-teal2)' }}>{t('fin.movs.opcionalUsarNoAsociadoParaGastos')}</span></label>
               <select className="select w-full" value={form.projectId} onChange={(e) => update({ projectId: e.target.value })}>
-                <option value="">— No asociado a proyecto (gasto corporativo / fee bancario) —</option>
+                <option value="">{t('fin.movs.noAsociadoAProyectoGastoCorporativo')}</option>
                 {catalogs?.projects?.map((p: any) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
               </select>
               {!form.projectId && (
                 <p className="text-[11px] mt-1" style={{ color: 'var(--brand-gold)' }}>
-                  Este egreso se registrará como gasto corporativo (sin proyecto asociado).
+                  {t('fin.movs.esteEgresoSeRegistraraComoGasto')}
                 </p>
               )}
             </div>
             {isDebtPayment && (
               <div className="md:col-span-2">
-                <label className="label">Lender (acreedor de la deuda) *</label>
+                <label className="label">{t('fin.movs.lenderAcreedorDeLaDeuda')}</label>
                 <select className="select w-full" value={form.lenderId} onChange={(e) => update({ lenderId: e.target.value })} required>
-                  <option value="">— seleccionar lender —</option>
+                  <option value="">{t('fin.movs.seleccionarLender')}</option>
                   {catalogs?.lenders?.map((l: any) => <option key={l.id} value={l.id}>{l.name}</option>)}
                 </select>
-                <p className="text-[11px] text-slate-500 mt-1">Este pago se reflejará en Deuda & Préstamos.</p>
+                <p className="text-[11px] text-slate-500 mt-1">{t('fin.movs.estePagoSeReflejaraEnDeuda')}</p>
               </div>
             )}
 
@@ -808,7 +812,7 @@ function MovementModal({ open, onClose, catalogs }: { open: boolean; onClose: ()
             <div className="md:col-span-2 p-3 rounded-lg" style={{ background: 'rgba(198,149,47,0.06)', border: '1px dashed rgba(198,149,47,0.4)' }}>
               <label className="label flex items-center gap-1.5" style={{ marginBottom: 6 }}>
                 <HardHat size={13} style={{ color: 'var(--brand-gold)' }} />
-                Asociar a la obra (módulo técnico) <span className="text-[11px] font-normal text-slate-500">(opcional)</span>
+                {t('fin.movs.asociarALaObraModuloTecnico')} <span className="text-[11px] font-normal text-slate-500">{t('fin.movs.opcional')}</span>
               </label>
               <TechAssociate sel={techSel} onChange={setTechSel} enabled={open} />
             </div>
@@ -819,35 +823,35 @@ function MovementModal({ open, onClose, catalogs }: { open: boolean; onClose: ()
         {form.type === "Ingreso" && (
           <>
             <div className="md:col-span-2">
-              <label className="label">Origen del capital *</label>
+              <label className="label">{t('fin.movs.origenDelCapital')}</label>
               <select className="select w-full" value={form.originId} onChange={(e) => update({ originId: e.target.value, partnerId: "", lenderId: "" })} required>
-                <option value="">— seleccionar origen —</option>
+                <option value="">{t('fin.movs.seleccionarOrigen')}</option>
                 {catalogs?.origins?.map((o: any) => <option key={o.id} value={o.id}>{o.name}</option>)}
               </select>
             </div>
             {isEquityOrigin && (
               <div>
-                <label className="label">Socio que aporta *</label>
+                <label className="label">{t('common.socioQueAporta')}</label>
                 <select className="select w-full" value={form.partnerId} onChange={(e) => update({ partnerId: e.target.value })} required>
-                  <option value="">— seleccionar socio —</option>
+                  <option value="">{t('common.seleccionarSocio')}</option>
                   {catalogs?.partners?.map((p: any) => <option key={p.id} value={p.id}>{p.code} · {p.fullName}</option>)}
                 </select>
-                <p className="text-[11px] text-slate-500 mt-1">Se registrará automáticamente en Capital Aportado.</p>
+                <p className="text-[11px] text-slate-500 mt-1">{t('fin.movs.seRegistraraAutomaticamenteEnCapitalAporta')}</p>
               </div>
             )}
             {isLoanOrigin && (
               <div>
-                <label className="label">Lender (prestamista) *</label>
+                <label className="label">{t('fin.movs.lenderPrestamista2')}</label>
                 <select className="select w-full" value={form.lenderId} onChange={(e) => update({ lenderId: e.target.value })} required>
-                  <option value="">— seleccionar lender —</option>
+                  <option value="">{t('fin.movs.seleccionarLender')}</option>
                   {catalogs?.lenders?.map((l: any) => <option key={l.id} value={l.id}>{l.name}</option>)}
                 </select>
               </div>
             )}
             <div>
-              <label className="label">Proyecto asociado <span className="text-slate-500 text-[11px]">(opcional)</span></label>
+              <label className="label">{t('fin.movDet.proyectoAsociado')} <span className="text-slate-500 text-[11px]">{t('fin.movs.opcional')}</span></label>
               <select className="select w-full" value={form.projectId} onChange={(e) => update({ projectId: e.target.value })}>
-                <option value="">— corporativo —</option>
+                <option value="">{t('fin.movs.corporativo')}</option>
                 {catalogs?.projects?.map((p: any) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
               </select>
             </div>
@@ -855,14 +859,14 @@ function MovementModal({ open, onClose, catalogs }: { open: boolean; onClose: ()
         )}
 
         <div className="md:col-span-2">
-          <label className="label">Notas</label>
+          <label className="label">{t('common.notas')}</label>
           <textarea className="input w-full" rows={2} value={form.notes} onChange={(e) => update({ notes: e.target.value })} />
         </div>
 
         <div className="md:col-span-2 flex justify-end gap-2 mt-2 pt-3 border-t border-line">
-          <button type="button" className="btn-secondary" onClick={onClose}>Cancelar</button>
+          <button type="button" className="btn-secondary" onClick={onClose}>{t('common.cancelar')}</button>
           <button type="submit" className="btn-primary" disabled={mutation.isPending}>
-            {mutation.isPending ? "Guardando…" : "Crear movimiento"}
+            {mutation.isPending ? t('common.guardando') : t('common.crearMovimiento')}
           </button>
         </div>
       </form>
