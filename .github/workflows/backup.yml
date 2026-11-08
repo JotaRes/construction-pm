@@ -1,5 +1,5 @@
 # ============================================================
-# BACKUP AUTOMÁTICO DIARIO — 06:00 UTC (~1-2am hora Carolina del Sur)
+# BACKUP AUTOMÁTICO DIARIO — 06:23 UTC (~1-2am hora Carolina del Sur)
 # Descarga el ZIP completo del sistema (datos tech + finance + binarios)
 # y lo guarda como artifact de GitHub con 90 días de retención.
 # Requiere el secret APP_PASSWORD en GitHub → Settings → Secrets → Actions.
@@ -9,7 +9,10 @@ name: Backup diario
 
 on:
   schedule:
-    - cron: "0 6 * * *"
+    # Minuto 23 a propósito: el minuto 0 es el más congestionado de GitHub y los
+    # runs programados estaban aterrizando 7-8 horas tarde (06:00 UTC pedido,
+    # 13:00-14:30 UTC real). Un minuto impar sale de esa cola.
+    - cron: "23 6 * * *"
   workflow_dispatch:
 
 jobs:
@@ -41,3 +44,35 @@ jobs:
           name: backup-${{ github.run_id }}
           path: backup-*.zip
           retention-days: 90
+
+  # ============================================================
+  # KEEPALIVE — por qué existe
+  # GitHub apaga los workflows programados de los repos PÚBLICOS cuando el repo
+  # pasa 60 días sin actividad. Ocurrió el 8-nov-2026: el último push fue el
+  # 8-sep-2026 y el backup quedó en `disabled_inactivity` sin aviso visible.
+  # Este job empuja un commit vacío cuando el repo se acerca al límite, lo que
+  # reinicia el contador. Corre aparte del backup (no `needs:`) para que siga
+  # protegiendo aunque el backup falle.
+  # ============================================================
+  keepalive:
+    name: Keepalive — evitar que GitHub apague el schedule
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Commit vacío si el repo lleva más de 45 días quieto
+        run: |
+          set -e
+          DAYS=$(( ( $(date +%s) - $(git log -1 --format=%ct) ) / 86400 ))
+          echo "Último commit hace ${DAYS} día(s). GitHub apaga el schedule a los 60."
+          if [ "$DAYS" -lt 45 ]; then
+            echo "Nada que hacer: el contador está lejos del límite."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit --allow-empty -m "chore(keepalive): actividad para que GitHub no apague el backup programado"
+          git push
+          echo "✓ Contador de inactividad reiniciado."

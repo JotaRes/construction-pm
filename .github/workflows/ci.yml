@@ -37,6 +37,26 @@ jobs:
           fi
           echo "✓ sin credenciales hardcodeadas"
 
+  # Canario: el 8-nov-2026 GitHub apagó el backup diario por inactividad y no
+  # hubo ninguna señal — simplemente dejó de correr. Este guard convierte ese
+  # silencio en un ❌ visible en el primer push que hagas.
+  guard-backup-enabled:
+    name: Guard — backup programado activo
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verificar que GitHub no apagó el backup diario
+        run: |
+          set -e
+          STATE=$(curl -sf -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/backup.yml" \
+            | python3 -c "import sys,json;print(json.load(sys.stdin)['state'])")
+          echo "Estado del workflow de backup: $STATE"
+          if [ "$STATE" != "active" ]; then
+            echo "::error::El backup diario está en '$STATE' — NO se está ejecutando. Reactívalo en Actions → Backup diario → ··· → Enable workflow."
+            exit 1
+          fi
+          echo "✓ backup diario activo"
+
   backend:
     name: Backend — typecheck + tests
     runs-on: ubuntu-latest

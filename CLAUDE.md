@@ -58,7 +58,12 @@ Producción: https://restrepoacosta.onrender.com · clave: env var `APP_PASSWORD
 ## Automatización activa (GitHub Actions)
 
 - `.github/workflows/ci.yml` — cada push: guard de schema/secretos + typecheck backend + build frontend
-- `.github/workflows/backup.yml` — backup diario 06:00 UTC como artifact (90 días retención). Requiere secret `APP_PASSWORD` en GitHub.
+- `.github/workflows/backup.yml` — backup diario 06:23 UTC como artifact (90 días retención). Requiere secret `APP_PASSWORD` en GitHub.
+  **GitHub apaga los schedules de repos PÚBLICOS tras 60 días sin actividad** (pasó el
+  8-nov-2026: `disabled_inactivity`, sin aviso visible). Mitigado con el job `keepalive`
+  (commit vacío al llegar a 45 días) y con el guard `guard-backup-enabled` del CI, que
+  pone el push en ❌ si el backup está apagado. La solución de fondo es hacer el repo
+  privado — la regla de los 60 días no aplica a repos privados.
 - `.git/hooks/pre-commit` (local) — bloquea commits con provider sqlite o credenciales conocidas
 
 ## Presupuesto & Ejecución UNIFICADOS (desde julio 2026)
@@ -250,6 +255,8 @@ la vista "sin proyecto activo".
 - (Seguridad, para versión final) rotar APP_PASSWORD/JWT_SECRET y considerar repo
   privado: el historial git público aún contiene credenciales viejas. El password
   actual se mantiene por decisión del usuario hasta la versión final.
+  Pasar el repo a privado resuelve además el apagado automático del backup programado
+  (la regla de los 60 días de inactividad solo existe en repos públicos).
 
 ## Reglas de oro
 
